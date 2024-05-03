@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+    "allowJs": true, // Allow JavaScript files to be compiled.
+    "esModuleInterop": true, // Enables compatibility with Babel/ES6 module imports.
+    "allowSyntheticDefaultImports": true, // Allow default imports from modules with no default export.
+    "strict": true, // Enable all strict type-checking options.
+    "strictPropertyInitialization": false, // If using strict, you might need this false if properties are initialized outside of constructor.
+    "module": "esnext", // Set the module code generation method.
+    "moduleResolution": "node", // Choose how module imports are resolved.
+    "target": "esnext", // Set the JavaScript language version for emitted JavaScript and include compatible library declarations.
+    "jsx": "preserve" // Preserves the JSX to be further transformed by Babel or another transpiler like Vite.
+  },
+  "include": [
+    "src/**/*.js", // Include all JS files in your src directory.
+    "src/**/*.vue" // Include all Vue files.
+  ],
+  "exclude": [
+    "node_modules" // Exclude the node_modules directory to speed up the compilation.
+  ]
+}
