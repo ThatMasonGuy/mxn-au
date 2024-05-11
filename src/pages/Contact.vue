@@ -1,7 +1,7 @@
 <!-- src/pages/Contact.vue -->
 
 <template>
-  <div class="flex flex-col min-h-screen">
+  <div class="flex flex-col min-h-[--adjusted-height] mt-[--header-height]">
     <div class="flex-grow container mx-auto px-4 py-8">
       <h1 class="text-4xl font-bold mb-8 text-center">Contact Us</h1>
       <div class="max-w-lg mx-auto">

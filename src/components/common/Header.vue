@@ -1,11 +1,13 @@
 <template>
-    <header class="bg-gray-800 text-white py-3 px-4 h-[--header-height]">
+    <header class="fixed top-0 left-0 right-0 z-50 bg-gradient-to-b from-slate-600 from-10% backdrop-blur-md text-black shadow-2xl py-3 px-4 h-[--header-height]">
         <nav>
             <div class="flex justify-between">
-                <img src="@/assets/vue.svg" alt="Logo image"
-                    class="h-16 w-16 drop-shadow-sm justify-center items-center object-cover cursor-pointer"
-                    @click="$router.push('/')" />
-                <span class="text-3xl font-bold pt-4 ml-4 absolute ml-20">{{ currentPageTitle }}</span>
+                <div class="flex justify-between items-center">
+                    <img src="@/assets/vue.svg" alt="Logo image"
+                        class="h-16 w-16 justify-center items-center object-cover cursor-pointer"
+                        @click="$router.push('/')" />
+                    <span class="text-3xl font-bold absolute ml-20">{{ currentPageTitle }}</span>
+                </div>
                 <ul class="flex text-lg items-center font-bold">
                     <li><router-link to="/"><Button class="mr-4">Home</Button></router-link></li>
                     <li><router-link to="/about"><Button class="mr-4">About</Button></router-link></li>

@@ -1,10 +1,10 @@
 <!-- src/App.vue -->
 
 <template>
-  <div id="app" class="min-h-screen flex flex-col">
+  <div id="app" class="flex flex-col">
     <Toaster position="bottom-right" richColors />
     <Header v-if="$route.meta.requiresOverlay" />
-    <router-view class="flex-grow" />
+    <router-view class="flex" />
     <Footer v-if="$route.meta.requiresOverlay" />
   </div>
 </template>
