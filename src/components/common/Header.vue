@@ -12,6 +12,7 @@
                     <li><router-link to="/"><Button class="mr-4">Home</Button></router-link></li>
                     <li><router-link to="/about"><Button class="mr-4">About</Button></router-link></li>
                     <li><router-link to="/contact"><Button class="mr-4">Contact</Button></router-link></li>
+                    <li><router-link to="/websites"><Button class="mr-4">Websites</Button></router-link></li>
                 </ul>
             </div>
         </nav>

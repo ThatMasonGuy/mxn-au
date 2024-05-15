@@ -37,7 +37,7 @@
 
     --header-height: 90px;
     --footer-height: 60px;
-    --adjusted-height: calc(100vh - var(--footer-height) - var(--header-height));
+    --adjusted-height: calc(100vh - var(--footer-height));
   }
 
   .dark {
