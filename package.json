@@ -18,6 +18,8 @@
     "embla-carousel": "^8.0.2",
     "embla-carousel-vue": "^8.0.2",
     "firebase": "^10.11.1",
+    "firebase-admin": "^12.1.0",
+    "firebase-functions": "^5.0.1",
     "primeicons": "^7.0.0",
     "primevue": "^3.52.0",
     "radix-vue": "^1.7.3",

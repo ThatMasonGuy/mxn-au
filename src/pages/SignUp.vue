@@ -3,32 +3,63 @@
     <div class="w-full lg:grid lg:min-h-screen lg:grid-cols-2 h-screen">
         <div class="flex items-center justify-center py-12 px-4 mx-auto">
             <div class="mx-auto grid w-[350px] gap-6">
-                <Button href="/landing" class="absolute top-2 left-2">
-                    Return Home
-                </Button>
+                <router-link to="/">
+                    <Button href="/" class="absolute top-2 left-2 z-20">Return Home</Button>
+                </router-link>
+                <router-link to="/">
+                    <Button href="/" class="absolute top-2 right-2 z-20">Dark Mode</Button>
+                </router-link>
                 <div class="grid gap-2 text-center">
-                    <h1 class="text-3xl font-bold mb-6">
-                        Sign up
-                    </h1>
+                    <h1 class="text-3xl font-bold mb-6">Sign up</h1>
                     <p class="text-balance text-muted-foreground">
-                        Enter your email below to create your account
+                        Enter your details below to create your account
                     </p>
                 </div>
                 <div class="grid gap-4">
                     <div class="grid gap-2">
-                        <Label for="email">Email</Label>
-                        <Input id="email" type="email" placeholder="example@gmail.com" required />
+                        <Label for="userName">Username</Label>
+                        <Input id="userName" type="text" required v-model="userName" />
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="grid gap-2">
+                            <Label for="firstName">First Name</Label>
+                            <Input id="firstName" type="text" required v-model="firstName" />
+                        </div>
+                        <div class="grid gap-2">
+                            <Label for="lastName">Last Name</Label>
+                            <Input id="lastName" type="text" required v-model="lastName" />
+                        </div>
                     </div>
                     <div class="grid gap-2">
-                        <div class="flex items-center">
-                            <Label for="password">Password</Label>
-                        </div>
-                        <Input id="password" type="password" required />
+                        <Label for="email">Email</Label>
+                        <Input id="email" type="email" placeholder="example@email.com" required v-model="email" />
                     </div>
-                    <Button type="submit" class="w-full">
+                    <div class="grid gap-2">
+                        <Label for="phoneNumber">Phone Number</Label>
+                        <Input id="phoneNumber" type="tel" v-model="phoneNumber" />
+                    </div>
+                    <div class="grid gap-2">
+                        <Label for="dateOfBirth">Date of Birth</Label>
+                        <Input id="dateOfBirth" type="date" v-model="dateOfBirth" />
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="grid gap-2">
+                            <div class="flex items-center">
+                                <Label for="password">Password</Label>
+                            </div>
+                            <Input id="password" type="password" required v-model="password" />
+                        </div>
+                        <div class="grid gap-2">
+                            <div class="flex items-center">
+                                <Label for="confirmPassword">Confirm Password</Label>
+                            </div>
+                            <Input id="confirmPassword" type="password" required v-model="confirmPassword" />
+                        </div>
+                    </div>
+                    <Button type="submit" class="w-full" @click="handleSignUp">
                         Sign up
                     </Button>
-                    <Button variant="outline" class="w-full">
+                    <Button variant="outline" class="w-full" @click="handleGoogleSignUp">
                         Sign up with Google
                     </Button>
                 </div>
@@ -53,10 +84,12 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { ref, onMounted } from 'vue';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { signUp, signInWithGoogle } from '@/auth';
+import { toast } from "vue-sonner";
 
 export default {
     components: {
@@ -65,24 +98,69 @@ export default {
         Label,
     },
     setup() {
-        const currentImage = ref(`https://source.unsplash.com/random/3`)
-        const nextImage = ref(`https://source.unsplash.com/random/4`)
+        const currentImage = ref(`https://source.unsplash.com/random/3`);
+        const nextImage = ref(`https://source.unsplash.com/random/4`);
+        const firstName = ref('');
+        const lastName = ref('');
+        const userName = ref('');
+        const email = ref('');
+        const phoneNumber = ref('');
+        const dateOfBirth = ref('');
+        const password = ref('');
+        const confirmPassword = ref('');
 
         const changeImage = () => {
-            nextImage.value = `https://source.unsplash.com/random/${Date.now()}`
-            const temp = currentImage.value
-            currentImage.value = nextImage.value
-            nextImage.value = temp
-        }
+            nextImage.value = `https://source.unsplash.com/random/${Date.now()}`;
+            const temp = currentImage.value;
+            currentImage.value = nextImage.value;
+            nextImage.value = temp;
+        };
 
         onMounted(() => {
-            setInterval(changeImage, 8000)
-        })
+            setInterval(changeImage, 8000);
+        });
+
+        const handleSignUp = async () => {
+            try {
+                await signUp(
+                    firstName.value,
+                    lastName.value,
+                    userName.value,
+                    email.value,
+                    phoneNumber.value,
+                    dateOfBirth.value,
+                    password.value,
+                    confirmPassword.value
+                );
+                toast.success('Sign up successful!');
+            } catch (error) {
+                toast.error(error.message);
+            }
+        };
+
+        const handleGoogleSignUp = async () => {
+            try {
+                await signInWithGoogle();
+                toast.success('Sign up successful!');
+            } catch (error) {
+                toast.error(error.message);
+            }
+        };
 
         return {
             currentImage,
             nextImage,
-        }
+            firstName,
+            lastName,
+            userName,
+            email,
+            phoneNumber,
+            dateOfBirth,
+            password,
+            confirmPassword,
+            handleSignUp,
+            handleGoogleSignUp,
+        };
     },
-}
+};
 </script>

@@ -12,7 +12,7 @@
             bibendum, augue magna tincidunt enim, eget ultricies magna augue eget est.</p>
         </div>
         <div>
-          <img src="https://source.unsplash.com/random/2" alt="Random Image" class="w-[600px] h-[400px] rounded-lg shadow-2xl hover:scale-[101%] transition-transform duration-300">
+          <img src="https://source.unsplash.com/random/2" alt="Random Image" class="w-[600px] h-[400px] image-cover overflow-hidden rounded-lg shadow-2xl hover:scale-[101%] transition-transform duration-300">
         </div>
       </div>
     </div>
@@ -21,6 +21,11 @@
 
 <script>
 export default {
-  name: 'About',
+  setup () {
+
+    return {
+      
+    }
+  }
 };
 </script>

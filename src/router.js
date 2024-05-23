@@ -7,6 +7,7 @@ import Websites from "@/pages/Websites.vue";
 import Login from "@/pages/Login.vue";
 import Landing from "@/pages/Landing.vue";
 import SignUp from "@/pages/SignUp.vue";
+import Protected from "@/pages/Protected.vue";
 
 const routes = [
   {
@@ -19,9 +20,9 @@ const routes = [
   {
     path: "/home",
     alias: "/Home",
-    name: "Home",
+    name: "Photography",
     component: Home,
-    meta: { requiresAuth: true, title: "Home", requiresOverlay: false, requiresAuthOverlay: true },
+    meta: { requiresAuth: true, title: "Photography", requiresOverlay: true, requiresAuthOverlay: true },
   },
   {
     path: "/about",
@@ -57,6 +58,13 @@ const routes = [
     name: "Sign Up",
     component: SignUp,
     meta: { requiresAuth: false, title: "Sign Up", requiresOverlay: false, requiresAuthOverlay: false },
+  },
+  {
+    path: "/protected",
+    alias: "/protected",
+    name: "Protected",
+    component: Protected,
+    meta: { requiresAuth: true, title: "Protected", requiresOverlay: true, requiresAuthOverlay: true },
   },
 ];
 

@@ -1,10 +1,10 @@
 <!-- src/App.vue -->
-
 <template>
   <div id="app" class="flex flex-col">
     <Toaster position="bottom-right" richColors />
     <Header v-if="$route.meta.requiresOverlay" />
-    <router-view class="flex" />
+    <router-view class="flex" :class="{'pt-[--header-height]': $route.meta.requiresOverlay}" />
+    <div clas="flex-grow"></div>
     <Footer v-if="$route.meta.requiresOverlay" />
   </div>
 </template>
@@ -15,7 +15,6 @@ import Footer from '@/components/common/Footer.vue';
 import { Toaster } from '@/components/ui/sonner';
 
 export default {
-  name: 'App',
   components: {
     Header,
     Footer,
