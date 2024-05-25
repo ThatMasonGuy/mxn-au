@@ -1,3 +1,4 @@
+// auth.js
 import { auth, firestore } from './firebase';
 import {
     createUserWithEmailAndPassword,
@@ -7,11 +8,11 @@ import {
     onAuthStateChanged,
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { getFunctions, httpsCallable } from 'firebase/functions';
 import router from './router';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 
 const functions = getFunctions();
-const createUserDocument = httpsCallable(functions, 'createUserDocument');
+const createUserCallable = httpsCallable(functions, 'createUser');
 
 const googleProvider = new GoogleAuthProvider();
 
@@ -58,6 +59,7 @@ onAuthStateChanged(auth, async (user) => {
 
 export const signUp = async (firstName, lastName, userName, email, phoneNumber, dateOfBirth, password, confirmPassword) => {
     try {
+        console.log('Validating user input');
         // Validate email format
         if (!emailRegex.test(email)) {
             throw new Error('Invalid email format');
@@ -81,6 +83,7 @@ export const signUp = async (firstName, lastName, userName, email, phoneNumber, 
             throw new Error('You must be at least 12 years old to sign up');
         }
 
+        console.log('Trimming input fields');
         // Trim input fields
         firstName = firstName.trim();
         lastName = lastName.trim();
@@ -88,20 +91,19 @@ export const signUp = async (firstName, lastName, userName, email, phoneNumber, 
         email = email.trim();
         phoneNumber = phoneNumber.trim();
 
-        // Create user with email and password
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
-
-        // Call the Cloud Function to create the user document
-        await createUserDocument({
+        console.log('Calling createUser Cloud Function');
+        // Call the Cloud Function to create the user
+        const result = await createUserCallable({
             firstName,
             lastName,
             userName,
-            email,
+            emailAddress: email,
             phoneNumber,
             dateOfBirth,
+            password,
         });
 
+        console.log('User created successfully');
         router.push('/home');
     } catch (error) {
         console.error('Error creating user:', error);

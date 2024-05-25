@@ -1,10 +1,11 @@
+// functions/index.js
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 
 admin.initializeApp();
 
-const createUser = require('./createUser');
-const createUserDocument = require('./createUserDocument');
+console.log('Initializing Firebase Admin SDK');
 
-exports.createUser = createUser.createUser;
-exports.createUserDocument = createUserDocument.createUserDocument;
+exports.createUser = require('./createUser');
+
+console.log('Exporting createUser function');

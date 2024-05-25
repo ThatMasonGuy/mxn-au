@@ -4,6 +4,7 @@ import { getAnalytics } from "firebase/analytics";
 import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { getDatabase } from "firebase/database";
+import { getFunctions } from "firebase/functions";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBOI-UrNeKCWryN01GflbncbJDVZl2hrEE",
@@ -23,5 +24,6 @@ const analytics = getAnalytics(firebaseApp);
 const firestore = getFirestore(firebaseApp);
 const auth = getAuth(firebaseApp);
 const realTimeDb = getDatabase(firebaseApp);
+const functions = getFunctions(firebaseApp);
 
-export { firestore, auth, realTimeDb, analytics };
+export { firestore, auth, realTimeDb, analytics, functions };

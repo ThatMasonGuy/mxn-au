@@ -122,8 +122,8 @@ export default {
 
         const handleSignUp = async () => {
             try {
-                await signUp(
-                    firstName.value,
+                console.log('Initiating user sign up');
+                await signUp(firstName.value,
                     lastName.value,
                     userName.value,
                     email.value,
@@ -132,17 +132,22 @@ export default {
                     password.value,
                     confirmPassword.value
                 );
+                console.log('Sign up successful');
                 toast.success('Sign up successful!');
             } catch (error) {
+                console.error('Error during sign up:', error);
                 toast.error(error.message);
             }
         };
 
         const handleGoogleSignUp = async () => {
             try {
+                console.log('Initiating Google sign up');
                 await signInWithGoogle();
+                console.log('Google sign up successful');
                 toast.success('Sign up successful!');
             } catch (error) {
+                console.error('Error during Google sign up:', error);
                 toast.error(error.message);
             }
         };

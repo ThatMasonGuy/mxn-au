@@ -9,20 +9,9 @@ service cloud.firestore {
       // Allow write access (create, update, delete) only to the authenticated user
       allow write: if request.auth != null && request.auth.uid == userId;
 
-      // Allow account creation without authentication, but with validation
-      allow create: if request.resource.data.emailAddress is string &&
-                    request.resource.data.userName is string &&
-                    request.resource.data.password is string &&
-                    request.auth == null; // Add this line to allow creation without authentication
-
-      // Allow querying the users collection to check for existing users during sign-up
-      match /emailAddress/{emailAddress=**} {
-        allow read: if request.auth == null; // Add this rule
-      }
-
-      match /userName/{userName=**} {
-        allow read: if request.auth == null; // Add this rule
-      }
+      // Allow account creation by the Cloud Function
+      allow create: if request.auth != null && request.auth.uid == userId ||
+                       request.auth == null && request.resource.data.keys().hasAll(['firstName', 'lastName', 'userName', 'emailAddress', 'phoneNumber', 'dateOfBirth']);
     }
 
     // Deny all other reads and writes
