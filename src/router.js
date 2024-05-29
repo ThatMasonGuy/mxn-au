@@ -1,91 +1,109 @@
 // src/router.js
 import { createRouter, createWebHistory } from "vue-router";
-import Home from "@/pages/Home.vue";
-import About from "@/pages/About.vue";
-import Contact from "@/pages/Contact.vue";
-import Websites from "@/pages/Websites.vue";
-import Login from "@/pages/Login.vue";
-import Landing from "@/pages/Landing.vue";
-import SignUp from "@/pages/SignUp.vue";
-import Protected from "@/pages/Protected.vue";
-import Portfolio from "@/pages/Portfolio.vue";
-import Page404 from "@/pages/system/Page404.vue";
+import InProgress from "@/components/InProgress.vue";
 
 const routes = [
   {
     path: "/",
     alias: ["/", "/index", ""],
     name: "Home",
-    component: Home,
-    meta: { requiresAuth: false, title: "Home", requiresOverlay: true, requiresAuthOverlay: false },
+    component: () => import("@/pages/Home.vue"),
+    meta: { requiresAuth: false, title: "Home", requiresOverlay: true, requiresAuthOverlay: false, inProgress: false },
   },
   {
     path: "/home",
     alias: "/Home",
     name: "Photography",
-    component: Home,
-    meta: { requiresAuth: false, title: "Photography", requiresOverlay: true, requiresAuthOverlay: true },
+    component: () => import("@/pages/Home.vue"),
+    meta: { requiresAuth: false, title: "Photography", requiresOverlay: true, requiresAuthOverlay: true, inProgress: false },
   },
   {
     path: "/about",
     alias: "/about-us",
     name: "About",
-    component: About,
-    meta: { requiresAuth: false, title: "About", requiresOverlay: true, requiresAuthOverlay: false },
+    component: () => import("@/pages/About.vue"),
+    meta: { requiresAuth: false, title: "About", requiresOverlay: true, requiresAuthOverlay: false, inProgress: false },
   },
   {
     path: "/contact",
     alias: "/contact-us",
     name: "Contact",
-    component: Contact,
-    meta: { requiresAuth: false, title: "Contact", requiresOverlay: true, requiresAuthOverlay: false },
+    component: () => import("@/pages/Contact.vue"),
+    meta: { requiresAuth: false, title: "Contact", requiresOverlay: true, requiresAuthOverlay: false, inProgress: false },
   },
   {
     path: "/websites",
     alias: "/websites",
     name: "Websites",
-    component: Websites,
-    meta: { requiresAuth: false, title: "Websites", requiresOverlay: true, requiresAuthOverlay: false },
+    component: () => import("@/pages/Websites.vue"),
+    meta: { requiresAuth: false, title: "Websites", requiresOverlay: true, requiresAuthOverlay: false, inProgress: false },
   },
   {
     path: "/login",
     alias: "/signin",
     name: "Login",
-    component: Login,
-    meta: { requiresAuth: false, title: "Login", requiresOverlay: false, requiresAuthOverlay: false },
+    component: () => import("@/pages/Login.vue"),
+    meta: { requiresAuth: false, title: "Login", requiresOverlay: false, requiresAuthOverlay: false, inProgress: false },
   },
   {
     path: "/signup",
     alias: ["/create-account", "/sign-up"],
     name: "Sign Up",
-    component: SignUp,
-    meta: { requiresAuth: false, title: "Sign Up", requiresOverlay: false, requiresAuthOverlay: false },
+    component: () => import("@/pages/SignUp.vue"),
+    meta: { requiresAuth: false, title: "Sign Up", requiresOverlay: false, requiresAuthOverlay: false, inProgress: false },
   },
   {
     path: "/protected",
     alias: "/protected",
     name: "Protected",
-    component: Protected,
-    meta: { requiresAuth: true, title: "Protected", requiresOverlay: true, requiresAuthOverlay: true },
+    component: () => import("@/pages/Protected.vue"),
+    meta: { requiresAuth: true, title: "Protected", requiresOverlay: true, requiresAuthOverlay: true, inProgress: false },
   },
   {
     path: "/portfolio",
     alias: "/portfolio",
     name: "Portfolio",
-    component: Portfolio,
-    meta: { requiresAuth: false, title: "Portfolio", requiresOverlay: true, requiresAuthOverlay: true },
+    component: () => import("@/pages/Portfolio.vue"),
+    meta: { requiresAuth: false, title: "Portfolio", requiresOverlay: true, requiresAuthOverlay: true, inProgress: false },
+  },
+  {
+    path: "/demo/lcc-powerapps",
+    name: "Logan City Council PowerApps",
+    component: () => import("@/pages/demos/Demo_LCC_PowerApps.vue"),
+    meta: { requiresAuth: false, title: "Logan City Council PowerApps", requiresOverlay: true, requiresAuthOverlay: true, inProgress: true },
+  },
+  {
+    path: "/demo/lms-powerapps",
+    name: "Lifestyle Mentor Services PowerApps",
+    component: () => import("@/pages/demos/Demo_LMS_PowerApps.vue"),
+    meta: { requiresAuth: false, title: "Lifestyle Mentor Services PowerApps", requiresOverlay: true, requiresAuthOverlay: true, inProgress: true },
+  },
+  {
+    path: "/demo/lms-webapp",
+    name: "Lifestyle Mentor Services Webapp",
+    component: () => import("@/pages/demos/Demo_LMS_Webapp.vue"),
+    meta: { requiresAuth: false, title: "Lifestyle Mentor Services Webapp", requiresOverlay: true, requiresAuthOverlay: true, inProgress: true },
   },
   {
     path: "/:pathMatch(.*)*",
     name: "404",
-    component: Page404,
-    meta: { requiresAuth: false, title: "404", requiresOverlay: false, requiresAuthOverlay: false },
+    component: () => import("@/pages/system/Page404.vue"),
+    meta: { requiresAuth: false, title: "404", requiresOverlay: false, requiresAuthOverlay: false, inProgress: false },
   },
 ];
 
 const router = createRouter({
   history: createWebHistory(),
   routes,
+});
+
+router.beforeEach((to, from, next) => {
+  if (to.meta.inProgress) {
+    to.matched.forEach(record => {
+      record.components.default = InProgress;
+    });
+  }
+  next();
 });
 
 export default router;

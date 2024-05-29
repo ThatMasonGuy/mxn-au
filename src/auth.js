@@ -1,7 +1,6 @@
 // auth.js
 import { auth, firestore } from './firebase';
 import {
-    createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
     signInWithPopup,
     GoogleAuthProvider,

@@ -28,12 +28,12 @@
           <div>
             <h3 class="text-2xl font-bold mb-2 text-gray-200">{{ project.name }}</h3>
             <p class="text-lg text-gray-300 mb-2">{{ project.description }}</p>
-            <div>
-              <a :href="project.link" target="_blank"
+            <div class="space-x-4">
+              <router-link v-if="project.demo" :to="project.demo"
                 class="text-blue-700 hover:text-blue-500 hover:underline text-lg transition duration-200 ease-in-out">View
-                Demo</a>
-              <a v-if="project.website" :href="project.website" target="_blank"
-                class="text-blue-700 hover:text-blue-500 ml-4 hover:underline text-lg transition duration-200 ease-in-out">View
+                Demo</router-link>
+              <a v-if="project.website" :href="project.website"
+                class="text-blue-700 hover:text-blue-500 hover:underline text-lg transition duration-200 ease-in-out">View
                 Live</a>
             </div>
           </div>
@@ -60,7 +60,7 @@
 
       <div>
         <h2 class="text-3xl font-semibold mb-6 text-gray-100">Contact</h2>
-        <div class="flex items-center mb-4">
+        <div class="flex items-center mb-4" :href="'mailto:' + data.email" target="_blank">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2 text-gray-100" fill="none" viewBox="0 0 24 24"
             stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -70,7 +70,7 @@
             class="text-lg text-blue-700 hover:text-blue-500 hover:underline transition duration-200 ease-in-out">{{
             data.email }}</a>
         </div>
-        <div class="flex items-center">
+        <div class="flex items-center" :href="data.linkedin" target="_blank">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2 text-gray-100" fill="none" viewBox="0 0 24 24"
             stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -86,7 +86,6 @@
 
 <script>
 import { ref } from 'vue';
-import { LMSVisitorApp, LMSWebApp, LMSWebsite } from '@/assets/portfolio/images';
 import {
   Dialog,
   DialogContent,
@@ -111,27 +110,26 @@ export default {
     const data = {
       name: 'Mason Bartholomai',
       title: 'IT Professional and Developer',
-      about: 'Innovative IT professional with a strong background in PowerApps development, web application development, and IT training. Passionate about leading innovation and leveraging technology to enhance organizational efficiency.',
+      about: 'Innovative IT professional with a strong background in PowerApps development, web application development, and IT training. Leveraging 5 years of experience in Local Government and People and Culture, I possess a keen awareness of confidentiality and privacy. Proven track record of building advanced applications, training top-rated custom GPT models for PowerApps, and increasing brand visibility. Passionate about leading innovation and leveraging technology to enhance organisational efficiency.',
       skills: ['JavaScript', 'Vue.js', 'TailwindCSS', 'Firebase', 'PowerApps', 'Python', 'GitHub'],
       projects: [
         {
           name: 'Lifestyle Mentor Services Website',
           description: 'Built the entire lifestylementors.com.au website from scratch using Squarespace.',
-          link: 'https://lifestylementors.com.au',
-          image: LMSWebsite,
+          image: 'https://firebasestorage.googleapis.com/v0/b/maso-au.appspot.com/o/website%2Fimages%2Fportfolio%2Flms-website.jpg?alt=media',
           website: 'https://lifestylementors.com.au'
         },
         {
           name: 'PowerApps Visitor Log',
           description: 'Developed a complex PowerApps app for logging visitors and managing session data.',
-          link: '#',
-          image: LMSVisitorApp
+          demo: '/demo/lms-powerapps',
+          image: 'https://firebasestorage.googleapis.com/v0/b/maso-au.appspot.com/o/website%2Fimages%2Fportfolio%2Flms-visitor-app.jpg?alt=media'
         },
         {
           name: 'Full Stack Web App',
           description: 'Set up a sub-domain hosting a full stack webapp using Firestore and Firebase for data and authentication.',
-          link: 'https://lifestylementors.mxn.au',
-          image: LMSWebApp,
+          demo: '/demo/lms-webapp',
+          image: 'https://firebasestorage.googleapis.com/v0/b/maso-au.appspot.com/o/website%2Fimages%2Fportfolio%2Flms-web-app.jpg?alt=media',
           website: 'https://lifestylementors.mxn.au'
         }
       ],
