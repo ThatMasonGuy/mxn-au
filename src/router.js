@@ -8,21 +8,23 @@ import Login from "@/pages/Login.vue";
 import Landing from "@/pages/Landing.vue";
 import SignUp from "@/pages/SignUp.vue";
 import Protected from "@/pages/Protected.vue";
+import Portfolio from "@/pages/Portfolio.vue";
+import Page404 from "@/pages/system/Page404.vue";
 
 const routes = [
   {
     path: "/",
     alias: ["/", "/index", ""],
-    name: "Landing",
-    component: Landing,
-    meta: { requiresAuth: false, title: "Landing", requiresOverlay: true, requiresAuthOverlay: false },
+    name: "Home",
+    component: Home,
+    meta: { requiresAuth: false, title: "Home", requiresOverlay: true, requiresAuthOverlay: false },
   },
   {
     path: "/home",
     alias: "/Home",
     name: "Photography",
     component: Home,
-    meta: { requiresAuth: true, title: "Photography", requiresOverlay: true, requiresAuthOverlay: true },
+    meta: { requiresAuth: false, title: "Photography", requiresOverlay: true, requiresAuthOverlay: true },
   },
   {
     path: "/about",
@@ -65,6 +67,19 @@ const routes = [
     name: "Protected",
     component: Protected,
     meta: { requiresAuth: true, title: "Protected", requiresOverlay: true, requiresAuthOverlay: true },
+  },
+  {
+    path: "/portfolio",
+    alias: "/portfolio",
+    name: "Portfolio",
+    component: Portfolio,
+    meta: { requiresAuth: false, title: "Portfolio", requiresOverlay: true, requiresAuthOverlay: true },
+  },
+  {
+    path: "/:pathMatch(.*)*",
+    name: "404",
+    component: Page404,
+    meta: { requiresAuth: false, title: "404", requiresOverlay: false, requiresAuthOverlay: false },
   },
 ];
 

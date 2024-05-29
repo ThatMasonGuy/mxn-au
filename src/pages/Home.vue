@@ -79,6 +79,6 @@ const images = ref([
   @apply absolute inset-0 rounded-xl;
   filter: blur(0);
   opacity: 1;
-  z-index: 999 !important;
+  z-index: 10 !important;
 }
 </style>

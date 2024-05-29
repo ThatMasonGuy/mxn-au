@@ -1,18 +1,18 @@
 <template>
     <header
-        class="fixed top-0 left-0 right-0 z-50 backdrop-blur-lg text-black shadow-2xl py-3 px-4 h-[--header-height]">
+        class="fixed top-0 left-0 right-0 z-50 backdrop-blur-lg bg-white/10 text-black shadow-2xl py-3 px-4 h-[--header-height]">
         <nav>
             <div class="flex justify-between">
                 <div class="flex justify-between items-center">
-                    <img src="@/assets/vue.svg" alt="Logo image"
-                        class="h-16 w-16 justify-center items-center object-cover cursor-pointer"
+                    <img src="@/assets/favicon.jpg" alt="Logo image"
+                        class="h-16 w-16 justify-center items-center object-cover cursor-pointer rounded-full shadow-xl"
                         @click="$router.push('/')" />
                     <span class="text-3xl font-bold absolute ml-20 text-[--text-50] drop-shadow-[0_5px_30px_rgba(255,255,255,0.35)]">{{ currentPageTitle }}</span>
                 </div>
                 <ul class="flex text-md items-center font-bold text-[--text-50]">
                     <li><router-link to="/home"><Button variant="link">Home</Button></router-link></li>
-                    <li><router-link to="/about"><Button variant="link">About</Button></router-link></li>
                     <li><router-link to="/contact"><Button variant="link">Contact</Button></router-link></li>
+                    <li><router-link to="/portfolio"><Button variant="link">Portfolio</Button></router-link></li>
                     <li><router-link to="/websites"><Button variant="link" class="mr-4">Websites</Button></router-link></li>
                     <li><router-link to="/login">
                             <Avatar>

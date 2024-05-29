@@ -1,31 +1,25 @@
 <!-- src/pages/Contact.vue -->
-
 <template>
-  <div class="flex flex-col min-h-[--adjusted-height] pt-[--header-height] bg-gradient-to-br from-blue-500 from-20% via-yellow-400 to-orange-500">
+  <div class="flex flex-col min-h-[--adjusted-height] pt-[--header-height] bg-gradient-to-br from-background-950 from-20% via-background-800 to-background-600">
     <div class="flex-grow container mx-auto px-4 py-8">
-      <h1 class="text-4xl font-bold mb-8 text-center">Contact Us</h1>
+      <h1 class="text-4xl font-bold mb-8 text-center text-gray-100">Contact Us</h1>
       <div class="max-w-lg mx-auto">
-        <p class="text-lg mb-8 text-center">This is the contact page content. You can provide contact information or a
-          contact form here.</p>
-        <form class="grid grid-cols-1 gap-6">
+        <p class="text-lg mb-8 text-center text-gray-200">This is the contact page content. You can provide contact information or a contact form here.</p>
+        <form @submit.prevent="handleSubmit" class="grid grid-cols-1 gap-6">
           <div>
-            <label for="name" class="block text-gray-700 font-bold mb-2">Name</label>
-            <input type="text" id="name" class="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
-              placeholder="Your Name">
+            <Label for="name" class="block text-gray-300 font-bold mb-2">Name</Label>
+            <Input type="text" id="name" v-model="formData.name" required class="w-full px-3 py-2 text-gray-700 bg-gray-200 border rounded-lg focus:outline-none" placeholder="Your Name" />
           </div>
           <div>
-            <label for="email" class="block text-gray-700 font-bold mb-2">Email</label>
-            <input type="email" id="email" class="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
-              placeholder="Your Email">
+            <Label for="email" class="block text-gray-300 font-bold mb-2">Email</Label>
+            <Input type="email" id="email" v-model="formData.email" required class="w-full px-3 py-2 text-gray-700 bg-gray-200 border rounded-lg focus:outline-none" placeholder="Your Email" />
           </div>
           <div>
-            <label for="message" class="block text-gray-700 font-bold mb-2">Message</label>
-            <textarea id="message" rows="4" class="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
-              placeholder="Your Message"></textarea>
+            <Label for="message" class="block text-gray-300 font-bold mb-2">Message</Label>
+            <Textarea id="message" v-model="formData.message" rows="4" required class="w-full px-3 py-2 text-gray-700 bg-gray-200 border rounded-lg focus:outline-none" placeholder="Your Message" />
           </div>
           <div>
-            <button type="submit"
-              class="w-full py-2 px-4 bg-blue-500 text-white font-bold rounded-lg hover:bg-blue-600 focus:outline-none">Submit</button>
+            <Button type="submit" class="w-full py-2 px-4 bg-blue-500 text-white font-bold rounded-lg hover:bg-blue-600 focus:outline-none">Submit</Button>
           </div>
         </form>
       </div>
@@ -33,8 +27,30 @@
   </div>
 </template>
 
-<script>
-export default {
-  name: 'Contact',
-};
+<script setup>
+import { ref } from 'vue'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
+import { sendEmail } from '@/utils/emailHelper'
+
+const formData = ref({
+  name: '',
+  email: '',
+  message: ''
+})
+
+const handleSubmit = async () => {
+  try {
+    await sendEmail(formData.value)
+    formData.value = {
+      name: '',
+      email: '',
+      message: ''
+    }
+  } catch (error) {
+    console.error('Error sending email:', error)
+  }
+}
 </script>

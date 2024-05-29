@@ -1,7 +1,7 @@
 <!-- src/pages/About.vue -->
 
 <template>
-  <div class="flex flex-col min-h-[--adjusted-height] pt-[--header-height] bg-gradient-to-br from-blue-500 from-20% via-yellow-400 to-orange-500">
+  <div class="flex flex-col min-h-[--adjusted-height] pt-[--header-height] bg-gradient-to-br from-background-950 from-20% via-background-800 to-background-600">
     <div class="flex-grow container mx-auto px-4 py-8">
       <h1 class="text-4xl font-bold mb-8 text-center">Welcome to the About Us Page</h1>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
