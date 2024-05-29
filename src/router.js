@@ -1,21 +1,15 @@
 // src/router.js
 import { createRouter, createWebHistory } from "vue-router";
 import InProgress from "@/components/InProgress.vue";
+import Home from "@/pages/Home.vue";
 
 const routes = [
   {
     path: "/",
-    alias: ["/", "/index", ""],
+    alias: ["/", "/index", "", "/home", "/Home"],
     name: "Home",
-    component: () => import("@/pages/Home.vue"),
+    component: Home,
     meta: { requiresAuth: false, title: "Home", requiresOverlay: true, requiresAuthOverlay: false, inProgress: false },
-  },
-  {
-    path: "/home",
-    alias: "/Home",
-    name: "Photography",
-    component: () => import("@/pages/Home.vue"),
-    meta: { requiresAuth: false, title: "Photography", requiresOverlay: true, requiresAuthOverlay: true, inProgress: false },
   },
   {
     path: "/about",

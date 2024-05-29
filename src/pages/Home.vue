@@ -1,7 +1,7 @@
 <!-- src/pages/Home.vue -->
 <template>
   <div
-    class="min-h-screen pt-[var(--header-height)] bg-gradient-to-br from-background-950 from-20% via-background-800 to-background-600">
+    class="min-h-screen pt-12 bg-gradient-to-br from-background-950 from-20% via-background-800 to-background-600">
     <div class="container mx-auto px-4 py-12">
       <h1 class="text-4xl font-bold mb-8 text-center text-[var(--text-50)]">
         Mason Bartholomai

@@ -1,7 +1,7 @@
 <!-- src/components/common/Footer.vue -->
 <template>
   <footer
-    class="bg-gray-800 text-white bottom-0 left-0 z-[9999] flex justify-between items-center w-full p-4 drop-shadow-2xl h-[--footer-height]">
+    class="bg-gray-800 text-white bottom-0 left-0 z-[999] flex justify-between items-center w-full p-4 drop-shadow-2xl h-[--footer-height]">
     <p>&copy; 2024 Mason Bartholomai. All rights reserved.</p>
     <div class="mr-2 flex items-center">
       <p class="mr-4">Website Views: {{ viewCount }}</p>
