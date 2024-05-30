@@ -3,7 +3,7 @@
     class="flex flex-col min-h-[--adjusted-height] pt-[--header-height] bg-gradient-to-br from-background-950 from-20% via-background-800 to-background-600">
     <main class="flex-grow container mx-auto px-6 py-8">
       <h1 class="text-4xl font-bold mb-8 text-center text-gray-100">
-        Welcome to the Home Page
+        Check out my other websites!
       </h1>
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
         <div v-for="(link, index) in links" :key="index" :class="link.color +
@@ -88,7 +88,6 @@ export default {
       links.value = links.value.map((link, index) => {
         return { ...link, color: colors[index % colors.length] };
       });
-      console.log("Assigned colors:", links.value);
     };
 
     onMounted(() => {

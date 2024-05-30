@@ -37,11 +37,10 @@
             </div>
           </div>
           <div class="w-full sm:w-1/2 mt-4 sm:mt-0 mb-4">
-            <Dialog :isOpen="isDialogOpen" @close="closeDialog">
-              <DialogTrigger>
+            <Dialog>
+              <DialogTrigger as-child>
                 <img :src="project.image" alt="{{ project.name }}"
-                  class="rounded-lg w-full sm:w-96 shadow-2xl hover:scale-105 transition duration-200 ease-in-out cursor-pointer"
-                  @click="openDialog">
+                  class="rounded-lg w-full sm:w-96 shadow-2xl hover:scale-105 transition duration-200 ease-in-out cursor-pointer">
               </DialogTrigger>
               <DialogContent class="sm:max-w-5xl bg-gray-100">
                 <DialogHeader>
@@ -94,6 +93,7 @@
 import { ref } from 'vue';
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -105,6 +105,7 @@ import {
 export default {
   components: {
     Dialog,
+    DialogClose,
     DialogContent,
     DialogDescription,
     DialogFooter,

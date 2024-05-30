@@ -10,5 +10,5 @@
 </template>
 
 <script setup>
-import BackButton from '@/components/BackButton.vue'
+import { BackButton } from '@/components'
 </script>

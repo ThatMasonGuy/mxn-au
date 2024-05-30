@@ -6,11 +6,11 @@
             <img
               src="@/assets/favicon.jpg"
               alt="Logo image"
-              class="sm:h-16 h-10 sm:w-16 w-10 object-cover cursor-pointer rounded-full shadow-xl"
+              class="sm:h-12 h-10 sm:w-12 w-10 object-cover cursor-pointer rounded-full shadow-xl"
               @click="$router.push('/')"
             />
             <span
-              class="sm:text-3xl text-2xl font-bold absolute sm:ml-20 ml-14 text-[--text-50] drop-shadow-[0_5px_30px_rgba(255,255,255,0.35)]"
+              class="sm:text-3xl text-2xl font-bold absolute sm:ml-16 ml-14 text-[--text-50] drop-shadow-[0_5px_30px_rgba(255,255,255,0.35)]"
             >{{ currentPageTitle }}</span>
           </div>
           <button @click="toggleMenu" class="sm:hidden focus:outline-none">
@@ -91,8 +91,7 @@
   
   <script>
   import { ref, computed, onMounted, watch } from "vue";
-  import { Button } from "@/components/ui/button";
-  import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+  import { Button, Avatar, AvatarFallback, AvatarImage } from "@/components/ui";
   import { UserCircleIcon } from "@heroicons/vue/24/outline";
   import { toast } from "vue-sonner";
   import { useRoute } from "vue-router";

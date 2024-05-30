@@ -2,6 +2,7 @@ import path from "path";
 import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import { visualizer } from 'rollup-plugin-visualizer';
+import ignore from 'rollup-plugin-ignore';
 
 import tailwind from "tailwindcss";
 import autoprefixer from "autoprefixer";
@@ -23,6 +24,13 @@ export default defineConfig({
   },
   build: {
     rollupOptions: {
+      plugins: [
+        ignore({
+          patterns: [
+            '@/**/archived/**',
+          ],
+        }),
+      ],
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {
@@ -33,4 +41,3 @@ export default defineConfig({
     }
   }
 });
-

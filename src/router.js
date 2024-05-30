@@ -1,7 +1,8 @@
 // src/router.js
 import { createRouter, createWebHistory } from "vue-router";
-import InProgress from "@/components/InProgress.vue";
+import { InProgress } from "@/components";
 import Home from "@/pages/Home.vue";
+import Settings from "@/pages/Settings.vue";
 
 const routes = [
   {
@@ -77,6 +78,13 @@ const routes = [
     name: "Lifestyle Mentor Services Webapp",
     component: () => import("@/pages/demos/Demo_LMS_Webapp.vue"),
     meta: { requiresAuth: false, title: "Lifestyle Mentor Services Webapp", requiresOverlay: true, requiresAuthOverlay: true, inProgress: true },
+  },
+  {
+    path: "/settings",
+    alias: "/settings",
+    name: "Settings",
+    component: Settings,
+    meta: { requiresAuth: false, title: "Settings", requiresOverlay: true, requiresAuthOverlay: true, inProgress: false },
   },
   {
     path: "/:pathMatch(.*)*",

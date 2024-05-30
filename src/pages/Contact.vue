@@ -29,10 +29,7 @@
 
 <script setup>
 import { ref } from 'vue'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
+import { Input, Label, Button, Textarea } from '@/components/ui'
 import { sendEmail } from '@/utils/emailHelper'
 
 const formData = ref({
