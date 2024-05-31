@@ -2,6 +2,16 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Match for the mailing collection
+    match /mailing/{docId} {
+      // Allow write access to anyone (for adding emails)
+      allow create: if true;
+
+      // Deny read access to everyone
+      allow read: if false;
+    }
+
+    // Rules for the users collection
     match /users/{userId} {
       // Allow read access only to the authenticated user
       allow read: if request.auth != null && request.auth.uid == userId;
