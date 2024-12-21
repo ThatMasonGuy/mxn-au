@@ -1,181 +1,33 @@
 // src/router.js
 import { createRouter, createWebHistory } from 'vue-router';
-import { InProgress } from "@/components";
-import Home from '@/pages/Home.vue';
 import ComingSoon from '@/pages/ComingSoon.vue';
-
-function isAuthenticated() {
-  return true;
-}
 
 const comingSoon = true;
 
 const routes = [
+  // ------------------- TopHeroes Routes -------------------
   {
-    path: '/',
-    alias: ['/', '/index', '', '/home', '/Home'],
-    name: 'Home',
-    component: Home,
+    path: '/TopHeroes',
+    alias: '/topheroes',
+    name: 'TopHeroes',
+    component: () => import('@/pages/topHeroes/TH_LandingPage.vue'),
     meta: {
       requiresAuth: false,
-      title: 'Home',
-      requiresOverlay: true,
-      requiresAuthOverlay: false,
-      inProgress: false,
+      title: 'TopHeroes',
     },
   },
   {
-    path: '/about',
-    alias: '/about-us',
-    name: 'About',
-    component: () => import('@/pages/About.vue'),
+    path: '/TopHeroes/SpeedUps',
+    alias: '/topheroes/speedups',
+    name: 'TopHeroes - Speed-ups',
+    component: () => import('@/pages/topHeroes/TH_SpeedUps.vue'),
     meta: {
       requiresAuth: false,
-      title: 'About',
-      requiresOverlay: true,
-      requiresAuthOverlay: false,
-      inProgress: false,
+      title: 'TopHeroes - Speed-ups',
     },
   },
-  {
-    path: '/contact',
-    alias: '/contact-us',
-    name: 'Contact',
-    component: () => import('@/pages/Contact.vue'),
-    meta: {
-      requiresAuth: false,
-      title: 'Contact',
-      requiresOverlay: true,
-      requiresAuthOverlay: false,
-      inProgress: false,
-    },
-  },
-  {
-    path: '/websites',
-    alias: '/websites',
-    name: 'Websites',
-    component: () => import('@/pages/Websites.vue'),
-    meta: {
-      requiresAuth: false,
-      title: 'Websites',
-      requiresOverlay: true,
-      requiresAuthOverlay: false,
-      inProgress: false,
-    },
-  },
-  {
-    path: '/login',
-    alias: '/signin',
-    name: 'Login',
-    component: () => import('@/pages/Login.vue'),
-    meta: {
-      requiresAuth: false,
-      title: 'Login',
-      requiresOverlay: false,
-      requiresAuthOverlay: false,
-      inProgress: false,
-    },
-  },
-  {
-    path: '/signup',
-    alias: ['/create-account', '/sign-up'],
-    name: 'Sign Up',
-    component: () => import('@/pages/SignUp.vue'),
-    meta: {
-      requiresAuth: false,
-      title: 'Sign Up',
-      requiresOverlay: false,
-      requiresAuthOverlay: false,
-      inProgress: false,
-    },
-  },
-  {
-    path: '/protected',
-    alias: '/protected',
-    name: 'Protected',
-    component: () => import('@/pages/Protected.vue'),
-    meta: {
-      requiresAuth: true,
-      title: 'Protected',
-      requiresOverlay: true,
-      requiresAuthOverlay: true,
-      inProgress: false,
-    },
-  },
-  {
-    path: '/portfolio',
-    alias: '/portfolio',
-    name: 'Portfolio',
-    component: () => import('@/pages/Portfolio.vue'),
-    meta: {
-      requiresAuth: false,
-      title: 'Portfolio',
-      requiresOverlay: true,
-      requiresAuthOverlay: true,
-      inProgress: false,
-    },
-  },
-  {
-    path: '/demo/lcc-powerapps',
-    name: 'Logan City Council PowerApps',
-    component: () => import('@/pages/demos/Demo_LCC_PowerApps.vue'),
-    meta: {
-      requiresAuth: false,
-      title: 'Logan City Council PowerApps',
-      requiresOverlay: true,
-      requiresAuthOverlay: true,
-      inProgress: true,
-    },
-  },
-  {
-    path: '/demo/lms-powerapps',
-    name: 'Lifestyle Mentor Services PowerApps',
-    component: () => import('@/pages/demos/Demo_LMS_PowerApps.vue'),
-    meta: {
-      requiresAuth: false,
-      title: 'Lifestyle Mentor Services PowerApps',
-      requiresOverlay: true,
-      requiresAuthOverlay: true,
-      inProgress: true,
-    },
-  },
-  {
-    path: '/demo/lms-webapp',
-    name: 'Lifestyle Mentor Services Webapp',
-    component: () => import('@/pages/demos/Demo_LMS_Webapp.vue'),
-    meta: {
-      requiresAuth: false,
-      title: 'Lifestyle Mentor Services Webapp',
-      requiresOverlay: true,
-      requiresAuthOverlay: true,
-      inProgress: true,
-    },
-  },
-  {
-    path: '/settings',
-    alias: '/settings',
-    name: 'Settings',
-    component: () => import('@/pages/Settings.vue'),
-    meta: {
-      requiresAuth: false,
-      title: 'Settings',
-      requiresOverlay: true,
-      requiresAuthOverlay: true,
-      inProgress: false,
-    },
-  },
-  {
-    path: '/:pathMatch(.*)*',
-    name: '404',
-    component: () => import('@/pages/system/Page404.vue'),
-    meta: {
-      requiresAuth: false,
-      title: '404',
-      requiresOverlay: false,
-      requiresAuthOverlay: false,
-      inProgress: false,
-    },
-  },
+
+  // ------------------- Coming Soon Route -------------------
   {
     path: '/coming-soon',
     name: 'ComingSoon',
@@ -183,21 +35,17 @@ const routes = [
     meta: {
       requiresAuth: false,
       title: 'Coming Soon',
-      requiresOverlay: false,
-      requiresAuthOverlay: false,
-      inProgress: false,
     },
   },
+
+  // ------------------- Catch-All Route -------------------
   {
-    path: '/in-progress',
-    name: 'InProgress',
-    component: InProgress,
+    path: '/:pathMatch(.*)*',
+    name: '404',
+    component: ComingSoon,
     meta: {
       requiresAuth: false,
-      title: 'In Progress',
-      requiresOverlay: false,
-      requiresAuthOverlay: false,
-      inProgress: false,
+      title: 'Coming Soon',
     },
   },
 ];
@@ -209,23 +57,14 @@ const router = createRouter({
 
 router.beforeEach((to, from, next) => {
   if (comingSoon) {
-    if (to.name !== 'ComingSoon') {
-      next({ name: 'ComingSoon' });
-    } else {
+    // Allow access to TopHeroes routes and ComingSoon route
+    if (to.path.startsWith('/TopHeroes') || to.name === 'ComingSoon') {
       next();
+    } else {
+      next({ name: 'ComingSoon' });
     }
   } else {
-    if (to.meta.inProgress) {
-      if (to.name !== 'InProgress') {
-        next({ name: 'InProgress' });
-      } else {
-        next();
-      }
-    } else if (to.meta.requiresAuth && !isAuthenticated()) {
-      next({ name: 'Login' });
-    } else {
-      next();
-    }
+    next();
   }
 });
 
