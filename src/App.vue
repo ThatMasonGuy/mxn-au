@@ -2,22 +2,16 @@
 <template>
   <div id="app" class="flex flex-col">
     <Toaster position="bottom-right" richColors />
-    <Header v-if="$route.meta.requiresOverlay" />
-    <router-view class="flex" :class="{'pt-[--header-height]': $route.meta.requiresOverlay}" />
+    <router-view class="flex" />
     <div clas="flex-grow"></div>
-    <Footer v-if="$route.meta.requiresOverlay" />
   </div>
 </template>
 
 <script>
-import Header from '@/components/common/Header.vue';
-import Footer from '@/components/common/Footer.vue';
 import { Toaster } from '@/components/ui/sonner';
 
 export default {
   components: {
-    Header,
-    Footer,
     Toaster,
   },
 };

@@ -1,7 +1,6 @@
 <template>
     <div
         class="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white flex flex-col relative">
-        <!-- Background Blur Overlay -->
         <div class="absolute inset-0 bg-gray-800 opacity-60 backdrop-blur-lg z-0"></div>
 
         <TopHeroesHeader class="z-10" />
@@ -10,12 +9,10 @@
             <h1 class="text-4xl font-bold text-center mb-12">TopHeroes Assistant</h1>
             <div class="flex justify-center">
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <!-- Speed-up Calculator Card (No overlay or banner) -->
                     <NavCard @click="navigateTo('/TopHeroes/SpeedUps')"
                         image="https://scontent.fbne3-1.fna.fbcdn.net/v/t39.30808-6/428645457_368851172717913_6633478444700073678_n.jpg?_nc_cat=105&ccb=1-7&_nc_sid=a5f93a&_nc_ohc=SaEXbkSmJCkQ7kNvgGA9sIQ&_nc_zt=23&_nc_ht=scontent.fbne3-1.fna&_nc_gid=AKq5ifdP9vtwu_GQCPJ9UdJ&oh=00_AYA231eKNfPQRzMQhFFnS1UQbsp5umoBmyZQsz38PUer3g&oe=676B2616"
                         title="Speed-up Calculator" text="Find out how many speed-ups you have." />
 
-                    <!-- Team Builder Card with Overlay and Banner -->
                     <div class="relative">
                         <div class="relative pointer-events-none">
                             <NavCard
@@ -27,7 +24,6 @@
                         </div>
                     </div>
 
-                    <!-- Resource Calculator Card with Overlay and Banner -->
                     <div class="relative">
                         <div class="relative pointer-events-none">
                             <NavCard
@@ -39,7 +35,6 @@
                         </div>
                     </div>
 
-                    <!-- Event Guides Card with Overlay and Banner -->
                     <div class="relative">
                         <div class="relative pointer-events-none">
                             <NavCard
