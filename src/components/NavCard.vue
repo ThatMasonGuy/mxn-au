@@ -38,6 +38,7 @@ defineProps({
 </script>
 
 <style scoped>
+/* Ensure text truncates after two lines */
 p {
     display: -webkit-box;
     -webkit-line-clamp: 2;

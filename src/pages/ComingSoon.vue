@@ -15,7 +15,7 @@
       </form>
     </div>
     <div class="space-between">
-      <a class="text-center text-gray-200 m-4 absolute bottom-0 left-3 hover:underline underline-offset-2 transition-all transition-duration-300 cursor-pointer" href="/TopHeroes">Top Heroes</a>
+      <a class="text-center text-gray-200 m-4 absolute bottom-0 left-3 hover:underline underline-offset-2 transition-all transition-duration-300 cursor-pointer" href="/topheroes">Top Heroes</a>
       <h2 class="text-center text-gray-50 m-4 absolute bottom-0 right-3">Website views: {{ viewCount }}</h2>
     </div>
   </div>

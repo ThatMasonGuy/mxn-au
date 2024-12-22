@@ -7,8 +7,8 @@ const comingSoon = true;
 const routes = [
   // ------------------- TopHeroes Routes -------------------
   {
-    path: '/TopHeroes',
-    alias: '/topheroes',
+    path: '/topheroes',
+    alias: '/TopHeroes',
     name: 'TopHeroes',
     component: () => import('@/pages/topHeroes/TH_LandingPage.vue'),
     meta: {
@@ -17,13 +17,36 @@ const routes = [
     },
   },
   {
-    path: '/TopHeroes/SpeedUps',
-    alias: '/topheroes/speedups',
+    path: '/topheroes/speedups',
+    alias: '/TopHeroes/SpeedUps',
     name: 'TopHeroes - Speed-ups',
     component: () => import('@/pages/topHeroes/TH_SpeedUps.vue'),
     meta: {
       requiresAuth: false,
       title: 'TopHeroes - Speed-ups',
+    },
+  },
+  {
+    path: '/topheroes/events',
+    alias: '/TopHeroes/Events',
+    name: 'TopHeroes - Events',
+    component: () => import('@/pages/topHeroes/TH_EventGuides.vue'),
+    meta: {
+      requiresAuth: false,
+      title: 'TopHeroes - Events',
+    },
+  },
+
+  // ------------------- TopHeroes Events Route -------------------
+
+  {
+    path: '/topheroes/events/dark-empire-invasion',
+    alias: '/TopHeroes/Events/Dark-Empire-Invasion',
+    name: 'TopHeroes - Dark Empire Invasion',
+    component: () => import('@/pages/topHeroes/events/TH_DarkEmpireInvasion.vue'),
+    meta: {
+      requiresAuth: false,
+      title: 'TopHeroes - Events',
     },
   },
 
@@ -58,7 +81,7 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   if (comingSoon) {
     // Allow access to TopHeroes routes and ComingSoon route
-    if (to.path.startsWith('/TopHeroes') || to.name === 'ComingSoon') {
+    if (to.path.startsWith('/TopHeroes') || to.name === 'ComingSoon' || to.path.startsWith('/topheroes')) {
       next();
     } else {
       next({ name: 'ComingSoon' });

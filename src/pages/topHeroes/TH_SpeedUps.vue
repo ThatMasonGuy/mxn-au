@@ -12,7 +12,7 @@
         <table class="table-auto w-full text-center border-collapse border border-gray-600 text-sm sm:text-base">
           <thead class="bg-gray-800">
             <tr>
-              <th class="border border-gray-600 px-2 sm:px-4 py-2">&nbsp;</th>
+              <th class="border border-gray-600 px-2 sm:px-4 py-2">Type</th>
               <th v-for="time in times" :key="time" class="border border-gray-600 px-2 sm:px-4 py-2">
                 {{ time }}
               </th>
@@ -44,11 +44,11 @@
       </div>
 
       <div v-if="results" class="mt-6 sm:mt-8 p-4 sm:p-6 w-full max-w-screen-lg bg-gray-800 rounded-md shadow-inner text-sm sm:text-base">
-        <h2 class="text-xl sm:text-2xl font-semibold mb-2 sm:mb-4">Results</h2>
+        <h2 class="text-xl sm:text-2xl font-semibold mb-4 sm:mb-2">Results</h2>
         <div class="grid grid-cols-1 gap-2 sm:gap-4">
           <div v-for="(total, type) in results" :key="type" class="flex justify-between border-b border-gray-600 py-1 sm:py-2">
             <div class="text-base sm:text-lg">{{ type }}</div>
-            <div class="pl-4 text-base sm:text-xl font-bold">{{ formatTime(total) }}</div>
+            <div class="pl-4 text-base text-right sm:text-xl font-bold">{{ formatTime(total) }}</div>
           </div>
         </div>
 
@@ -68,7 +68,7 @@ import { Input as ShadInput, Button as ShadButton } from '@/components/ui';
 import TopHeroesHeader from '@/components/TopHeroesHeader.vue';
 import TopHeroesFooter from '@/components/TopHeroesFooter.vue';
 
-const speedUpTypes = ['Universal Speed-ups', 'Building Speed-ups', 'Research Speed-ups', 'Training Speed-ups', 'Healing Speed-ups'];
+const speedUpTypes = ['Universal', 'Building', 'Research', 'Training', 'Healing'];
 const times = [
   '1 Minute',
   '5 Minutes',
