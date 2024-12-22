@@ -8,22 +8,22 @@
         Speed-up Calculator
       </h1>
 
-      <div class="overflow-x-auto w-full max-w-screen-lg">
-        <table class="table-auto w-full text-center border-collapse border border-gray-600 text-sm sm:text-base">
+      <div class="overflow-x-auto w-full max-w-screen-lg border-collapse border border-gray-600 shadow-lg rounded-lg">
+        <table class="table-auto w-full text-center text-sm sm:text-base">
           <thead class="bg-gray-800">
             <tr>
-              <th class="border border-gray-600 px-2 sm:px-4 py-2">Type</th>
-              <th v-for="time in times" :key="time" class="border border-gray-600 px-2 sm:px-4 py-2">
+              <th class="px-2 sm:px-4 py-2">Type</th>
+              <th v-for="time in times" :key="time" class="border border-t-0 border-gray-600 px-2 sm:px-4 py-2">
                 {{ time }}
               </th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="type in speedUpTypes" :key="type">
-              <td class="border border-gray-600 px-2 sm:px-4 py-2 font-medium">
+              <td class="border border-l-0 border-gray-600 px-2 sm:px-4 py-2 font-medium">
                 {{ type }}
               </td>
-              <td v-for="time in times" :key="time" class="border border-gray-600 px-2 sm:px-4 py-2">
+              <td v-for="time in times" :key="time" class="border border-r-0 border-gray-600 px-2 sm:px-4 py-2">
                 <shad-input v-model.number="speedUps[type][time]" type="number" placeholder="0"
                   class="w-16 sm:w-20 text-center bg-gray-800 text-white border border-gray-600 rounded text-xs sm:text-sm" />
               </td>
@@ -34,16 +34,16 @@
 
       <div class="mt-4 sm:mt-6 w-full max-w-screen-lg flex flex-col sm:flex-row justify-between gap-2">
         <shad-button @click="calculateTotals"
-          class="bg-blue-700 hover:bg-blue-800 text-white font-semibold py-2 px-4 sm:py-3 sm:px-6 rounded-md text-sm sm:text-base">
+          class="bg-blue-700 hover:bg-blue-800 text-white font-semibold py-2 px-4 sm:py-3 sm:px-6 rounded-md text-sm sm:text-base shadow-md">
           Calculate Totals
         </shad-button>
         <shad-button @click="clearInputs"
-          class="bg-red-700 hover:bg-red-800 text-white font-semibold py-2 px-4 sm:py-3 sm:px-6 rounded-md text-sm sm:text-base">
+          class="bg-red-700 hover:bg-red-800 text-white font-semibold py-2 px-4 sm:py-3 sm:px-6 rounded-md text-sm sm:text-base shadow-md">
           Clear All
         </shad-button>
       </div>
 
-      <div v-if="results" class="mt-6 sm:mt-8 p-4 sm:p-6 w-full max-w-screen-lg bg-gray-800 rounded-md shadow-inner text-sm sm:text-base">
+      <div v-if="results" class="mt-6 sm:mt-8 p-4 sm:p-6 w-full max-w-screen-lg bg-gray-800 rounded-md shadow-lg text-sm sm:text-base">
         <h2 class="text-xl sm:text-2xl font-semibold mb-4 sm:mb-2">Results</h2>
         <div class="grid grid-cols-1 gap-2 sm:gap-4">
           <div v-for="(total, type) in results" :key="type" class="flex justify-between border-b border-gray-600 py-1 sm:py-2">
