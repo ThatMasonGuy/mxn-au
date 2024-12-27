@@ -2,7 +2,7 @@
 import { initializeApp, setLogLevel } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
 import { getFirestore } from "firebase/firestore";
-// import { getAuth } from "firebase/auth";
+import { getAuth } from "firebase/auth";
 import { getDatabase } from "firebase/database";
 import { getFunctions } from "firebase/functions";
 
@@ -22,8 +22,8 @@ setLogLevel('warning'); // Set the desired log level
 
 const analytics = getAnalytics(firebaseApp);
 const firestore = getFirestore(firebaseApp);
-// const auth = getAuth(firebaseApp);
+const auth = getAuth(firebaseApp);
 const realTimeDb = getDatabase(firebaseApp);
 const functions = getFunctions(firebaseApp);
 
-export { firestore, realTimeDb, analytics, functions };
+export { firestore, realTimeDb, analytics, functions, auth };

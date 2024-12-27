@@ -1,8 +1,6 @@
 <!-- src/pages/topHeroes/TH_SpeedUps.vue -->
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white flex flex-col">
-    <TopHeroesHeader />
-
+  <div class="flex flex-col h-full bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
     <div class="flex-grow flex flex-col items-center p-4 sm:p-8">
       <h1 class="text-2xl sm:text-4xl font-extrabold text-center mb-4 sm:mb-8">
         Speed-up Calculator
@@ -57,16 +55,12 @@
         </p>
       </div>
     </div>
-
-    <TopHeroesFooter />
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue';
 import { Input as ShadInput, Button as ShadButton } from '@/components/ui';
-import TopHeroesHeader from '@/components/TopHeroesHeader.vue';
-import TopHeroesFooter from '@/components/TopHeroesFooter.vue';
 
 const speedUpTypes = ['Universal', 'Building', 'Research', 'Training', 'Healing'];
 const times = [
