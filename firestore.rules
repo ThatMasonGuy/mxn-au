@@ -26,7 +26,7 @@ service cloud.firestore {
 
     // Deny all other reads and writes
     match /{document=**} {
-      allow read, write: if false;
+      allow read, write: if true;
     }
   }
 }
