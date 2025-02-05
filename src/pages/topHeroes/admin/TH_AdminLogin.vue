@@ -12,7 +12,8 @@
                 <form class="grid gap-4" @submit.prevent="handleEmailLogin">
                     <div class="grid gap-2">
                         <Label for="email">Email</Label>
-                        <Input id="email" type="email" placeholder="example@gmail.com" autocomplete="email" required v-model="email" />
+                        <Input id="email" type="email" placeholder="example@gmail.com" autocomplete="email" required
+                            v-model="email" />
                     </div>
                     <div class="grid gap-2">
                         <div class="flex items-center">
@@ -31,20 +32,14 @@
                     <Button type="submit" class="w-full">
                         Login
                     </Button>
-                    <!--
-                    <Button variant="outline" class="w-full" @click.prevent="handleGoogleLogin">
-                        Login with Google
-                    </Button>
-                    -->
                 </form>
                 <div class="mt-4 text-center text-sm">
                     Don't have an account?
-                    <a href="/topheroes/admin/signup" class="underline">
-                        Sign up
-                    </a>
+                    <a href="/topheroes/admin/signup" class="underline">Sign up</a>
                 </div>
             </div>
         </div>
+
         <div class="bg-gray-500 lg:block relative overflow-hidden">
             <transition name="fade" mode="in-out" :enter-active-class="'transition-opacity duration-1000'"
                 :leave-active-class="'transition-opacity duration-1000'" :enter-from-class="'opacity-0'"
@@ -63,14 +58,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-// import { signInWithGoogle } from '@/auth';
 import { signIn } from '@/auth';
 import { toast } from 'vue-sonner';
-import { useRouter } from 'vue-router';
+import router from '@/router';
 
-const router = useRouter();
-const currentImage = ref(`https://picsum.photos/1920/1081`);
-const nextImage = ref(`https://picsum.photos/1920/1080`);
+const currentImage = ref('https://picsum.photos/1920/1081');
+const nextImage = ref('https://picsum.photos/1920/1080');
+
 const email = ref('');
 const password = ref('');
 const rememberMe = ref(false);
@@ -88,25 +82,30 @@ onMounted(() => {
 
 const handleEmailLogin = async () => {
     try {
-        await signIn(email.value, password.value);
+        console.log('[handleEmailLogin] Attempting sign in...', {
+            email: email.value,
+            password: password.value,
+            rememberMe: rememberMe.value
+        });
+
+        // 1) Sign in using our signIn function
+        const user = await signIn(email.value, password.value, rememberMe.value);
+
+        console.log('[handleEmailLogin] signIn successful, user returned:', user);
+
         toast.success('Login successful!');
-        router.push('/auth/home');
+
+        // 2) Attempt to route
+        console.log('[handleEmailLogin] Pushing route to /topheroes/admin/home');
+        router.push('/topheroes/admin/home');
+
     } catch (error) {
+        console.error('[handleEmailLogin] Error:', error);
         toast.error(error.message);
 
         if (error.code === 'auth/user-not-found') {
             toast.error('User not found. Please sign up.');
         }
-    }
-};
-
-const handleGoogleLogin = async () => {
-    try {
-        await signInWithGoogle();
-        toast.success('Login successful!');
-        router.push('/auth/home');
-    } catch (error) {
-        toast.error(error.message);
     }
 };
 </script>

@@ -17,7 +17,8 @@
                     <NavCard :comingSoon="true" :image="TopHeroes_2"
                         title="Team Builder" text="Build the best team you can, personalised to you." />
 
-                    <NavCard :comingSoon="true" :image="TopHeroes_1" title="Resource Calculator"
+                    <NavCard @click="navigateTo('/topheroes/resources')"
+                        :image="TopHeroes_1" title="Resource Calculator"
                         text="Not sure if you have enough for that upgrade?" />
                 </div>
             </div>

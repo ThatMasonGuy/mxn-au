@@ -8,12 +8,14 @@
                         Enter your details below to create your account
                     </p>
                 </div>
+                <!-- Sign up form -->
                 <form class="grid gap-4" @submit.prevent="handleSignUp">
                     <div class="grid gap-2">
                         <Label for="userName">Username</Label>
                         <Input id="userName" type="text" autocomplete="username" placeholder="AwesomeUser24" required
                             v-model="userName" />
                     </div>
+
                     <div class="grid grid-cols-2 gap-4">
                         <div class="grid gap-2">
                             <Label for="firstName">First Name</Label>
@@ -26,17 +28,21 @@
                                 v-model="lastName" />
                         </div>
                     </div>
+
                     <div class="grid gap-2">
                         <Label for="emailAddress">Email</Label>
                         <Input id="emailAddress" type="email" autocomplete="email" placeholder="JohnAppleseed@email.com"
                             required v-model="emailAddress" />
                     </div>
+
+                    <!-- Select Country -->
                     <div class="grid gap-2">
                         <Label for="country">Country</Label>
                         <Select v-model="selectedCountry">
                             <SelectTrigger>
-                                <SelectValue placeholder="Select your Country" class="text-gray-500">{{
-                                    displaySelectedCountry }}</SelectValue>
+                                <SelectValue placeholder="Select your Country" class="text-gray-500">
+                                    {{ displaySelectedCountry }}
+                                </SelectValue>
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem v-for="country in countries" :key="country.code" :value="country.code">
@@ -45,15 +51,28 @@
                             </SelectContent>
                         </Select>
                     </div>
-                    <div class="grid gap-2">
-                        <Label for="phoneNumber">Phone Number</Label>
-                        <div class="relative">
-                            <span class="absolute left-3 top-[19px] transform -translate-y-1/2 text-gray-500 text-sm">{{
-                                callCode || '+61' }}</span>
-                            <Input id="phoneNumber" type="tel" autocomplete="tel" placeholder="0412 345 678" required
-                                v-model="phoneNumber" :class="phonePadding" />
+
+                    <!-- Phone Number -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="grid gap-2">
+                            <Label for="phoneNumber">Phone Number</Label>
+                            <div class="relative">
+                                <span
+                                    class="absolute left-3 top-[19px] transform -translate-y-1/2 text-gray-500 text-sm">{{
+                                    callCode || '+61' }}</span>
+                                <Input id="phoneNumber" type="tel" autocomplete="tel" placeholder="0412 345 678"
+                                    required v-model="phoneNumber" :class="phonePadding" />
+                            </div>
+                        </div>
+                        <!-- Date of Birth -->
+                        <div class="grid gap-2">
+                            <Label for="dateOfBirth">Date of Birth</Label>
+                            <Input id="dateOfBirth" type="date" required v-model="dateOfBirth"
+                                placeholder="DD/MM/YYYY" />
                         </div>
                     </div>
+
+                    <!-- Passwords -->
                     <div class="grid grid-cols-2 gap-4">
                         <div class="grid gap-2">
                             <Label for="password">Password</Label>
@@ -66,15 +85,10 @@
                                 placeholder="Password" required v-model="confirmPassword" />
                         </div>
                     </div>
-                    <Button type="submit" class="w-full">
-                        Sign up
-                    </Button>
-                    <!--
-                    <Button variant="outline" class="w-full" @click.prevent="handleGoogleSignUp">
-                        Sign up with Google
-                    </Button>
-                    -->
+
+                    <Button type="submit" class="w-full">Sign up</Button>
                 </form>
+
                 <div class="mt-4 text-center text-sm">
                     Already have an account?
                     <router-link to="/topheroes/admin/login" class="underline">
@@ -83,6 +97,7 @@
                 </div>
             </div>
         </div>
+
         <div class="bg-gray-500 lg:block relative overflow-hidden">
             <transition name="fade" mode="in-out" :enter-active-class="'transition-opacity duration-1000'"
                 :leave-active-class="'transition-opacity duration-1000'" :enter-from-class="'opacity-0'"
@@ -96,27 +111,35 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue';
-// import { signInWithGoogle } from '@/auth';
+import { ref, onMounted, computed } from 'vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'vue-sonner';
-import axios from 'axios';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import countryList from '@/data/countries.json';
+import router from '@/router';
+import { signUp } from '@/auth';
 
 const currentImage = ref(`https://picsum.photos/1920/1081`);
 const nextImage = ref(`https://picsum.photos/1920/1080`);
+
 const firstName = ref('');
 const lastName = ref('');
 const userName = ref('');
 const emailAddress = ref('');
-const country = ref('');
 const phoneNumber = ref('');
 const password = ref('');
 const confirmPassword = ref('');
 const selectedCountry = ref('');
+const dateOfBirth = ref(''); // NEW: capture DOB
+
 const countries = ref(countryList);
 
 const phonePadding = computed(() => {
@@ -137,6 +160,12 @@ const phonePadding = computed(() => {
     }
 });
 
+const callCode = computed(() => {
+    const country = countries.value.find((c) => c.code === selectedCountry.value);
+    return country ? country.value : '';
+});
+
+// Remove leading 0 from phone number, then prepend the call code
 const formattedPhoneNumber = computed(() => {
     if (selectedCountry.value && phoneNumber.value) {
         let formattedNumber = phoneNumber.value.replace(/\s+/g, '');
@@ -145,17 +174,15 @@ const formattedPhoneNumber = computed(() => {
         }
         return `${callCode.value}${formattedNumber}`;
     }
-    return phoneNumber.value ? phoneNumber.value.replace(/\s+/g, '').replace(/^0/, '') : '';
+    return phoneNumber.value
+        ? phoneNumber.value.replace(/\s+/g, '').replace(/^0/, '')
+        : '';
 });
 
+// For display in the Select
 const displaySelectedCountry = computed(() => {
-    const country = countries.value.find(c => c.code === selectedCountry.value);
+    const country = countries.value.find((c) => c.code === selectedCountry.value);
     return country ? `${country.label} (${country.value})` : '';
-});
-
-const callCode = computed(() => {
-    const country = countries.value.find(c => c.code === selectedCountry.value);
-    return country ? country.value : '';
 });
 
 const changeImage = () => {
@@ -169,35 +196,25 @@ onMounted(() => {
     setInterval(changeImage, 8000);
 });
 
+// Our sign-up handler
 const handleSignUp = async () => {
     try {
-        console.log('Initiating user sign up');
-        const response = await axios.post('https://us-central1-maso-au.cloudfunctions.net/createUser', {
-            firstName: firstName.value,
-            lastName: lastName.value,
-            userName: userName.value,
-            emailAddress: emailAddress.value,
-            country: country.value,
-            phoneNumber: formattedPhoneNumber.value,
-            password: password.value,
-        });
-        console.log('Sign up successful', response.data);
-        toast.success('Sign up successful! Email verification sent.');
-    } catch (error) {
-        console.error('Error during sign up:', error);
-        toast.error(error.response ? error.response.data : error.message);
-    }
-};
+        await signUp(
+            firstName.value,
+            lastName.value,
+            userName.value,
+            emailAddress.value,
+            formattedPhoneNumber.value,
+            selectedCountry.value, // pass the country code
+            dateOfBirth.value,     // pass the raw date
+            password.value,
+            confirmPassword.value
+        );
 
-const handleGoogleSignUp = async () => {
-    try {
-        console.log('Initiating Google sign up');
-        await signInWithGoogle();
-        console.log('Google sign up successful');
         toast.success('Sign up successful!');
+        router.push('/topheroes/admin/home');
     } catch (error) {
-        console.error('Error during Google sign up:', error);
-        toast.error(error.message);
+        toast.error(error.message || 'Error signing up');
     }
 };
 </script>

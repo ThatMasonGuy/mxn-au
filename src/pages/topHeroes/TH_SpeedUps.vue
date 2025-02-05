@@ -6,24 +6,24 @@
         Speed-up Calculator
       </h1>
 
-      <div class="overflow-x-auto w-full max-w-screen-lg border-collapse border border-gray-600 shadow-lg rounded-lg">
+      <div class="overflow-x-auto w-full max-w-screen-lg border-collapse border border-gray-600 border-b-0 shadow-lg rounded-lg">
         <table class="table-auto w-full text-center text-sm sm:text-base">
           <thead class="bg-gray-800">
             <tr>
               <th class="px-2 sm:px-4 py-2">Type</th>
-              <th v-for="time in times" :key="time" class="border border-t-0 border-gray-600 px-2 sm:px-4 py-2">
+              <th v-for="time in times" :key="time" class="border border-y-0 border-r-0 border-gray-600 px-2 sm:px-4 py-2">
                 {{ time }}
               </th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="type in speedUpTypes" :key="type">
-              <td class="border border-l-0 border-gray-600 px-2 sm:px-4 py-2 font-medium">
+              <td class="border border-x-0 border-gray-600 px-2 sm:px-4 py-2 font-medium">
                 {{ type }}
               </td>
               <td v-for="time in times" :key="time" class="border border-r-0 border-gray-600 px-2 sm:px-4 py-2">
                 <shad-input v-model.number="speedUps[type][time]" type="number" placeholder="0"
-                  class="w-16 sm:w-20 text-center bg-gray-800 text-white border border-gray-600 rounded text-xs sm:text-sm" />
+                  class="w-16 sm:min-w-16 sm:w-full text-center bg-gray-800 text-white border border-gray-600 rounded text-xs sm:text-sm" />
               </td>
             </tr>
           </tbody>

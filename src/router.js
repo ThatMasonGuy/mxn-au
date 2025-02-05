@@ -33,6 +33,18 @@ const routes = [
     },
   },
   {
+    path: '/topheroes/resources',
+    alias: '/TopHeroes/Resources',
+    name: 'TopHeroes - Resources',
+    component: () => import('@/pages/topHeroes/TH_ResourceCalculator.vue'),
+    meta: {
+      requiresAuth: false,
+      requiresTHOverlay: true,
+      requiresTHAdminOverlay: false,
+      title: 'TopHeroes - Resources',
+    },
+  },
+  {
     path: '/topheroes/events',
     alias: '/TopHeroes/Events',
     name: 'TopHeroes - Events',
@@ -64,7 +76,7 @@ const routes = [
 
   {
     path: '/topheroes/admin',
-    alias: '/TopHeroes/Admin',
+    alias: ['/topheroes/admin/', '/topheroes/admin/home', '/topheroes/admin/home/'],
     name: 'TopHeroes - Admin',
     component: () => import('@/pages/topHeroes/admin/TH_AdminHome.vue'),
     meta: {
@@ -87,8 +99,20 @@ const routes = [
     },
   },
   {
+    path: '/topheroes/admin/castleinput',
+    alias: '/TopHeroes/Admin/CastleInput',
+    name: 'TopHeroes - Admin Castle Input',
+    component: () => import('@/pages/topHeroes/admin/TH_AdminCastleInput.vue'),
+    meta: {
+      requiresAuth: false,
+      requiresTHOverlay: false,
+      requiresTHAdminOverlay: false,
+      title: 'TopHeroes - Admin',
+    },
+  },
+  {
     path: '/topheroes/admin/login',
-    alias: '/TopHeroes/Admin/login',
+    alias: ['/topheroes/admin/login', '/topheroes/admin/signin', '/topheroes/admin/sign-in'],
     name: 'TopHeroes - Admin Login',
     component: () => import('@/pages/topHeroes/admin/TH_AdminLogin.vue'),
     meta: {
@@ -130,16 +154,31 @@ const router = createRouter({
 });
 
 router.beforeEach((to, from, next) => {
-  if (comingSoon) {
-    // Allow access to TopHeroes routes and ComingSoon route
-    if (to.path.startsWith('/TopHeroes') || to.name === 'ComingSoon' || to.path.startsWith('/topheroes')) {
-      next();
-    } else {
-      next({ name: 'ComingSoon' });
-    }
-  } else {
-    next();
+  // 1. If they’re already heading to ComingSoon, let them go.
+  if (to.name === 'ComingSoon') {
+    return next();
   }
+
+  // 2. If it's not the ComingSoon route, then it must start with /topheroes or we redirect.
+  if (!to.path.toLowerCase().startsWith('/topheroes')) {
+    return next({ name: 'ComingSoon' });
+  }
+
+  // 3. If the route does NOT require authentication, proceed.
+  if (!to.matched.some(record => record.meta.requiresAuth)) {
+    return next();
+  }
+
+  // 4. If it DOES require auth, check for the auth key.
+  const authKey = localStorage.getItem('authKey');
+  if (authKey) {
+    // Auth token present, so let them continue.
+    return next();
+  }
+
+  // 5. If no auth token, redirect to sign-in.
+  console.warn('Auth Key missing: Redirecting to /topheroes/admin/signin');
+  return next({ path: '/topheroes/admin/signin' });
 });
 
 export default router;
