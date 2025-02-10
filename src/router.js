@@ -99,10 +99,10 @@ const routes = [
     },
   },
   {
-    path: '/topheroes/admin/castleinput',
-    alias: '/TopHeroes/Admin/CastleInput',
-    name: 'TopHeroes - Admin Castle Input',
-    component: () => import('@/pages/topHeroes/admin/TH_AdminCastleInput.vue'),
+    path: '/topheroes/admin/castledata',
+    alias: ['/TopHeroes/Admin/CastleData', '/topheroes/admin/castle-data'],
+    name: 'TopHeroes - Admin Castle Data',
+    component: () => import('@/pages/topHeroes/admin/TH_AdminCastleData.vue'),
     meta: {
       requiresAuth: false,
       requiresTHOverlay: false,
@@ -154,29 +154,23 @@ const router = createRouter({
 });
 
 router.beforeEach((to, from, next) => {
-  // 1. If they’re already heading to ComingSoon, let them go.
   if (to.name === 'ComingSoon') {
     return next();
   }
 
-  // 2. If it's not the ComingSoon route, then it must start with /topheroes or we redirect.
   if (!to.path.toLowerCase().startsWith('/topheroes')) {
     return next({ name: 'ComingSoon' });
   }
 
-  // 3. If the route does NOT require authentication, proceed.
   if (!to.matched.some(record => record.meta.requiresAuth)) {
     return next();
   }
 
-  // 4. If it DOES require auth, check for the auth key.
-  const authKey = localStorage.getItem('authKey');
-  if (authKey) {
-    // Auth token present, so let them continue.
-    return next();
-  }
+  const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+  if (token) {
+      return next();
+  }  
 
-  // 5. If no auth token, redirect to sign-in.
   console.warn('Auth Key missing: Redirecting to /topheroes/admin/signin');
   return next({ path: '/topheroes/admin/signin' });
 });

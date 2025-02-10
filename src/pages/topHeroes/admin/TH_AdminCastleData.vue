@@ -1,3 +1,4 @@
+<!-- @/pages/topHeroes/admin/TH_AdminCastleData.vue -->
 <template>
   <div class="min-h-screen bg-gray-50 text-gray-800 p-6">
     <div class="flex items-center justify-between mb-4">

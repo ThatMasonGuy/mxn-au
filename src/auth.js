@@ -12,7 +12,6 @@ import store from '@/store';
 const emailRegex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
 const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#%^&/.,><';":])[A-Za-z\d@$!%*?&#%^&/.,><';":]{8,}$/;
 
-// A helper for date formatting
 function formatDateToDDMMYYYY(date) {
     const day = String(date.getDate()).padStart(2, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -62,9 +61,6 @@ onAuthStateChanged(auth, async (user) => {
     }
 });
 
-/**
- * signUp function
- */
 export const signUp = async (
     firstName,
     lastName,
@@ -76,12 +72,9 @@ export const signUp = async (
     password,
     confirmPassword
 ) => {
-    // ... no change except maybe adding some logs
+    // ...
 };
 
-/**
- * signIn function
- */
 export const signIn = async (email, password, rememberMe = false) => {
     console.log('[signIn] Called with:', { email, password, rememberMe });
     try {
@@ -119,5 +112,5 @@ export const signIn = async (email, password, rememberMe = false) => {
 };
 
 export const signOut = async () => {
-    // ... no change except maybe some console logs
+    // ...
 };

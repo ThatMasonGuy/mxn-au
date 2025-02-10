@@ -1,4 +1,4 @@
-<!-- Login.vue -->
+<!-- @/pages/topHeroes/admin/TH_AdminLogin.vue -->
 <template>
     <div class="w-full lg:grid lg:min-h-screen lg:grid-cols-2 h-screen">
         <div class="flex flex-col items-center justify-center py-12 px-4 mx-auto">
@@ -88,14 +88,12 @@ const handleEmailLogin = async () => {
             rememberMe: rememberMe.value
         });
 
-        // 1) Sign in using our signIn function
         const user = await signIn(email.value, password.value, rememberMe.value);
 
         console.log('[handleEmailLogin] signIn successful, user returned:', user);
 
         toast.success('Login successful!');
 
-        // 2) Attempt to route
         console.log('[handleEmailLogin] Pushing route to /topheroes/admin/home');
         router.push('/topheroes/admin/home');
 
