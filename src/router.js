@@ -5,6 +5,56 @@ import ComingSoon from '@/pages/ComingSoon.vue';
 const comingSoon = true;
 
 const routes = [
+  // ------------------- Testing Routes -------------------
+
+  {
+    path: '/minecraft',
+    alias: '/Minecraft',
+    name: 'Minecraft',
+    component: () => import('@/pages/minecraft/MC_Perms.vue'),
+    meta: {
+      requiresAuth: false,
+      requiresTHOverlay: false,
+      requiresTHAdminOverlay: false,
+      title: 'Minecraft',
+    },
+  },
+  {
+    path: '/minecraft/logs',
+    alias: '/Minecraft/Logs',
+    name: 'Minecraft - Logs',
+    component: () => import('@/pages/minecraft/MC_LogViewer.vue'),
+    meta: {
+      requiresAuth: false,
+      requiresTHOverlay: false,
+      requiresTHAdminOverlay: false,
+      title: 'Minecraft - Logs',
+    },
+  },
+  {
+    path: '/server',
+    alias: '/Server',
+    name: 'Server',
+    component: () => import('@/pages/server/Dashboard.vue'),
+    meta: {
+      requiresAuth: false,
+      requiresTHOverlay: false,
+      requiresTHAdminOverlay: false,
+      title: 'Server',
+    },
+  },
+  {
+    path: '/server/old',
+    alias: '/Server/Old',
+    name: 'Server - Old',
+    component: () => import('@/pages/server/DashboardOLD.vue'),
+    meta: {
+      requiresAuth: false,
+      requiresTHOverlay: false,
+      requiresTHAdminOverlay: false,
+      title: 'Server - Old',
+    },
+  },
 
   // ------------------- TopHeroes Routes -------------------
 
@@ -158,9 +208,9 @@ router.beforeEach((to, from, next) => {
     return next();
   }
 
-  if (!to.path.toLowerCase().startsWith('/topheroes')) {
+  if (!(to.path.toLowerCase().startsWith('/topheroes') || to.path.toLowerCase().startsWith('/minecraft') || to.path.toLowerCase().startsWith('/server'))) {
     return next({ name: 'ComingSoon' });
-  }
+  }  
 
   if (!to.matched.some(record => record.meta.requiresAuth)) {
     return next();

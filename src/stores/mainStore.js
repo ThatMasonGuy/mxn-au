@@ -1,12 +1,10 @@
-// store.js
-import { createStore } from 'vuex';
-
-export default createStore({
-    state: {
+// @/stores/mainStore.js
+export const main = {
+    state: () => ({
         user: null,
         token: null,
         rememberMe: false
-    },
+    }),
     mutations: {
         setUser(state, { user, token, rememberMe }) {
             console.log('[Vuex setUser] user:', user, 'token:', token, 'rememberMe:', rememberMe);
@@ -23,7 +21,6 @@ export default createStore({
     },
     actions: {
         restoreAuthFromStorage({ commit }) {
-            console.log('[Vuex restoreAuthFromStorage] Attempting to restore token...');
             let token = localStorage.getItem('token');
             let userJson = localStorage.getItem('user');
 
@@ -34,16 +31,14 @@ export default createStore({
 
             if (token && userJson) {
                 const userObj = JSON.parse(userJson);
-                console.log('[Vuex restoreAuthFromStorage] Found stored token:', token, ' user:', userObj);
                 commit('setUser', {
                     user: userObj,
                     token,
                     rememberMe: !!localStorage.getItem('token')
                 });
             } else {
-                console.log('[Vuex restoreAuthFromStorage] No token found in either storage.');
+
             }
         }
-    },
-    modules: {}
-});
+    }
+};

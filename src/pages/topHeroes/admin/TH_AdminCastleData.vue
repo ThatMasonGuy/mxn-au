@@ -85,7 +85,9 @@
       </Accordion>
       <div class="mt-6 flex items-center space-x-4">
         <Button variant="outline" class="shadow-sm" @click="addRow">Add Row</Button>
-        <Button variant="default" class="shadow-sm" @click="saveData">Save Data</Button>
+        <Button variant="default" class="shadow-sm" :disabled="isSaving" @click="saveData">
+          {{ isSaving ? 'Saving...' : 'Save Data' }}
+        </Button>
       </div>
     </div>
   </div>
@@ -95,6 +97,7 @@
 import { ref, onMounted } from 'vue'
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent, Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Popover, PopoverTrigger, PopoverContent } from '@/components/ui'
 import { firestore } from '@/firebase.js'
+import { toast } from 'vue-sonner';
 import { collection, doc, getDocs, setDoc } from 'firebase/firestore'
 
 const castleCollection = collection(firestore, 'castleData')
@@ -107,16 +110,31 @@ const buildingOptions = [{ label: 'Research Hall', value: 'Research Hall' }, { l
 onMounted(async () => await loadDataFromFirestore())
 
 async function loadDataFromFirestore() {
-  const snapshot = await getDocs(castleCollection)
-  const results = snapshot.docs.map(docSnap => ({ ...docSnap.data(), id: docSnap.id }))
-  tableData.value = results.length ? results : Array.from({ length: 40 }, (_, i) => ({ level: i + 1, requiredBuildings: [] }))
+  try {
+    toast.loading('Loading data...')
+    const snapshot = await getDocs(castleCollection)
+    const results = snapshot.docs.map(docSnap => ({ ...docSnap.data(), id: docSnap.id }))
+    tableData.value = results.length ? results : Array.from({ length: 40 }, (_, i) => ({ level: i + 1, requiredBuildings: [] }))
+    toast.success('Data loaded successfully!')
+  } catch (error) {
+    toast.error(`Error loading data: ${error.message}`)
+  }
 }
 
 async function saveData() {
-  for (const row of tableData.value) {
-    if (!row.level) continue
-    const docRef = doc(castleCollection, row.level.toString())
-    await setDoc(docRef, row)
+  try {
+    isSaving.value = true
+    toast.loading('Saving data...')
+    for (const row of tableData.value) {
+      if (!row.level) continue
+      const docRef = doc(castleCollection, row.level.toString())
+      await setDoc(docRef, row)
+    }
+    toast.success('Data saved successfully!')
+  } catch (error) {
+    toast.error(`Error saving data: ${error.message}`)
+  } finally {
+    isSaving.value = false
   }
 }
 
