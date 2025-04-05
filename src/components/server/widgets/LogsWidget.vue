@@ -1,13 +1,8 @@
 <!-- @/components/server/widgets/LogsWidget.vue -->
-<!-- Logs display widget -->
 <template>
-    <BaseWidget :component="component" :isAdjacent="isAdjacent" :isEditing="isEditing"
-        :showEditIcon="showEditIcon === component.id" @base-widget-mousedown="handleBaseMousedown"
-        @base-widget-mousedown-resize="handleBaseMousedownResize"
-        @removeComponent="$emit('remove-component', component.id)" @showEditIcon="$emit('show-edit-icon', component.id)"
-        @hideEditIcon="$emit('hide-edit-icon')" @startEditingTitle="$emit('start-editing-title', component.id)"
-        @updateTitle="(id, title) => $emit('update-title', id, title)">
-        <div class="space-y-2 overflow-y-auto max-h-80">
+    <BaseWidget :widget-id="widgetId" :title="widgetTitle" :icon="ClipboardIcon" :icon-color="widgetIconColor"
+        @remove="$emit('remove', widgetId)">
+        <div class="space-y-2 overflow-y-auto max-h-full">
             <div v-for="(log, index) in logs" :key="index" class="p-2 text-sm rounded bg-gray-900 border-l-2"
                 :class="logTypeColor(log.type)">
                 <div class="flex justify-between">
@@ -20,61 +15,42 @@
 </template>
 
 <script setup>
-import { defineProps, defineEmits, ref } from 'vue';
-import BaseWidget from './BaseWidget.vue';
+import { computed } from 'vue'
+import { useStore } from 'vuex'
+import { ClipboardIcon } from '@heroicons/vue/24/solid'
+import BaseWidget from './BaseWidget.vue'
 
 const props = defineProps({
-    component: {
-        type: Object,
-        required: true
+    widgetId: {
+        type: String,
+        required: true,
     },
-    isAdjacent: {
-        type: Boolean,
-        default: false
-    },
-    isEditing: {
-        type: Boolean,
-        default: false
-    },
-    showEditIcon: {
-        type: [String, null],
-        default: null
-    },
-});
+})
 
-const logs = ref([
-    { type: 'error', message: 'Connection timeout on db2', time: '2m ago' },
-    { type: 'info', message: 'Backup completed successfully', time: '15m ago' },
-    { type: 'warning', message: 'High memory usage detected', time: '32m ago' },
-    { type: 'info', message: 'User john.doe logged in', time: '1h ago' },
-    { type: 'error', message: 'Failed deployment for api-v2', time: '2h ago' },
-    { type: 'info', message: 'System update scheduled', time: '3h ago' }
-]);
+defineEmits(['remove'])
 
-const emit = defineEmits([
-    'startDrag',
-    'startResize',
-    'remove-component',
-    'show-edit-icon',
-    'hide-edit-icon',
-    'start-editing-title',
-    'update-title'
-]);
+const store = useStore()
+
+const widgetTitle = computed(() => {
+    return store.getters['server/getComponentById'](props.widgetId)?.title || 'Recent Logs'
+})
+
+const widgetIconColor = computed(() => {
+    return store.getters['server/getComponentById'](props.widgetId)?.iconColor || 'text-blue-400'
+})
+
+const logs = computed(() => store.state.server.logs)
 
 function logTypeColor(type) {
     switch (type) {
-        case 'error': return 'border-red-500';
-        case 'warning': return 'border-yellow-500';
-        case 'info': return 'border-blue-500';
-        default: return 'border-gray-500';
+        case 'error':
+            return 'border-red-500'
+        case 'warning':
+            return 'border-yellow-500'
+        case 'info':
+            return 'border-blue-500'
+        default:
+            return 'border-gray-500'
     }
-}
-
-function handleBaseMousedown(e) {
-    emit('startDrag', e, props.component);
-}
-
-function handleBaseMousedownResize(e) {
-    emit('startResize', e, props.component);
 }
 </script>

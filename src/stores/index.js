@@ -1,7 +1,7 @@
 // @/stores/index.js
 import { createStore } from 'vuex';
-import { server } from './server/serverStore';
-import { main } from './mainStore';
+import { server } from './modules/serverStore';
+import { main } from './modules/mainStore';
 
 export default createStore({
   modules: {

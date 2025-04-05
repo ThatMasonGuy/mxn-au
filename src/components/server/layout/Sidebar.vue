@@ -1,5 +1,4 @@
 <!-- @/components/server/layout/Sidebar.vue -->
-<!-- Left sidebar component -->
 <template>
     <div class="w-64 border-r border-gray-800 flex flex-col">
         <div class="p-4 border-b border-gray-800">
@@ -9,24 +8,28 @@
         <div class="p-4">
             <h2 class="text-sm uppercase tracking-wider text-gray-400 mb-4">Components</h2>
             <div class="space-y-3">
-                <DraggableComponent v-for="(component, index) in availableComponents" :key="index"
-                    :component="component" @drag-start="onDragStart" />
+                <div v-for="(component, index) in availableComponents" :key="index"
+                    @click="$emit('add-component', component)"
+                    class="p-3 bg-gray-800 rounded-lg cursor-pointer hover:bg-gray-700 transition-colors flex items-center gap-2 border border-gray-700">
+                    <component :is="component.icon" class="h-5 w-5" :class="component.iconColor" />
+                    <span>{{ component.name }}</span>
+                </div>
             </div>
         </div>
 
-        <SystemStatus class="mt-auto" />
+        <SystemStatusBar />
     </div>
 </template>
 
 <script setup>
-import { defineEmits } from 'vue';
-import DraggableComponent from '@/components/server/ui/DraggableComponent.vue';
-import SystemStatus from '@/components/server/ui/SystemStatus.vue';
-import { availableComponents } from '@/data/server/availableComponents';
+import SystemStatusBar from '@/components/server/common/SystemStatusBar.vue'
 
-const emit = defineEmits(['drag-start']);
+defineProps({
+    availableComponents: {
+        type: Array,
+        required: true,
+    },
+})
 
-function onDragStart(event, component) {
-    emit('drag-start', event, component);
-}
+defineEmits(['add-component'])
 </script>

@@ -1,201 +1,488 @@
 <template>
-    <div class="min-h-screen bg-gray-900 text-gray-100 font-sans">
-        <!-- Main layout -->
-        <div class="flex h-screen">
-            <!-- Sidebar -->
-            <div class="w-64 border-r border-gray-800 flex flex-col">
-                <div class="p-4 border-b border-gray-800">
-                    <h1 class="text-xl font-bold text-blue-400">ServerDash</h1>
+    <div class="min-h-screen bg-gray-900 text-white">
+        <!-- Sidebar -->
+        <div class="fixed inset-y-0 left-0 w-52 bg-gray-800 border-r border-gray-700">
+            <div class="p-4 font-bold text-xl text-blue-400">ServerDash</div>
+            <div class="mt-6">
+                <p class="px-4 text-xs text-gray-400 mb-2">COMPONENTS</p>
+                <div v-for="(item, index) in navigationItems" :key="index"
+                    class="px-4 py-3 flex items-center cursor-pointer hover:bg-gray-700"
+                    :class="{ 'bg-gray-700': activeComponent === item.id }" @click="activeComponent = item.id">
+                    <component :is="item.icon" class="w-5 h-5 mr-3" :class="item.color" />
+                    <span>{{ item.name }}</span>
                 </div>
+            </div>
 
-                <!-- Draggable components -->
-                <div class="p-4">
-                    <h2 class="text-sm uppercase tracking-wider text-gray-400 mb-4">Components</h2>
-                    <div class="space-y-3">
-                        <div v-for="(component, index) in availableComponents" :key="index"
-                            class="p-3 bg-gray-800 rounded-lg cursor-move hover:bg-gray-700 transition-colors flex items-center gap-2 border border-gray-700"
-                            draggable="true" @dragstart="onDragStart($event, component)">
-                            <component :is="component.icon" class="h-5 w-5 text-blue-400" />
-                            <span>{{ component.name }}</span>
+            <div class="absolute bottom-0 w-full p-4 border-t border-gray-700">
+                <p class="text-xs text-gray-400 mb-2">SYSTEM STATUS</p>
+                <div class="space-y-2">
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <span>CPU</span>
+                            <span>45%</span>
+                        </div>
+                        <div class="h-2 bg-gray-700 rounded">
+                            <div class="h-full bg-green-500 rounded" style="width: 45%"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <span>Memory</span>
+                            <span>72%</span>
+                        </div>
+                        <div class="h-2 bg-gray-700 rounded">
+                            <div class="h-full bg-yellow-500 rounded" style="width: 72%"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <span>Disk</span>
+                            <span>28%</span>
+                        </div>
+                        <div class="h-2 bg-gray-700 rounded">
+                            <div class="h-full bg-blue-500 rounded" style="width: 28%"></div>
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
 
-                <!-- Server status -->
-                <div class="mt-auto p-4 border-t border-gray-800">
-                    <h2 class="text-sm uppercase tracking-wider text-gray-400 mb-2">System Status</h2>
-                    <div class="space-y-2">
-                        <div class="flex items-center justify-between">
-                            <span class="text-sm">CPU</span>
-                            <div class="w-32 bg-gray-700 rounded-full h-2">
-                                <div class="bg-green-500 h-2 rounded-full" :style="{ width: '45%' }"></div>
+        <!-- Main Content -->
+        <div class="ml-52 p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="text-2xl font-bold">Server Dashboard</h1>
+                <div class="flex items-center gap-4">
+                    <button class="bg-blue-600 px-4 py-2 rounded text-sm">Reset Layout</button>
+                    <div class="w-6 h-6 cursor-pointer">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                        </svg>
+                    </div>
+                    <div class="w-6 h-6 cursor-pointer">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center cursor-pointer">
+                        <span class="font-semibold">A</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content Widgets -->
+            <div v-if="activeComponent === 'dashboard'">
+                <!-- Server Overview Widget -->
+                <Widget title="Server Overview" icon="server">
+                    <div class="grid grid-cols-3 gap-4">
+                        <div v-for="server in servers" :key="server.id" class="bg-gray-800 p-4 rounded relative">
+                            <div class="absolute top-4 right-4">
+                                <div :class="`w-3 h-3 rounded-full ${getStatusColor(server.status)}`"></div>
+                            </div>
+                            <h3 class="text-sm font-medium mb-1">{{ server.name }}</h3>
+                            <p class="text-sm text-gray-400 mb-1">{{ server.ip }}</p>
+                            <p class="text-xs text-gray-500">{{ server.location }}</p>
+                        </div>
+                    </div>
+                </Widget>
+
+                <!-- CPU Usage Widget -->
+                <div class="grid grid-cols-2 gap-6 mt-6">
+                    <Widget title="CPU Usage" icon="chart">
+                        <div class="h-40 flex items-end">
+                            <div v-for="(value, index) in cpuData" :key="index" class="w-full mx-1">
+                                <div :style="`height: ${value}%`" class="bg-blue-400"></div>
                             </div>
                         </div>
-                        <div class="flex items-center justify-between">
-                            <span class="text-sm">Memory</span>
-                            <div class="w-32 bg-gray-700 rounded-full h-2">
-                                <div class="bg-yellow-500 h-2 rounded-full" :style="{ width: '72%' }"></div>
+                    </Widget>
+
+                    <!-- Recent Logs Widget -->
+                    <Widget title="Recent Logs" icon="document">
+                        <div class="space-y-2">
+                            <div v-for="(log, index) in recentLogs" :key="index" class="text-sm p-2 rounded"
+                                :class="getLogClass(log.type)">
+                                <div class="flex justify-between">
+                                    <span>{{ log.message }}</span>
+                                    <span class="text-gray-500">{{ log.time }}</span>
+                                </div>
                             </div>
                         </div>
-                        <div class="flex items-center justify-between">
-                            <span class="text-sm">Disk</span>
-                            <div class="w-32 bg-gray-700 rounded-full h-2">
-                                <div class="bg-blue-500 h-2 rounded-full" :style="{ width: '28%' }"></div>
+                    </Widget>
+                </div>
+
+                <!-- Network Widget -->
+                <Widget title="Network" icon="network" class="mt-6">
+                    <div class="space-y-2 max-h-32 overflow-y-auto">
+                        <div v-for="(connection, index) in networkConnections" :key="index"
+                            class="flex items-center text-sm p-2 border-b border-gray-700">
+                            <svg class="w-4 h-4 text-green-400 mr-2" xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd"
+                                    d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7.805V10a1 1 0 01-2 0V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13.5V16a1 1 0 11-2 0v-2.025A7.002 7.002 0 012.5 3.5a1 1 0 111.002-1.999 9.002 9.002 0 00.506 9.556z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                            <span class="flex-1">{{ connection.source }} → {{ connection.target }}</span>
+                            <span class="text-xs px-2 py-1 rounded bg-gray-700 mr-2">{{ connection.protocol }}</span>
+                            <span class="text-xs text-green-400">active</span>
+                        </div>
+                    </div>
+                </Widget>
+
+                <!-- File Browser Widget -->
+                <Widget title="File Browser" icon="folder" class="mt-6">
+                    <div class="space-y-2 max-h-32 overflow-y-auto">
+                        <div v-for="(folder, index) in folders" :key="index"
+                            class="flex items-center text-sm p-2 border-b border-gray-700">
+                            <svg class="w-4 h-4 text-yellow-400 mr-2" xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd"
+                                    d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                            <span>{{ folder }}</span>
+                        </div>
+                    </div>
+                </Widget>
+
+                <!-- Terminal Widget -->
+                <Widget title="Terminal" icon="terminal" class="mt-6">
+                    <div class="bg-black p-4 rounded font-mono text-sm">
+                        <div class="text-green-400">admin@server:~$ Welcome to ServerDash Terminal. Type "help" for
+                            available commands.</div>
+                        <div class="flex mt-1">
+                            <span class="text-green-400">admin@server:~$</span>
+                            <input v-model="terminalInput" @keydown.enter="executeCommand"
+                                class="bg-transparent border-none outline-none text-white ml-1 flex-1" />
+                        </div>
+                    </div>
+                </Widget>
+            </div>
+
+            <!-- Server Management -->
+            <div v-if="activeComponent === 'server-management'">
+                <div class="mb-6">
+                    <h2 class="text-xl font-bold mb-4">Server Management</h2>
+                    <p class="text-gray-400">Add and manage your servers for monitoring</p>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Server List -->
+                    <div class="lg:col-span-1">
+                        <div class="bg-gray-800 rounded-md p-4">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="font-medium">Your Servers</h3>
+                                <button @click="showAddServerModal = true"
+                                    class="bg-blue-600 text-xs px-3 py-1 rounded">Add New</button>
+                            </div>
+
+                            <div class="space-y-3">
+                                <div v-for="server in servers" :key="server.id"
+                                    class="p-3 bg-gray-700 rounded-md flex justify-between items-center cursor-pointer hover:bg-gray-600"
+                                    @click="selectedServer = server">
+                                    <div>
+                                        <div class="flex items-center">
+                                            <div :class="`w-2 h-2 rounded-full ${getStatusColor(server.status)} mr-2`">
+                                            </div>
+                                            <span class="font-medium">{{ server.name }}</span>
+                                        </div>
+                                        <div class="text-xs text-gray-400 mt-1">{{ server.ip }}</div>
+                                    </div>
+                                    <div class="text-xs text-gray-400">{{ server.location }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Server Details -->
+                    <div class="lg:col-span-2">
+                        <div class="bg-gray-800 rounded-md p-4">
+                            <div v-if="selectedServer">
+                                <div class="flex justify-between items-center mb-6">
+                                    <h3 class="font-medium">{{ selectedServer.name }} Details</h3>
+                                    <div class="flex space-x-2">
+                                        <button class="bg-blue-600 text-xs px-3 py-1 rounded">Edit</button>
+                                        <button class="bg-red-600 text-xs px-3 py-1 rounded">Delete</button>
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div class="space-y-4">
+                                        <div>
+                                            <label class="block text-xs text-gray-400 mb-1">Server Name</label>
+                                            <div class="bg-gray-700 p-2 rounded">{{ selectedServer.name }}</div>
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-xs text-gray-400 mb-1">IP Address</label>
+                                            <div class="bg-gray-700 p-2 rounded">{{ selectedServer.ip }}</div>
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-xs text-gray-400 mb-1">Location</label>
+                                            <div class="bg-gray-700 p-2 rounded">{{ selectedServer.location }}</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="space-y-4">
+                                        <div>
+                                            <label class="block text-xs text-gray-400 mb-1">SSH Port</label>
+                                            <div class="bg-gray-700 p-2 rounded">22</div>
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-xs text-gray-400 mb-1">Username</label>
+                                            <div class="bg-gray-700 p-2 rounded">admin</div>
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-xs text-gray-400 mb-1">Authentication</label>
+                                            <div class="bg-gray-700 p-2 rounded">SSH Key</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mt-6">
+                                    <label class="block text-xs text-gray-400 mb-1">Status</label>
+                                    <div class="flex items-center">
+                                        <div
+                                            :class="`w-3 h-3 rounded-full ${getStatusColor(selectedServer.status)} mr-2`">
+                                        </div>
+                                        <span>{{ selectedServer.status === 'ok' ? 'Online' : selectedServer.status ===
+                                            'warning' ? 'Warning' : 'Offline' }}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div v-else class="text-center py-10 text-gray-500">
+                                <svg class="w-16 h-16 mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none"
+                                    viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
+                                </svg>
+                                <p>Select a server to view details</p>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Main content -->
-            <div class="flex-1 overflow-auto p-6">
-                <header class="flex justify-between items-center mb-6">
-                    <h1 class="text-2xl font-bold">Server Dashboard</h1>
+            <!-- User Settings -->
+            <div v-if="activeComponent === 'settings'">
+                <div class="mb-6">
+                    <h2 class="text-xl font-bold mb-4">User Settings</h2>
+                    <p class="text-gray-400">Manage your account and preferences</p>
+                </div>
 
-                    <!-- User menu -->
-                    <div class="flex items-center gap-4">
-                        <button class="p-2 rounded-full hover:bg-gray-800">
-                            <BellIcon class="h-5 w-5 text-gray-400" />
-                        </button>
-                        <button class="p-2 rounded-full hover:bg-gray-800">
-                            <CogIcon class="h-5 w-5 text-gray-400" />
-                        </button>
-                        <div class="flex items-center gap-2">
-                            <div class="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center">
-                                <UserIcon class="h-4 w-4 text-white" />
-                            </div>
-                            <span>Admin</span>
-                        </div>
-                    </div>
-                </header>
+                <div class="bg-gray-800 rounded-md p-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <!-- Profile Settings -->
+                        <div>
+                            <h3 class="font-medium mb-4">Profile Settings</h3>
 
-                <!-- Grid layout for bento box style -->
-                <div ref="dashboardGrid" class="grid grid-cols-12 gap-4 auto-rows-min relative" @dragover="onDragOver"
-                    @drop="onDrop" @dragleave="onDragLeave">
-                    <!-- Drag preview element -->
-                    <div v-if="dragPreview.visible"
-                        class="absolute rounded-xl border-2 border-blue-400 bg-blue-400 bg-opacity-20 transition-all duration-300 z-10"
-                        :style="{
-                            left: `${dragPreview.x}px`,
-                            top: `${dragPreview.y}px`,
-                            width: `${dragPreview.width}px`,
-                            height: `${dragPreview.height}px`
-                        }"></div>
-
-                    <!-- Dashboard Components -->
-                    <div v-for="component in dashboardComponents" :key="component.id"
-                        class="bg-gray-800 rounded-xl border border-gray-700 component-item" :class="{
-                            'will-move': isAdjacent(component.id),
-                            [`col-span-${component.size.cols}`]: true,
-                            [`row-span-${component.size.rows}`]: true
-                        }" :data-component-id="component.id" :style="getComponentPosition(component)">
-                        <div class="flex justify-between items-center component-header">
-                            <!-- Component handle for dragging -->
-                            <div class="flex items-center cursor-move drag-handle"
-                                @mousedown="startDrag($event, component)" @mouseenter="showEditIcon = component.id"
-                                @mouseleave="showEditIcon = null">
-                                <component :is="component.icon" class="h-5 w-5 mr-2" :class="component.iconColor" />
-                                <span v-if="editingTitle !== component.id">{{ component.title }}</span>
-                                <input v-else v-model="component.title" @blur="finishEditingTitle"
-                                    @keyup.enter="finishEditingTitle" ref="titleInput"
-                                    class="bg-gray-700 px-2 rounded text-white" @click.stop />
-                                <button v-if="showEditIcon === component.id && editingTitle !== component.id"
-                                    @click.stop="startEditingTitle(component.id)"
-                                    class="ml-2 text-gray-400 hover:text-blue-400">
-                                    <PencilIcon class="h-4 w-4" />
-                                </button>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <div class="resize-handle" @mousedown="startResize($event, component)">
-                                    <ArrowsPointingOutIcon class="h-4 w-4 text-gray-500 hover:text-blue-400" />
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm text-gray-400 mb-1">Username</label>
+                                    <input type="text" v-model="userSettings.username"
+                                        class="w-full bg-gray-700 rounded p-2 border border-gray-600 focus:border-blue-500 focus:outline-none">
                                 </div>
-                                <button v-if="component.id !== 'overview'" @click="removeComponent(component.id)"
-                                    class="text-gray-500 hover:text-red-400">
-                                    <XCircleIcon class="h-5 w-5" />
-                                </button>
+
+                                <div>
+                                    <label class="block text-sm text-gray-400 mb-1">Email</label>
+                                    <input type="email" v-model="userSettings.email"
+                                        class="w-full bg-gray-700 rounded p-2 border border-gray-600 focus:border-blue-500 focus:outline-none">
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm text-gray-400 mb-1">Password</label>
+                                    <input type="password" value="********"
+                                        class="w-full bg-gray-700 rounded p-2 border border-gray-600 focus:border-blue-500 focus:outline-none">
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Component content based on type -->
-                        <div class="component-content">
-                            <!-- Server Overview -->
-                            <div v-if="component.type === 'overview'" class="grid grid-cols-3 gap-4">
-                                <div v-for="(server, index) in servers" :key="index" class="bg-gray-700 p-3 rounded-lg">
-                                    <div class="flex justify-between items-center">
-                                        <span>{{ server.name }}</span>
-                                        <span class="h-2 w-2 rounded-full" :class="statusColor(server.status)"></span>
-                                    </div>
-                                    <div class="mt-2 text-xs text-gray-400">{{ server.ip }}</div>
-                                    <div class="mt-2 text-sm">{{ server.location }}</div>
+                        <!-- SSH Keys -->
+                        <div>
+                            <h3 class="font-medium mb-4">SSH Keys</h3>
+
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm text-gray-400 mb-1">Default SSH Key</label>
+                                    <select v-model="userSettings.defaultSshKey"
+                                        class="w-full bg-gray-700 rounded p-2 border border-gray-600 focus:border-blue-500 focus:outline-none">
+                                        <option v-for="key in userSettings.sshKeys" :key="key.id" :value="key.id">{{
+                                            key.name }}</option>
+                                    </select>
                                 </div>
-                            </div>
 
-                            <!-- Logs -->
-                            <div v-if="component.type === 'logs'" class="space-y-2 overflow-y-auto max-h-80">
-                                <div v-for="(log, index) in logs" :key="index"
-                                    class="p-2 text-sm rounded bg-gray-900 border-l-2" :class="logTypeColor(log.type)">
-                                    <div class="flex justify-between">
-                                        <span>{{ log.message }}</span>
-                                        <span class="text-gray-500 text-xs">{{ log.time }}</span>
+                                <div>
+                                    <label class="block text-sm text-gray-400 mb-1">Manage SSH Keys</label>
+                                    <div class="bg-gray-700 rounded border border-gray-600 max-h-40 overflow-y-auto">
+                                        <div v-for="key in userSettings.sshKeys" :key="key.id"
+                                            class="p-2 border-b border-gray-600 flex justify-between items-center">
+                                            <div>
+                                                <div class="font-medium text-sm">{{ key.name }}</div>
+                                                <div class="text-xs text-gray-400">{{ key.fingerprint }}</div>
+                                            </div>
+                                            <button class="text-red-500 text-sm">Remove</button>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            <!-- Terminal -->
-                            <div v-if="component.type === 'terminal'"
-                                class="flex-1 bg-black rounded p-2 min-h-32 font-mono text-sm overflow-y-auto">
-                                <div class="text-green-400">admin@server:~$</div>
-                                <div class="text-white">{{ component.content || 'Welcome to ServerDash Terminal.\nType "help" for available commands.' }}</div>
-                                <div class="flex items-center">
-                                    <span class="text-green-400">admin@server:~$</span>
-                                    <span class="ml-1 animate-pulse">|</span>
-                                </div>
-                            </div>
-
-                            <!-- CPU Chart -->
-                            <div v-if="component.type === 'metrics'" class="h-32 w-full flex items-end space-x-1">
-                                <div v-for="value in cpuData" :key="value" class="bg-blue-400 w-full rounded-t"
-                                    :style="{ height: `${value}%` }"></div>
-                            </div>
-
-                            <!-- File Browser -->
-                            <div v-if="component.type === 'files'" class="space-y-1">
-                                <div v-for="(file, index) in files" :key="index"
-                                    class="flex items-center p-2 rounded hover:bg-gray-700">
-                                    <FolderIcon v-if="file.type === 'folder'" class="h-5 w-5 mr-2 text-yellow-400" />
-                                    <DocumentIcon v-else class="h-5 w-5 mr-2 text-blue-400" />
-                                    <span>{{ file.name }}</span>
-                                    <span class="ml-auto text-xs text-gray-400">{{ file.size }}</span>
-                                </div>
-                            </div>
-
-                            <!-- Network -->
-                            <div v-if="component.type === 'network'" class="space-y-2">
-                                <div v-for="(connection, index) in connections" :key="index"
-                                    class="bg-gray-700 p-2 rounded flex items-center justify-between">
-                                    <div class="flex items-center">
-                                        <ArrowPathIcon class="h-4 w-4 mr-2 text-green-400" />
-                                        <span>{{ connection.source }} → {{ connection.target }}</span>
-                                    </div>
-                                    <div class="flex items-center">
-                                        <span class="text-xs text-gray-400 mr-2">{{ connection.protocol }}</span>
-                                        <span class="text-xs text-green-400">{{ connection.status }}</span>
-                                    </div>
+                                <div>
+                                    <button class="bg-blue-600 px-4 py-2 rounded text-sm">Add New SSH Key</button>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Drop zone placeholder for new components -->
-                    <div v-if="showDropZone"
-                        class="col-span-4 row-span-2 bg-gray-800 rounded-xl border-2 border-dashed border-gray-600 flex items-center justify-center p-4 component-item"
-                        :class="{ 'will-move': isAdjacent('drop-zone'), 'border-blue-400': isDragging }"
-                        data-component-id="drop-zone">
-                        <div class="text-center" :class="isDragging ? 'text-blue-400' : 'text-gray-500'">
-                            <ArrowDownIcon class="h-8 w-8 mx-auto mb-2" />
-                            <p>Drop component here</p>
+                    <!-- Notification Settings -->
+                    <div class="mt-8">
+                        <h3 class="font-medium mb-4">Notification Settings</h3>
+
+                        <div class="space-y-3">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <div class="font-medium text-sm">Email Notifications</div>
+                                    <div class="text-xs text-gray-400">Receive alerts via email</div>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" v-model="userSettings.emailNotifications"
+                                        class="sr-only peer">
+                                    <div
+                                        class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600">
+                                    </div>
+                                </label>
+                            </div>
+
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <div class="font-medium text-sm">SMS Notifications</div>
+                                    <div class="text-xs text-gray-400">Receive critical alerts via SMS</div>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" v-model="userSettings.smsNotifications" class="sr-only peer">
+                                    <div
+                                        class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600">
+                                    </div>
+                                </label>
+                            </div>
+
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <div class="font-medium text-sm">Dashboard Notifications</div>
+                                    <div class="text-xs text-gray-400">Show notifications in dashboard</div>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" v-model="userSettings.dashboardNotifications"
+                                        class="sr-only peer">
+                                    <div
+                                        class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600">
+                                    </div>
+                                </label>
+                            </div>
                         </div>
                     </div>
+
+                    <div class="mt-8 flex justify-end">
+                        <button class="bg-blue-600 px-4 py-2 rounded text-sm">Save Settings</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Server Modal -->
+        <div v-if="showAddServerModal"
+            class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+            <div class="bg-gray-800 rounded-lg w-full max-w-md p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold text-lg">Add New Server</h3>
+                    <button @click="showAddServerModal = false" class="text-gray-400 hover:text-white">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                            xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Server Name</label>
+                        <input type="text" v-model="newServer.name"
+                            class="w-full bg-gray-700 rounded p-2 border border-gray-600 focus:border-blue-500 focus:outline-none">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">IP Address</label>
+                        <input type="text" v-model="newServer.ip"
+                            class="w-full bg-gray-700 rounded p-2 border border-gray-600 focus:border-blue-500 focus:outline-none">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Server Type</label>
+                        <select v-model="newServer.type"
+                            class="w-full bg-gray-700 rounded p-2 border border-gray-600 focus:border-blue-500 focus:outline-none">
+                            <option value="web">Web Server</option>
+                            <option value="db">Database</option>
+                            <option value="cache">Cache Server</option>
+                            <option value="backup">Backup Server</option>
+                            <option value="cdn">CDN Node</option>
+                            <option value="analytics">Analytics</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Location</label>
+                        <select v-model="newServer.location"
+                            class="w-full bg-gray-700 rounded p-2 border border-gray-600 focus:border-blue-500 focus:outline-none">
+                            <option value="US East">US East</option>
+                            <option value="US West">US West</option>
+                            <option value="EU Central">EU Central</option>
+                            <option value="Asia Pacific">Asia Pacific</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Authentication Method</label>
+                        <div class="flex items-center space-x-4">
+                            <label class="flex items-center">
+                                <input type="radio" v-model="newServer.authMethod" value="ssh" class="mr-1">
+                                <span>SSH Key</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="radio" v-model="newServer.authMethod" value="password" class="mr-1">
+                                <span>Password</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div v-if="newServer.authMethod === 'ssh'">
+                        <label class="block text-sm text-gray-400 mb-1">SSH Key</label>
+                        <select v-model="newServer.sshKey"
+                            class="w-full bg-gray-700 rounded p-2 border border-gray-600 focus:border-blue-500 focus:outline-none">
+                            <option v-for="key in userSettings.sshKeys" :key="key.id" :value="key.id">{{ key.name }}
+                            </option>
+                        </select>
+                    </div>
+
+                    <div v-if="newServer.authMethod === 'password'">
+                        <label class="block text-sm text-gray-400 mb-1">Password</label>
+                        <input type="password" v-model="newServer.password"
+                            class="w-full bg-gray-700 rounded p-2 border border-gray-600 focus:border-blue-500 focus:outline-none">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">SSH Port</label>
+                        <input type="number" v-model="newServer.sshPort"
+                            class="w-full bg-gray-700 rounded p-2 border border-gray-600 focus:border-blue-500 focus:outline-none">
+                    </div>
+                </div>
+
+                <div class="mt-6 flex justify-end space-x-3">
+                    <button @click="showAddServerModal = false"
+                        class="px-4 py-2 border border-gray-600 rounded text-sm">Cancel</button>
+                    <button @click="addNewServer" class="bg-blue-600 px-4 py-2 rounded text-sm">Add Server</button>
                 </div>
             </div>
         </div>
@@ -203,7 +490,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, nextTick } from 'vue';
+import { ref, computed } from 'vue';
+import { GridLayout, GridItem } from 'vue3-grid-layout';
 import {
     BellIcon,
     UserIcon,
@@ -213,7 +501,6 @@ import {
     XCircleIcon,
     ChartBarIcon,
     ClipboardIcon,
-    ArrowDownIcon,
     ArrowsPointingOutIcon,
     PencilIcon,
     FolderIcon,
@@ -221,37 +508,75 @@ import {
     ArrowPathIcon
 } from '@heroicons/vue/24/solid';
 
-// Available components that can be dragged
+// Component registry - maps IDs to component metadata
+const componentRegistry = ref({
+    'overview': {
+        type: 'overview',
+        title: 'Server Overview',
+        icon: ServerIcon,
+        iconColor: 'text-blue-400'
+    },
+    'logs': {
+        type: 'logs',
+        title: 'Recent Logs',
+        icon: ClipboardIcon,
+        iconColor: 'text-blue-400'
+    },
+    'cpu-chart': {
+        type: 'metrics',
+        title: 'CPU Usage',
+        icon: ChartBarIcon,
+        iconColor: 'text-blue-400'
+    }
+});
+
+// Available components that can be added
 const availableComponents = ref([
     {
         name: 'Terminal',
         type: 'terminal',
         icon: CommandLineIcon,
         iconColor: 'text-green-400',
-        defaultSize: { cols: 4, rows: 2 }
+        defaultSize: { w: 4, h: 2 }
     },
     {
         name: 'Metrics',
         type: 'metrics',
         icon: ChartBarIcon,
         iconColor: 'text-blue-400',
-        defaultSize: { cols: 4, rows: 2 }
+        defaultSize: { w: 4, h: 2 }
     },
     {
         name: 'File Browser',
         type: 'files',
         icon: ClipboardIcon,
         iconColor: 'text-yellow-400',
-        defaultSize: { cols: 4, rows: 2 }
+        defaultSize: { w: 4, h: 2 }
     },
     {
         name: 'Network',
         type: 'network',
         icon: ServerIcon,
         iconColor: 'text-purple-400',
-        defaultSize: { cols: 4, rows: 2 }
+        defaultSize: { w: 4, h: 2 }
     }
 ]);
+
+// Initial layout configuration for GridLayout
+const layout = ref([
+    { x: 0, y: 0, w: 8, h: 2, i: 'overview' },
+    { x: 8, y: 0, w: 4, h: 3, i: 'logs' },
+    { x: 0, y: 2, w: 4, h: 1, i: 'cpu-chart' }
+]);
+
+// For editing component titles
+const editingTitle = ref(null);
+const titleEditValue = ref('');
+const hoveredComponent = ref(null);
+const titleInput = ref(null);
+
+// Component counter for unique IDs
+let componentCounter = 1;
 
 // Server data
 const servers = ref([
@@ -291,418 +616,173 @@ const connections = ref([
     { source: '192.168.1.105', target: '8.8.8.8', protocol: 'DNS', status: 'ACTIVE' }
 ]);
 
-// Dashboard components
-const dashboardComponents = ref([
-    {
-        id: 'overview',
-        type: 'overview',
-        title: 'Server Overview',
-        icon: ServerIcon,
-        iconColor: 'text-blue-400',
-        size: { cols: 8, rows: 2 },
-        position: { x: 0, y: 0 }
-    },
-    {
-        id: 'logs',
-        type: 'logs',
-        title: 'Recent Logs',
-        icon: ClipboardIcon,
-        iconColor: 'text-blue-400',
-        size: { cols: 4, rows: 3 },
-        position: { x: 8, y: 0 }
-    },
-    {
-        id: 'cpu-chart',
-        type: 'metrics',
-        title: 'CPU Usage',
-        icon: ChartBarIcon,
-        iconColor: 'text-blue-400',
-        size: { cols: 4, rows: 1 },
-        position: { x: 0, y: 2 }
-    }
-]);
-
-// For editing component titles
-const editingTitle = ref(null);
-const showEditIcon = ref(null);
-const titleInput = ref(null);
-
-// Component counter for unique IDs
-let componentCounter = 1;
-
 // CPU data for the chart
 const cpuData = ref([15, 25, 40, 30, 35, 55, 35, 30, 45, 60, 40, 35]);
+// Active sidebar component
+const activeComponent = ref('dashboard');
 
-// For drop zone placeholder
-const showDropZone = ref(true);
-const isDragging = ref(false);
+// Sidebar navigation items
+const navigationItems = [
+    { id: 'dashboard', name: 'Dashboard', icon: ServerIcon, color: 'text-blue-400' },
+    { id: 'server-management', name: 'Servers', icon: FolderIcon, color: 'text-yellow-400' },
+    { id: 'settings', name: 'Settings', icon: CogIcon, color: 'text-gray-400' },
+];
 
-// Dashboard grid reference
-const dashboardGrid = ref(null);
+// Recent logs (for dashboard)
+const recentLogs = computed(() => logs.value.slice(0, 5));
 
-// Grid cell sizes
-const cellSize = ref({ width: 0, height: 0 });
+// File/folder names only for File Browser Widget
+const folders = computed(() => files.value.map(f => f.name));
 
-// Drag preview state
-const dragPreview = ref({
-    visible: false,
-    x: 0,
-    y: 0,
-    width: 0,
-    height: 0,
-    componentType: null,
-    adjacentComponents: []
+// Network widget data
+const networkConnections = computed(() => connections.value);
+
+// Terminal
+const terminalInput = ref('');
+function executeCommand() {
+    // Very basic terminal logic for demo purposes
+    if (terminalInput.value.trim().toLowerCase() === 'help') {
+        logs.value.unshift({
+            type: 'info',
+            message: 'Available commands: help, clear',
+            time: 'just now'
+        });
+    } else if (terminalInput.value.trim().toLowerCase() === 'clear') {
+        logs.value.splice(0, logs.value.length);
+    } else {
+        logs.value.unshift({
+            type: 'info',
+            message: `Unknown command: ${terminalInput.value}`,
+            time: 'just now'
+        });
+    }
+    terminalInput.value = '';
+}
+
+// Server selection
+const selectedServer = ref(null);
+
+// Show add server modal
+const showAddServerModal = ref(false);
+
+// New server form
+const newServer = ref({
+    name: '',
+    ip: '',
+    type: 'web',
+    location: 'US East',
+    authMethod: 'ssh',
+    sshKey: null,
+    password: '',
+    sshPort: 22
 });
 
-// Calculate grid cell size
-onMounted(() => {
-    calculateCellSize();
-    window.addEventListener('resize', calculateCellSize);
-});
-
-onUnmounted(() => {
-    window.removeEventListener('resize', calculateCellSize);
-});
-
-function calculateCellSize() {
-    if (dashboardGrid.value) {
-        const rect = dashboardGrid.value.getBoundingClientRect();
-        cellSize.value = {
-            width: rect.width / 12, // 12 columns grid
-            height: 100 // Base row height
-        };
-    }
-}
-
-// Component position functions
-function getComponentPosition(component) {
-    // Components are positioned using CSS grid
-    return {};
-}
-
-// Drag and drop functionality
-function onDragStart(event, component) {
-    // Set data for drag operation
-    event.dataTransfer.setData('componentType', component.type);
-    event.dataTransfer.setData('name', component.name);
-    event.dataTransfer.setData('icon', component.icon.name);
-    event.dataTransfer.setData('iconColor', component.iconColor);
-    event.dataTransfer.setData('cols', component.defaultSize.cols);
-    event.dataTransfer.setData('rows', component.defaultSize.rows);
-
-    // Create a preview element
-    const dragImage = document.createElement('div');
-    dragImage.classList.add('invisible');
-    document.body.appendChild(dragImage);
-    event.dataTransfer.setDragImage(dragImage, 0, 0);
-
-    // Set dragging state
-    isDragging.value = true;
-
-    // Store component type for preview
-    dragPreview.value.componentType = component.type;
-
-    // Set timeout to remove the temporary element
-    setTimeout(() => {
-        document.body.removeChild(dragImage);
-    }, 0);
-}
-
-function onDragOver(event) {
-    event.preventDefault();
-
-    if (!dashboardGrid.value) return;
-
-    // Calculate grid cell size from current layout
-    const rect = dashboardGrid.value.getBoundingClientRect();
-    const gridWidth = rect.width;
-    const cellWidth = gridWidth / 12; // 12 columns grid
-
-    // Get mouse position relative to grid
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
-
-    // Calculate which cell the mouse is over
-    const cellX = Math.max(0, Math.min(11, Math.floor(x / cellWidth)));
-    const cellY = Math.floor(y / cellSize.value.height);
-
-    // Get component size from drag data or use default
-    const cols = parseInt(event.dataTransfer.getData('cols')) || 4;
-    const rows = parseInt(event.dataTransfer.getData('rows')) || 2;
-
-    // Limit to fit within the grid
-    const limitedCols = Math.min(cols, 12 - cellX);
-
-    // Update preview position and size
-    dragPreview.value = {
-        visible: true,
-        x: cellX * cellWidth,
-        y: cellY * cellSize.value.height,
-        width: limitedCols * cellWidth - 16, // Account for gap
-        height: rows * cellSize.value.height - 16, // Account for gap
-        componentType: dragPreview.value.componentType,
-        cellX,
-        cellY,
-        cols: limitedCols,
-        rows
-    };
-
-    // Find components that need to move
-    findAdjacentComponents(cellX, cellY, limitedCols, rows);
-}
-
-function onDragLeave(event) {
-    // Check if the mouse has left the grid container
-    if (!dashboardGrid.value) return;
-
-    const rect = dashboardGrid.value.getBoundingClientRect();
-    if (
-        event.clientX < rect.left ||
-        event.clientX >= rect.right ||
-        event.clientY < rect.top ||
-        event.clientY >= rect.bottom
-    ) {
-        // Hide preview when leaving the grid
-        dragPreview.value.visible = false;
-        clearAdjacentComponents();
-    }
-}
-
-function onDrop(event) {
-    event.preventDefault();
-
-    // Hide preview
-    const preview = { ...dragPreview.value };
-    dragPreview.value.visible = false;
-    isDragging.value = false;
-    clearAdjacentComponents();
-
-    if (!preview.cellX && preview.cellX !== 0) return;
-
-    // Get dropped component type
-    const componentType = event.dataTransfer.getData('componentType');
-    const componentName = event.dataTransfer.getData('name');
-    const iconName = event.dataTransfer.getData('icon');
-    const iconColor = event.dataTransfer.getData('iconColor');
-
-    // Find the icon component
-    const iconComponent = {
-        'CommandLineIcon': CommandLineIcon,
-        'ChartBarIcon': ChartBarIcon,
-        'ClipboardIcon': ClipboardIcon,
-        'ServerIcon': ServerIcon
-    }[iconName] || ServerIcon;
-
-    // Add the new component to the dashboard
-    const newComponent = {
-        id: `${componentType}-${componentCounter++}`,
-        type: componentType,
-        title: componentName || `New ${componentType}`,
-        icon: iconComponent,
-        iconColor: iconColor || 'text-blue-400',
-        size: { cols: preview.cols, rows: preview.rows },
-        position: { x: preview.cellX, y: preview.cellY }
-    };
-
-    dashboardComponents.value.push(newComponent);
-
-    // Hide drop zone after adding a component if we have too many components
-    if (dashboardComponents.value.length > 5) {
-        showDropZone.value = false;
-    }
-}
-
-// Find components that would need to move to make space
-function findAdjacentComponents(cellX, cellY, cols, rows) {
-    // Reset previous adjacent components
-    clearAdjacentComponents();
-
-    // Calculate grid positions that would be affected
-    const affectedPositions = [];
-    for (let i = 0; i < cols; i++) {
-        for (let j = 0; j < rows; j++) {
-            affectedPositions.push(`${cellX + i}-${cellY + j}`);
-        }
-    }
-
-    // In a real implementation, check which components overlap
-    // For now, just set a placeholder
-    dragPreview.value.adjacentComponents = dashboardComponents.value.map(c => c.id);
-}
-
-// Clear adjacent components marking
-function clearAdjacentComponents() {
-    dragPreview.value.adjacentComponents = [];
-}
-
-// Check if a component is adjacent to the current drag preview
-function isAdjacent(componentId) {
-    return dragPreview.value.visible &&
-        dragPreview.value.adjacentComponents.includes(componentId);
-}
-
-// Component reordering functionality
-function startDrag(event, component) {
-    // Only initiate drag if not editing title and not using resize handle
-    if (editingTitle.value || event.target.closest('.resize-handle')) {
-        return;
-    }
-
-    // Create a custom draggable element
-    const dragElement = document.createElement('div');
-    dragElement.textContent = component.title;
-    dragElement.classList.add('invisible');
-    document.body.appendChild(dragElement);
-
-    // Setup drag operation
-    event.dataTransfer = event.dataTransfer || new DataTransfer();
-    event.dataTransfer.setDragImage(dragElement, 0, 0);
-    event.dataTransfer.setData('componentId', component.id);
-    event.dataTransfer.setData('action', 'reorder');
-
-    // Start drag operation
-    event.target.closest('.component-item').draggable = true;
-
-    setTimeout(() => {
-        document.body.removeChild(dragElement);
-    }, 0);
-}
-
-// Resizing functionality
-const resizing = ref({
-    active: false,
-    componentId: null,
-    startX: 0,
-    startY: 0,
-    startCols: 0,
-    startRows: 0,
-    component: null
-});
-
-function startResize(event, component) {
-    event.preventDefault();
-    event.stopPropagation();
-
-    // Set resizing state
-    resizing.value = {
-        active: true,
-        componentId: component.id,
-        startX: event.clientX,
-        startY: event.clientY,
-        startCols: component.size.cols,
-        startRows: component.size.rows,
-        component
-    };
-
-    // Add event listeners
-    document.addEventListener('mousemove', onResizeMove);
-    document.addEventListener('mouseup', onResizeEnd);
-}
-
-function onResizeMove(event) {
-    if (!resizing.value.active || !dashboardGrid.value) return;
-
-    // Calculate delta movement
-    const deltaX = event.clientX - resizing.value.startX;
-    const deltaY = event.clientY - resizing.value.startY;
-
-    // Get grid cell size
-    const rect = dashboardGrid.value.getBoundingClientRect();
-    const cellWidth = rect.width / 12;
-
-    // Calculate new column/row spans (snap to grid)
-    const deltaColsRaw = deltaX / cellWidth;
-    const deltaRowsRaw = deltaY / cellSize.value.height;
-
-    // Round to nearest whole number for grid snapping
-    const deltaCols = Math.round(deltaColsRaw);
-    const deltaRows = Math.round(deltaRowsRaw);
-
-    // Update component size with constraints
-    const component = dashboardComponents.value.find(c => c.id === resizing.value.componentId);
-    if (component) {
-        // Ensure minimum size and fit within grid
-        const newCols = Math.max(1, Math.min(12, resizing.value.startCols + deltaCols));
-        const newRows = Math.max(1, resizing.value.startRows + deltaRows);
-
-        component.size.cols = newCols;
-        component.size.rows = newRows;
-    }
-}
-
-function onResizeEnd() {
-    resizing.value.active = false;
-    document.removeEventListener('mousemove', onResizeMove);
-    document.removeEventListener('mouseup', onResizeEnd);
-}
-
-// Component title editing
-function startEditingTitle(componentId) {
-    editingTitle.value = componentId;
-
-    // Focus the input field after rendering
-    nextTick(() => {
-        if (titleInput.value) {
-            titleInput.value.focus();
-        }
+function addNewServer() {
+    servers.value.push({
+        name: newServer.value.name,
+        ip: newServer.value.ip,
+        location: newServer.value.location,
+        status: 'online'
     });
+    showAddServerModal.value = false;
+
+    // Reset form
+    newServer.value = {
+        name: '',
+        ip: '',
+        type: 'web',
+        location: 'US East',
+        authMethod: 'ssh',
+        sshKey: null,
+        password: '',
+        sshPort: 22
+    };
 }
 
-function finishEditingTitle() {
-    editingTitle.value = null;
-}
+// User settings
+const userSettings = ref({
+    username: 'admin',
+    email: 'admin@example.com',
+    defaultSshKey: null,
+    emailNotifications: true,
+    smsNotifications: false,
+    dashboardNotifications: true,
+    sshKeys: [
+        { id: 'key1', name: 'Main Key', fingerprint: 'AA:BB:CC:DD:EE:FF' },
+        { id: 'key2', name: 'Backup Key', fingerprint: '11:22:33:44:55:66' }
+    ]
+});
 
-// Remove a component
-function removeComponent(id) {
-    dashboardComponents.value = dashboardComponents.value.filter(c => c.id !== id);
-    if (dashboardComponents.value.length < 5) {
-        showDropZone.value = true;
-    }
-}
-
-// Helper functions for colors
-function statusColor(status) {
-    switch (status) {
-        case 'online': return 'bg-green-500';
-        case 'offline': return 'bg-red-500';
-        case 'warning': return 'bg-yellow-500';
-        default: return 'bg-gray-500';
-    }
-}
-
-function logTypeColor(type) {
+// Utility to get log class
+function getLogClass(type) {
     switch (type) {
-        case 'error': return 'border-red-500';
-        case 'warning': return 'border-yellow-500';
-        case 'info': return 'border-blue-500';
-        default: return 'border-gray-500';
+        case 'error':
+            return 'bg-red-600 text-white';
+        case 'warning':
+            return 'bg-yellow-500 text-black';
+        default:
+            return 'bg-gray-700 text-white';
+    }
+}
+
+// Utility to get server status color
+function getStatusColor(status) {
+    switch (status) {
+        case 'online':
+        case 'ok':
+            return 'bg-green-400';
+        case 'warning':
+            return 'bg-yellow-400';
+        case 'offline':
+        case 'error':
+            return 'bg-red-500';
+        default:
+            return 'bg-gray-500';
     }
 }
 </script>
 
-<style scoped>
-/* Grid layout */
-.grid {
-    display: grid;
-    grid-template-columns: repeat(12, 1fr);
-    grid-auto-rows: 100px;
-    gap: 1rem;
+<style>
+/* vue3-grid-layout classes */
+.vue-grid-layout {
+    background: transparent;
 }
 
-/* Animation for component movement */
-.component-item {
-    transition: transform 0.3s ease, grid-column 0.3s ease, grid-row 0.3s ease;
-    position: relative;
+.vue-grid-item {
+    transition: all 200ms ease;
+    transition-property: left, top, right;
 }
 
-.will-move {
-    transform: translateY(8px);
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-    z-index: 5;
+.vue-grid-item.vue-grid-placeholder {
+    background: rgba(59, 130, 246, 0.2) !important;
+    border: 1px dashed #3b82f6 !important;
+    z-index: 2;
+    opacity: 0.8;
 }
 
+.vue-grid-item.vue-draggable-dragging {
+    z-index: 10;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+}
+
+.vue-grid-item.vue-resizable-resizing {
+    z-index: 10;
+    opacity: 0.9;
+}
+
+.vue-resizable-handle {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    bottom: 0;
+    right: 0;
+    background: transparent;
+    cursor: se-resize;
+}
+
+/* Custom styles */
 .resize-handle {
-    cursor: nwse-resize;
+    cursor: se-resize;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -716,18 +796,7 @@ function logTypeColor(type) {
     background-color: rgba(59, 130, 246, 0.1);
 }
 
-.component-header {
-    padding: 0.75rem;
-}
-
-.component-content {
-    padding: 0 0.75rem 0.75rem 0.75rem;
-    height: calc(100% - 3rem);
-    overflow: auto;
-}
-
 .drag-handle {
-    padding: 0.25rem;
-    border-radius: 4px;
+    cursor: move;
 }
 </style>

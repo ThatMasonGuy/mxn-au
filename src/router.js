@@ -33,7 +33,7 @@ const routes = [
   },
   {
     path: '/server',
-    alias: '/Server',
+    alias: '/Servers',
     name: 'Server',
     component: () => import('@/pages/server/Dashboard.vue'),
     meta: {
