@@ -20,9 +20,13 @@ export default defineConfig({
       plugins: [tailwind(), autoprefixer()],
     },
   },
-  plugins: [
-    vue()
-  ],
+  plugins: [vue({
+    template: {
+      compilerOptions: {
+        isCustomElement: tag => tag === 'lottie-player'
+      }
+    }
+  })],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

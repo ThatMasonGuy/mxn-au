@@ -1,60 +1,60 @@
 // src/router.js
 import { createRouter, createWebHistory } from 'vue-router';
-import ComingSoon from '@/pages/ComingSoon.vue';
+import ComingSoon from '@/pages/MasonUnleashed.vue';
 
 const comingSoon = true;
 
 const routes = [
   // ------------------- Testing Routes -------------------
 
-  {
-    path: '/minecraft',
-    alias: '/Minecraft',
-    name: 'Minecraft',
-    component: () => import('@/pages/minecraft/MC_Perms.vue'),
-    meta: {
-      requiresAuth: false,
-      requiresTHOverlay: false,
-      requiresTHAdminOverlay: false,
-      title: 'Minecraft',
-    },
-  },
-  {
-    path: '/minecraft/logs',
-    alias: '/Minecraft/Logs',
-    name: 'Minecraft - Logs',
-    component: () => import('@/pages/minecraft/MC_LogViewer.vue'),
-    meta: {
-      requiresAuth: false,
-      requiresTHOverlay: false,
-      requiresTHAdminOverlay: false,
-      title: 'Minecraft - Logs',
-    },
-  },
-  {
-    path: '/server',
-    alias: '/Servers',
-    name: 'Server',
-    component: () => import('@/pages/server/Dashboard.vue'),
-    meta: {
-      requiresAuth: false,
-      requiresTHOverlay: false,
-      requiresTHAdminOverlay: false,
-      title: 'Server',
-    },
-  },
-  {
-    path: '/server/old',
-    alias: '/Server/Old',
-    name: 'Server - Old',
-    component: () => import('@/pages/server/DashboardOLD.vue'),
-    meta: {
-      requiresAuth: false,
-      requiresTHOverlay: false,
-      requiresTHAdminOverlay: false,
-      title: 'Server - Old',
-    },
-  },
+  //{
+  //  path: '/minecraft',
+  //  alias: '/Minecraft',
+  //  name: 'Minecraft',
+  //  component: () => import('@/pages/minecraft/MC_Perms.vue'),
+  //  meta: {
+  //    requiresAuth: false,
+  //    requiresTHOverlay: false,
+  //    requiresTHAdminOverlay: false,
+  //    title: 'Minecraft',
+  //  },
+  //},
+  //{
+  //  path: '/minecraft/logs',
+  //  alias: '/Minecraft/Logs',
+  //  name: 'Minecraft - Logs',
+  //  component: () => import('@/pages/minecraft/MC_LogViewer.vue'),
+  //  meta: {
+  //    requiresAuth: false,
+  //    requiresTHOverlay: false,
+  //    requiresTHAdminOverlay: false,
+  //    title: 'Minecraft - Logs',
+  //  },
+  //},
+  //{
+  //  path: '/server',
+  //  alias: '/Servers',
+  //  name: 'Server',
+  //  component: () => import('@/pages/server/Dashboard.vue'),
+  //  meta: {
+  //    requiresAuth: false,
+  //    requiresTHOverlay: false,
+  //    requiresTHAdminOverlay: false,
+  //    title: 'Server',
+  //  },
+  //},
+  //{
+  //  path: '/server/old',
+  //  alias: '/Server/Old',
+  //  name: 'Server - Old',
+  //  component: () => import('@/pages/server/DashboardOLD.vue'),
+  //  meta: {
+  //    requiresAuth: false,
+  //    requiresTHOverlay: false,
+  //    requiresTHAdminOverlay: false,
+  //    title: 'Server - Old',
+  //  },
+  //},
 
   // ------------------- TopHeroes Routes -------------------
 
@@ -98,10 +98,10 @@ const routes = [
     path: '/topheroes/events',
     alias: '/TopHeroes/Events',
     name: 'TopHeroes - Events',
-    component: () => import('@/pages/topHeroes/TH_EventGuides.vue'),
+    component: () => import('@/pages/topHeroes/velaris/TH_VLR_Event.vue'),
     meta: {
       requiresAuth: false,
-      requiresTHOverlay: true,
+      requiresTHOverlay: false,
       requiresTHAdminOverlay: false,
       title: 'TopHeroes - Events',
     },
