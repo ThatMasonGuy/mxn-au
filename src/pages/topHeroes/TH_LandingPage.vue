@@ -2,7 +2,7 @@
 <template>
     <div class="flex flex-col h-full bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white relative">
         <div class="absolute inset-0 bg-gray-800 opacity-60 backdrop-blur-lg z-0"></div>
-        <main class="flex-grow container mx-auto px-4 py-8 z-10">
+        <main class="flex-grow container mx-auto px-4 z-10">
             <h1 class="text-4xl font-bold text-center mb-12">TopHeroes Assistant</h1>
             <div class="flex justify-center">
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

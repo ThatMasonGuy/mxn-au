@@ -6,57 +6,70 @@ const comingSoon = true;
 
 const routes = [
   // ------------------- Testing Routes -------------------
-
-  //{
-  //  path: '/minecraft',
-  //  alias: '/Minecraft',
-  //  name: 'Minecraft',
-  //  component: () => import('@/pages/minecraft/MC_Perms.vue'),
-  //  meta: {
-  //    requiresAuth: false,
-  //    requiresTHOverlay: false,
-  //    requiresTHAdminOverlay: false,
-  //    title: 'Minecraft',
-  //  },
-  //},
-  //{
-  //  path: '/minecraft/logs',
-  //  alias: '/Minecraft/Logs',
-  //  name: 'Minecraft - Logs',
-  //  component: () => import('@/pages/minecraft/MC_LogViewer.vue'),
-  //  meta: {
-  //    requiresAuth: false,
-  //    requiresTHOverlay: false,
-  //    requiresTHAdminOverlay: false,
-  //    title: 'Minecraft - Logs',
-  //  },
-  //},
-  //{
-  //  path: '/server',
-  //  alias: '/Servers',
-  //  name: 'Server',
-  //  component: () => import('@/pages/server/Dashboard.vue'),
-  //  meta: {
-  //    requiresAuth: false,
-  //    requiresTHOverlay: false,
-  //    requiresTHAdminOverlay: false,
-  //    title: 'Server',
-  //  },
-  //},
-  //{
-  //  path: '/server/old',
-  //  alias: '/Server/Old',
-  //  name: 'Server - Old',
-  //  component: () => import('@/pages/server/DashboardOLD.vue'),
-  //  meta: {
-  //    requiresAuth: false,
-  //    requiresTHOverlay: false,
-  //    requiresTHAdminOverlay: false,
-  //    title: 'Server - Old',
-  //  },
-  //},
-
+/*
+  {
+    path: '/minecraft',
+    alias: '/Minecraft',
+    name: 'Minecraft',
+    component: () => import('@/pages/minecraft/MC_Perms.vue'),
+    meta: {
+      requiresAuth: false,
+      requiresTHOverlay: false,
+      requiresTHAdminOverlay: false,
+      title: 'Minecraft',
+    },
+  },
+  {
+    path: '/minecraft/logs',
+    alias: '/Minecraft/Logs',
+    name: 'Minecraft - Logs',
+    component: () => import('@/pages/minecraft/MC_LogViewer.vue'),
+    meta: {
+      requiresAuth: false,
+      requiresTHOverlay: false,
+      requiresTHAdminOverlay: false,
+      title: 'Minecraft - Logs',
+    },
+  },
+  {
+    path: '/server',
+    alias: '/Servers',
+    name: 'Server',
+    component: () => import('@/pages/server/Dashboard.vue'),
+    meta: {
+      requiresAuth: false,
+      requiresTHOverlay: false,
+      requiresTHAdminOverlay: false,
+      title: 'Server',
+    },
+  },
+  {
+    path: '/server/old',
+    alias: '/Server/Old',
+    name: 'Server - Old',
+    component: () => import('@/pages/server/DashboardOLD.vue'),
+    meta: {
+      requiresAuth: false,
+      requiresTHOverlay: false,
+      requiresTHAdminOverlay: false,
+      title: 'Server - Old',
+    },
+  },
+*/
   // ------------------- TopHeroes Routes -------------------
+
+  {
+    path: '/topheroes/upload',
+    alias: '/topheroes/uploads',
+    name: 'Upload',
+    component: () => import('@/pages/UploadFirestoreData.vue'),
+    meta: {
+      requiresAuth: false,
+      requiresTHOverlay: false,
+      requiresTHAdminOverlay: false,
+      title: 'Upload',
+    },
+  },
 
   {
     path: '/topheroes',
@@ -98,12 +111,39 @@ const routes = [
     path: '/topheroes/events',
     alias: '/TopHeroes/Events',
     name: 'TopHeroes - Events',
+    component: () => import('@/pages/topHeroes/TH_EventGuides.vue'),
+    meta: {
+      requiresAuth: false,
+      requiresTHOverlay: true,
+      requiresTHAdminOverlay: false,
+      title: 'TopHeroes - Events',
+    },
+  },
+
+  // ------------------- TopHeroes Velaris Routes -------------------
+
+  {
+    path: '/topheroes/velaris',
+    alias: '/TopHeroes/vlr',
+    name: 'TopHeroes - Velaris',
+    component: () => import('@/pages/topHeroes/velaris/TH_VelarisHome.vue'),
+    meta: {
+      requiresAuth: false,
+      requiresTHOverlay: true,
+      requiresTHAdminOverlay: false,
+      title: 'TopHeroes - Velaris',
+    },
+  },
+  {
+    path: '/topheroes/velaris/events/gvg',
+    alias: '/TopHeroes/vlr/events/gvg',
+    name: 'Velaris Events',
     component: () => import('@/pages/topHeroes/velaris/TH_VLR_Event.vue'),
     meta: {
       requiresAuth: false,
-      requiresTHOverlay: false,
+      requiresTHOverlay: true,
       requiresTHAdminOverlay: false,
-      title: 'TopHeroes - Events',
+      title: 'Velaris Events',
     },
   },
 
@@ -114,6 +154,30 @@ const routes = [
     alias: '/TopHeroes/Events/Dark-Empire-Invasion',
     name: 'TopHeroes - Dark Empire Invasion',
     component: () => import('@/pages/topHeroes/events/TH_DarkEmpireInvasion.vue'),
+    meta: {
+      requiresAuth: false,
+      requiresTHOverlay: true,
+      requiresTHAdminOverlay: false,
+      title: 'TopHeroes - Events',
+    },
+  },
+  {
+    path: '/topheroes/events/kingdom-vs-kingdom',
+    alias: '/TopHeroes/Events/kvk',
+    name: 'TopHeroes - Kingdom vs. Kingdom',
+    component: () => import('@/pages/topHeroes/events/TH_KingdomVsKingdom.vue'),
+    meta: {
+      requiresAuth: false,
+      requiresTHOverlay: true,
+      requiresTHAdminOverlay: false,
+      title: 'TopHeroes - Events',
+    },
+  },
+  {
+    path: '/topheroes/events/guild-race',
+    alias: '/TopHeroes/Events/gr',
+    name: 'TopHeroes - Guild Race',
+    component: () => import('@/pages/topHeroes/events/TH_GuildRace.vue'),
     meta: {
       requiresAuth: false,
       requiresTHOverlay: true,

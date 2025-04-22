@@ -6,7 +6,7 @@
         <div class="absolute inset-0 bg-gray-800 opacity-60 backdrop-blur-lg z-0"></div>
 
         <!-- Main content -->
-        <main class="flex-grow container mx-auto px-4 py-8 z-10">
+        <main class="flex-grow container mx-auto px-4 z-10">
             <h1 class="text-4xl font-bold text-center mb-12">Event Guides</h1>
 
             <div class="flex justify-center">
@@ -14,10 +14,10 @@
                     <NavCard @click="navigateTo('/topheroes/events/dark-empire-invasion')" :image="DarkEmpireInvasion"
                         title="Dark Empire Invasion" text="Find out how many speed-ups you have." />
 
-                    <NavCard :comingSoon="true" :image="KingdomDuels" title="Kingdom Duels"
+                    <NavCard @click="navigateTo('/topheroes/events/kvk')" :image="KingdomDuels" title="Kingdom Duels"
                         text="Build the best team you can, personalised to you." />
 
-                    <NavCard :comingSoon="true" :image="TopHeroesBanner" title="Guild Arms Race"
+                    <NavCard @click="navigateTo('/topheroes/events/guild-race')" :image="TopHeroesBanner" title="Guild Race"
                         text="Learn tips and tricks to beat even the toughest events." />
 
                     <NavCard :comingSoon="true" :image="AncientBattlefield" title="Ancient Battlefield"

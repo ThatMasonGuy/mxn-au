@@ -1,24 +1,29 @@
 <template>
     <div v-cloak class="min-h-screen flex flex-col bg-gray-50 text-gray-800 font-sans">
         <header class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white shadow-lg">
-            <div class="container mx-auto py-6 px-4 md:px-8">
-                <h1 class="text-3xl font-bold mb-2">VLR GvG Event Dashboard</h1>
-                <p class="text-indigo-100">Interactive analysis and visualization of player performance</p>
-
-                <div class="mt-4 mb-2">
-                    <div class="flex flex-wrap gap-2">
-                        <button @click="toggleSummaryView"
-                            class="px-4 py-2 bg-white text-indigo-700 rounded-md shadow-sm hover:shadow-md transition-all font-medium">
-                            {{ summaryView ? 'Show Data Table' : 'Show Summary View' }}
-                        </button>
-                        <button @click="toggleComparisonView"
-                            class="px-4 py-2 bg-white text-indigo-700 rounded-md shadow-sm hover:shadow-md transition-all font-medium">
-                            {{ comparisonView ? 'Hide Comparison' : 'Compare Players' }}
-                        </button>
-                    </div>
+            <div class="container mx-auto py-6 px-4 md:px-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                <h1 class="text-3xl font-bold mb-1">
+                    {{ guildName }} – {{ eventName }} Event Dashboard
+                </h1>
+                <p class="text-indigo-100 text-sm">Interactive analysis and visualization of player performance</p>
+                </div>
+                
+                <div class="flex gap-3 mt-2 md:mt-0">
+                <button @click="toggleSummaryView"
+                    class="px-4 py-2 bg-white text-indigo-700 rounded-md shadow-sm hover:shadow-md transition-all font-medium">
+                    {{ summaryView ? 'Player  Data' : 'Summary View' }}
+                </button>
+                <!-- 
+                <button @click="changeDataset"
+                    class="px-4 disable py-2 bg-white text-indigo-700 rounded-md shadow-sm hover:shadow-md transition-all font-medium">
+                    Change Dataset
+                </button>
+                -->
                 </div>
             </div>
-        </header>
+            </header>
+
 
         <main class="container mx-auto px-4 md:px-8 py-6 flex-grow">
             <section v-show="summaryView" class="mb-12" ref="summarySectionRef">
@@ -26,25 +31,30 @@
                     <h2 class="text-2xl font-bold mb-4 text-gray-700">Event Summary</h2>
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                         <div class="bg-indigo-50 p-4 rounded-lg text-center md:text-left">
-                            <div class="text-indigo-700 font-medium">Total Players</div>
-                            <div class="text-3xl font-bold">{{ totalParticipants }}</div>
+                            <div class="text-indigo-700 text-center font-medium">Total Players</div>
+                            <div class="text-indigo-700 opacity-0 text-center text-sm">Total</div>
+                            <div class="text-3xl text-center font-bold">{{ totalParticipants }}</div>
                         </div>
                         <div class="bg-purple-50 p-4 rounded-lg text-center md:text-left">
-                            <div class="text-purple-700 font-medium">Active Players</div>
-                            <div class="text-3xl font-bold">{{ activeParticipants }}</div>
+                            <div class="text-purple-700 text-center font-medium">Active Players</div>
+                            <div class="text-indigo-700 opacity-70 text-center text-sm">Overall</div>
+                            <div class="text-3xl text-center font-bold">{{ activeParticipants }}</div>
                         </div>
                         <div class="bg-blue-50 p-4 rounded-lg text-center md:text-left">
-                            <div class="text-blue-700 font-medium">Average Power</div>
-                            <div class="text-3xl font-bold">{{ averagePower }}M</div>
+                            <div class="text-blue-700 text-center font-medium">Avg Power</div>
+                            <div class="text-indigo-700 opacity-70 text-center text-sm">Active</div>
+                            <div class="text-3xl text-center font-bold">{{ averagePower }}M</div>
                         </div>
                         <div class="bg-green-50 p-4 rounded-lg text-center md:text-left">
-                            <div class="text-green-700 font-medium">Avg. Castle Level</div>
-                            <div class="text-3xl font-bold">{{ averageCastleLevel }}</div>
+                            <div class="text-green-700 text-center font-medium">Avg Castle</div>
+                            <div class="text-indigo-700 opacity-70 text-center text-sm">Active</div>
+                            <div class="text-3xl text-center font-bold">{{ averageCastleLevel }}</div>
                         </div>
                     </div>
                     <div class="flex flex-col md:flex-row gap-8">
                         <div class="w-full md:w-1/2">
-                            <h3 class="text-xl font-semibold mb-3">Top Performers (Total Score)</h3>
+                            <h3 class="text-xl font-semibold">Top Performers</h3>
+                            <h3 class="text-sm opacity-70 mb-3">Overall Score</h3>
                             <div class="overflow-x-auto">
                                 <table class="min-w-full bg-white">
                                     <thead>
@@ -74,7 +84,8 @@
                             </div>
                         </div>
                         <div class="w-full md:w-1/2">
-                            <h3 class="text-xl font-semibold mb-3">Efficiency Leaders (Score per Power)</h3>
+                            <h3 class="text-xl font-semibold">Efficiency Leaders</h3>
+                            <h3 class="text-sm opacity-70 mb-3">Overall Score/Power</h3>
                             <div class="overflow-x-auto">
                                 <table class="min-w-full bg-white">
                                     <thead>
@@ -106,212 +117,138 @@
                     </div>
                 </div>
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                    <div
+                        ref="cardObserverEl"
+                        class="bg-white rounded-lg shadow-md px-4 sm:px-6 md:px-8 py-6 sm:py-8
+                                flex flex-col items-center justify-center text-center gap-3 sm:gap-4"
+                        >
+                        <h3 class="text-lg sm:text-xl font-semibold text-gray-600">
+                            Overall Score
+                        </h3>
+
+                        <CountUp
+                            :endVal="totalScoreOverall"
+                            :duration="2.5"
+                            :options="{ separator: ',' }"
+                            class="text-3xl xs:text-4xl sm:text-5xl md:text-6xl font-extrabold animate-score-gradient"
+                        />
+                    </div>
                     <div class="bg-white rounded-lg shadow-md p-4">
-                        <h3 class="text-xl font-semibold mb-4">Score Distribution by Role</h3>
                         <div class="chart-container">
-                            <canvas id="roleScoreChart" ref="roleScoreChartRef"></canvas>
+                            <v-chart :option="roleChartOption" autoresize id="roleScoreChart"
+                                ref="roleScoreChartRef"></v-chart>
                         </div>
                     </div>
                     <div class="bg-white rounded-lg shadow-md p-4">
-                        <h3 class="text-xl font-semibold mb-4">Castle Level vs. Average Score</h3>
                         <div class="chart-container">
-                            <canvas id="castleScoreChart" ref="castleScoreChartRef"></canvas>
-                        </div>
-                    </div>
-                </div>
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <div class="bg-white rounded-lg shadow-md p-4">
-                        <h3 class="text-xl font-semibold mb-4">Power vs. Score</h3>
-                        <div class="chart-container">
-                            <canvas id="powerScoreChart" ref="powerScoreChartRef"></canvas>
+                            <v-chart :option="castleScoreChartOption" autoresize id="castleScoreChart"
+                                ref="castleScoreChartRef"></v-chart>
                         </div>
                     </div>
                     <div class="bg-white rounded-lg shadow-md p-4">
-                        <h3 class="text-xl font-semibold mb-4">Daily Performance (Top 5)</h3>
                         <div class="chart-container">
-                            <canvas id="dailyPerformanceChart" ref="dailyPerformanceChartRef"></canvas>
+                            <v-chart :option="scatterOption" autoresize id="powerScoreChart"
+                                ref="powerScoreChartRef"></v-chart>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow-md p-4">
+                        <div class="chart-container">
+                            <v-chart :option="dailyOption" autoresize id="dailyPerformanceChart"
+                                ref="dailyPerformanceChartRef"></v-chart>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow-md p-4">
+                        <div class="chart-container">
+                            <v-chart :option="totalScoreByDayPieOption" autoresize id="scoreByDayPie" />
                         </div>
                     </div>
                 </div>
             </section>
 
-            <section v-show="comparisonView" ref="comparisonSectionRef" class="mb-12 bg-white rounded-lg shadow-md p-6">
-                <h2 class="text-2xl font-bold mb-4 text-gray-700">Player Comparison</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                    <div>
-                        <label for="compare1" class="block text-sm font-medium text-gray-700 mb-1">Player 1</label>
-                        <div class="relative">
-                            <input id="compare1" v-model="comparisonSearch1" @input="filterComparison(1)" @keydown.tab.prevent="handleTabAutocomplete(1)"
-                                @blur="() => setTimeout(() => filteredComparisonPlayers1 = [], 200)"
-                                class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-                                placeholder="Search for player..." />
-                            <div v-if="comparisonSearch1 && filteredComparisonPlayers1.length"
-                                class="absolute z-10 w-full mt-1 bg-white shadow-lg rounded-md border border-gray-200 max-h-60 overflow-y-auto">
-                                <div v-for="player in filteredComparisonPlayers1" :key="player.Player"
-                                    @click="selectComparisonPlayer(player, 1)"
-                                    class="px-4 py-2 hover:bg-indigo-50 cursor-pointer">
-                                    {{ player.Player }}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div>
-                        <label for="compare2" class="block text-sm font-medium text-gray-700 mb-1">Player 2</label>
-                        <div class="relative">
-                            <input id="compare2" v-model="comparisonSearch2" @input="filterComparison(2)" @keydown.tab.prevent="handleTabAutocomplete(2)"
-                                @blur="() => setTimeout(() => filteredComparisonPlayers2 = [], 200)"
-                                class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-                                placeholder="Search for player..." />
-                            <div v-if="comparisonSearch2 && filteredComparisonPlayers2.length"
-                                class="absolute z-10 w-full mt-1 bg-white shadow-lg rounded-md border border-gray-200 max-h-60 overflow-y-auto">
-                                <div v-for="player in filteredComparisonPlayers2" :key="player.Player"
-                                    @click="selectComparisonPlayer(player, 2)"
-                                    class="px-4 py-2 hover:bg-indigo-50 cursor-pointer">
-                                    {{ player.Player }}
-                                </div>
-                            </div>
+            <section v-show="!summaryView" ref="comparisonSectionRef" class="mb-8 bg-white rounded-lg shadow-md p-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                    <h2 class="text-2xl font-bold text-gray-700">
+                        Player Comparison
+                    </h2>
+                    <div class="flex md:justify-end">
+                        <div class="relative w-full md:max-w-sm">
+                        <input
+                            v-model="comparisonSearchTerm"
+                            type="text"
+                            placeholder="Search players to compare..."
+                            @keydown="handleComparisonSearchKeydown"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                        />
+                        <ul
+                            v-if="filteredComparisonSearchResults.length > 0"
+                            class="absolute z-10 bg-white border border-gray-200 w-full rounded-md mt-1 shadow-lg max-h-48 overflow-y-auto"
+                        >
+                            <li
+                            v-for="player in filteredComparisonSearchResults"
+                            :key="player.Player"
+                            @click="addPlayerToComparisonFromSearch(player)"
+                            class="px-4 py-2 cursor-pointer hover:bg-indigo-50 text-sm"
+                            >
+                            {{ player.Player }}
+                            </li>
+                        </ul>
                         </div>
                     </div>
                 </div>
-                <div v-if="comparisonPlayer1 && comparisonPlayer2" class="mb-8">
+                <div v-show="selectedComparisonPlayers.length > 0">
+                <div class="mb-6">
+                    <h3 class="text-lg font-semibold mb-2 text-gray-700">Selected Players for Comparison (Max {{ maxComparisonPlayers }})</h3>
+                    <div v-if="selectedComparisonPlayers.length > 0" class="flex flex-wrap gap-2">
+                        <span v-for="player in selectedComparisonPlayers" :key="player.Player"
+                            class="px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-sm font-medium flex items-center gap-1">
+                            {{ player.Player }}
+                            <button @click="togglePlayerForComparison(player)" class="text-indigo-600 hover:text-indigo-900 ml-1">
+                                &times;
+                            </button>
+                        </span>
+                    </div>
+                    <div v-else class="text-gray-500 text-sm">
+                        Select players from the table below to add them for comparison.
+                    </div>
+                </div>
+
+                <div v-if="selectedComparisonPlayers.length > 0" class="mb-4">
                     <div class="chart-container mb-8">
-                        <canvas id="playerComparisonChart" ref="playerComparisonChartRef"></canvas>
+                        <v-chart :option="comparisonDailyOption" autoresize id="playerComparisonDailyChart"></v-chart>
                     </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div class="bg-gray-50 p-4 rounded-lg">
-                            <h3 class="text-lg font-semibold mb-2 text-indigo-700">{{ comparisonPlayer1.Player }}</h3>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div class="comparison-item p-3 rounded-md bg-white shadow-sm">
-                                    <div class="text-sm text-gray-500">Power</div>
-                                    <div class="text-xl font-semibold">{{ comparisonPlayer1.Power }}M</div>
-                                </div>
-                                <div class="comparison-item p-3 rounded-md bg-white shadow-sm">
-                                    <div class="text-sm text-gray-500">Castle</div>
-                                    <div class="text-xl font-semibold">{{ comparisonPlayer1.Castle }}</div>
-                                </div>
-                                <div class="comparison-item p-3 rounded-md bg-white shadow-sm">
-                                    <div class="text-sm text-gray-500">Role</div>
-                                    <div class="text-xl font-semibold">{{ comparisonPlayer1.Role }}</div>
-                                </div>
-                                <div class="comparison-item p-3 rounded-md bg-white shadow-sm">
-                                    <div class="text-sm text-gray-500">Total Score</div>
-                                    <div class="text-xl font-semibold">{{ formatNumber(comparisonPlayer1['Total Score'])
-                                        }}</div>
-                                </div>
-                                <div class="comparison-item p-3 rounded-md bg-white shadow-sm">
-                                    <div class="text-sm text-gray-500">Total Rank</div>
-                                    <div class="text-xl font-semibold">{{ comparisonPlayer1['Total Rank'] || '-' }}
-                                    </div>
-                                </div>
-                                <div class="comparison-item p-3 rounded-md bg-white shadow-sm">
-                                    <div class="text-sm text-gray-500">Score Per Power</div>
-                                    <div class="text-xl font-semibold">{{ formatNumber(comparisonPlayer1.scorePerPower,
-                                        2) }}</div>
-                                </div>
+                    <TransitionGroup name="fade" tag="div" class="grid gap-6 mt-8 md:grid-cols-2">
+                        <div v-for="p in comparisonCards" :key="p.Player"
+                            class="border rounded-xl p-4 shadow bg-white transition-transform
+                                    transform hover:-translate-y-1 hover:shadow-lg"
+                            :style="{
+                                borderColor: playerColorMap[p.Player],
+                                backgroundColor: washed(playerColorMap[p.Player])
+                            }"
+                            @mouseenter="highlightSeries(p.Player)"
+                            @mouseleave="downplaySeries">
+
+                            <h3 class="font-bold text-lg mb-3"
+                                :class="p.Player === 'Average Player' ? 'text-purple-600' : ''"
+                                :style="{ color: playerColorMap[p.Player] }">
+                            {{ p.Player }}
+                            </h3>
+
+                            <dl class="grid grid-cols-2 gap-4 text-sm">
+                            <div v-for="f in comparisonFields" :key="f.key" class="space-y-1">
+                                <dt class="font-medium text-gray-500">{{ f.label }}</dt>
+                                <dd class="text-gray-900 font-semibold">{{ f.fmt(p[f.key] ?? 0) }}</dd>
                             </div>
+                            </dl>
                         </div>
-                        <div class="bg-gray-50 p-4 rounded-lg">
-                            <h3 class="text-lg font-semibold mb-2 text-purple-700">{{ comparisonPlayer2.Player }}</h3>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div class="comparison-item p-3 rounded-md bg-white shadow-sm">
-                                    <div class="text-sm text-gray-500">Power</div>
-                                    <div class="text-xl font-semibold">{{ comparisonPlayer2.Power }}M</div>
-                                </div>
-                                <div class="comparison-item p-3 rounded-md bg-white shadow-sm">
-                                    <div class="text-sm text-gray-500">Castle</div>
-                                    <div class="text-xl font-semibold">{{ comparisonPlayer2.Castle }}</div>
-                                </div>
-                                <div class="comparison-item p-3 rounded-md bg-white shadow-sm">
-                                    <div class="text-sm text-gray-500">Role</div>
-                                    <div class="text-xl font-semibold">{{ comparisonPlayer2.Role }}</div>
-                                </div>
-                                <div class="comparison-item p-3 rounded-md bg-white shadow-sm">
-                                    <div class="text-sm text-gray-500">Total Score</div>
-                                    <div class="text-xl font-semibold">{{ formatNumber(comparisonPlayer2['Total Score'])
-                                        }}</div>
-                                </div>
-                                <div class="comparison-item p-3 rounded-md bg-white shadow-sm">
-                                    <div class="text-sm text-gray-500">Total Rank</div>
-                                    <div class="text-xl font-semibold">{{ comparisonPlayer2['Total Rank'] || '-' }}
-                                    </div>
-                                </div>
-                                <div class="comparison-item p-3 rounded-md bg-white shadow-sm">
-                                    <div class="text-sm text-gray-500">Score Per Power</div>
-                                    <div class="text-xl font-semibold">{{ formatNumber(comparisonPlayer2.scorePerPower,
-                                        2) }}</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="mt-8 bg-white p-4 rounded-lg shadow-sm">
-                        <h3 class="text-lg font-semibold mb-4">Daily Performance Comparison</h3>
-                        <div class="overflow-x-auto">
-                            <table class="min-w-full">
-                                <thead>
-                                    <tr>
-                                        <th
-                                            class="px-4 py-2 border-b-2 border-gray-200 bg-gray-100 text-left text-sm font-semibold text-gray-600">
-                                            Day</th>
-                                        <th
-                                            class="px-4 py-2 border-b-2 border-gray-200 bg-gray-100 text-left text-sm font-semibold text-gray-600">
-                                            {{ comparisonPlayer1.Player }} Score</th>
-                                        <th
-                                            class="px-4 py-2 border-b-2 border-gray-200 bg-gray-100 text-left text-sm font-semibold text-gray-600">
-                                            {{ comparisonPlayer1.Player }} Rank</th>
-                                        <th
-                                            class="px-4 py-2 border-b-2 border-gray-200 bg-gray-100 text-left text-sm font-semibold text-gray-600">
-                                            {{ comparisonPlayer2.Player }} Score</th>
-                                        <th
-                                            class="px-4 py-2 border-b-2 border-gray-200 bg-gray-100 text-left text-sm font-semibold text-gray-600">
-                                            {{ comparisonPlayer2.Player }} Rank</th>
-                                        <th
-                                            class="px-4 py-2 border-b-2 border-gray-200 bg-gray-100 text-left text-sm font-semibold text-gray-600">
-                                            Difference</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr v-for="day in [1, 2]" :key="day" class="hover:bg-gray-50">
-                                        <td class="px-4 py-2 border-b border-gray-200">Day {{ day }}</td>
-                                        <td class="px-4 py-2 border-b border-gray-200">{{
-                                            formatNumber(comparisonPlayer1[`Score (D${day})`]) }}</td>
-                                        <td class="px-4 py-2 border-b border-gray-200">{{ comparisonPlayer1[`Event Rank
-                                            (D${day})`] || '-' }}</td>
-                                        <td class="px-4 py-2 border-b border-gray-200">{{
-                                            formatNumber(comparisonPlayer2[`Score (D${day})`]) }}</td>
-                                        <td class="px-4 py-2 border-b border-gray-200">{{ comparisonPlayer2[`Event Rank
-                                            (D${day})`] || '-' }}</td>
-                                        <td class="px-4 py-2 border-b border-gray-200"
-                                            :class="{ 'text-green-600': comparisonPlayer1[`Score (D${day})`] > comparisonPlayer2[`Score (D${day})`], 'text-red-600': comparisonPlayer1[`Score (D${day})`] < comparisonPlayer2[`Score (D${day})`] }">
-                                            {{ formatNumber(comparisonPlayer1[`Score (D${day})`] -
-                                            comparisonPlayer2[`Score (D${day})`]) }}
-                                        </td>
-                                    </tr>
-                                    <tr class="bg-gray-50 font-semibold">
-                                        <td class="px-4 py-2 border-b border-gray-200">Total</td>
-                                        <td class="px-4 py-2 border-b border-gray-200">{{
-                                            formatNumber(comparisonPlayer1['Total Score']) }}</td>
-                                        <td class="px-4 py-2 border-b border-gray-200">{{ comparisonPlayer1['Total Rank'] || '-' }}</td>
-                                        <td class="px-4 py-2 border-b border-gray-200">{{
-                                            formatNumber(comparisonPlayer2['Total Score']) }}</td>
-                                        <td class="px-4 py-2 border-b border-gray-200">{{ comparisonPlayer2['Total Rank'] || '-' }}</td>
-                                        <td class="px-4 py-2 border-b border-gray-200"
-                                            :class="{ 'text-green-600': comparisonPlayer1['Total Score'] > comparisonPlayer2['Total Score'], 'text-red-600': comparisonPlayer1['Total Score'] < comparisonPlayer2['Total Score'] }"> {{ formatNumber(comparisonPlayer1['Total Score'] - comparisonPlayer2['Total Score']) }}
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                    </TransitionGroup>
                 </div>
-                <div v-else class="text-center text-gray-500 py-8">
-                    Select two players above to compare their performance.
-                </div>
+            </div>
             </section>
 
             <section v-show="!summaryView" class="mb-8">
                 <div class="bg-white rounded-lg shadow-md p-6">
                     <div class="flex flex-col md:flex-row md:justify-between md:items-center mb-6 gap-4">
-                        <h2 class="text-2xl font-bold text-gray-700 mb-4 md:mb-0">Player Data</h2>
+                        <h2 class="text-2xl font-bold no-wrap text-gray-700 mb-4 md:mb-0">Player Data</h2>
                         <div class="flex flex-col md:flex-row gap-4 w-full md:w-auto">
                             <div class="relative flex-grow">
                                 <input v-model="searchTerm"
@@ -328,27 +265,20 @@
                             <div class="flex-shrink-0">
                                 <select v-model="sortField" @change="page = 1"
                                     class="w-full md:w-auto px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white">
-                                    <option value="Total Rank">Sort by Rank</option>
+                                    <option value="dynamicTotalRank">Sort by Overall Rank</option>
                                     <option value="Player">Sort by Player Name</option>
-                                    <option value="Total Score">Sort by Total Score</option>
+                                    <option value="dynamicTotalScore">Sort by Filtered Score</option>
                                     <option value="Power">Sort by Power</option>
                                     <option value="Castle">Sort by Castle Level</option>
                                     <option value="Role">Sort by Role</option>
-                                    <option value="scorePerPower">Sort by Efficiency</option>
-                                    <option value="Score (D1)">Sort by Day 1 Score</option>
-                                    <option value="Score (D2)">Sort by Day 2 Score</option>
+                                    <option value="scorePerPower">Sort by Efficiency (Overall)</option>
                                 </select>
                             </div>
-                            <button @click="toggleSortDirection"
-                                class="px-4 py-2 border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 flex-shrink-0 flex items-center justify-center gap-1 bg-white">
-                                <span v-if="sortDirection === 'asc'">▲</span><span v-else>▼</span> {{ sortDirection ===
-                                'asc' ? 'Asc' : 'Desc' }}
-                            </button>
                         </div>
                     </div>
                     <div class="mb-6 border-t border-b border-gray-200 py-4">
                         <h3 class="text-lg font-semibold mb-3 text-gray-600">Filters</h3>
-                        <div class="flex flex-col md:flex-row gap-4 md:gap-6">
+                        <div class="flex flex-col md:flex-row gap-4 md:gap-6 flex-wrap">
                             <div>
                                 <span class="font-medium text-sm text-gray-500 mr-2">Role:</span>
                                 <div class="inline-flex flex-wrap gap-2">
@@ -359,7 +289,7 @@
                                         @click="toggleRoleFilter(role)"
                                         class="filter-pill px-3 py-1 rounded-full text-sm border"
                                         :class="{ 'filter-active': activeRoleFilters.includes(role), 'border-gray-300 bg-white': !activeRoleFilters.includes(role) }">{{
-                                        role }}</button>
+                                            role }}</button>
                                 </div>
                             </div>
                             <div>
@@ -372,7 +302,7 @@
                                         @click="toggleCastleFilter(level)"
                                         class="filter-pill px-3 py-1 rounded-full text-sm border"
                                         :class="{ 'filter-active': activeCastleFilters.includes(level), 'border-gray-300 bg-white': !activeCastleFilters.includes(level) }">{{
-                                        level }}</button>
+                                            level }}</button>
                                 </div>
                             </div>
                             <div>
@@ -385,19 +315,34 @@
                                         :key="power" @click="togglePowerFilter(power)"
                                         class="filter-pill px-3 py-1 rounded-full text-sm border"
                                         :class="{ 'filter-active': activePowerFilters.includes(power), 'border-gray-300 bg-white': !activePowerFilters.includes(power) }">{{
-                                        power }}</button>
+                                            power }}</button>
                                 </div>
                             </div>
                             <div>
-                                <span class="font-medium text-sm text-gray-500 mr-2">Activity:</span>
+                                <span class="font-medium text-sm text-gray-500 mr-2">Include Days:</span>
+                                <div class="inline-flex flex-wrap gap-2">
+                                    <button @click="toggleDayFilter('all')"
+                                        class="filter-pill px-3 py-1 rounded-full text-sm border"
+                                        :class="{ 'filter-active': activeDayFilters.length === 0, 'border-gray-300 bg-white': activeDayFilters.length > 0 }">All
+                                        Days</button>
+                                    <button v-for="day in allDays" :key="`day-filter-${day}`"
+                                        @click="toggleDayFilter(day)"
+                                        class="filter-pill px-3 py-1 rounded-full text-sm border" :class="{
+                                            'filter-active': activeDayFilters.includes(day),
+                                            'border-gray-300 bg-white': !activeDayFilters.includes(day),
+                                            'opacity-50 cursor-not-allowed bg-gray-100 text-gray-400': !dayHasData[day]
+                                        }" :disabled="!dayHasData[day]">Day {{ day }}</button>
+                                </div>
+                            </div>
+                            <div>
+                                <span class="font-medium text-sm text-gray-500 mr-2">Low Score:</span>
                                 <div class="inline-flex flex-wrap gap-2">
                                     <button @click="toggleLowScoreFilter"
                                         class="filter-pill px-3 py-1 rounded-full text-sm border" :class="{
                                             'filter-active': lowScoreFilter,
                                             'border-gray-300 bg-white': !lowScoreFilter
                                         }">
-                                        &lt; 1M
-                                    </button>
+                                        < 1M </button>
                                 </div>
                             </div>
 
@@ -407,80 +352,96 @@
                         <table class="min-w-full data-table">
                             <thead>
                                 <tr>
-                                    <th class="px-4 py-2 text-left text-sm font-semibold text-gray-600"><button
-                                            @click="updateSort('Total Rank')"
-                                            class="flex items-center gap-1 hover:text-indigo-600">Rank <span
-                                                v-if="sortField === 'Total Rank'">{{ sortDirection === 'asc' ? '▲' : '▼'
-                                                }}</span></button></th>
-                                    <th class="px-4 py-2 text-left text-sm font-semibold text-gray-600"><button
-                                            @click="updateSort('Player')"
-                                            class="flex items-center gap-1 hover:text-indigo-600">Player <span
-                                                v-if="sortField === 'Player'">{{ sortDirection === 'asc' ? '▲' : '▼'
-                                                }}</span></button></th>
-                                    <th class="px-4 py-2 text-left text-sm font-semibold text-gray-600"><button
-                                            @click="updateSort('Power')"
-                                            class="flex items-center gap-1 hover:text-indigo-600">Power <span
-                                                v-if="sortField === 'Power'">{{ sortDirection === 'asc' ? '▲' : '▼'
-                                                }}</span></button></th>
-                                    <th class="px-4 py-2 text-left text-sm font-semibold text-gray-600"><button
-                                            @click="updateSort('Castle')"
-                                            class="flex items-center gap-1 hover:text-indigo-600">Castle <span
-                                                v-if="sortField === 'Castle'">{{ sortDirection === 'asc' ? '▲' : '▼'
-                                                }}</span></button></th>
-                                    <th class="px-4 py-2 text-left text-sm font-semibold text-gray-600"><button
-                                            @click="updateSort('Role')"
-                                            class="flex items-center gap-1 hover:text-indigo-600">Role <span
-                                                v-if="sortField === 'Role'">{{ sortDirection === 'asc' ? '▲' : '▼'
-                                                }}</span></button></th>
-                                    <th class="px-4 py-2 text-left text-sm font-semibold text-gray-600"><button
-                                            @click="updateSort('Score (D1)')"
-                                            class="flex items-center gap-1 hover:text-indigo-600">D1 Score <span
-                                                v-if="sortField === 'Score (D1)'">{{ sortDirection === 'asc' ? '▲' : '▼'
-                                                }}</span></button></th>
-                                    <th class="px-4 py-2 text-left text-sm font-semibold text-gray-600"><button
-                                            @click="updateSort('Score (D2)')"
-                                            class="flex items-center gap-1 hover:text-indigo-600">D2 Score <span
-                                                v-if="sortField === 'Score (D2)'">{{ sortDirection === 'asc' ? '▲' : '▼'
-                                                }}</span></button></th>
-                                    <th class="px-4 py-2 text-left text-sm font-semibold text-gray-600"><button
-                                            @click="updateSort('Total Score')"
-                                            class="flex items-center gap-1 hover:text-indigo-600">Total Score <span
-                                                v-if="sortField === 'Total Score'">{{ sortDirection === 'asc' ? '▲' :
-                                                '▼' }}</span></button></th>
-                                    <th class="px-4 py-2 text-left text-sm font-semibold text-gray-600"><button
-                                            @click="updateSort('scorePerPower')"
-                                            class="flex items-center gap-1 hover:text-indigo-600">Score/Power <span
-                                                v-if="sortField === 'scorePerPower'">{{ sortDirection === 'asc' ? '▲' :
-                                                '▼' }}</span></button></th>
+                                    <th class="px-4 py-2 text-center text-sm font-semibold text-gray-600">
+                                        <button @click="updateSort('dynamicTotalRank')"
+                                            class="flex items-center gap-1 hover:text-indigo-600">
+                                            Rank
+                                            <span v-if="sortField === 'dynamicTotalRank'">
+                                                {{ sortDirection === 'asc' ? '▲' : '▼' }}
+                                            </span>
+                                        </button>
+                                    </th>
+                                    <th class="px-4 py-2 text-left text-sm font-semibold text-gray-600">
+                                        <button @click="updateSort('Player')"
+                                            class="flex items-center gap-1 hover:text-indigo-600">
+                                            Player
+                                            <span v-if="sortField === 'Player'">
+                                                {{ sortDirection === 'asc' ? '▲' : '▼' }}
+                                            </span>
+                                        </button>
+                                    </th>
+                                    <th class="px-4 py-2 text-left text-sm font-semibold text-gray-600">
+                                        <button @click="updateSort('Power')"
+                                            class="flex items-center gap-1 hover:text-indigo-600">
+                                            Power
+                                            <span v-if="sortField === 'Power'">
+                                                {{ sortDirection === 'asc' ? '▲' : '▼' }}
+                                            </span>
+                                        </button>
+                                    </th>
+                                    <th class="px-4 py-2 text-left text-sm font-semibold text-gray-600">
+                                        <button @click="updateSort('Castle')"
+                                            class="flex items-center gap-1 hover:text-indigo-600">
+                                            Castle
+                                            <span v-if="sortField === 'Castle'">
+                                                {{ sortDirection === 'asc' ? '▲' : '▼' }}
+                                            </span>
+                                        </button>
+                                    </th>
+                                    <th class="px-4 py-2 text-left text-sm font-semibold text-gray-600">
+                                        <button @click="updateSort('Role')"
+                                            class="flex items-center gap-1 hover:text-indigo-600">
+                                            Role
+                                            <span v-if="sortField === 'Role'">
+                                                {{ sortDirection === 'asc' ? '▲' : '▼' }}
+                                            </span>
+                                        </button>
+                                    </th>
+                                    <th class="px-4 py-2 text-left text-sm font-semibold text-gray-600">
+                                        <button @click="updateSort('dynamicTotalScore')"
+                                            class="flex items-center gap-1 hover:text-indigo-600">
+                                            Score
+                                            <span v-if="sortField === 'dynamicTotalScore'">
+                                                {{ sortDirection === 'asc' ? '▲' : '▼' }}
+                                            </span>
+                                        </button>
+                                    </th>
+                                    <th class="px-4 py-2 text-left text-sm font-semibold text-gray-600">
+                                        <button @click="updateSort('scorePerPower')"
+                                            class="flex items-center gap-1 hover:text-indigo-600">
+                                            Score/Power
+                                            <span v-if="sortField === 'scorePerPower'">
+                                                {{ sortDirection === 'asc' ? '▲' : '▼' }}
+                                            </span>
+                                        </button>
+                                    </th>
                                     <th class="px-4 py-2 text-center text-sm font-semibold text-gray-600">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr v-if="paginatedData.length === 0">
-                                    <td :colspan="10" class="text-center py-4 text-gray-500">No players match the
-                                        current filters.</td>
+                                    <td colspan="8" class="text-center py-4 text-gray-500">No players match the current
+                                        filters.</td>
                                 </tr>
                                 <tr v-for="player in paginatedData" :key="player.Player"
                                     class="hover:bg-gray-50 text-sm">
-                                    <td class="px-4 py-2 border-b border-gray-200">{{ player['Total Rank'] || '-' }}
+                                    <td class="px-4 py-2 border-b border-gray-200">{{ player.dynamicTotalRank || '-' }}
                                     </td>
                                     <td class="px-4 py-2 border-b border-gray-200 font-medium text-gray-900">{{
                                         player['Player'] }}</td>
                                     <td class="px-4 py-2 border-b border-gray-200">{{ player['Power'] }}M</td>
                                     <td class="px-4 py-2 border-b border-gray-200">{{ player['Castle'] }}</td>
                                     <td class="px-4 py-2 border-b border-gray-200">{{ player['Role'] }}</td>
-                                    <td class="px-4 py-2 border-b border-gray-200">{{ formatNumber(player['Score (D1)'])
-                                        }}</td>
-                                    <td class="px-4 py-2 border-b border-gray-200">{{ formatNumber(player['Score (D2)'])
-                                        }}</td>
                                     <td class="px-4 py-2 border-b border-gray-200 font-semibold">{{
-                                        formatNumber(player['Total Score']) }}</td>
+                                        formatNumber(player.dynamicTotalScore) }}</td>
                                     <td class="px-4 py-2 border-b border-gray-200">{{ formatNumber(player.scorePerPower,
                                         2) }}</td>
                                     <td class="px-4 py-2 border-b border-gray-200 text-center">
-                                        <button @click.stop="selectPlayerForAverageCompare(player)"
+                                        <button @click.stop="togglePlayerForComparison(player)"
                                             class="text-indigo-600 hover:text-indigo-900 text-xs font-medium"
-                                            title="Add to comparison">Compare</button>
+                                            :title="isPlayerSelectedForComparison(player) ? 'Remove from comparison' : 'Add to comparison'">
+                                            {{ isPlayerSelectedForComparison(player) ? 'Remove' : 'Compare' }}
+                                        </button>
                                     </td>
                                 </tr>
                             </tbody>
@@ -531,213 +492,314 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch, nextTick } from 'vue';
-import jsonData from '@/data/vlr_gvg_event_data.json';
-import {
-    Chart,
-    BarController,
-    LineController,
-    ScatterController,
-    CategoryScale,
-    LinearScale,
-    PointElement,
-    LineElement,
-    BarElement,
-    Tooltip,
-    Legend
-} from 'chart.js';
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import jsonData from '@/data/vlr_gvg_event_data.json'
+import { graphic, getInstanceByDom } from 'echarts/core'
+import * as echarts from 'echarts/core'
+import { TimelineComponent } from 'echarts/components';
+import CountUp from 'vue-countup-v3'; 
 
-// Reactive State
-const rawPlayerData = ref([]);
-const playerData = ref([]);
-const searchTerm = ref('');
-const sortField = ref('Total Rank');
-const sortDirection = ref('asc');
-const page = ref(1);
-const itemsPerPage = ref(20);
-const activeRoleFilters = ref(['all']);
-const activeCastleFilters = ref(['all']);
-const activePowerFilters = ref(['all']);
-const lowScoreFilter = ref(false); // New filter for low scores
-const summaryView = ref(true);
-const comparisonView = ref(false);
-const comparisonSearch1 = ref('');
-const comparisonSearch2 = ref('');
-const filteredComparisonPlayers1 = ref([]);
-const filteredComparisonPlayers2 = ref([]);
-const comparisonPlayer1 = ref(null);
-const comparisonPlayer2 = ref(null);
-const compareButtonCounter = ref(0);
-const chartInstances = ref({});
-const chartRenderLock = ref(false);
-let initChartsDebounce;
-const roleScoreChartRef = ref(null);
-const castleScoreChartRef = ref(null);
-const powerScoreChartRef = ref(null);
-const dailyPerformanceChartRef = ref(null);
-const playerComparisonChartRef = ref(null);
-const summarySectionRef = ref(null);
-const averagePlayer = ref(null);
-const comparisonSectionRef = ref(null);
-let chartRenderTimeout = null;
-let isRenderingComparisonChart = false;
+echarts.use([TimelineComponent]);
 
-// Register Chart.js Components
-Chart.register(
-    BarController,
-    LineController,
-    ScatterController,
-    CategoryScale,
-    LinearScale,
-    PointElement,
-    LineElement,
-    BarElement,
-    Tooltip,
-    Legend
-);
+// --- Reactive State ---
+const rawPlayerData = ref([])
+const playerData = ref([])
+const searchTerm = ref('')
+const sortField = ref('dynamicTotalRank')
+const sortDirection = ref('asc')
+const page = ref(1)
+const itemsPerPage = ref(20)
+const activeRoleFilters = ref(['all'])
+const activeCastleFilters = ref(['all'])
+const activePowerFilters = ref(['all'])
+const lowScoreFilter = ref(false)
+const activeDayFilters = ref([])
+const summaryView = ref(true)
+const comparisonView = ref(false)
+const selectedComparisonPlayers = ref([])
+const maxComparisonPlayers = 10
+const averagePlayer = ref(null)
+const guildName = ref('Unknown Guild')
+const eventName = ref('Unknown Event')
+const comparisonSearchTerm = ref('')
+const cardObserverEl = ref(null);
+const isMobile = ref(false)
+const comparisonFields = [
+  { key: 'Power',          label: 'Power',       fmt: v => `${v.toFixed(2)}M` },
+  { key: 'Castle',         label: 'Castle',      fmt: v => v },
+  { key: 'Role',           label: 'Role',        fmt: v => v },
+  { key: 'Total Score',    label: 'Total Score', fmt: v => v.toLocaleString() },
+  { key: 'Total Rank',     label: 'Total Rank',  fmt: v => v || '-' },
+  { key: 'scorePerPower',  label: 'Score Per Power', fmt: v => v.toLocaleString(undefined,{maximumFractionDigits:2}) }
+]
 
-// Utility Functions
+// --- Constants ---
+const ALL_DAYS = [1, 2, 3, 4, 5, 6]
+const roleColorsGradient = {
+    R1: ['#34d399', '#6ee7b7'], // Green gradient
+    R2: ['#60a5fa', '#93c5fd'], // Blue gradient
+    R3: ['#f472b6', '#f9a8d4'], // Pink gradient
+    R4: ['#facc15', '#fde68a'], // Yellow gradient
+    R5: ['#a78bfa', '#ddd6fe']  // Purple gradient
+}
+const roleColorsStatic = {
+    R1: '#6ee7b7',
+    R2: '#93c5fd',
+    R3: '#f9a8d4',
+    R4: '#fde68a',
+    R5: '#ddd6fe'
+}
+const playerGradients = [
+    ['#60a5fa', '#93c5fd'],
+    ['#f472b6', '#f9a8d4'],
+    ['#34d399', '#6ee7b7'],
+    ['#facc15', '#fde68a'],
+    ['#a78bfa', '#ddd6fe'],
+    ['#fb923c', '#fdba74'],
+    ['#38bdf8', '#7dd3fc'],
+    ['#c084fc', '#d8b4fe'],
+    ['#f87171', '#fca5a5'],
+    ['#4ade80', '#86efac']
+]
+const dayTasks = {
+    D1: 'Construction',
+    D2: 'Research',
+    D3: 'Rally',
+    D4: 'Hero',
+    D5: 'Training',
+    D6: 'Combat'
+}
+const comparisonColours = [
+  '#1f77b4', // blue
+  '#ff7f0e', // orange
+  '#2ca02c', // green
+  '#d62728', // red
+  '#9467bd', // purple
+  '#8c564b', // brown
+  '#e377c2', // pink
+  '#7f7f7f', // grey
+  '#bcbd22', // olive
+  '#17becf'  // cyan
+];
 
-const handleTabAutocomplete = (playerNum) => {
-    if (playerNum === 1 && filteredComparisonPlayers1.value.length > 0) {
-        const selected = filteredComparisonPlayers1.value[0];
-        selectComparisonPlayer(selected, 1);
-    }
+const playerColorMap = computed(() => {
+  const map = {}
+  selectedComparisonPlayers.value.forEach((p, i) => {
+    map[p.Player] = comparisonColours[i % comparisonColours.length]
+  })
+  return map
+})
 
-    if (playerNum === 2 && filteredComparisonPlayers2.value.length > 0) {
-        const selected = filteredComparisonPlayers2.value[0];
-        selectComparisonPlayer(selected, 2);
-    }
+// quick helper → returns an RGBA with ~8 % alpha for the bg wash
+const washed = hex => {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return `rgba(${r},${g},${b},0.08)`
+}
+
+const getComparisonChart = () => {
+  const dom = document.getElementById('playerComparisonDailyChart')
+  return dom ? getInstanceByDom(dom) : null
+}
+
+const highlightSeries = name => {
+  const chart = getComparisonChart()
+  if (!chart) return
+  // downplay everything first so we get a clean emphasis
+  chart.dispatchAction({ type: 'downplay', seriesIndex: 'all' })
+  chart.dispatchAction({ type: 'highlight', seriesName: name })
+}
+
+const downplaySeries = () => {
+  const chart = getComparisonChart();
+  if (chart) chart.dispatchAction({ type: 'downplay', seriesIndex: 'all' });
 };
 
-const formatNumber = (num, decimals = 0) => {
-    const number = Number(num);
-    if (isNaN(number)) return '-';
-    return number.toLocaleString(undefined, {
-        minimumFractionDigits: decimals,
-        maximumFractionDigits: decimals,
-    });
-};
+// --- Data normalization ---
+function normalizePlayerData(data) {
+    const days = ALL_DAYS
+    return data.map(p => {
+        const power = parseFloat(String(p.Power).replace('M', '')) || 0
+        const castle = Number(p.Castle) || 0
+        const total = days.reduce((sum, d) => sum + (Number(p[`Score (D${d})`]) || 0), 0)
+        return {
+            ...p,
+            Power: power,
+            Castle: castle,
+            'Total Score': total,
+            'Total Rank': 0,
+            scorePerPower: power > 0 ? total / power : 0,
+            ...days.reduce((acc, d) => ({
+                ...acc,
+                [`Score (D${d})`]: Number(p[`Score (D${d})`]) || 0,
+                [`Event Rank (D${d})`]: Number(p[`Event Rank (D${d})`]) || 0
+            }), {})
+        }
+    }).sort((a, b) => b['Total Score'] - a['Total Score'])
+        .map((p, i) => ({ ...p, 'Total Rank': i + 1 }))
+}
 
-const getScorePerPower = (player) => {
-    const totalScore = Number(player['Total Score']) || 0;
-    const power = player['Power'] || 0;
-    return power > 0 ? totalScore / power : 0;
-};
-
-const getCurrentDate = () => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-};
-
-// Computed Properties for Summary Display
-const totalParticipants = computed(() => playerData.value.length);
-
-const activeParticipants = computed(() => {
-    return playerData.value.filter(player => (Number(player['Total Score']) || 0) > 0).length;
+const totalScoreOverall = computed(() => {
+  return ALL_DAYS.reduce(
+    (sum, d) => sum + playerData.value.reduce(
+      (inner, p) => inner + (p[`Score (D${d})`] || 0), 0
+    ), 0
+  );
 });
 
+// --- Average player calculation ---
+const calculateAveragePlayer = () => {
+    const active = playerData.value.filter(p => p['Total Score'] > 0)
+    if (!active.length) return averagePlayer.value = null
+    const avg = field => active.reduce((sum, p) => sum + (Number(p[field]) || 0), 0) / active.length
+    const avgP = {
+        Player: 'Average Player',
+        Power: Number(avg('Power').toFixed(2)),
+        Castle: Math.round(avg('Castle')),
+        Role: 'N/A',
+        'Total Score': Math.round(avg('Total Score')),
+        'Total Rank': 0,
+        scorePerPower: Number(avg('scorePerPower').toFixed(2)),
+        ...ALL_DAYS.reduce((acc, d) => ({
+            ...acc,
+            [`Score (D${d})`]: Math.round(avg(`Score (D${d})`)),
+            [`Event Rank (D${d})`]: 0
+        }), {})
+    }
+    averagePlayer.value = avgP
+}
+
+// --- Computeds for filters, paging, stats ---
+const dayHasData = computed(() => ALL_DAYS.reduce((acc, d) => ({ ...acc, [d]: playerData.value.some(p => p[`Score (D${d})`] > 0) }), {}))
+const daysWithData = computed(() => ALL_DAYS.filter(d => dayHasData.value[d]))
+const allDays = computed(() => ALL_DAYS)
+const totalParticipants = computed(() => playerData.value.length)
+const activeParticipants = computed(() => playerData.value.filter(p => p['Total Score'] > 0).length)
 const averagePower = computed(() => {
-    const activePlayers = playerData.value.filter(player => (Number(player['Total Score']) || 0) > 0);
-    if (!activePlayers.length) return '0.00';
-    const totalPower = activePlayers.reduce((sum, player) => sum + player['Power'], 0);
-    return (totalPower / activePlayers.length).toFixed(2);
-});
-
+    const act = playerData.value.filter(p => p['Total Score'] > 0)
+    return act.length ? (act.reduce((s, p) => s + p.Power, 0) / act.length).toFixed(1) : '0.0'
+})
 const averageCastleLevel = computed(() => {
-    const activePlayers = playerData.value.filter(player => (Number(player['Total Score']) || 0) > 0);
-    if (!activePlayers.length) return '0';
-    const totalCastleLevel = activePlayers.reduce((sum, player) => sum + player['Castle'], 0);
-    return Math.round(totalCastleLevel / activePlayers.length);
-});
+    const act = playerData.value.filter(p => p['Total Score'] > 0)
+    return act.length ? Math.round(act.reduce((s, p) => s + p.Castle, 0) / act.length) : 0
+})
+const topPlayers = computed(() => [...playerData.value].filter(p => p['Total Score'] > 0).sort((a, b) => b['Total Score'] - a['Total Score']).slice(0, 10))
+const efficiencyLeaders = computed(() => [...playerData.value].filter(p => p['Total Score'] > 0 && p.Power > 0).sort((a, b) => b.scorePerPower - a.scorePerPower).slice(0, 10))
+const comparisonCards = computed(() => selectedComparisonPlayers.value.slice(0, maxComparisonPlayers))
 
-const topPlayers = computed(() => {
-    return [...playerData.value]
-        .filter(player => (Number(player['Total Score']) || 0) > 0)
-        .sort((a, b) => (Number(b['Total Score']) || 0) - (Number(a['Total Score']) || 0))
-        .slice(0, 10);
-});
+const handleComparisonSearchKeydown = e => {
+  if (e.key === 'Tab' && filteredComparisonSearchResults.value.length) {
+    e.preventDefault()
+    addPlayerToComparisonFromSearch(filteredComparisonSearchResults.value[0])
+  }
+}
 
-const efficiencyLeaders = computed(() => {
-    return [...playerData.value]
-        .filter(player => (Number(player['Total Score']) || 0) > 0 && player['Power'] > 0)
-        .sort((a, b) => b.scorePerPower - a.scorePerPower)
-        .slice(0, 10);
-});
-
-// Computed Properties for Filtering and Sorting
 const filteredData = computed(() => {
     let result = playerData.value;
 
-    // Apply search term filter
+    // Search Term
     if (searchTerm.value) {
         const term = searchTerm.value.toLowerCase();
-        result = result.filter(player => player['Player'].toLowerCase().includes(term));
+        result = result.filter(p => p.Player.toLowerCase().includes(term));
     }
 
-    // Apply role filters
+    // Role Filter
     if (!activeRoleFilters.value.includes('all')) {
-        result = result.filter(player => activeRoleFilters.value.includes(player['Role']));
+        result = result.filter(p => activeRoleFilters.value.includes(p.Role));
     }
 
-    // Apply castle level filters
+    // Castle Filter
     if (!activeCastleFilters.value.includes('all')) {
-        result = result.filter(player => {
-            const castleLevel = player['Castle'];
+        result = result.filter(p => {
+            const level = p.Castle;
             return activeCastleFilters.value.some(filter => {
-                if (filter === '30-35') return castleLevel >= 30 && castleLevel <= 35;
-                if (filter === '36-40') return castleLevel >= 36 && castleLevel <= 40;
-                if (filter === '41-45') return castleLevel >= 41 && castleLevel <= 45;
-                if (filter === '46-50') return castleLevel >= 46 && castleLevel <= 50;
-                if (filter === '51+') return castleLevel >= 51;
+                if (filter === '30-35') return level >= 30 && level <= 35;
+                if (filter === '36-40') return level >= 36 && level <= 40;
+                if (filter === '41-45') return level >= 41 && level <= 45;
+                if (filter === '46-50') return level >= 46 && level <= 50;
+                if (filter === '51+') return level >= 51;
                 return false;
             });
         });
     }
 
-    // Apply power level filters
+    // Power Filter
     if (!activePowerFilters.value.includes('all')) {
-        result = result.filter(player => {
-            const powerLevel = player['Power'];
+        result = result.filter(p => {
+            const power = p.Power;
             return activePowerFilters.value.some(filter => {
-                if (filter === '0-25M') return powerLevel >= 0 && powerLevel < 25;
-                if (filter === '25-50M') return powerLevel >= 25 && powerLevel < 50;
-                if (filter === '50-75M') return powerLevel >= 50 && powerLevel < 75;
-                if (filter === '75-100M') return powerLevel >= 75 && powerLevel < 100;
-                if (filter === '100M+') return powerLevel >= 100;
+                if (filter === '0-25M') return power >= 0 && power < 25;
+                if (filter === '25-50M') return power >= 25 && power < 50;
+                if (filter === '50-75M') return power >= 50 && power < 75;
+                if (filter === '75-100M') return power >= 75 && power < 100;
+                if (filter === '100M+') return power >= 100;
                 return false;
             });
         });
     }
 
-    // Apply low score filter (new)
+    // Low Score Filter
     if (lowScoreFilter.value) {
+        const daysToCheck = activeDayFilters.value.length > 0
+            ? activeDayFilters.value.map(Number)
+            : daysWithData.value;
+
         result = result.filter(player => {
-            const day1Score = Number(player['Score (D1)']) || 0;
-            const day2Score = Number(player['Score (D2)']) || 0;
-            return day1Score < 1000000 || day2Score < 1000000;
+            return daysToCheck.some(day => {
+                const score = Number(player[`Score (D${day})`]) || 0;
+                return score < 1000000;
+            });
         });
     }
 
     return result;
 });
 
+const processedFilteredData = computed(() => {
+    const daysToSum = activeDayFilters.value.length > 0 ? activeDayFilters.value : allDays.value;
+
+    const enriched = filteredData.value.map(player => {
+        const dynamicTotalScore = daysToSum.reduce((sum, day) => {
+            return sum + (Number(player[`Score (D${day})`]) || 0);
+        }, 0);
+        const scorePerPower = player.Power > 0 ? dynamicTotalScore / player.Power : 0;
+
+        return {
+            ...player,
+            dynamicTotalScore,
+            scorePerPower,
+            dynamicTotalRank: 0
+        };
+    });
+
+    enriched.sort((a, b) => b.dynamicTotalScore - a.dynamicTotalScore);
+    enriched.forEach((player, index) => {
+        player.dynamicTotalRank = index + 1;
+    });
+
+    return enriched;
+});
+
 const filteredAndSortedData = computed(() => {
-    let result = [...filteredData.value];
+    let result = [...processedFilteredData.value];
 
     if (sortField.value) {
         result.sort((a, b) => {
             let valA = a[sortField.value];
             let valB = b[sortField.value];
 
-            if (sortField.value === 'Player' || sortField.value === 'Role') {
+            if (sortField.value === 'dynamicTotalRank') {
+                valA = Number(a.dynamicTotalRank) || Infinity;
+                valB = Number(b.dynamicTotalRank) || Infinity;
+                return sortDirection.value === 'asc' ? valA - valB : valB - valA;
+            }
+            else if (sortField.value === 'Player' || sortField.value === 'Role') {
                 valA = String(valA || '');
                 valB = String(valB || '');
                 return sortDirection.value === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
-            } else {
+            }
+            else {
                 valA = Number(valA) || 0;
                 valB = Number(valB) || 0;
                 return sortDirection.value === 'asc' ? valA - valB : valB - valA;
@@ -747,19 +809,48 @@ const filteredAndSortedData = computed(() => {
     return result;
 });
 
-// Computed Properties for Pagination
-const totalPages = computed(() => {
-    const items = Number(itemsPerPage.value) || 20;
-    return Math.ceil(filteredAndSortedData.value.length / items);
-});
+const filteredComparisonSearchResults = computed(() => {
+  const term = comparisonSearchTerm.value.toLowerCase().trim()
+  if (!term) return []
+  const pool = [...processedFilteredData.value]
+  if (averagePlayer.value) pool.push(averagePlayer.value)
+  return pool.filter(p =>
+    p.Player.toLowerCase().includes(term) &&
+    !selectedComparisonPlayers.value.some(sel => sel.Player === p.Player)
+  )
+})
+
+const addPlayerToComparisonFromSearch = (player) => {
+  if (selectedComparisonPlayers.value.length >= maxComparisonPlayers) {
+    alert(`Max ${maxComparisonPlayers} players allowed.`)
+    return
+  }
+  selectedComparisonPlayers.value.push(player)
+  comparisonSearchTerm.value = ''
+}
 
 const paginatedData = computed(() => {
     const start = (page.value - 1) * Number(itemsPerPage.value);
     const end = start + Number(itemsPerPage.value);
+
     return filteredAndSortedData.value.slice(start, end);
 });
 
-// Methods
+const totalPages = computed(() => {
+    const items = Number(itemsPerPage.value) || 20;
+
+    return Math.ceil(filteredAndSortedData.value.length / items);
+});
+
+
+const formatNumber = (num, decimals = 0) => {
+    const number = Number(num);
+    if (isNaN(number)) return '-';
+    return number.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+};
+
+const getCurrentDate = () => new Date().toISOString().split('T')[0];
+
 const toggleSortDirection = () => {
     sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc';
     page.value = 1;
@@ -770,7 +861,8 @@ const updateSort = (field) => {
         toggleSortDirection();
     } else {
         sortField.value = field;
-        sortDirection.value = (field === 'Total Rank' || field === 'Player' || field === 'Role' || field === 'Castle') ? 'asc' : 'desc';
+        const ascFields = ['Total Rank', 'Player', 'Role', 'Castle'];
+        sortDirection.value = ascFields.includes(field) ? 'asc' : 'desc';
     }
     page.value = 1;
 };
@@ -783,26 +875,13 @@ const toggleFilter = (filterValue, activeFiltersRef) => {
         const index = filters.indexOf(filterValue);
         if (index > -1) {
             filters.splice(index, 1);
-            if (filters.length === 0) {
-                activeFiltersRef.value = ['all'];
-            } else {
-                activeFiltersRef.value = filters;
-            }
+            if (filters.length === 0) activeFiltersRef.value = ['all'];
         } else {
             const allIndex = filters.indexOf('all');
-            if (allIndex > -1) {
-                filters.splice(allIndex, 1);
-            }
+            if (allIndex > -1) filters.splice(allIndex, 1);
             filters.push(filterValue);
-            activeFiltersRef.value = filters;
         }
     }
-    page.value = 1;
-};
-
-// Toggle the low score filter
-const toggleLowScoreFilter = () => {
-    lowScoreFilter.value = !lowScoreFilter.value;
     page.value = 1;
 };
 
@@ -810,10 +889,32 @@ const toggleRoleFilter = (role) => toggleFilter(role, activeRoleFilters);
 const toggleCastleFilter = (level) => toggleFilter(level, activeCastleFilters);
 const togglePowerFilter = (power) => toggleFilter(power, activePowerFilters);
 
+const toggleLowScoreFilter = () => {
+    lowScoreFilter.value = !lowScoreFilter.value;
+    page.value = 1;
+};
+
+const toggleDayFilter = (day) => {
+    if (day === 'all') {
+        activeDayFilters.value = [];
+    } else {
+        const index = activeDayFilters.value.indexOf(day);
+        if (index > -1) {
+            activeDayFilters.value.splice(index, 1);
+        } else {
+            activeDayFilters.value.push(day);
+            activeDayFilters.value.sort((a, b) => a - b);
+        }
+    }
+    page.value = 1;
+};
+
+
 const toggleSummaryView = () => {
     summaryView.value = !summaryView.value;
     if (summaryView.value) {
         comparisonView.value = false;
+        destroyChart('playerComparisonDailyChart');
     } else {
         destroySummaryCharts();
     }
@@ -825,147 +926,480 @@ const toggleComparisonView = () => {
         summaryView.value = false;
         destroySummaryCharts();
     } else {
-        destroyChart('playerComparisonChart');
+        destroyChart('playerComparisonDailyChart');
+        selectedComparisonPlayers.value = [];
     }
 };
 
-const filterComparison = (playerNum) => {
-    const searchRef = playerNum === 1 ? comparisonSearch1 : comparisonSearch2;
-    const resultsRef = playerNum === 1 ? filteredComparisonPlayers1 : filteredComparisonPlayers2;
-    const otherPlayer = playerNum === 1 ? comparisonPlayer2.value : comparisonPlayer1.value;
-
-    if (!searchRef.value) {
-        resultsRef.value = [];
-        return;
-    }
-
-    const term = searchRef.value.toLowerCase();
-
-    // Start with all normal players
-    const baseResults = playerData.value.filter(p =>
-        p.Player.toLowerCase().includes(term) &&
-        (!otherPlayer || p.Player !== otherPlayer.Player)
-    );
-
-    // Add the average player if it matches the search term
-    if (
-        averagePlayer.value &&
-        averagePlayer.value.Player.toLowerCase().includes(term) &&
-        (!otherPlayer || averagePlayer.value.Player !== otherPlayer.Player)
-    ) {
-        baseResults.push(averagePlayer.value);
-    }
-
-    resultsRef.value = baseResults.slice(0, 10); // keep limit if needed
+const isPlayerSelectedForComparison = (player) => {
+    return selectedComparisonPlayers.value.some(p => p.Player === player.Player);
 };
 
-const selectComparisonPlayer = (player, playerNum) => {
-    if (playerNum === 1) {
-        if (comparisonPlayer2.value && comparisonPlayer2.value.Player === player.Player) return;
-        comparisonPlayer1.value = player;
-        comparisonSearch1.value = player.Player;
-        filteredComparisonPlayers1.value = [];
-    } else {
-        if (comparisonPlayer1.value && comparisonPlayer1.value.Player === player.Player) return;
-        comparisonPlayer2.value = player;
-        comparisonSearch2.value = player.Player;
-        filteredComparisonPlayers2.value = [];
+const togglePlayerForComparison = player => {
+  const idx = selectedComparisonPlayers.value.findIndex(p => p.Player === player.Player)
+  const wasRemoval = idx > -1
+
+  if (wasRemoval) {
+    selectedComparisonPlayers.value.splice(idx, 1)
+  } else {
+    if (selectedComparisonPlayers.value.length >= maxComparisonPlayers) {
+      alert(`You can select max ${maxComparisonPlayers} players.`)
+      return
     }
+    selectedComparisonPlayers.value.push(player)
+  }
 
-    if (!comparisonView.value) {
-        toggleComparisonView();
-    }
-};
+  // Auto‑add average ONLY when → adding first real player ***and*** avg not already present
+  const realCount = selectedComparisonPlayers.value.filter(p => p.Player !== 'Average Player').length
+  const avgPresent = selectedComparisonPlayers.value.some(p => p.Player === 'Average Player')
+  if (!wasRemoval && realCount === 1 && !avgPresent && averagePlayer.value) {
+    selectedComparisonPlayers.value.push(averagePlayer.value)
+  }
 
-const selectPlayerForAverageCompare = async (player) => {
-    const activePlayers = playerData.value.filter(p => Number(p['Total Score']) > 0 && p.Player !== player.Player);
-    const avg = (field) => {
-        const sum = activePlayers.reduce((total, p) => total + Number(p[field] || 0), 0);
-        return activePlayers.length ? sum / activePlayers.length : 0;
-    };
-
-    const avgPlayerObj = {
-        Player: 'Average Player',
-        Power: parseFloat(avg('Power').toFixed(2)),
-        Castle: Math.round(avg('Castle')),
-        Role: 'R2',
-        'Total Score': Math.round(avg('Total Score')),
-        'Total Rank': '0',
-        'Score (D1)': Math.round(avg('Score (D1)')),
-        'Event Rank (D1)': '0',
-        'Score (D2)': Math.round(avg('Score (D2)')),
-        'Event Rank (D2)': '0',
-        scorePerPower: avg('scorePerPower')
-    };
-
-    comparisonPlayer1.value = player;
-    comparisonPlayer2.value = avgPlayerObj;
-    comparisonSearch1.value = player.Player;
-    comparisonSearch2.value = 'Average Player';
-    filteredComparisonPlayers1.value = [];
-    filteredComparisonPlayers2.value = [];
-
-    if (!comparisonView.value) toggleComparisonView();
-
-    await nextTick();
-
-    // Very deliberate deferment
-    requestAnimationFrame(() => {
-        triggerComparisonChartRender();
-    });
-};
-
-
-// Chart Management
-async function waitForCanvasRef(ref, retries = 15, interval = 200) {
-    return new Promise((resolve, reject) => {
-        let attempt = 0;
-
-        const check = () => {
-            const el = ref.value;
-
-            if (!el) {
-                console.warn(`[Canvas] Ref is null [${attempt}]`);
-            } else {
-                const ctx = el.getContext && el.getContext('2d');
-                const ready = el.offsetParent !== null && el.width > 0 && ctx;
-
-                console.log(`[Canvas] Attempt ${attempt} — offsetParent: ${el.offsetParent !== null}, width: ${el.width}, ctx:`, ctx);
-
-                if (ready && ctx && typeof ctx.save === 'function') {
-                    resolve(ctx);
-                    return;
-                }
-            }
-
-            if (++attempt < retries) {
-                setTimeout(check, interval);
-            } else {
-                reject(new Error('Canvas context not available'));
-            }
-        };
-
-        check();
-    });
+  // Make sure correct pane is showing
+  if (selectedComparisonPlayers.value.length === 0) {
+    comparisonView.value = false
+  } else {
+    comparisonView.value = true
+    summaryView.value = false
+  }
 }
 
+// --- Chart options (vue-echarts) ---
+// --- Avg Score by Role ---
+const roleChartOption = computed(() => {
+  const orderedRoles = ['R1', 'R2', 'R3', 'R4', 'R5'];
+  const roleScoresMap = {};
+  for (const role of orderedRoles) {
+    roleScoresMap[role] = { total: 0, count: 0 };
+  }
+  playerData.value.forEach(player => {
+    const r = player.Role;
+    if (roleScoresMap[r]) {
+      roleScoresMap[r].total += player['Total Score'];
+      roleScoresMap[r].count += 1;
+    }
+  });
+  const avgScores = orderedRoles.map(role => {
+    const { total, count } = roleScoresMap[role];
+    return count > 0 ? Math.round(total / count) : 0;
+  });
 
-const destroyChart = (chartId) => {
-    const instance = chartInstances.value[chartId];
-    if (instance && typeof instance.destroy === 'function') {
-        try {
-            console.log(`[Chart Destroy] Destroying chart: ${chartId}`);
-            instance.destroy();
-        } catch (e) {
-            console.error(`Error destroying chart ${chartId}:`, e);
-            console.trace();
-        } finally {
-            delete chartInstances.value[chartId];
+  return {
+    baseOption: {
+      title: {
+        text: 'Avg Score by Role',
+        left: 'center',
+        textStyle: { fontSize: 18, fontWeight: 'bold' }
+      },
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'shadow' },
+        formatter: params => {
+          const v = params[0].value;
+          const fmt = v >= 1e6
+            ? (v/1e6).toFixed(1) + 'M'
+            : v.toLocaleString();
+          return `${params[0].axisValue}<br/><strong>${fmt}</strong>`;
         }
-    } else if (instance) {
-        console.warn(`[Chart Destroy] ${chartId} is not a valid chart instance`);
-    } else {
-        console.info(`[Chart Destroy] No existing chart for ${chartId}`);
+      },
+      grid: { top: 70, bottom: 60, left: '10%', right: '10%' },
+      xAxis: {
+        type: 'category',
+        data: orderedRoles,
+        axisLabel: { fontWeight: 'bold' }
+      },
+      yAxis: {
+        type: 'value',
+        axisLabel: {
+          formatter: v => v >= 1e6
+            ? (v/1e6).toFixed(1) + 'M'
+            : v.toLocaleString()
+        },
+        splitLine: { lineStyle: { type: 'dashed', color: '#eee' } }
+      },
+      series: [{
+        type: 'bar',
+        data: avgScores,
+        barWidth: '50%',
+        itemStyle: {
+          borderRadius: [6,6,0,0],
+          color: ({ dataIndex }) => {
+            const role = orderedRoles[dataIndex];
+            const [from, to] = roleColorsGradient[role];
+            return new graphic.LinearGradient(0,0,0,1, [
+              { offset: 0, color: from },
+              { offset: 1, color: to }
+            ]);
+          }
+        },
+        label: {
+          show: true,
+          position: 'top',
+          fontWeight: 'bold',
+          formatter: v => {
+            const val = v.value;
+            return val >= 1e6
+              ? (val/1e6).toFixed(1) + 'M'
+              : val.toLocaleString();
+          }
+        },
+        emphasis: {
+          itemStyle: {
+            shadowBlur: 10,
+            shadowColor: 'rgba(0,0,0,0.2)'
+          }
+        }
+      }],
+      animation: true,
+      animationDuration: 800,
+      animationEasing: 'quadraticOut'
+    },
+    media: [{
+      query: { maxWidth: 600 },
+      option: {
+        grid: { top: 50, bottom: 50, left: '5%', right: '5%' }
+      }
+    }]
+  };
+});
+
+
+// --- Power vs Score (Scatter with Trendline) ---
+const scatterOption = computed(() => {
+  const grouped = { R1:[], R2:[], R3:[], R4:[], R5:[] };
+  const pts = [];
+  playerData.value.forEach(p => {
+    if (p['Total Score'] > 0 && grouped[p.Role]) {
+      const x = p.Power, y = p['Total Score'];
+      grouped[p.Role].push({ value: [x,y], player: p.Player });
+      pts.push([x,y]);
+    }
+  });
+  const n = pts.length;
+  const sumX  = pts.reduce((s,[x])=>s+x,0);
+  const sumY  = pts.reduce((s,[,y])=>s+y,0);
+  const sumXY = pts.reduce((s,[x,y])=>s+x*y,0);
+  const sumX2 = pts.reduce((s,[x])=>s+x*x,0);
+  const slope = (n*sumXY - sumX*sumY) / (n*sumX2 - sumX*sumX);
+  const intercept = (sumY - slope*sumX)/n;
+  const minX = Math.min(...pts.map(p=>p[0]));
+  const maxX = Math.max(...pts.map(p=>p[0]));
+  const line = [
+    [minX, slope*minX + intercept],
+    [maxX, slope*maxX + intercept]
+  ];
+
+  const base = {
+    title: { text: 'Power vs Score', left: 'center', textStyle: { fontSize:18, fontWeight:'bold' } },
+    legend: { top:30, data: Object.keys(grouped), selectedMode:'multiple', textStyle:{ fontWeight:'bold' } },
+    tooltip: {
+      formatter: param => {
+        const [power, score] = param.data.value;
+        const name = param.data.player || 'Unknown';
+        const fmtScore = score >= 1e6
+          ? (score/1e6).toFixed(1)+'M'
+          : score.toLocaleString();
+        return `<strong>${name}</strong><br/>Power: ${power}M<br/>Score: ${fmtScore}`;
+      }
+    },
+    grid: { top:80, bottom:60, left:'10%', right:'10%' },
+    xAxis: {
+      name: '',
+      type: 'value',
+      splitLine:{ lineStyle:{ type:'dashed', color:'#eee' } },
+    },
+    yAxis: {
+      name: '',
+      type: 'value',
+      min: 0,
+      splitLine:{ lineStyle:{ type:'dashed', color:'#eee' } },
+    },
+    series: [
+      ...Object.entries(grouped).map(([role,data])=>({
+        name: role,
+        type: 'scatter',
+        data,
+        symbolSize: val => {
+          const s = val.value?.[1] || 0;
+          return s >= 1e7 ? 20 : s >= 1e6 ? 16 : 12;
+        },
+        hoverAnimation: false,
+        itemStyle: { color: roleColorsStatic[role], opacity:0.85, borderColor:'#fff', borderWidth:1 },
+        emphasis: { focus:'series', itemStyle:{ borderColor:'#000', borderWidth:2 } }
+      })),
+      {
+        name: 'Trendline',
+        type: 'line',
+        data: line,
+        symbol: 'none',
+        lineStyle: { type:'dashed', width:2, color:'#6366f1' },
+        tooltip: { show: false }
+      }
+    ],
+    animation: true,
+    animationDuration: 1000,
+    animationEasing: 'cubicOut'
+  };
+
+  return {
+    baseOption: base,
+    media: [{
+      query: { maxWidth: 600 },
+      option: {
+        grid: { top:60, bottom:50, left:'5%', right:'5%' }
+      }
+    }]
+  };
+});
+
+
+// --- Daily Performance (Top 5) ---
+const dailyOption = computed(() => {
+  const top5 = topPlayers.value
+    .filter(p => allDays.value.some(d => p[`Score (D${d})`] > 0))
+    .slice(0,5);
+  const dayLabels = allDays.value.map(d => dayTasks[`D${d}`]);
+
+  return {
+    baseOption: {
+      title: { text: 'Daily Performance (Top 5)', left:'center', textStyle:{ fontSize:18, fontWeight:'bold' } },
+      tooltip: {
+        trigger:'axis',
+        backgroundColor:'rgba(50,50,50,0.9)',
+        borderColor:'#888',
+        borderWidth:1,
+        textStyle:{ color:'#fff' },
+        axisPointer:{ type:'line', lineStyle:{ color:'#bbb', type:'dashed' } }
+      },
+      grid: { top:70, bottom:60, left:'10%', right:'10%' },
+      xAxis: {
+        type:'category',
+        data: dayLabels,
+        axisLine:{ lineStyle:{ color:'#ccc' } },
+        axisLabel:{ fontWeight:'bold', color:'#333', interval:0 },
+        axisTick:{ alignWithLabel:true }
+      },
+      yAxis: {
+        type:'value',
+        axisLabel:{ formatter: v => v>=1e6 ? (v/1e6).toFixed(1)+'M' : v.toLocaleString(), color:'#333' },
+        splitLine:{ lineStyle:{ type:'dashed', color:'#eee' } }
+      },
+      legend: {
+        data: top5.map(p=>p.Player),
+        orient:'horizontal',
+        bottom:0,
+        textStyle:{ fontWeight:'bold', color:'#333' }
+      },
+      series: top5.map((p,i)=> {
+        const [start,end] = playerGradients[i % playerGradients.length];
+        return {
+          name: p.Player,
+          type: 'line',
+          smooth: 0.3,
+          symbol: 'circle',
+          symbolSize: 6,
+          hoverAnimation: false,
+          lineStyle: {
+            width:3,
+            color: new graphic.LinearGradient(0,0,0,1, [
+              { offset:0, color:start },
+              { offset:1, color:end }
+            ])
+          },
+          itemStyle: { color:end, borderWidth:1, borderColor:'#fff' },
+          emphasis: { focus:'series', lineStyle:{ width:4 }, itemStyle:{ borderWidth:2, borderColor:'#000' } },
+          data: allDays.value.map(d=>p[`Score (D${d})`])
+        };
+      }),
+      animation:true,
+      animationDuration:800,
+      animationEasing:'cubicOut'
+    },
+    media: [{
+      query:{ maxWidth:600 },
+      option:{
+        grid:{ top:50, bottom:50, left:'5%', right:'5%' }
+      }
+    }]
+  };
+});
+
+
+// --- Castle Level vs Avg Score ---
+const castleScoreChartOption = computed(() => {
+  const castleMap = new Map();
+  playerData.value.forEach(p => {
+    const c = p.Castle;
+    if (!castleMap.has(c)) castleMap.set(c,{ total:0, count:0 });
+    castleMap.get(c).total += p['Total Score'];
+    castleMap.get(c).count += 1;
+  });
+  const entries = [...castleMap.entries()].sort((a,b)=>a[0]-b[0]);
+  const xData = entries.map(([castle]) => castle);
+  const yData = entries.map(([_,v]) =>
+    v.count>0 ? Math.round(v.total/v.count) : 0
+  );
+
+  return {
+    baseOption: {
+      title: { text:'Castle Level vs Avg Score', left:'center', textStyle:{ fontSize:18, fontWeight:'bold' } },
+      tooltip: {
+        trigger:'axis',
+        formatter: p => `Castle ${p[0].axisValue}<br/>Avg Score: ${p[0].value.toLocaleString()}`
+      },
+      grid:{ top:70, bottom:60, left:'10%', right:'10%' },
+      xAxis:{ type:'category', data: xData, axisLabel:{ fontWeight:'bold' } },
+      yAxis:{
+        type:'value',
+        axisLabel:{ formatter: v => v>=1e6 ? (v/1e6).toFixed(1)+'M' : v.toLocaleString() },
+        splitLine:{ lineStyle:{ type:'dashed', color:'#eee' } }
+      },
+      series:[{
+        type:'line',
+        data: yData,
+        areaStyle:{ opacity:0.3 },
+        smooth:true,
+        symbol:'circle',
+        itemStyle:{ color:'#6366f1' },
+        lineStyle:{ color:'#6366f1', width:3 }
+      }]
+    },
+    media:[{
+      query:{ maxWidth:600 },
+      option:{ grid:{ top:50, bottom:50, left:'5%', right:'5%' } }
+    }]
+  };
+});
+
+
+// --- Total Score by Day (Donut) ---
+const totalScoreByDayPieOption = computed(() => {
+  const labels = allDays.value.map(d => dayTasks[`D${d}`]);
+  const pieData = labels.map((label,idx) => {
+    const dayKey = `Score (D${idx+1})`;
+    const total = playerData.value.reduce((s,p)=>s + (p[dayKey]||0), 0);
+    return { name: label, value: total };
+  });
+
+  return {
+    baseOption: {
+      title: { text:'Total Score by Day', left:'center', textStyle:{ fontSize:18, fontWeight:'bold' } },
+      tooltip: { trigger:'item', formatter:'{b}<br/>Score: {c} ({d}%)' },
+      legend: { orient:'horizontal', top:40, left:'center' },
+      series:[{
+        type:'pie',
+        radius:['45%','70%'],
+        center:['50%','60%'],
+        data: pieData,
+        label:{ formatter:'{b}: {d}%', fontWeight:'bold' },
+        emphasis:{ itemStyle:{ shadowBlur:10, shadowOffsetX:0, shadowColor:'rgba(0,0,0,0.2)' } }
+      }]
+    },
+    media:[{
+      query:{ maxWidth:600 },
+      option:{ series:[{ radius:['40%','65%'] }], grid:{ left:'5%', right:'5%' } }
+    }]
+  };
+});
+
+
+// --- Daily Performance Comparison ---
+const comparisonDailyOption = computed(() => {
+  if (!selectedComparisonPlayers.value.length) return {};
+  const dayLabels = allDays.value.map(d => dayTasks[`D${d}`]);
+
+  return {
+    baseOption: {
+      title:{ text:'Daily Performance Comparison', left:'center', textStyle:{ fontSize:18, fontWeight:'bold' } },
+      tooltip:{
+        trigger:'axis',
+        backgroundColor:'rgba(50,50,50,0.9)',
+        borderColor:'#888',
+        borderWidth:1,
+        textStyle:{ color:'#fff' },
+        axisPointer:{ type:'line', lineStyle:{ color:'#bbb', type:'dashed' } }
+      },
+      grid:{ top:70, bottom:60, left:'10%', right:'10%' },
+      xAxis:{
+        type:'category',
+        data: dayLabels,
+        axisLine:{ lineStyle:{ color:'#ccc' } },
+        axisLabel:{ fontWeight:'bold', color:'#333', interval:0 },
+        axisTick:{ alignWithLabel:true }
+      },
+      yAxis:{
+        type:'value',
+        axisLabel:{ formatter:v=>v>=1e6 ? (v/1e6).toFixed(1)+'M' : v.toLocaleString(), color:'#333' },
+        splitLine:{ lineStyle:{ type:'dashed', color:'#eee' } }
+      },
+      legend:{
+        data: selectedComparisonPlayers.value.map(p=>p.Player),
+        orient:'horizontal',
+        bottom:0,
+        textStyle:{ fontWeight:'bold', color:'#333' }
+      },
+      series: selectedComparisonPlayers.value.map((player,i)=>{
+        const color = comparisonColours[i % comparisonColours.length];
+        return {
+          name: player.Player,
+          type:'line',
+          smooth:0.3,
+          symbol:'circle',
+          symbolSize:6,
+          hoverAnimation:false,
+          lineStyle:{ width:3, color },
+          itemStyle:{ color, borderWidth:1, borderColor:'#fff' },
+          emphasis:{ focus:'series', lineStyle:{ width:4 }, itemStyle:{ borderWidth:2, borderColor:'#000' } },
+          data: allDays.value.map(d=>player[`Score (D${d})`])
+        };
+      }),
+      animation:true,
+      animationDuration:800,
+      animationEasing:'cubicOut'
+    },
+    media:[{
+      query:{ maxWidth:600 },
+      option:{ grid:{ top:50, bottom:50, left:'5%', right:'5%' } }
+    }]
+  };
+});
+
+
+// --- Lifecycle & watchers ---
+onMounted(() => {
+  const eventMeta = jsonData[0] || {}
+  rawPlayerData.value = eventMeta.Players || []
+  playerData.value = normalizePlayerData(rawPlayerData.value)
+  calculateAveragePlayer()
+
+  // Set event metadata
+  guildName.value = eventMeta['Guild Short'] || eventMeta['Guild'] || 'Unknown Guild'
+  eventName.value = eventMeta['Event Short'] || eventMeta['Event'] || 'Unknown Event'
+
+  const updateMobile = () => {
+    isMobile.value = window.innerWidth < 640
+  }
+
+  updateMobile()
+  window.addEventListener('resize', updateMobile)
+});
+
+watch(comparisonView, val => {
+    if (!val) selectedComparisonPlayers.value = [];
+})
+
+watch(selectedComparisonPlayers, (players) => {
+  if (players.length === 0) {
+    comparisonView.value = false
+  }
+})
+
+const destroyChart = (id) => {
+    const chartElement = document.getElementById(id);
+    if (chartElement && chartElement.__chart__) {
+        chartElement.__chart__.dispose();
+        chartElement.__chart__ = null;
     }
 };
 
@@ -974,420 +1408,16 @@ const destroySummaryCharts = () => {
     destroyChart('castleScoreChart');
     destroyChart('powerScoreChart');
     destroyChart('dailyPerformanceChart');
+    destroyChart('totalScoreChart');
+    destroyChart('scoreByDayPie');
 };
-
-const destroyAllCharts = () => {
-    destroySummaryCharts();
-    destroyChart('playerComparisonChart');
-};
-
-const commonChartOptions = (axis = 'y', beginAtZero = true, tooltipCallback = null, additionalScalesOptions = {}) => {
-    const options = {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-            [axis]: {
-                beginAtZero: beginAtZero,
-                ticks: {
-                    callback: function (value) {
-                        if (typeof value !== 'number') return value;
-                        if (Math.abs(value) >= 1000000) return (value / 1000000).toFixed(1) + 'M';
-                        if (Math.abs(value) >= 1000) return (value / 1000).toFixed(1) + 'K';
-                        return value;
-                    }
-                }
-            },
-            ...additionalScalesOptions
-        },
-        plugins: {
-            tooltip: {
-                enabled: true,
-                callbacks: {}
-            },
-            legend: {
-                position: 'top',
-                labels: {
-                    boxWidth: 12,
-                    padding: 15
-                }
-            }
-        },
-        animation: {
-            duration: 500
-        },
-        hover: {
-            animationDuration: 0
-        },
-        responsiveAnimationDuration: 0
-    };
-
-    if (tooltipCallback && typeof tooltipCallback === 'function') {
-        options.plugins.tooltip.callbacks.label = () => '';
-        options.plugins.tooltip.callbacks.title = () => '';
-        options.plugins.tooltip.callbacks.afterBody = tooltipCallback;
-    } else {
-        options.plugins.tooltip.callbacks.label = function (context) {
-            let label = context.dataset.label || '';
-            if (label) label += ': ';
-            const value = context.raw;
-            if (value != null) {
-                label += formatNumber(value);
-            }
-            return label;
-        };
-    }
-    return options;
-};
-
-async function initCharts() {
-    const roleAggData = {};
-    const castleAggData = {};
-
-    playerData.value.forEach(player => {
-        const totalScore = Number(player['Total Score']) || 0;
-        const role = player['Role'] || 'Unknown';
-        const castleLevel = player['Castle'];
-
-        if (!roleAggData[role]) roleAggData[role] = { count: 0, totalScore: 0 };
-        roleAggData[role].count += 1;
-        roleAggData[role].totalScore += totalScore;
-
-        if (totalScore > 0) {
-            if (!castleAggData[castleLevel]) castleAggData[castleLevel] = { count: 0, totalScore: 0 };
-            castleAggData[castleLevel].count += 1;
-            castleAggData[castleLevel].totalScore += totalScore;
-        }
-    });
-
-    if (chartRenderLock.value) {
-        console.warn('[Chart Init] Skipping due to render lock');
-        return;
-    }
-
-    chartRenderLock.value = true;
-
-    try {
-        destroySummaryCharts();
-
-        // ROLE SCORE CHART
-        const roleCtx = await waitForCanvasRef(roleScoreChartRef);
-        const roleLabels = Object.keys(roleAggData).sort();
-        const roleAvgScores = roleLabels.map(r => roleAggData[r].totalScore / roleAggData[r].count);
-
-        chartInstances.value.roleScoreChart = new Chart(roleCtx, {
-            type: 'bar',
-            data: {
-                labels: roleLabels,
-                datasets: [{
-                    label: 'Average Score by Role',
-                    data: roleAvgScores,
-                    backgroundColor: 'rgba(79, 70, 229, 0.7)',
-                    borderColor: 'rgba(79, 70, 229, 1)',
-                    borderWidth: 1
-                }]
-            },
-            options: commonChartOptions('y', true, (ctx) => {
-                const i = ctx[0].dataIndex;
-                const role = roleLabels[i];
-                return [
-                    `Role: ${role}`,
-                    `Avg Score: ${formatNumber(roleAvgScores[i])}`,
-                    `Players: ${roleAggData[role].count}`
-                ];
-            })
-        });
-
-        // CASTLE SCORE CHART
-        const castleCtx = await waitForCanvasRef(castleScoreChartRef);
-        const castleLabels = Object.keys(castleAggData).map(Number).sort((a, b) => a - b);
-        const castleAvgScores = castleLabels.map(c => castleAggData[c].totalScore / castleAggData[c].count);
-
-        chartInstances.value.castleScoreChart = new Chart(castleCtx, {
-            type: 'line',
-            data: {
-                labels: castleLabels,
-                datasets: [{
-                    label: 'Average Score by Castle Level',
-                    data: castleAvgScores,
-                    borderColor: 'rgba(59, 130, 246, 1)',
-                    backgroundColor: 'rgba(59, 130, 246, 0.5)',
-                    tension: 0.3,
-                    pointRadius: 3,
-                    pointHoverRadius: 6
-                }]
-            },
-            options: commonChartOptions('y', true)
-        });
-
-        // POWER vs SCORE CHART
-        const powerCtx = await waitForCanvasRef(powerScoreChartRef);
-        const scatterData = playerData.value
-            .filter(p => p['Total Score'] > 0)
-            .map(p => ({ x: p.Power, y: p['Total Score'], player: p.Player }));
-
-        chartInstances.value.powerScoreChart = new Chart(powerCtx, {
-            type: 'scatter',
-            data: {
-                datasets: [{
-                    label: 'Power vs Score',
-                    data: scatterData,
-                    backgroundColor: 'rgba(16, 185, 129, 0.7)',
-                    pointRadius: 5,
-                    pointHoverRadius: 7
-                }]
-            },
-            options: commonChartOptions('y', true, (ctx) => {
-                const p = ctx[0].raw;
-                return [`${p.player}`, `Power: ${p.x}M`, `Score: ${formatNumber(p.y)}`];
-            }, {
-                x: {
-                    title: {
-                        display: true,
-                        text: 'Power (M)'
-                    }
-                }
-            })
-        });
-
-        // DAILY PERFORMANCE CHART
-        const dailyCtx = await waitForCanvasRef(dailyPerformanceChartRef);
-        const top5 = topPlayers.value.slice(0, 5);
-        const dailyLabels = ['Day 1', 'Day 2'];
-
-        const datasets = top5.map((p, i) => {
-            const baseColor = ['rgba(79,70,229,0.6)', 'rgba(139,92,246,0.6)', 'rgba(59,130,246,0.6)', 'rgba(16,185,129,0.6)', 'rgba(245,158,11,0.6)'][i];
-            const border = baseColor.replace('0.6', '1');
-
-            return {
-                label: p.Player,
-                data: [p['Score (D1)'], p['Score (D2)']],
-                backgroundColor: baseColor,
-                borderColor: border,
-                borderWidth: 2,
-                tension: 0.3,
-                pointRadius: 3
-            };
-        });
-
-        chartInstances.value.dailyPerformanceChart = new Chart(dailyCtx, {
-            type: 'line',
-            data: {
-                labels: dailyLabels,
-                datasets: datasets
-            },
-            options: commonChartOptions('y', true)
-        });
-
-    } catch (err) {
-        console.error('[Chart Init] Error during chart rendering:', err);
-    } finally {
-        chartRenderLock.value = false;
-    }
-}
-
-async function updatePlayerComparisonChart() {
-
-    if (!comparisonView.value || !comparisonPlayer1.value || !comparisonPlayer2.value) {
-        console.warn('[Player Comparison] Invalid comparison state');
-        destroyChart('playerComparisonChart');
-        return;
-    }
-
-    const canvasEl = playerComparisonChartRef.value;
-
-    if (!canvasEl || !canvasEl.getContext) {
-        console.warn('[Player Comparison] playerComparisonChartRef is null');
-        return;
-    }
-
-    // Wait until canvas is fully painted and ready
-    let ctx;
-    try {
-        ctx = await waitForCanvasRef(playerComparisonChartRef, 10, 200);
-    } catch (err) {
-        console.error('[Player Comparison] Canvas not ready:', err);
-        return;
-    }
-
-    if (!playerComparisonChartRef.value || !playerComparisonChartRef.value.getContext) {
-        console.warn('[Player Comparison] Canvas disappeared before rendering');
-        return;
-    }
-
-    destroyChart('playerComparisonChart');
-
-    const p1 = comparisonPlayer1.value;
-    const p2 = comparisonPlayer2.value;
-
-    const labels = ['Day 1 Score', 'Day 2 Score', 'Total Score'];
-    const p1Data = [p1['Score (D1)'], p1['Score (D2)'], p1['Total Score']];
-    const p2Data = [p2['Score (D1)'], p2['Score (D2)'], p2['Total Score']];
-
-    try {
-        chartInstances.value.playerComparisonChart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels,
-                datasets: [
-                    {
-                        label: p1.Player,
-                        data: p1Data,
-                        backgroundColor: 'rgba(79,70,229,0.7)',
-                        borderColor: 'rgba(79,70,229,1)',
-                        borderWidth: 1
-                    },
-                    {
-                        label: p2.Player,
-                        data: p2Data,
-                        backgroundColor: 'rgba(139,92,246,0.7)',
-                        borderColor: 'rgba(139,92,246,1)',
-                        borderWidth: 1
-                    }
-                ]
-            },
-            options: commonChartOptions('y', true)
-        });
-
-    } catch (err) {
-        console.error('[Player Comparison] Chart rendering failed ❌', err);
-    }
-}
-
-const triggerComparisonChartRender = () => {
-    if (chartRenderTimeout) {
-        clearTimeout(chartRenderTimeout);
-    }
-
-    chartRenderTimeout = setTimeout(async () => {
-        if (isRenderingComparisonChart) {
-            console.warn('[Chart] Already rendering comparison chart');
-            return;
-        }
-
-        if (!comparisonView.value || !comparisonPlayer1.value || !comparisonPlayer2.value) {
-            console.warn('[Chart] Invalid state, skipping chart render');
-            return;
-        }
-
-        isRenderingComparisonChart = true;
-
-        try {
-            console.log('[Chart Trigger] 🚀 Rendering player comparison chart...');
-            await updatePlayerComparisonChart();
-        } catch (err) {
-            console.error('[Chart Trigger] Chart rendering failed:', err);
-        } finally {
-            isRenderingComparisonChart = false;
-        }
-    }, 150); // debounce time
-};
-
-
-onMounted(() => {
-    rawPlayerData.value = jsonData;
-    playerData.value = rawPlayerData.value.map(player => {
-        const powerStr = String(player.Power || '0M');
-        const power = parseFloat(powerStr.replace('M', '')) || 0;
-        const totalScore = Number(player['Total Score']) || 0;
-        const scorePerPower = power > 0 ? totalScore / power : 0;
-        return {
-            ...player,
-            Power: power,
-            Castle: Number(player.Castle) || 0,
-            'Score (D1)': Number(player['Score (D1)']) || 0,
-            'Event Rank (D1)': Number(player['Event Rank (D1)']) || 0,
-            'Score (D2)': Number(player['Score (D2)']) || 0,
-            'Event Rank (D2)': Number(player['Event Rank (D2)']) || 0,
-            'Total Score': totalScore,
-            'Total Rank': Number(player['Total Rank']) || 0,
-            scorePerPower: scorePerPower
-        };
-    });
-});
-
-watch([comparisonPlayer1, comparisonPlayer2], () => {
-    if (comparisonView.value) {
-        triggerComparisonChartRender();
-    }
-});
-
-watch(playerData, async (newData) => {
-    if (summaryView.value && newData.length > 0) {
-        await nextTick();
-        setTimeout(() => {
-
-            const activePlayers = newData.filter(p => Number(p['Total Score']) > 0);
-
-            const avg = (field) => {
-                const sum = activePlayers.reduce((total, p) => total + Number(p[field] || 0), 0);
-                return activePlayers.length ? Number((sum / activePlayers.length).toFixed(2)) : 0;
-            };
-
-            averagePlayer.value = {
-                Player: 'Average Player',
-                Power: avg('Power'),
-                Castle: Math.round(avg('Castle')),
-                Role: 'R2',
-                'Total Score': Math.round(avg('Total Score')),
-                'Total Rank': 0,
-                'Score (D1)': Math.round(avg('Score (D1)')),
-                'Event Rank (D1)': 0,
-                'Score (D2)': Math.round(avg('Score (D2)')),
-                'Event Rank (D2)': 0,
-                scorePerPower: avg('scorePerPower')
-            };
-            initCharts();
-        }, 300);
-    }
-}, { immediate: true });
-
-watch(comparisonView, (isComparisonActive) => {
-    if (isComparisonActive && comparisonPlayer1.value && comparisonPlayer2.value) {
-        triggerComparisonChartRender();
-    } else if (!isComparisonActive) {
-        destroyChart('playerComparisonChart');
-    }
-});
-
-watch(summaryView, async (isSummaryActive) => {
-    if (isSummaryActive && playerData.value.length > 0) {
-
-        await nextTick();
-        requestAnimationFrame(async () => {
-            await nextTick();
-
-            setTimeout(() => {
-                initCharts();
-            }, 200);
-        });
-
-    } else if (!isSummaryActive) {
-        destroySummaryCharts();
-    }
-});
-
-
-watch(page, () => {
-    if (!summaryView.value && !comparisonView.value) {
-        nextTick(() => {
-            const tableContainer = document.querySelector('.data-table')?.closest('.overflow-x-auto');
-            if (tableContainer) {
-                tableContainer.scrollTo({ top: 0, behavior: 'smooth' });
-            } else {
-                const mainContent = document.querySelector('main.container');
-                if (mainContent) mainContent.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-        });
-    }
-});
 
 </script>
-
 
 <style scoped>
 .chart-container {
     position: relative;
-    height: 400px;
+    height: 350px;
     width: 100%;
     max-width: 900px;
     margin: 0 auto;
@@ -1397,28 +1427,13 @@ watch(page, () => {
     display: none;
 }
 
-.tooltip {
-    position: absolute;
-    z-index: 10;
-    background-color: rgba(0, 0, 0, 0.85);
-    color: white;
-    padding: 8px 12px;
-    border-radius: 6px;
-    font-size: 14px;
-    pointer-events: none;
-    display: none;
-}
-
-.tooltip-visible {
-    display: block;
-}
-
 .filter-pill {
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
+    cursor: pointer;
 }
 
-.filter-pill:hover {
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+.filter-pill:hover:not(:disabled) {
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     transform: translateY(-1px);
 }
 
@@ -1428,19 +1443,64 @@ watch(page, () => {
     border-color: #4f46e5;
 }
 
+.filter-pill:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background-color: #f3f4f6;
+    color: #9ca3af;
+    border-color: #d1d5db;
+}
+
 .data-table th {
     position: sticky;
     top: 0;
     background-color: #f9fafb;
-    z-index: 1;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    z-index: 10;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.data-table th::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #f9fafb;
+    z-index: -1;
 }
 
 .comparison-item {
-    transition: all 0.3s ease;
+    transition: background-color 0.2s ease;
 }
 
 .comparison-item:hover {
     background-color: #f3f4f6;
 }
+
+.animate-hue {
+  animation: hue 6s linear infinite;
+  display: inline-block;      /* needed for filter */
+}
+
+@keyframes gradientShift {
+  0%   { background-position:   0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position:   0% 50%; }
+}
+
+.animate-score-gradient {
+  background: linear-gradient(90deg,
+    #34d399,
+    #60a5fa,
+    #f472b6,
+    #facc15,
+    #a78bfa,
+    #34d399);
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gradientShift 8s linear infinite;
+}
+
 </style>
