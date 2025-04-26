@@ -17,7 +17,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { useStore } from 'vuex'
+import { useServerStore } from '@/stores/useServerStore'
 import { ServerIcon } from '@heroicons/vue/24/solid'
 import BaseWidget from './BaseWidget.vue'
 
@@ -30,17 +30,17 @@ const props = defineProps({
 
 defineEmits(['remove'])
 
-const store = useStore()
+const serverStore = useServerStore()
 
 const widgetTitle = computed(() => {
-    return store.getters['server/getComponentById'](props.widgetId)?.title || 'Server Overview'
+    return serverStore.getComponentById(props.widgetId)?.title || 'Server Overview'
 })
 
 const widgetIconColor = computed(() => {
-    return store.getters['server/getComponentById'](props.widgetId)?.iconColor || 'text-blue-400'
+    return serverStore.getComponentById(props.widgetId)?.iconColor || 'text-blue-400'
 })
 
-const servers = computed(() => store.state.server.servers)
+const servers = computed(() => serverStore.servers)
 
 function statusColor(status) {
     switch (status) {

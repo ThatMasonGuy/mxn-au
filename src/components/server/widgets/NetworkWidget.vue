@@ -20,7 +20,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { useStore } from 'vuex'
+import { useServerStore } from '@/stores/useServerStore'
 import { ServerIcon, ArrowPathIcon } from '@heroicons/vue/24/solid'
 import BaseWidget from './BaseWidget.vue'
 
@@ -33,15 +33,15 @@ const props = defineProps({
 
 defineEmits(['remove'])
 
-const store = useStore()
+const serverStore = useServerStore()
 
 const widgetTitle = computed(() => {
-    return store.getters['server/getComponentById'](props.widgetId)?.title || 'Network'
+    return serverStore.getComponentById(props.widgetId)?.title || 'Network'
 })
 
 const widgetIconColor = computed(() => {
-    return store.getters['server/getComponentById'](props.widgetId)?.iconColor || 'text-purple-400'
+    return serverStore.getComponentById(props.widgetId)?.iconColor || 'text-purple-400'
 })
 
-const connections = computed(() => store.state.server.connections)
+const connections = computed(() => serverStore.connections)
 </script>

@@ -6,7 +6,7 @@
             <h1 class="text-4xl font-bold text-center mb-12">TopHeroes Assistant</h1>
             <div class="flex justify-center">
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <NavCard @click="navigateTo('/topheroes/speedups')"
+                    <NavCard @click="navigateTo('/topheroes/tools/speedups')"
                         :image="TopHeroesBanner" title="Speed-up Calculator"
                         text="Find out how many speed-ups you have." />
 
@@ -17,7 +17,7 @@
                     <NavCard :comingSoon="true" :image="TopHeroes_2"
                         title="Team Builder" text="Build the best team you can, personalised to you." />
 
-                    <NavCard @click="navigateTo('/topheroes/resources')"
+                    <NavCard @click="navigateTo('/topheroes/tools/resources')"
                         :image="TopHeroes_1" title="Resource Calculator"
                         text="Not sure if you have enough for that upgrade?" />
                 </div>
@@ -28,7 +28,7 @@
 
 <script setup>
 import router from '@/router.js';
-import NavCard from '@/components/topHeroes/NavCard.vue';
+import NavCard from '@/archived/NavCard.vue';
 
 import TopHeroes_1 from '@/assets/topHeroes/TopHeroes_1.jpg';
 import TopHeroes_2 from '@/assets/topHeroes/TopHeroes_2.jpg';

@@ -15,7 +15,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { useStore } from 'vuex'
+import { useServerStore } from '@/stores/useServerStore'
 import { ClipboardIcon, FolderIcon, DocumentIcon } from '@heroicons/vue/24/solid'
 import BaseWidget from './BaseWidget.vue'
 
@@ -28,15 +28,15 @@ const props = defineProps({
 
 defineEmits(['remove'])
 
-const store = useStore()
+const serverStore = useServerStore()
 
 const widgetTitle = computed(() => {
-    return store.getters['server/getComponentById'](props.widgetId)?.title || 'File Browser'
+    return serverStore.getComponentById(props.widgetId)?.title || 'File Browser'
 })
 
 const widgetIconColor = computed(() => {
-    return store.getters['server/getComponentById'](props.widgetId)?.iconColor || 'text-yellow-400'
+    return serverStore.getComponentById(props.widgetId)?.iconColor || 'text-yellow-400'
 })
 
-const files = computed(() => store.state.server.files)
+const files = computed(() => serverStore.files)
 </script>

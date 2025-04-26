@@ -1,6 +1,6 @@
 <template>
-    <div v-cloak class="min-h-screen flex flex-col bg-gray-50 text-gray-800 font-sans">
-        <header class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white shadow-lg">
+    <div v-cloak class="bg-gray-50 -mt-28 -pb-12 text-gray-800 font-sans">
+        <header class="bg-gradient-to-r pt-16 from-indigo-700 to-purple-700 text-white shadow-lg">
             <div class="container mx-auto py-6 px-4 md:px-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                 <h1 class="text-3xl font-bold mb-1">
@@ -23,7 +23,6 @@
                 </div>
             </div>
             </header>
-
 
         <main class="container mx-auto px-4 md:px-8 py-6 flex-grow">
             <section v-show="summaryView" class="mb-12" ref="summarySectionRef">
@@ -478,14 +477,6 @@
                 </div>
             </section>
         </main>
-
-        <footer class="bg-gray-800 text-white py-6 mt-auto">
-            <div class="container mx-auto px-4 md:px-8">
-                <div class="text-center text-sm">
-                    <p>VLR GvG Event Dashboard | Generated {{ getCurrentDate() }}</p>
-                </div>
-            </div>
-        </footer>
 
         <div class="tooltip" ref="tooltip"></div>
     </div>

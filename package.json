@@ -25,6 +25,8 @@
     "lucide-vue-next": "^0.503.0",
     "luxon": "^3.6.1",
     "markdown-it": "^14.1.0",
+    "pinia": "^3.0.2",
+    "pinia-plugin-persistedstate": "^4.2.0",
     "radix-vue": "^1.7.3",
     "reka-ui": "^2.2.0",
     "tailwind-merge": "^2.6.0",

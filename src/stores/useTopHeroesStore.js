@@ -1,4 +1,5 @@
-// topheroesStore.js
+// @/stores/useTopHeroesStore.js
+import { defineStore } from 'pinia'
 import { doc, getDoc } from 'firebase/firestore'
 import { firestore } from '@/firebase'
 
@@ -7,57 +8,32 @@ const CACHE_EXPIRY = 5 * 60 * 1000 // 5 minutes
 const makeStorageKey = (eventId) => `event_data_${eventId}`
 const makeTimestampKey = (eventId) => `event_data_${eventId}_timestamp`
 
-export const topheroes = {
-    namespaced: true,
-
+export const useTopHeroesStore = defineStore('topheroes', {
     state: () => ({
         currentEvent: null,
         isLoading: false,
         error: null,
-        lastUpdated: null
+        lastUpdated: null,
     }),
 
     getters: {
         eventSections: (state) => state.currentEvent?.sections || [],
-
         eventMeta: (state) => ({
             title: state.currentEvent?.title || '',
             byline: state.currentEvent?.byline || '',
             color: state.currentEvent?.color || '',
-            resetTime: state.currentEvent?.resetTime || ''
+            resetTime: state.currentEvent?.resetTime || '',
         }),
-
         isCacheStale: (state) => {
             if (!state.lastUpdated) return true
-            const now = Date.now()
-            return (now - state.lastUpdated) > CACHE_EXPIRY
-        }
-    },
-
-    mutations: {
-        SET_DATA(state, data) {
-            state.currentEvent = data
-            state.lastUpdated = Date.now()
+            return (Date.now() - state.lastUpdated) > CACHE_EXPIRY
         },
-        SET_LOADING(state, status) {
-            state.isLoading = status
-        },
-        SET_ERROR(state, error) {
-            state.error = error
-        },
-        CLEAR_CACHE(state) {
-            state.currentEvent = null
-            state.lastUpdated = null
-        },
-        SET_LAST_UPDATED(state, timestamp) {
-            state.lastUpdated = timestamp
-        }
     },
 
     actions: {
-        async loadEventData({ commit }, { eventId, forceRefresh = false }) {
-            commit('SET_LOADING', true)
-            commit('SET_ERROR', null)
+        async loadEventData(eventId, forceRefresh = false) {
+            this.isLoading = true
+            this.error = null
 
             const storageKey = makeStorageKey(eventId)
             const timestampKey = makeTimestampKey(eventId)
@@ -68,9 +44,9 @@ export const topheroes = {
                     const timestamp = sessionStorage.getItem(timestampKey)
 
                     if (cached && timestamp && (Date.now() - parseInt(timestamp)) <= CACHE_EXPIRY) {
-                        commit('SET_DATA', JSON.parse(cached))
-                        commit('SET_LAST_UPDATED', parseInt(timestamp))
-                        commit('SET_LOADING', false)
+                        this.currentEvent = JSON.parse(cached)
+                        this.lastUpdated = parseInt(timestamp)
+                        this.isLoading = false
                         return
                     }
                 }
@@ -78,28 +54,35 @@ export const topheroes = {
                 const ref = doc(firestore, 'topheroes/general/events', eventId)
                 const snap = await getDoc(ref)
 
-                if (!snap.exists()) throw new Error(`Event guide "${eventId}" not found in Firestore`)
+                if (!snap.exists()) {
+                    throw new Error(`Event guide "${eventId}" not found in Firestore`)
+                }
 
                 const data = snap.data()
                 const now = Date.now()
 
-                commit('SET_DATA', data)
-                commit('SET_LAST_UPDATED', now)
+                this.currentEvent = data
+                this.lastUpdated = now
 
                 sessionStorage.setItem(storageKey, JSON.stringify(data))
                 sessionStorage.setItem(timestampKey, now.toString())
             } catch (err) {
                 console.error(`❌ ${eventId} Load Error:`, err)
-                commit('SET_ERROR', err.message || `Failed to load ${eventId} guide`)
+                this.error = err.message || `Failed to load ${eventId} guide`
             } finally {
-                commit('SET_LOADING', false)
+                this.isLoading = false
             }
         },
 
-        async clearCachedEvent({ commit }, eventId) {
+        async clearCachedEvent(eventId) {
             sessionStorage.removeItem(makeStorageKey(eventId))
             sessionStorage.removeItem(makeTimestampKey(eventId))
-            commit('CLEAR_CACHE')
-        }
-    }
-}
+            this.currentEvent = null
+            this.lastUpdated = null
+        },
+    },
+
+    persist: {
+        paths: ['currentEvent', 'lastUpdated'],
+    },
+})

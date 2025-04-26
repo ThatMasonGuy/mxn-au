@@ -1,292 +1,63 @@
-// src/router.js
-import { createRouter, createWebHistory } from 'vue-router';
-import ComingSoon from '@/pages/MasonUnleashed.vue';
+import { createRouter, createWebHistory } from 'vue-router'
 
-const comingSoon = true;
+// Dynamically import all route modules from /modules
+const routeModules = import.meta.glob('./routers/modules/*.js', { eager: true })
 
-const routes = [
-  // ------------------- Testing Routes -------------------
-/*
-  {
-    path: '/minecraft',
-    alias: '/Minecraft',
-    name: 'Minecraft',
-    component: () => import('@/pages/minecraft/MC_Perms.vue'),
-    meta: {
-      requiresAuth: false,
-      requiresTHOverlay: false,
-      requiresTHAdminOverlay: false,
-      title: 'Minecraft',
-    },
-  },
-  {
-    path: '/minecraft/logs',
-    alias: '/Minecraft/Logs',
-    name: 'Minecraft - Logs',
-    component: () => import('@/pages/minecraft/MC_LogViewer.vue'),
-    meta: {
-      requiresAuth: false,
-      requiresTHOverlay: false,
-      requiresTHAdminOverlay: false,
-      title: 'Minecraft - Logs',
-    },
-  },
-  {
-    path: '/server',
-    alias: '/Servers',
-    name: 'Server',
-    component: () => import('@/pages/server/Dashboard.vue'),
-    meta: {
-      requiresAuth: false,
-      requiresTHOverlay: false,
-      requiresTHAdminOverlay: false,
-      title: 'Server',
-    },
-  },
-  {
-    path: '/server/old',
-    alias: '/Server/Old',
-    name: 'Server - Old',
-    component: () => import('@/pages/server/DashboardOLD.vue'),
-    meta: {
-      requiresAuth: false,
-      requiresTHOverlay: false,
-      requiresTHAdminOverlay: false,
-      title: 'Server - Old',
-    },
-  },
-*/
-  // ------------------- TopHeroes Routes -------------------
-
-  {
-    path: '/topheroes/upload',
-    alias: '/topheroes/uploads',
-    name: 'Upload',
-    component: () => import('@/pages/UploadFirestoreData.vue'),
-    meta: {
-      requiresAuth: false,
-      requiresTHOverlay: false,
-      requiresTHAdminOverlay: false,
-      title: 'Upload',
-    },
-  },
-
-  {
-    path: '/topheroes',
-    alias: '/TopHeroes',
-    name: 'TopHeroes',
-    component: () => import('@/pages/topHeroes/TH_LandingPage.vue'),
-    meta: {
-      requiresAuth: false,
-      requiresTHOverlay: true,
-      requiresTHAdminOverlay: false,
-      title: 'TopHeroes',
-    },
-  },
-  {
-    path: '/topheroes/speedups',
-    alias: '/TopHeroes/SpeedUps',
-    name: 'TopHeroes - Speed-ups',
-    component: () => import('@/pages/topHeroes/TH_SpeedUps.vue'),
-    meta: {
-      requiresAuth: false,
-      requiresTHOverlay: true,
-      requiresTHAdminOverlay: false,
-      title: 'TopHeroes - Speed-ups',
-    },
-  },
-  {
-    path: '/topheroes/resources',
-    alias: '/TopHeroes/Resources',
-    name: 'TopHeroes - Resources',
-    component: () => import('@/pages/topHeroes/TH_ResourceCalculator.vue'),
-    meta: {
-      requiresAuth: false,
-      requiresTHOverlay: true,
-      requiresTHAdminOverlay: false,
-      title: 'TopHeroes - Resources',
-    },
-  },
-  {
-    path: '/topheroes/events',
-    alias: '/TopHeroes/Events',
-    name: 'TopHeroes - Events',
-    component: () => import('@/pages/topHeroes/TH_EventGuides.vue'),
-    meta: {
-      requiresAuth: false,
-      requiresTHOverlay: true,
-      requiresTHAdminOverlay: false,
-      title: 'TopHeroes - Events',
-    },
-  },
-
-  // ------------------- TopHeroes Velaris Routes -------------------
-
-  {
-    path: '/topheroes/velaris',
-    alias: '/TopHeroes/vlr',
-    name: 'TopHeroes - Velaris',
-    component: () => import('@/pages/topHeroes/velaris/TH_VelarisHome.vue'),
-    meta: {
-      requiresAuth: false,
-      requiresTHOverlay: true,
-      requiresTHAdminOverlay: false,
-      title: 'TopHeroes - Velaris',
-    },
-  },
-  {
-    path: '/topheroes/velaris/events/gvg',
-    alias: '/TopHeroes/vlr/events/gvg',
-    name: 'Velaris Events',
-    component: () => import('@/pages/topHeroes/velaris/TH_VLR_Event.vue'),
-    meta: {
-      requiresAuth: false,
-      requiresTHOverlay: true,
-      requiresTHAdminOverlay: false,
-      title: 'Velaris Events',
-    },
-  },
-
-  // ------------------- TopHeroes Events Routes -------------------
-
-  {
-    path: '/topheroes/events/dark-empire-invasion',
-    alias: '/TopHeroes/Events/Dark-Empire-Invasion',
-    name: 'TopHeroes - Dark Empire Invasion',
-    component: () => import('@/pages/topHeroes/events/TH_DarkEmpireInvasion.vue'),
-    meta: {
-      requiresAuth: false,
-      requiresTHOverlay: true,
-      requiresTHAdminOverlay: false,
-      title: 'TopHeroes - Events',
-    },
-  },
-  {
-    path: '/topheroes/events/kingdom-vs-kingdom',
-    alias: '/TopHeroes/Events/kvk',
-    name: 'TopHeroes - Kingdom vs. Kingdom',
-    component: () => import('@/pages/topHeroes/events/TH_KingdomVsKingdom.vue'),
-    meta: {
-      requiresAuth: false,
-      requiresTHOverlay: true,
-      requiresTHAdminOverlay: false,
-      title: 'TopHeroes - Events',
-    },
-  },
-  {
-    path: '/topheroes/events/guild-race',
-    alias: '/TopHeroes/Events/gr',
-    name: 'TopHeroes - Guild Race',
-    component: () => import('@/pages/topHeroes/events/TH_GuildRace.vue'),
-    meta: {
-      requiresAuth: false,
-      requiresTHOverlay: true,
-      requiresTHAdminOverlay: false,
-      title: 'TopHeroes - Events',
-    },
-  },
-
-  // ------------------- TopHeroes Admin Routes -------------------
-
-  {
-    path: '/topheroes/admin',
-    alias: ['/topheroes/admin/', '/topheroes/admin/home', '/topheroes/admin/home/'],
-    name: 'TopHeroes - Admin',
-    component: () => import('@/pages/topHeroes/admin/TH_AdminHome.vue'),
-    meta: {
-      requiresAuth: true,
-      requiresTHOverlay: false,
-      requiresTHAdminOverlay: true,
-      title: 'TopHeroes - Admin',
-    },
-  },
-  {
-    path: '/topheroes/admin/signup',
-    alias: '/TopHeroes/Admin/SignUp',
-    name: 'TopHeroes - Admin Sign-up',
-    component: () => import('@/pages/topHeroes/admin/TH_AdminSignUp.vue'),
-    meta: {
-      requiresAuth: false,
-      requiresTHOverlay: false,
-      requiresTHAdminOverlay: false,
-      title: 'TopHeroes - Admin',
-    },
-  },
-  {
-    path: '/topheroes/admin/castledata',
-    alias: ['/TopHeroes/Admin/CastleData', '/topheroes/admin/castle-data'],
-    name: 'TopHeroes - Admin Castle Data',
-    component: () => import('@/pages/topHeroes/admin/TH_AdminCastleData.vue'),
-    meta: {
-      requiresAuth: false,
-      requiresTHOverlay: false,
-      requiresTHAdminOverlay: false,
-      title: 'TopHeroes - Admin',
-    },
-  },
-  {
-    path: '/topheroes/admin/login',
-    alias: ['/topheroes/admin/login', '/topheroes/admin/signin', '/topheroes/admin/sign-in'],
-    name: 'TopHeroes - Admin Login',
-    component: () => import('@/pages/topHeroes/admin/TH_AdminLogin.vue'),
-    meta: {
-      requiresAuth: false,
-      requiresTHOverlay: false,
-      requiresTHAdminOverlay: false,
-      title: 'TopHeroes - Admin',
-    },
-  },
-
-  // ------------------- Coming Soon Route -------------------
-
-  {
-    path: '/coming-soon',
-    name: 'ComingSoon',
-    component: ComingSoon,
-    meta: {
-      requiresAuth: false,
-      title: 'Coming Soon',
-    },
-  },
-
-  // ------------------- Catch-All Route -------------------
-
-  {
-    path: '/:pathMatch(.*)*',
-    name: '404',
-    component: ComingSoon,
-    meta: {
-      requiresAuth: false,
-      title: 'Coming Soon',
-    },
-  },
-];
+// Flatten all module exports into a single array
+const routes = Object.values(routeModules)
+    .flatMap(module => module.default || [])
 
 const router = createRouter({
-  history: createWebHistory(),
-  routes,
-});
+    history: createWebHistory(),
+    routes,
+    scrollBehavior(to, from, savedPosition) {
+        // If using back/forward browser buttons
+        if (savedPosition) {
+            return savedPosition
+        } else {
+            // When navigating to a new route manually
+            return { top: 0 }
+        }
+    },
+})
 
+// Fake auth store for now (replace with your real auth)
+const fakeAuth = {
+    isAuthenticated: false, // Change this to true if logged in
+    userRole: null, // e.g. 'topheroesAdmin', 'serverAdmin', 'translateAdmin'
+}
+
+// --- Router Guards ---
 router.beforeEach((to, from, next) => {
-  if (to.name === 'ComingSoon') {
-    return next();
-  }
+    const { requiresAuth, role, title } = to.meta
 
-  if (!(to.path.toLowerCase().startsWith('/topheroes') || to.path.toLowerCase().startsWith('/minecraft') || to.path.toLowerCase().startsWith('/server'))) {
-    return next({ name: 'ComingSoon' });
-  }  
+    // --- 1. Dynamic Title ---
+    if (title) {
+        document.title = `${title} | MXN.au`
+    } else {
+        document.title = 'MXN.au'
+    }
 
-  if (!to.matched.some(record => record.meta.requiresAuth)) {
-    return next();
-  }
+    // --- 2. Check for unmatched route ---
+    if (!to.matched.length) {
+        console.warn('No matching route, redirecting to /404')
+        return next('/404')
+    }
 
-  const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-  if (token) {
-      return next();
-  }  
+    // --- 3. Auth Guard ---
+    if (requiresAuth && !fakeAuth.isAuthenticated) {
+        console.warn('Blocked: Login required.')
+        return next('/') // Or your login page
+    }
 
-  console.warn('Auth Key missing: Redirecting to /topheroes/admin/signin');
-  return next({ path: '/topheroes/admin/signin' });
-});
+    // --- 4. Role Guard ---
+    if (role && fakeAuth.userRole !== role) {
+        console.warn(`Blocked: Role "${role}" required.`)
+        return next('/') // Or unauthorized page
+    }
 
-export default router;
+    return next()
+})
+
+
+export default router

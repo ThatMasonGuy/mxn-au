@@ -11,7 +11,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { useStore } from 'vuex'
+import { useServerStore } from '@/stores/useServerStore'
 import { ChartBarIcon } from '@heroicons/vue/24/solid'
 import BaseWidget from './BaseWidget.vue'
 
@@ -24,15 +24,15 @@ const props = defineProps({
 
 defineEmits(['remove'])
 
-const store = useStore()
+const serverStore = useServerStore()
 
 const widgetTitle = computed(() => {
-    return store.getters['server/getComponentById'](props.widgetId)?.title || 'CPU Usage'
+    return serverStore.getComponentById(props.widgetId)?.title || 'CPU Usage'
 })
 
 const widgetIconColor = computed(() => {
-    return store.getters['server/getComponentById'](props.widgetId)?.iconColor || 'text-blue-400'
+    return serverStore.getComponentById(props.widgetId)?.iconColor || 'text-blue-400'
 })
 
-const cpuData = computed(() => store.state.server.cpuData)
+const cpuData = computed(() => serverStore.cpuData)
 </script>

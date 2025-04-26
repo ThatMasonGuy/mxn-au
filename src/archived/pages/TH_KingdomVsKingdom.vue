@@ -124,12 +124,12 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useStore } from 'vuex'
+import { useTopHeroesStore } from '@/stores/useTopHeroesStore'
 import Timeline from '@/components/ui/Timeline.vue'
 import { BookOpenIcon, ClipboardIcon, LightBulbIcon } from '@heroicons/vue/24/outline'
 import { Skeleton } from '@/components/ui/skeleton'
 
-const store = useStore()
+const topheroesStore = useTopHeroesStore()
 const activeTab = ref('D1')
 const isRefreshing = ref(false)
 
@@ -140,25 +140,21 @@ const userLocalTime = computed(() => {
     return utc2.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 })
 
-// Map component names to icons
+// Map icons
 const iconMap = {
     BookOpenIcon,
     ClipboardIcon,
     LightBulbIcon
 }
+const resolveIcon = (iconName) => iconMap[iconName] || BookOpenIcon
 
-// Helper function to resolve icon names to components
-const resolveIcon = (iconName) => {
-    return iconMap[iconName] || BookOpenIcon // Default to BookOpenIcon if not found
-}
+// Get state from store
+const eventSections = computed(() => topheroesStore.eventSections)
+const eventMeta = computed(() => topheroesStore.eventMeta)
+const isLoading = computed(() => topheroesStore.isLoading)
+const error = computed(() => topheroesStore.error)
 
-// Access store state via computed properties
-const eventSections = computed(() => store.getters['topheroes/eventSections'])
-const eventMeta = computed(() => store.getters['topheroes/eventMeta'])
-const isLoading = computed(() => store.state.topheroes.isLoading)
-const error = computed(() => store.state.topheroes.error)
-
-// Process sections to ensure they have the correct structure
+// Process sections
 const processedSections = computed(() => {
   return eventSections.value.map(section => {
     if (section.type === 'content') {
@@ -176,29 +172,14 @@ const processedSections = computed(() => {
   })
 })
 
-// Check if cached data is too old (> 5 minutes)
-const isCacheStale = () => {
-    const cachedTimestamp = localStorage.getItem('kvk_data_timestamp')
-    if (!cachedTimestamp) return true
-
-    const now = Date.now()
-    const fiveMinutesInMs = 5 * 60 * 1000
-    return (now - parseInt(cachedTimestamp)) > fiveMinutesInMs
-}
-
 // Function to refresh data manually
 const refreshData = async () => {
     if (isRefreshing.value) return
-
     isRefreshing.value = true
 
     try {
-        // Clear the cache and force a refresh
-        await store.dispatch('topheroes/clearCachedKvK')
-        await store.dispatch('topheroes/loadKvKData', true)
-
-        // Update timestamp in localStorage
-        localStorage.setItem('kvk_data_timestamp', Date.now().toString())
+        await topheroesStore.clearCachedEvent('kingdom-vs-kingdom')
+        await topheroesStore.loadEventData('kingdom-vs-kingdom', true)
     } catch (err) {
         console.error('Failed to refresh KvK data:', err)
     } finally {
@@ -206,17 +187,14 @@ const refreshData = async () => {
     }
 }
 
-// Load data from store or fetch from Firestore
+// Load data on mount
 onMounted(async () => {
-    // Check if we need a fresh fetch
-    const forceRefresh = isCacheStale()
-
     try {
-        await store.dispatch('topheroes/loadKvKData', forceRefresh)
-
-        // Update timestamp in localStorage
-        if (forceRefresh) {
-            localStorage.setItem('kvk_data_timestamp', Date.now().toString())
+        // Check if cache is stale
+        if (topheroesStore.isCacheStale) {
+            await topheroesStore.loadEventData('kingdom-vs-kingdom', true)
+        } else {
+            await topheroesStore.loadEventData('kingdom-vs-kingdom', false)
         }
     } catch (err) {
         console.error('Failed to load KvK data:', err)

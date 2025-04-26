@@ -42,7 +42,7 @@
 
 <script setup>
 import router from '@/router.js';
-import BannerImage from '@/assets/DarkEmpireInvasionBanner.jpg';
+import BannerImage from '@/assets/images/topHeroes/DarkEmpireInvasionBanner.jpg';
 
 const navigateTo = (path) => {
   router.push(path);

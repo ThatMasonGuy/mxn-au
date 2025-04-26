@@ -28,7 +28,7 @@
 
 <script setup>
 import { ref, onMounted, nextTick } from 'vue'
-import { useStore } from 'vuex'
+import { useServerStore } from '@/stores/useServerStore'
 import { PencilIcon, XCircleIcon } from '@heroicons/vue/24/solid'
 
 const props = defineProps({
@@ -46,9 +46,9 @@ const isHovered = ref(false)
 const editableTitle = ref(props.title)
 const titleInput = ref(null)
 
-const store = useStore()
+const serverStore = useServerStore()
 const updateWidgetTitle = (payload) =>
-    store.dispatch('server/updateWidgetTitle', payload)
+    serverStore.updateWidgetTitle(payload)
 
 const startEditingTitle = () => {
     isEditing.value = true

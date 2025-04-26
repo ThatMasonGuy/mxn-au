@@ -16,7 +16,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { useStore } from 'vuex'
+import { useServerStore } from '@/stores/useServerStore'
 import { CommandLineIcon } from '@heroicons/vue/24/solid'
 import BaseWidget from './BaseWidget.vue'
 
@@ -29,13 +29,13 @@ const props = defineProps({
 
 defineEmits(['remove'])
 
-const store = useStore()
+const serverStore = useServerStore()
 
 const widgetTitle = computed(() => {
-    return store.getters['server/getComponentById'](props.widgetId)?.title || 'Terminal'
+    return serverStore.getComponentById(props.widgetId)?.title || 'Terminal'
 })
 
 const widgetIconColor = computed(() => {
-    return store.getters['server/getComponentById'](props.widgetId)?.iconColor || 'text-green-400'
+    return serverStore.getComponentById(props.widgetId)?.iconColor || 'text-green-400'
 })
 </script>

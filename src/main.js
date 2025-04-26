@@ -1,21 +1,24 @@
-// main.js
+// src/main.js
 import { createApp } from 'vue';
 import App from './App.vue';
 import router from './router';
-import store from './stores';
+import { createPinia } from 'pinia';
+import piniaPluginPersistedstate from 'pinia-plugin-persistedstate';
+
 import "./style.css";
-import VueECharts from 'vue-echarts'
-import * as echarts from 'echarts/core'
-import { BarChart, LineChart, ScatterChart, PieChart } from 'echarts/charts'
+import VueECharts from 'vue-echarts';
+import * as echarts from 'echarts/core';
+import { BarChart, LineChart, ScatterChart, PieChart } from 'echarts/charts';
 import {
   TitleComponent,
   TooltipComponent,
   GridComponent,
   LegendComponent,
   DatasetComponent,
-} from 'echarts/components'
-import { CanvasRenderer } from 'echarts/renderers'
+} from 'echarts/components';
+import { CanvasRenderer } from 'echarts/renderers';
 
+// Setup ECharts
 echarts.use([
   TitleComponent,
   TooltipComponent,
@@ -27,14 +30,19 @@ echarts.use([
   ScatterChart,
   PieChart,
   CanvasRenderer
-])
+]);
 
+// Create the app
 const app = createApp(App);
 
-app.use(store);
-app.use(router);
-app.component('v-chart', VueECharts)
+// --- Set up Pinia ---
+const pinia = createPinia();
+pinia.use(piniaPluginPersistedstate);
 
-store.dispatch('restoreAuthFromStorage');
+app.use(pinia);
+app.use(router);
+
+// Global ECharts component
+app.component('v-chart', VueECharts);
 
 app.mount('#app');

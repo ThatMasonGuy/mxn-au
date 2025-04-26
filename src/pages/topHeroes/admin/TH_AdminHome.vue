@@ -42,14 +42,14 @@
   <script setup>
   import router from '@/router';
   import { signOut } from '@/auth'; // Make sure signOut is implemented in auth.js
-  import NavCard from '@/components/topHeroes/NavCard.vue';
+  import NavCard from '@/archived/NavCard.vue';
   import { Button } from '@/components/ui/button';
   
   // Import images (update the paths if your assets are located elsewhere)
-  import castleDataImage from '@/assets/topHeroes/CastleData.jpg';
-  import excalidrawImage from '@/assets/topHeroes/Excalidraw.jpg';
-  import kanbanImage from '@/assets/topHeroes/Kanban.jpg';
-  import settingsImage from '@/assets/topHeroes/Settings.jpg';
+  import castleDataImage from '@/assets/images/topHeroes/admin/CastleData.jpg';
+  import excalidrawImage from '@/assets/images/topHeroes/admin/Excalidraw.jpg';
+  import kanbanImage from '@/assets/images/topHeroes/admin/Kanban.jpg';
+  import settingsImage from '@/assets/images/topHeroes/admin/Settings.jpg';
   
   // Navigate to the specified path
   const navigateTo = (path) => {

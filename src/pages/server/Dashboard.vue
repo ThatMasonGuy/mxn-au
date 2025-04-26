@@ -21,7 +21,7 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import { useStore } from 'vuex'
+import { useServerStore } from '@/stores/useServerStore'
 import { GridLayout, GridItem } from 'vue3-grid-layout'
 
 import Sidebar from '@/components/server/layout/Sidebar.vue'
@@ -34,18 +34,18 @@ import TerminalWidget from '@/components/server/widgets/TerminalWidget.vue'
 import FileBrowserWidget from '@/components/server/widgets/FileBrowserWidget.vue'
 import NetworkWidget from '@/components/server/widgets/NetworkWidget.vue'
 
-const store = useStore()
+const serverStore = useServerStore()
 const layout = computed({
-  get: () => store.state.server.layout,
-  set: (val) => store.commit('server/SET_LAYOUT', val),
+  get: () => serverStore.layout,
+  set: (val) => serverStore.SET_LAYOUT(val),
 })
 
-const availableComponents = computed(() => store.state.server.availableComponents)
-const componentRegistry = computed(() => store.getters['server/getComponentRegistry'])
+const availableComponents = computed(() => serverStore.availableComponents)
+const componentRegistry = computed(() => serverStore.componentRegistry)
 
-const addComponent = component => store.dispatch('server/addComponent', component)
-const removeItem = id => store.dispatch('server/removeItem', id)
-const resetLayout = () => store.dispatch('server/resetLayout')
+const addComponent = component => serverStore.addComponent(component)
+const removeItem = id => serverStore.removeItem(id)
+const resetLayout = () => serverStore.resetLayout()
 
 const getWidgetComponent = id => {
   const type = componentRegistry.value[id]?.type

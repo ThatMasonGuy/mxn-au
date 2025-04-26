@@ -1,5 +1,5 @@
 <template>
-    <div class="py-24 bg-gradient-to-b from-[#0f0c29] via-[#302b63] to-[#24243e]">
+    <div class="pt-24 bg-gradient-to-b from-[#0f0c29] via-[#302b63] to-[#24243e]">
         <div class="text-white font-sans space-y-16 p-4 sm:p-6">
             <!-- Header -->
             <GuideHeader :title="eventMeta.title" :byline="eventMeta.byline" :resetTime="timeForYou"
@@ -30,14 +30,14 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useStore } from 'vuex'
+import { useTopHeroesStore } from '@/stores/useTopHeroesStore'
 import Timeline from '@/components/ui/Timeline.vue'
 import GuideHeader from '@/components/topHeroes/guide/GuideHeader.vue'
 import ContentSection from '@/components/topHeroes/guide/ContentSection.vue'
 import LoadingSkeleton from '@/components/topHeroes/guide/LoadingSkeleton.vue'
 import RefreshButton from '@/components/topHeroes/guide/RefreshButton.vue'
 
-const store = useStore()
+const topheroesStore = useTopHeroesStore()
 const eventId = 'kvk'
 const isRefreshing = ref(false)
 
@@ -50,9 +50,9 @@ const { timeForYou, timeUntil } = useTimeOffset({
     userNow: new Date()
 })
 
-const eventSections = computed(() => store.getters['topheroes/eventSections'])
-const eventMeta = computed(() => store.getters['topheroes/eventMeta'])
-const isLoading = computed(() => store.state.topheroes.isLoading)
+const eventSections = computed(() => topheroesStore.eventSections)
+const eventMeta = computed(() => topheroesStore.eventMeta)
+const isLoading = computed(() => topheroesStore.isLoading)
 
 const processedSections = computed(() => {
     return eventSections.value.map(section => {
@@ -71,19 +71,14 @@ const processedSections = computed(() => {
     })
 })
 
-const isCacheStale = () => {
-    const cachedTimestamp = localStorage.getItem(`event_data_${eventId}_timestamp`)
-    if (!cachedTimestamp) return true
-    return Date.now() - parseInt(cachedTimestamp) > 5 * 60 * 1000
-}
-
+// Function to refresh data manually
 const refreshData = async () => {
     if (isRefreshing.value) return
     isRefreshing.value = true
+
     try {
-        await store.dispatch('topheroes/clearCachedEvent', eventId)
-        await store.dispatch('topheroes/loadEventData', { eventId, forceRefresh: true })
-        localStorage.setItem(`event_data_${eventId}_timestamp`, Date.now().toString())
+        await topheroesStore.clearCachedEvent(eventId)
+        await topheroesStore.loadEventData(eventId, true)
     } catch (err) {
         console.error(`Failed to refresh ${eventId} data:`, err)
     } finally {
@@ -91,12 +86,14 @@ const refreshData = async () => {
     }
 }
 
+// Load data on mount
 onMounted(async () => {
-    const forceRefresh = isCacheStale()
     try {
-        await store.dispatch('topheroes/loadEventData', { eventId, forceRefresh })
-        if (forceRefresh) {
-            localStorage.setItem(`event_data_${eventId}_timestamp`, Date.now().toString())
+        // Check if cache is stale
+        if (topheroesStore.isCacheStale) {
+            await topheroesStore.loadEventData(eventId, true)
+        } else {
+            await topheroesStore.loadEventData(eventId, false)
         }
     } catch (err) {
         console.error(`Failed to load ${eventId} data:`, err)
