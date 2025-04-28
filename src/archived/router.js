@@ -174,7 +174,7 @@ const routes = [
     path: '/topheroes/velaris/events/gvg',
     alias: '/TopHeroes/vlr/events/gvg',
     name: 'Velaris Event',
-    component: () => import('@/pages/topHeroes/velaris/TH_VLR_Event.vue'),
+    component: () => import('@/pages/topHeroes/velaris/events/GvG_April_2025.vue'),
     meta: {
       requiresAuth: false,
       requiresTHOverlay: true,
@@ -283,7 +283,7 @@ const routes = [
     path: '/devtools/upload',
     alias: '/devtools/uploads',
     name: 'Upload',
-    component: () => import('@/pages/devTools/UploadFirestoreData.vue'),
+    component: () => import('@/pages/devTools/DT_JSONUpload.vue'),
     meta: {
       requiresAuth: false,
       requiresTHOverlay: false,

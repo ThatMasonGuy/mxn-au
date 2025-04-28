@@ -38,7 +38,7 @@ import LoadingSkeleton from '@/components/topHeroes/guide/LoadingSkeleton.vue'
 import RefreshButton from '@/components/topHeroes/guide/RefreshButton.vue'
 
 const topheroesStore = useTopHeroesStore()
-const eventId = 'kvk'
+const eventId = 'kingdom-vs-kingdom'
 const isRefreshing = ref(false)
 
 import { useTimeOffset } from '@/utils/useTimeOffset'

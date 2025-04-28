@@ -31,15 +31,22 @@
             </div>
 
             <div class="animate-slide-fade" v-for="tab in tabs" :key="tab.short" v-show="activeTab === tab.short">
-                <div
-                    class="bg-white/5 p-6 border border-white/10 rounded-xl 
-            hover:border-indigo-500/40 hover:shadow-indigo-900/20 transition-all duration-300">
-                    <h3 class="text-2xl font-semibold mb-2">{{ tab.title }}</h3>
-                    <p class="text-white/80">{{ tab.description }}</p>
-                    <ul v-if="tab.tips" class="list-disc pl-6 mt-4 text-white/70">
-                        <li v-for="(tip, i) in tab.tips" :key="i">{{ tip }}</li>
-                    </ul>
-                </div>
+                <template v-if="tab.newStyle">
+                    <NewTabContent :title="tab.title" :description="tab.description" :how-to-score="tab.howToScore"
+                        :priority-buildings="tab.priorityBuildings" :preparation-strategy="tab.preparationStrategy"
+                        :smart-upgrade-playbook="tab.smartUpgradePlaybook" :dos-and-donts="tab.dosAndDonts"
+                        :meta-tip="tab.metaTip" />
+                </template>
+                <template v-else>
+                    <div
+                        class="bg-white/5 p-6 border border-white/10 rounded-xl hover:border-indigo-500/40 hover:shadow-indigo-900/20 transition-all duration-300">
+                        <h3 class="text-2xl font-semibold mb-2">{{ tab.title }}</h3>
+                        <p class="text-white/80">{{ tab.description }}</p>
+                        <ul v-if="tab.tips" class="list-disc pl-6 mt-4 text-white/70">
+                            <li v-for="(tip, i) in tab.tips" :key="i">{{ tip }}</li>
+                        </ul>
+                    </div>
+                </template>
             </div>
         </div>
     </section>
@@ -47,7 +54,8 @@
 
 <script setup>
 import { ref } from 'vue'
-import { BookOpenIcon, ClipboardIcon, LightBulbIcon } from '@heroicons/vue/24/outline'
+import { BookOpenIcon, ClipboardIcon, LightBulbIcon } from '@heroicons/vue/24/outline';
+import NewTabContent from '@/components/topHeroes/guide/NewTabContent.vue';
 
 const props = defineProps({
     title: {

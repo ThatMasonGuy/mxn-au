@@ -6,8 +6,8 @@ export default [
         name: 'Translate',
         component: () => import('@/pages/translate/TR_Landing.vue'),
         meta: {
-            requiresAuth: true,
-            role: ROLES.TRANSLATE_ADMIN,
+            requiresAuth: false,
+            role: null,
             title: 'Translate Dashboard',
             drawerRanking: 4,
             drawerVisible: true,

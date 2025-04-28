@@ -1,0 +1,272 @@
+{
+  "title": "⚔️ Kingdom vs Kingdom (KvK)",
+  "byline": "Your ultimate guide to conquering the week-long server event",
+  "color": "#a78bfa",
+  "resetTime": "UTC+2",
+  "sections": [
+    {
+      "id": "overview",
+      "type": "content",
+      "title": "Event Overview",
+      "icon": "BookOpenIcon",
+      "cards": [
+        {
+          "title": "Event Format",
+          "content": "KvK has two stages: 5 Days of Preparation and 1 War Day. Your server earns points during Preparation, but true victory is decided by capturing the Throne on War Day."
+        },
+        {
+          "title": "Victory Conditions",
+          "content": "The server that controls the Throne for a total of 2 hours on War Day wins KvK. If no server reaches 2 hours, whoever holds the Throne at the end wins."
+        },
+        {
+          "title": "Preparation Stage",
+          "content": "During Preparation, players complete daily task themes (Construction, Research, Rally, Hero, Training) to earn points for their server. The server with the most points becomes the Invader."
+        },
+        {
+          "title": "Server Matching",
+          "content": "Servers are matched based on overall strength. Matchups are announced before Preparation begins, allowing time for planning and coordination."
+        },
+        {
+          "title": "Cross-Server Transfers",
+          "content": "On War Day, a special button appears in the event page. Players can transfer between servers up to 3 times per day to invade or defend. Use transfers wisely to maximize your impact."
+        },
+        {
+          "title": "Map and Throne Battle",
+          "content": "Strategically capture nearby towers to control the battlefield. Coordinate guild assaults on the Throne early. Healing wounded troops quickly and reinforcing allies are critical to success."
+        }
+      ]
+    },
+    {
+      "id": "timeline",
+      "component": "TimelineSection",
+      "props": {
+        "title": "Event Timeline",
+        "color": "text-yellow-300",
+        "timeline": [
+          {
+            "title": "Announcement Day",
+            "description": "KvK is announced as starting soon",
+            "dotColor": "bg-white",
+            "textColor": "text-yellow-200"
+          },
+          {
+            "title": "Matching Day",
+            "description": "Your server is paired with an opponent server",
+            "dotColor": "bg-white",
+            "textColor": "text-yellow-200"
+          },
+          {
+            "title": "Day 1: Construction Day",
+            "description": "Build and upgrade structures",
+            "dotColor": "bg-green-400",
+            "textColor": "text-green-300"
+          },
+          {
+            "title": "Day 2: Research Day",
+            "description": "Complete research and upgrade relics",
+            "dotColor": "bg-green-400",
+            "textColor": "text-green-300"
+          },
+          {
+            "title": "Day 3: Rally Day",
+            "description": "Run rallies, defeat world bosses, upgrade Lord Gear",
+            "dotColor": "bg-green-400",
+            "textColor": "text-green-300"
+          },
+          {
+            "title": "Day 4: Hero Day",
+            "description": "Level up, upgrade, and strengthen heroes",
+            "dotColor": "bg-green-400",
+            "textColor": "text-green-300"
+          },
+          {
+            "title": "Day 5: Training Day",
+            "description": "Train troops to bolster your forces",
+            "dotColor": "bg-green-400",
+            "textColor": "text-green-300"
+          },
+          {
+            "title": "Day 6: War Day",
+            "description": "Battle the other server, conquer or defend",
+            "dotColor": "bg-red-500",
+            "textColor": "text-red-300"
+          },
+          {
+            "title": "Settlement Day",
+            "description": "Use green potions to help heal guild mates' troops",
+            "dotColor": "bg-blue-400",
+            "textColor": "text-blue-300"
+          }
+        ]
+      }
+    },
+    {
+      "id": "daily",
+      "type": "content",
+      "title": "Daily Strategy Guide",
+      "icon": "ClipboardIcon",
+      "tabs": [
+        {
+          "short": "D1",
+          "title": "Construction Day",
+          "newStyle": true,
+          "description": "Today is about maximizing your event points by upgrading buildings for Facility Power gains, using speedups efficiently, and spending resources.",
+          "howToScore": [
+            "🏛️ Power Increase: The amount of Facility Power gained when completing an upgrade is the main way to score.",
+            "⏳ Speedups Used: Every minute of speedup used earns points, regardless of type (1m, 5m, 1h, etc.).",
+            "🪵 Resources Spent: Wood, Stone, and Rubies used toward upgrades grant minor points."
+          ],
+          "priorityBuildings": {
+            "highPriority": [
+              "Castle",
+              "Barracks",
+              "Statues (League, Horde, Nature)",
+              "Hospital",
+              "Troop Skin Center",
+              "Medal Hall",
+              "Guild Hall",
+              "Rally Hall",
+              "Research Hall"
+            ],
+            "midPriority": [
+              "Warehouse",
+              "Lords Hall",
+              "Training Grounds",
+              "Watchtower"
+            ],
+            "lowPriority": [
+              "Farms",
+              "Mines",
+              "Tavern",
+              "Blacksmith"
+            ]
+          },
+          "preparationStrategy": [
+            "✅ Finish major building upgrades **before** Construction Day begins, but **do not pop the gold chest bubble**.",
+            "✅ At event start, pop all queued upgrade bubbles for instant points.",
+            "✅ Upgrade multiple important buildings and line them up to be ready for popping as soon as possible."
+          ],
+          "smartUpgradePlaybook": [
+            "✅ Always wait for **full Guild Help** before using speedups to reduce upgrade time by ~20%.",
+            "✅ Use available queues (1–4) efficiently — always have something upgrading if possible.",
+            "✅ Prioritize upgrades that provide the highest Facility Power per speedup minute.",
+            "✅ Speedup use should be smart: short and long upgrades are fine as long as the power return is high.",
+            "✅ Focus on clearing bubbles during Construction Day only — bubbles popped outside the day **will not score**."
+          ],
+          "dosAndDonts": {
+            "do": [
+              "Finish high-power upgrades before reset and pop bubbles after event starts.",
+              "Prioritize Castle and key military buildings for the best point yield.",
+              "Wait for maximum Guild Help before spending speedups."
+            ],
+            "dont": [
+              "Pop upgrade bubbles too early or before the Construction Day window.",
+              "Use speedups on low-value upgrades like Farms, Mines, Tavern, or Blacksmith.",
+              "Leave upgrade queues idle without preparing new buildings."
+            ]
+          },
+          "metaTip": "Players who prep Castle upgrades and other high-power buildings days or weeks before can instantly top rankings at event start by popping bubbles strategically."
+        },
+        {
+          "short": "D2",
+          "title": "Research",
+          "description": "Complete tech upgrades in your Research Lab to earn points.",
+          "tips": [
+            "Prioritize high-point techs (Military > Economy > Growth).",
+            "Use Research Speedups or General Speedups.",
+            "Begin long techs before reset to complete during event.",
+            "Watch for research buffs in the Alliance Tech."
+          ]
+        },
+        {
+          "short": "D3",
+          "title": "Rally",
+          "description": "Run alliance rallies, defeat world bosses, and upgrade Lord Gear.",
+          "tips": [
+            "Use every Rally Ticket (they recharge hourly).",
+            "Coordinate with alliance for constant rallies—especially active zones.",
+            "Upgrade Lord Gear before reset to maximize points.",
+            "Use challenge bosses as bonus score farming."
+          ]
+        },
+        {
+          "short": "D4",
+          "title": "Hero",
+          "description": "Enhance your top heroes to score. Levels, skills, stars, and gear all count.",
+          "tips": [
+            "Save EXP items and Fragments for this day.",
+            "Enhance gear on heroes actively used in Arena or Rally.",
+            "Skill upgrades and star ascensions grant bonus points.",
+            "Focus on SSR+ or SSS+ heroes for higher point yields."
+          ]
+        },
+        {
+          "short": "D5",
+          "title": "Training",
+          "description": "Train new troops across all tiers—higher tiers score more.",
+          "tips": [
+            "Train T4 troops if possible (highest points per unit).",
+            "Use training boosts from Alliance Tech or Guild Buffs.",
+            "Start training queues the night before and speed finish post-reset.",
+            "Don’t forget to claim troop training event rewards too."
+          ]
+        },
+        {
+          "short": "D6",
+          "title": "War",
+          "description": "Portals open! Invade or defend your throne zone. PvP begins.",
+          "tips": [
+            "Reinforce allied towers and guildmates under attack.",
+            "Use healing speedups generously—points are lost when wounded.",
+            "Capture towers near the Throne to prevent enemy movement.",
+            "Group attack key buildings—Throne, Gates, and Barracks.",
+            "Avoid solo porting; move in packs with support."
+          ]
+        },
+        {
+          "short": "D7",
+          "title": "Settlement",
+          "description": "Healing, assisting, and post-war cleanup. Green potions boost alliance healing.",
+          "tips": [
+            "Use all remaining healing potions to assist alliance mates.",
+            "Finish wounded troops before server reset for ranking.",
+            "Thank active guildies and discuss War Day reflections.",
+            "Start preparing for the next event cycle (clear queues, stock up)."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tips",
+      "type": "content",
+      "title": "Tips & Tricks",
+      "icon": "LightBulbIcon",
+      "cards": [
+        {
+          "title": "📦 Preload Upgrades Smartly",
+          "content": "Complete building upgrades early but DO NOT pop the gold chest bubbles. Pop them on Construction Day for maximum points."
+        },
+        {
+          "title": "🕰️ Maximize Guild Help",
+          "content": "Always wait for full Guild Help before using speedups. This saves about 20% of construction, research, or healing time for free."
+        },
+        {
+          "title": "⚔️ Stick Together on War Day",
+          "content": "Move as groups when invading. Never solo port onto enemy territory. Focus on controlling towers near the Throne with your guild."
+        },
+        {
+          "title": "🛡️ Prioritize Healing Speed",
+          "content": "Use healing speedups aggressively. Wounded troops can't fight or score points, and losing armies weakens your server’s defense."
+        },
+        {
+          "title": "🎯 Plan Your Transfers",
+          "content": "You only get 3 cross-server transfers per day. Plan them around major tower fights or Throne pushes, not random PvP."
+        },
+        {
+          "title": "🚀 Early Prep = Late Win",
+          "content": "Start stacking speedups, resource packs, and troop training before KvK starts. Winning War Day starts weeks in advance with preparation."
+        }
+      ]
+    }
+  ]
+}

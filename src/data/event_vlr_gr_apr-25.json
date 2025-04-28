@@ -1,0 +1,766 @@
+[
+  {
+    "Guild": "Velaris",
+    "Guild Short": "VLR",
+    "Event": "Guild Race",
+    "Event Short": "GR",
+    "EventStartDate": "21-04-2025",
+    "EventEndDate": "27-04-2025",
+    "Players": [
+      {
+        "Name": "DOLUNAY",
+        "EventRank": 355,
+        "EventScore": 57,
+        "Castle": 36,
+        "Power": 35100000,
+        "Rank": "R2"
+      },
+      {
+        "Name": "ChrissyBit",
+        "EventRank": 351,
+        "EventScore": 200,
+        "Castle": 18,
+        "Power": 1200000,
+        "Rank": "R1"
+      },
+      {
+        "Name": "ZtupYdBoy",
+        "EventRank": 345,
+        "EventScore": 300,
+        "Castle": 32,
+        "Power": 18800000,
+        "Rank": "R1"
+      },
+      {
+        "Name": "Nex",
+        "EventRank": 343,
+        "EventScore": 327,
+        "Castle": 36,
+        "Power": 35900000,
+        "Rank": "R3"
+      },
+      {
+        "Name": "Domi",
+        "Badge": "New",
+        "EventRank": 341,
+        "EventScore": 345,
+        "Castle": 46,
+        "Power": 62900000,
+        "Rank": "R2"
+      },
+      {
+        "Name": "Elisasuna",
+        "EventRank": 340,
+        "EventScore": 345,
+        "Castle": 39,
+        "Power": 25200000,
+        "Rank": "R3"
+      },
+      {
+        "Name": "TzLsj",
+        "EventRank": 336,
+        "EventScore": 500,
+        "Castle": 38,
+        "Power": 23600000,
+        "Rank": "R1"
+      },
+      {
+        "Name": "Pinar",
+        "Badge": "New",
+        "EventRank": 335,
+        "EventScore": 550,
+        "Castle": 37,
+        "Power": 15500000,
+        "Rank": "R"
+      },
+      {
+        "Name": "Crow",
+        "EventRank": 330,
+        "EventScore": 689,
+        "Castle": 38,
+        "Power": 3100000,
+        "Rank": "R3"
+      },
+      {
+        "Name": "aXKiNGs",
+        "EventRank": 327,
+        "EventScore": 900,
+        "Castle": 37,
+        "Power": 23200000,
+        "Rank": "R2"
+      },
+      {
+        "Name": "Q7T0P",
+        "EventRank": 324,
+        "EventScore": 990,
+        "Castle": 37,
+        "Power": 21300000,
+        "Rank": "R1"
+      },
+      {
+        "Name": "MATJU",
+        "EventRank": 321,
+        "EventScore": 1145,
+        "Castle": 39,
+        "Power": 43000000,
+        "Rank": "R1"
+      },
+      {
+        "Name": "NEPTUN",
+        "EventRank": 316,
+        "EventScore": 1410,
+        "Castle": 39,
+        "Power": 38000000,
+        "Rank": "R2"
+      },
+      {
+        "Name": "NeoTweek",
+        "EventRank": 315,
+        "EventScore": 1410,
+        "Castle": 35,
+        "Power": 19300000,
+        "Rank": "R1"
+      },
+      {
+        "Name": "HaciSakir",
+        "EventRank": 311,
+        "EventScore": 1606,
+        "Castle": 38,
+        "Power": 22500000,
+        "Rank": "R1"
+      },
+      {
+        "Name": "Mona",
+        "EventRank": 309,
+        "EventScore": 1680,
+        "Castle": 38,
+        "Power": 30200000,
+        "Rank": "R2"
+      },
+      {
+        "Name": "Immaviol",
+        "EventRank": 307,
+        "EventScore": 1800,
+        "Castle": 38,
+        "Power": 17500000,
+        "Rank": "R2"
+      },
+      {
+        "Name": "OkayChalet",
+        "EventRank": 298,
+        "EventScore": 2067,
+        "Castle": 35,
+        "Power": 30700000,
+        "Rank": "R2"
+      },
+      {
+        "Name": "beansprout",
+        "EventRank": 295,
+        "EventScore": 2250,
+        "Castle": 34,
+        "Power": 8110000,
+        "Rank": "R1"
+      },
+      {
+        "Name": "Eliobecool",
+        "EventRank": 292,
+        "EventScore": 2517,
+        "Castle": 40,
+        "Power": 24800000,
+        "Rank": "R1"
+      },
+      {
+        "Name": "Cinartos",
+        "EventRank": 291,
+        "EventScore": 2580,
+        "Castle": 40,
+        "Power": 49200000,
+        "Rank": "R2"
+      },
+      {
+        "Name": "oldmanmugs",
+        "EventRank": 288,
+        "EventScore": 2751,
+        "Castle": 40,
+        "Power": 52800000,
+        "Rank": "R3"
+      },
+      {
+        "Name": "inesoa",
+        "EventRank": 283,
+        "EventScore": 2921,
+        "Castle": 37,
+        "Power": 27700000,
+        "Rank": "R2"
+      },
+      {
+        "Name": "Nasrollah",
+        "EventRank": 282,
+        "EventScore": 2930,
+        "Castle": 38,
+        "Power": 24900000,
+        "Rank": "R1"
+      },
+      {
+        "Name": "yei10",
+        "EventRank": 277,
+        "EventScore": 3035,
+        "Castle": 39,
+        "Power": 27700000,
+        "Rank": "R2"
+      },
+      {
+        "Name": "BabyKas",
+        "EventRank": 271,
+        "EventScore": 3276,
+        "Castle": 37,
+        "Power": 52200000,
+        "Rank": "R3"
+      },
+      {
+        "Name": "Tattoo",
+        "EventRank": 267,
+        "EventScore": 3378,
+        "Castle": 36,
+        "Power": 29400000,
+        "Rank": "R2"
+      },
+      {
+        "Name": "Marpus",
+        "EventRank": 248,
+        "EventScore": 4260,
+        "Castle": 40,
+        "Power": 35500000,
+        "Rank": "R1"
+      },
+      {
+        "Name": "Transvivor",
+        "EventRank": 245,
+        "EventScore": 4341,
+        "Castle": 40,
+        "Power": 37300000,
+        "Rank": "R4"
+      },
+      {
+        "Name": "Pal'min95",
+        "EventRank": 239,
+        "EventScore": 4520,
+        "Castle": 41,
+        "Power": 30700000,
+        "Rank": "R2"
+      },
+      {
+        "Name": "Pocket",
+        "EventRank": 238,
+        "EventScore": 4541,
+        "Castle": 40,
+        "Power": 25100000,
+        "Rank": "R3"
+      },
+      {
+        "Name": "Huilo",
+        "EventRank": 233,
+        "EventScore": 4610,
+        "Castle": 38,
+        "Power": 27300000,
+        "Rank": "R2"
+      },
+      {
+        "Name": "Hannie",
+        "EventRank": 232,
+        "EventScore": 5037,
+        "Castle": 40,
+        "Power": 41100000,
+        "Rank": "R2"
+      },
+      {
+        "Name": "Jurek",
+        "EventRank": 231,
+        "EventScore": 5123,
+        "Castle": 40,
+        "Power": 39000000,
+        "Rank": "R1"
+      },
+      {
+        "Name": "hilall",
+        "EventRank": 230,
+        "EventScore": 5152,
+        "Castle": 43,
+        "Power": 57400000,
+        "Rank": "R2"
+      },
+      {
+        "Name": "Faralla",
+        "EventRank": 228,
+        "EventScore": 5273,
+        "Castle": 41,
+        "Power": 47600000,
+        "Rank": "R3"
+      },
+      {
+        "Name": "Wutrus",
+        "EventRank": 227,
+        "EventScore": 5304,
+        "Castle": 36,
+        "Power": 32000000,
+        "Rank": "R2"
+      },
+      {
+        "Name": "Paris",
+        "EventRank": 222,
+        "EventScore": 5653,
+        "Castle": 38,
+        "Power": 37500000,
+        "Rank": "R3"
+      },
+      {
+        "Name": "Choji",
+        "EventRank": 211,
+        "EventScore": 6052,
+        "Castle": 45,
+        "Power": 38400000,
+        "Rank": "R3"
+      },
+      {
+        "Name": "TuGRuL",
+        "EventRank": 210,
+        "EventScore": 6069,
+        "Castle": 45,
+        "Power": 65000000,
+        "Rank": "R2"
+      },
+      {
+        "Name": "Lord Nalga",
+        "EventRank": 209,
+        "EventScore": 6136,
+        "Castle": 39,
+        "Power": 27700000,
+        "Rank": "R2"
+      },
+      {
+        "Name": "Porkemon",
+        "EventRank": 208,
+        "EventScore": 6171,
+        "Castle": 44,
+        "Power": 39100000,
+        "Rank": "R2"
+      },
+      {
+        "Name": "MaD",
+        "EventRank": 203,
+        "EventScore": 6348,
+        "Castle": 45,
+        "Power": 41600000,
+        "Rank": "R3"
+      },
+      {
+        "Name": "bean",
+        "EventRank": 201,
+        "EventScore": 6403,
+        "Castle": 46,
+        "Power": 48400000,
+        "Rank": "R4"
+      },
+      {
+        "Name": "Ash Black",
+        "EventRank": 196,
+        "EventScore": 6786,
+        "Castle": 43,
+        "Power": 40500000,
+        "Rank": "R3"
+      },
+      {
+        "Name": "Betelguise",
+        "EventRank": 193,
+        "EventScore": 7044,
+        "Castle": 37,
+        "Power": 18100000,
+        "Rank": "R2"
+      },
+      {
+        "Name": "SmooveEddie",
+        "EventRank": 190,
+        "EventScore": 7098,
+        "Castle": 39,
+        "Power": 36100000,
+        "Rank": "R2"
+      },
+      {
+        "Name": "LunarGrace",
+        "EventRank": 176,
+        "EventScore": 7322,
+        "Castle": 41,
+        "Power": 40300000,
+        "Rank": "R1"
+      },
+      {
+        "Name": "JayB",
+        "EventRank": 175,
+        "EventScore": 7342,
+        "Castle": 45,
+        "Power": 74000000,
+        "Rank": "R3"
+      },
+      {
+        "Name": "Kyra",
+        "EventRank": 171,
+        "EventScore": 7406,
+        "Castle": 38,
+        "Power": 46100000,
+        "Rank": "R3"
+      },
+      {
+        "Name": "Sir Yeets",
+        "EventRank": 167,
+        "EventScore": 7457,
+        "Castle": 55,
+        "Power": 81300000,
+        "Rank": "R4"
+      },
+      {
+        "Name": "Cheche",
+        "EventRank": 164,
+        "EventScore": 7546,
+        "Castle": 40,
+        "Power": 38400000,
+        "Rank": "R2"
+      },
+      {
+        "Name": "Dredd",
+        "EventRank": 163,
+        "EventScore": 7570,
+        "Castle": 37,
+        "Power": 23700000,
+        "Rank": "R3"
+      },
+      {
+        "Name": "Silent",
+        "EventRank": 159,
+        "EventScore": 7692,
+        "Castle": 36,
+        "Power": 54600000,
+        "Rank": "R3"
+      },
+      {
+        "Name": "Krillin",
+        "EventRank": 155,
+        "EventScore": 7823,
+        "Castle": 39,
+        "Power": 52500000,
+        "Rank": "R4"
+      },
+      {
+        "Name": "Salvo",
+        "EventRank": 154,
+        "EventScore": 7890,
+        "Castle": 37,
+        "Power": 33800000,
+        "Rank": "R3"
+      },
+      {
+        "Name": "JayJ",
+        "EventRank": 152,
+        "EventScore": 7928,
+        "Castle": 40,
+        "Power": 59900000,
+        "Rank": "R3"
+      },
+      {
+        "Name": "芷甯小寶貝",
+        "EventRank": 150,
+        "EventScore": 7966,
+        "Castle": 39,
+        "Power": 31300000,
+        "Rank": "R1"
+      },
+      {
+        "Name": "Swimmell",
+        "EventRank": 147,
+        "EventScore": 8160,
+        "Castle": 35,
+        "Power": 34100000,
+        "Rank": "R3"
+      },
+      {
+        "Name": "HolyMoely",
+        "EventRank": 140,
+        "EventScore": 8711,
+        "Castle": 39,
+        "Power": 38200000,
+        "Rank": "R2"
+      },
+      {
+        "Name": "Tohu",
+        "EventRank": 135,
+        "EventScore": 8832,
+        "Castle": 40,
+        "Power": 30300000,
+        "Rank": "R3"
+      },
+      {
+        "Name": "LordStarK",
+        "EventRank": 132,
+        "EventScore": 8955,
+        "Castle": 46,
+        "Power": 64700000,
+        "Rank": "R2"
+      },
+      {
+        "Name": "funkyfrog",
+        "EventRank": 125,
+        "EventScore": 9347,
+        "Castle": 39,
+        "Power": 39800000,
+        "Rank": "R4"
+      },
+      {
+        "Name": "AnknSkywkr",
+        "EventRank": 117,
+        "EventScore": 9860,
+        "Castle": 19,
+        "Power": 1250000,
+        "Rank": "R2"
+      },
+      {
+        "Name": "Mar",
+        "EventRank": 114,
+        "EventScore": 10037,
+        "Castle": 31,
+        "Power": 9310000,
+        "Rank": "R3"
+      },
+      {
+        "Name": "Daddy",
+        "EventRank": 109,
+        "EventScore": 10248,
+        "Castle": 38,
+        "Power": 54200000,
+        "Rank": "R3"
+      },
+      {
+        "Name": "Yukki",
+        "EventRank": 102,
+        "EventScore": 10939,
+        "Castle": 40,
+        "Power": 32800000,
+        "Rank": "R3"
+      },
+      {
+        "Name": "BADUUU",
+        "EventRank": 101,
+        "EventScore": 10958,
+        "Castle": 49,
+        "Power": 76200000,
+        "Rank": "R4"
+      },
+      {
+        "Name": "HawkTauh",
+        "EventRank": 96,
+        "EventScore": 11312,
+        "Castle": 38,
+        "Power": 39500000,
+        "Rank": "R3"
+      },
+      {
+        "Name": "Mason",
+        "EventRank": 95,
+        "EventScore": 11453,
+        "Castle": 46,
+        "Power": 74500000,
+        "Rank": "R5"
+      },
+      {
+        "Name": "Maxie",
+        "EventRank": 93,
+        "EventScore": 11516,
+        "Castle": 34,
+        "Power": 25800000,
+        "Rank": "R2"
+      },
+      {
+        "Name": "Cedro22",
+        "EventRank": 88,
+        "EventScore": 12032,
+        "Castle": 38,
+        "Power": 44700000,
+        "Rank": "R2"
+      },
+      {
+        "Name": "PEGASUS",
+        "EventRank": 85,
+        "EventScore": 12102,
+        "Castle": 38,
+        "Power": 34800000,
+        "Rank": "R2"
+      },
+      {
+        "Name": "Panty",
+        "EventRank": 82,
+        "EventScore": 12507,
+        "Castle": 39,
+        "Power": 35800000,
+        "Rank": "R3"
+      },
+      {
+        "Name": "magnataur",
+        "EventRank": 69,
+        "EventScore": 14034,
+        "Castle": 46,
+        "Power": 47800000,
+        "Rank": "R2"
+      },
+      {
+        "Name": "the sheX",
+        "EventRank": 65,
+        "EventScore": 14332,
+        "Castle": 39,
+        "Power": 39100000,
+        "Rank": "R2"
+      },
+      {
+        "Name": "Eric",
+        "EventRank": 61,
+        "EventScore": 14687,
+        "Castle": 45,
+        "Power": 60100000,
+        "Rank": "R3"
+      },
+      {
+        "Name": "Nova it is",
+        "EventRank": 59,
+        "EventScore": 14936,
+        "Castle": 39,
+        "Power": 36900000,
+        "Rank": "R4"
+      },
+      {
+        "Name": "DAYI",
+        "EventRank": 57,
+        "EventScore": 15020,
+        "Castle": 49,
+        "Power": 70600000,
+        "Rank": "R3"
+      },
+      {
+        "Name": "Velvet",
+        "EventRank": 47,
+        "EventScore": 16145,
+        "Castle": 49,
+        "Power": 87400000,
+        "Rank": "R4"
+      },
+      {
+        "Name": "Charlotte",
+        "EventRank": 44,
+        "EventScore": 16311,
+        "Castle": 46,
+        "Power": 48500000,
+        "Rank": "R3"
+      },
+      {
+        "Name": "Kabafano",
+        "EventRank": 40,
+        "EventScore": 16680,
+        "Castle": 46,
+        "Power": 49400000,
+        "Rank": "R3"
+      },
+      {
+        "Name": "AZarishR",
+        "EventRank": 37,
+        "EventScore": 17791,
+        "Castle": 40,
+        "Power": 45000000,
+        "Rank": "R3"
+      },
+      {
+        "Name": "Chicken",
+        "EventRank": 36,
+        "EventScore": 17818,
+        "Castle": 45,
+        "Power": 44400000,
+        "Rank": "R3"
+      },
+      {
+        "Name": "pg",
+        "EventRank": 6,
+        "EventScore": 27679,
+        "Castle": 40,
+        "Power": 30300000,
+        "Rank": "R3"
+      },
+      {
+        "Name": "JustDre",
+        "EventRank": 0,
+        "EventScore": 0,
+        "Castle": 37,
+        "Power": 1980000,
+        "Rank": "R3"
+      },
+      {
+        "Name": "Fatmiyy",
+        "EventRank": 0,
+        "EventScore": 0,
+        "Castle": 39,
+        "Power": 27400000,
+        "Rank": "R2"
+      },
+      {
+        "Name": "Quzsewiti",
+        "EventRank": 0,
+        "EventScore": 0,
+        "Castle": 40,
+        "Power": 54200000,
+        "Rank": "R2"
+      },
+      {
+        "Name": "LiOnKiNgZ",
+        "EventRank": 0,
+        "EventScore": 0,
+        "Castle": 34,
+        "Power": 18300000,
+        "Rank": "R2"
+      },
+      {
+        "Name": "Dez",
+        "EventRank": 0,
+        "EventScore": 0,
+        "Castle": 39,
+        "Power": 26800000,
+        "Rank": "R2"
+      },
+      {
+        "Name": "Ronin",
+        "EventRank": 0,
+        "EventScore": 0,
+        "Castle": 36,
+        "Power": 27200000,
+        "Rank": "R1"
+      },
+      {
+        "Name": "Akashi",
+        "EventRank": 0,
+        "EventScore": 0,
+        "Castle": 10,
+        "Power": 125000,
+        "Rank": "R1"
+      },
+      {
+        "Name": "FREFUNKYY",
+        "EventRank": 0,
+        "EventScore": 0,
+        "Castle": 40,
+        "Power": 42700000,
+        "Rank": "R1"
+      },
+      {
+        "Name": "LoRd John",
+        "EventRank": 0,
+        "EventScore": 0,
+        "Castle": 28,
+        "Power": 7870000,
+        "Rank": "R1"
+      }
+    ]
+  }
+]

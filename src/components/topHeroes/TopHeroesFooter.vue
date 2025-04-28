@@ -40,7 +40,7 @@
                 Built with
                 <span
                     class="font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-fuchsia-400 to-indigo-400 animate-gradient shimmer-glow">
-                    caffiene
+                    caffeine
                 </span>
                 by
                 <span

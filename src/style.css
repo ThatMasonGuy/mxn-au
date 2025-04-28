@@ -207,6 +207,23 @@
   animation: typing 1.5s infinite;
 }
 
+.animate-score-gradient {
+  background: linear-gradient(90deg, #34d399, #60a5fa, #f472b6, #facc15, #a78bfa, #34d399);
+  background-size: 300% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gradientShift 8s linear infinite;
+}
+
+.chart-container {
+  position: relative;
+  height: 350px;
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
 @keyframes typing {
   0% {
       content: '.';

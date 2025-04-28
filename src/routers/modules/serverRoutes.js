@@ -6,8 +6,8 @@ export default [
         name: 'Server',
         component: () => import('@/pages/server/SR_Landing.vue'),
         meta: {
-            requiresAuth: true,
-            role: ROLES.SERVER_ADMIN,
+            requiresAuth: false,
+            role: null,
             title: 'Server Control',
             drawerRanking: 2,
             drawerVisible: true,

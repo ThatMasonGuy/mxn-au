@@ -170,7 +170,7 @@
 import { ref } from 'vue'
 import { doc, setDoc, getDoc } from 'firebase/firestore'
 import { firestore } from '@/firebase'
-import { useToast } from '@/components/ui/toast'
+import { toast } from 'vue-sonner';
 import {
     Dialog,
     DialogContent,
@@ -182,8 +182,6 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-
-const { toast } = useToast()
 
 const jsonFile = ref(null)
 const isUploading = ref(false)
@@ -198,11 +196,8 @@ const handleFileChange = (event) => {
     if (file && file.type === 'application/json') {
         jsonFile.value = file
     } else {
-        toast({
-            title: "Invalid File",
-            description: "Please select a valid JSON file",
-            variant: "destructive"
-        })
+        toast.error("Invalid File. Please select a valid JSON file")
+        
         if (fileInputRef.value) fileInputRef.value.value = ''
         jsonFile.value = null
     }
@@ -210,11 +205,8 @@ const handleFileChange = (event) => {
 
 const uploadJson = async () => {
     if (!jsonFile.value || !firestorePath.value) {
-        toast({
-            title: "Missing Information",
-            description: "Please provide both a JSON file and a Firestore path",
-            variant: "destructive"
-        })
+        toast.error("Missing Information. Please provide both a JSON file and a Firestore path")
+        
         return
     }
 
@@ -237,29 +229,19 @@ const uploadJson = async () => {
                         await performUpload(data)
                     }
                 } else {
-                    toast({
-                        title: "Invalid Path",
-                        description: "Path must point to a document (collection/document)",
-                        variant: "destructive"
-                    })
+                    toast.error("Invalid Path. Path must point to a document (collection/document)")
+                    
                     isUploading.value = false
                 }
             } catch (err) {
-                toast({
-                    title: "JSON Parse Error",
-                    description: "Failed to parse JSON",
-                    variant: "destructive"
-                })
+                toast.error("JSON Parse Error. Failed to parse JSON")
+
                 isUploading.value = false
             }
         }
         reader.readAsText(jsonFile.value)
     } catch (err) {
-        toast({
-            title: "Upload Failed",
-            description: err.message || "An error occurred during upload",
-            variant: "destructive"
-        })
+        toast.error(`Upload Failed ${err.message}`)
         isUploading.value = false
     }
 }
@@ -268,18 +250,13 @@ const performUpload = async (data) => {
     try {
         const docRef = doc(firestore, firestorePath.value)
         await setDoc(docRef, data, { merge: mergeDocuments.value })
-        toast({
-            title: "Upload Successful",
-            description: `Data uploaded to ${firestorePath.value}`
-        })
+        toast.success(`Upload Successful. Data uploaded to ${firestorePath.value}`)
+
         jsonFile.value = null
         if (fileInputRef.value) fileInputRef.value.value = ''
     } catch (err) {
-        toast({
-            title: "Upload Failed",
-            description: err.message || "An error occurred during upload",
-            variant: "destructive"
-        })
+        toast.error(`Upload Failed ${err.message}`)
+
     } finally {
         isUploading.value = false
         uploadAttemptData.value = null
@@ -296,9 +273,6 @@ const cancelOverwrite = () => {
     showOverwriteDialog.value = false
     uploadAttemptData.value = null
     mergeDocuments.value = false
-    toast({
-        title: "Upload Cancelled",
-        description: "Document overwrite was cancelled"
-    })
+    toast.warning("Upload Cancelled. Document overwrite was cancelled")
 }
 </script>

@@ -484,7 +484,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
-import jsonData from '@/data/vlr_gvg_event_data.json'
+import jsonData from '@/data/event_vlr_gvg_apr-25.json'
 import { graphic, getInstanceByDom } from 'echarts/core'
 import * as echarts from 'echarts/core'
 import { TimelineComponent } from 'echarts/components';
