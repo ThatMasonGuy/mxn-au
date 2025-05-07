@@ -31,7 +31,7 @@
 </template>
 
 <script setup>
-import ToolCard from '@/components/topHeroes/ToolCard.vue'
+import ToolCard from '@/components/topheroes/ToolCard.vue'
 
 // Import Heroicons
 import {

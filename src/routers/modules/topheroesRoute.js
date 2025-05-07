@@ -4,7 +4,7 @@ export default [
     {
         path: '/topheroes',
         name: 'TopHeroes',
-        component: () => import('@/pages/topHeroes/TH_Landing.vue'),
+        component: () => import('@/pages/topheroes/TH_Landing.vue'),
         meta: {
             requiresAuth: false,
             role: null,
@@ -20,7 +20,7 @@ export default [
     {
         path: '/topheroes/tools',
         name: 'TopHeroes - Tools',
-        component: () => import('@/pages/topHeroes/TH_Tools.vue'),
+        component: () => import('@/pages/topheroes/TH_Tools.vue'),
         meta: {
             requiresAuth: false,
             role: null,
@@ -36,7 +36,7 @@ export default [
     {
         path: '/topheroes/events',
         name: 'TopHeroes - Events',
-        component: () => import('@/pages/topHeroes/TH_EventGuides.vue'),
+        component: () => import('@/pages/topheroes/TH_EventGuides.vue'),
         meta: {
             requiresAuth: false,
             role: null,
@@ -52,7 +52,7 @@ export default [
     {
         path: '/topheroes/velaris',
         name: 'TopHeroes - Velaris',
-        component: () => import('@/pages/topHeroes/velaris/TH_VelarisHome.vue'),
+        component: () => import('@/pages/topheroes/velaris/TH_VelarisHome.vue'),
         meta: {
             requiresAuth: false,
             role: null,
@@ -70,7 +70,7 @@ export default [
     {
         path: '/topheroes/admin',
         name: 'TopHeroes - Admin',
-        component: () => import('@/pages/topHeroes/admin/TH_AdminHome.vue'),
+        component: () => import('@/pages/topheroes/admin/TH_AdminHome.vue'),
         meta: {
             requiresAuth: true,
             role: ROLES.TOPHEROES_ADMIN,
@@ -88,7 +88,7 @@ export default [
     {
         path: '/topheroes/tools/speedups',
         name: 'TopHeroes - Speed-ups',
-        component: () => import('@/pages/topHeroes/TH_SpeedUps.vue'),
+        component: () => import('@/pages/topheroes/TH_SpeedUps.vue'),
         meta: {
             requiresAuth: false,
             role: null,
@@ -104,7 +104,7 @@ export default [
     {
         path: '/topheroes/tools/resources',
         name: 'TopHeroes - Resources',
-        component: () => import('@/pages/topHeroes/TH_ResourceCalculator.vue'),
+        component: () => import('@/pages/topheroes/TH_ResourceCalculator.vue'),
         meta: {
             requiresAuth: false,
             role: null,
@@ -122,7 +122,7 @@ export default [
     {
         path: '/topheroes/velaris/events',
         name: 'Velaris Events',
-        component: () => import('@/pages/topHeroes/velaris/TH_VLR_Events.vue'),
+        component: () => import('@/pages/topheroes/velaris/TH_VLR_Events.vue'),
         meta: {
             requiresAuth: false,
             role: null,
@@ -138,7 +138,7 @@ export default [
     {
         path: '/topheroes/velaris/events/guild-vs-guild/april-2025',
         name: 'Velaris Event - GvG',
-        component: () => import('@/pages/topHeroes/velaris/events/GvG_April_2025.vue'),
+        component: () => import('@/pages/topheroes/velaris/events/GvG_April_2025.vue'),
         meta: {
             requiresAuth: false,
             role: null,
@@ -154,7 +154,7 @@ export default [
     {
         path: '/topheroes/velaris/events/guild-race/april-2025',
         name: 'Velaris Event - GR',
-        component: () => import('@/pages/topHeroes/velaris/events/GvG_April_2025.vue'),
+        component: () => import('@/pages/topheroes/velaris/events/GvG_April_2025.vue'),
         meta: {
             requiresAuth: false,
             role: null,
@@ -170,7 +170,7 @@ export default [
     {
         path: '/topheroes/velaris/events/guild-vs-guild/workbench',
         name: 'Velaris Event - GvG Workbench',
-        component: () => import('@/pages/topHeroes/velaris/events/GvG_Workbench.vue'),
+        component: () => import('@/pages/topheroes/velaris/events/GvG_Workbench.vue'),
         meta: {
             requiresAuth: false,
             role: null,
@@ -188,7 +188,7 @@ export default [
     {
         path: '/topheroes/events/dark-empire-invasion',
         name: 'TopHeroes - Dark Empire Invasion',
-        component: () => import('@/pages/topHeroes/events/TH_DarkEmpireInvasion.vue'),
+        component: () => import('@/pages/topheroes/events/TH_DarkEmpireInvasion.vue'),
         meta: {
             requiresAuth: false,
             role: null,
@@ -204,7 +204,7 @@ export default [
     {
         path: '/topheroes/events/kingdom-vs-kingdom',
         name: 'TopHeroes - Kingdom vs. Kingdom',
-        component: () => import('@/pages/topHeroes/events/TH_KingdomVsKingdom.vue'),
+        component: () => import('@/pages/topheroes/events/TH_KingdomVsKingdom.vue'),
         meta: {
             requiresAuth: false,
             role: null,
@@ -220,7 +220,7 @@ export default [
     {
         path: '/topheroes/events/guild-race',
         name: 'TopHeroes - Guild Race',
-        component: () => import('@/pages/topHeroes/events/TH_GuildRace.vue'),
+        component: () => import('@/pages/topheroes/events/TH_GuildRace.vue'),
         meta: {
             requiresAuth: false,
             role: null,
@@ -238,7 +238,7 @@ export default [
     {
         path: '/topheroes/admin/signup',
         name: 'TopHeroes - Admin Sign-up',
-        component: () => import('@/pages/topHeroes/admin/TH_AdminSignUp.vue'),
+        component: () => import('@/pages/topheroes/admin/TH_AdminSignUp.vue'),
         meta: {
             requiresAuth: false,
             role: null,
@@ -254,7 +254,7 @@ export default [
     {
         path: '/topheroes/admin/castledata',
         name: 'TopHeroes - Admin Castle Data',
-        component: () => import('@/pages/topHeroes/admin/TH_AdminCastleData.vue'),
+        component: () => import('@/pages/topheroes/admin/TH_AdminCastleData.vue'),
         meta: {
             requiresAuth: true,
             role: ROLES.TOPHEROES_ADMIN,
@@ -270,7 +270,23 @@ export default [
     {
         path: '/topheroes/admin/login',
         name: 'TopHeroes - Admin Login',
-        component: () => import('@/pages/topHeroes/admin/TH_AdminLogin.vue'),
+        component: () => import('@/pages/topheroes/admin/TH_AdminLogin.vue'),
+        meta: {
+            requiresAuth: false,
+            role: null,
+            title: 'Admin Login',
+            drawerRanking: 1,
+            drawerVisible: true,
+            layout: 'auth',
+            description: 'Login page for TopHeroes admins.',
+            badge: '',
+            requiresOverlay: false,
+        },
+    },
+    {
+        path: '/topheroes/admin/events/guides/guide-builder',
+        name: 'TopHeroes - Guide Builder',
+        component: () => import('@/pages/topheroes/events/guides/Builder.vue'),
         meta: {
             requiresAuth: false,
             role: null,

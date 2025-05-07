@@ -9,12 +9,11 @@
       <Toaster position="bottom-right" richColors />
 
       <!-- Page Content -->
-      <div class="flex-grow flex flex-col">
+      <div class="flex-grow">
         <router-view v-slot="{ Component, route }">
-          <component :is="Component" :key="route.fullPath" ref="pageRef" class="flex-grow min-h-screen flex flex-col"
-            :class="{
-              'pt-28 pb-32': isTopHeroes && (layout === 'default' || layout === 'admin')
-            }" />
+          <component :is="Component" :key="route.fullPath" ref="pageRef" class="min-h-screen w-full" :class="{
+            'pt-28 pb-32': isTopHeroes && (layout === 'default' || layout === 'admin')
+          }" />
         </router-view>
       </div>
 
@@ -29,10 +28,10 @@
 <script setup>
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import TopHeroesHeader from '@/components/topHeroes/TopHeroesHeader.vue'
-import TopHeroesFooter from '@/components/topHeroes/TopHeroesFooter.vue'
-import TopHeroesAdminHeader from '@/components/topHeroes/admin/TopHeroesAdminHeader.vue'
-import TopHeroesAdminFooter from '@/components/topHeroes/admin/TopHeroesAdminFooter.vue'
+import TopHeroesHeader from '@/components/topheroes/TopHeroesHeader.vue'
+import TopHeroesFooter from '@/components/topheroes/TopHeroesFooter.vue'
+import TopHeroesAdminHeader from '@/components/topheroes/admin/TopHeroesAdminHeader.vue'
+import TopHeroesAdminFooter from '@/components/topheroes/admin/TopHeroesAdminFooter.vue'
 import { ref, computed, watchEffect } from 'vue'
 import { useRoute } from 'vue-router'
 
