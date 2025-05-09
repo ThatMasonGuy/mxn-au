@@ -6,7 +6,7 @@
       <TopHeroesHeader v-if="isTopHeroes && layout === 'default'" />
       <TopHeroesAdminHeader v-else-if="isTopHeroes && layout === 'admin'" />
 
-      <Toaster position="bottom-right" richColors />
+      <Toaster />
 
       <!-- Page Content -->
       <div class="flex-grow">
@@ -26,7 +26,7 @@
 </template>
 
 <script setup>
-import { Toaster } from '@/components/ui/sonner'
+import { Toaster } from '@/components/ui/toast'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import TopHeroesHeader from '@/components/topheroes/TopHeroesHeader.vue'
 import TopHeroesFooter from '@/components/topheroes/TopHeroesFooter.vue'

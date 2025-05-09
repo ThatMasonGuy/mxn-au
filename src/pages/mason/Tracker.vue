@@ -1,454 +1,414 @@
 <template>
-    <div class="min-h-screen bg-zinc-900 text-white p-6 flex flex-col gap-6">
-        <header class="flex justify-between items-center">
-            <h1 class="text-4xl font-bold flex items-center gap-2">
-                <span>🍽️ Eat, you Goblin</span>
-            </h1>
-            <div class="text-xl font-semibold">
-                {{ currentTimeDisplay }}
-            </div>
-        </header>
-
-        <div class="flex gap-4 flex-wrap">
-            <button @click="logAction('breakfast')"
-                class="px-4 py-2 bg-amber-600 rounded hover:bg-amber-700 flex items-center gap-2">
-                <SunIcon class="h-5 w-5" />
-                Breakfast
-            </button>
-            <button @click="logAction('lunch')"
-                class="px-4 py-2 bg-green-600 rounded hover:bg-green-700 flex items-center gap-2">
-                <CakeIcon class="h-5 w-5" />
-                Lunch
-            </button>
-            <button @click="logAction('dinner')"
-                class="px-4 py-2 bg-indigo-600 rounded hover:bg-indigo-700 flex items-center gap-2">
-                <MoonIcon class="h-5 w-5" />
-                Dinner
-            </button>
-            <button @click="logAction('water')"
-                class="px-4 py-2 bg-blue-600 rounded hover:bg-blue-700 flex items-center gap-2">
-                <BeakerIcon class="h-5 w-5" />
-                Water
-            </button>
-            <button @click="logAction('coffee')"
-                class="px-4 py-2 bg-amber-800 rounded hover:bg-amber-900 flex items-center gap-2">
-                <FireIcon class="h-5 w-5" />
-                Dare
-            </button>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <!-- Today's Status -->
-            <div class="bg-zinc-800 p-4 rounded-lg">
-                <h2 class="text-2xl font-bold mb-4">Today's Status</h2>
-
-                <div :class="['p-3 rounded-md mb-3', needsBreakfast ? 'bg-red-700' : 'bg-zinc-700']">
-                    <div class="flex justify-between items-center">
-                        <span class="flex items-center gap-2">
-                            <SunIcon class="h-5 w-5" />
-                            Breakfast
-                        </span>
-                        <span>{{ lastBreakfastToday ? timeAgo(lastBreakfastToday) : 'Not yet' }}</span>
-                    </div>
-                </div>
-
-                <div :class="['p-3 rounded-md mb-3', needsLunch ? 'bg-red-700' : 'bg-zinc-700']">
-                    <div class="flex justify-between items-center">
-                        <span class="flex items-center gap-2">
-                            <CakeIcon class="h-5 w-5" />
-                            Lunch
-                        </span>
-                        <span>{{ lastLunchToday ? timeAgo(lastLunchToday) : 'Not yet' }}</span>
-                    </div>
-                </div>
-
-                <div :class="['p-3 rounded-md mb-3', needsDinner ? 'bg-red-700' : 'bg-zinc-700']">
-                    <div class="flex justify-between items-center">
-                        <span class="flex items-center gap-2">
-                            <MoonIcon class="h-5 w-5" />
-                            Dinner
-                        </span>
-                        <span>{{ lastDinnerToday ? timeAgo(lastDinnerToday) : 'Not yet' }}</span>
-                    </div>
-                </div>
-
-                <div :class="['p-3 rounded-md', needsWater ? 'bg-red-700' : 'bg-zinc-700']">
-                    <div class="flex justify-between items-center">
-                        <span class="flex items-center gap-2">
-                            <BeakerIcon class="h-5 w-5" />
-                            Water
-                        </span>
-                        <span>{{ lastWaterToday ? timeAgo(lastWaterToday) : 'Not yet' }}</span>
-                    </div>
-                </div>
+    <div class="min-h-screen bg-slate-900 text-slate-200 p-4 md:p-8">
+        <div class="max-w-3xl mx-auto">
+            <!-- Header Section -->
+            <div class="flex items-center justify-between mb-8 pb-4 border-b border-slate-700">
+                <h1 class="text-3xl md:text-4xl font-extrabold text-emerald-400 tracking-tight">
+                    Eat, you Goblin
+                </h1>
             </div>
 
-            <!-- Last Actions -->
-            <div class="bg-zinc-800 p-4 rounded-lg">
-                <h2 class="text-2xl font-bold mb-4">Recent Activity</h2>
+            <!-- Input Card -->
+            <div class="bg-slate-800 rounded-lg shadow-lg mb-8 overflow-hidden">
+                <div class="p-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- What did you consume -->
+                        <div class="relative">
+                            <label for="consumable" class="block text-sm font-medium text-slate-300 mb-2">
+                                What did you consume, goblin?
+                            </label>
+                            <input id="consumable" v-model="itemInput" @input="newLog.item = itemInput"
+                                @keydown="handleKeyDown" @keydown.tab.prevent="selectAutocompleteItem($event)"
+                                @focus="showSuggestions = filteredItems.length > 0"
+                                @blur="handleBlur" autocomplete="off"
+                                placeholder="Pizza, Coffee, Human Souls..."
+                                class="w-full bg-slate-700 text-slate-200 rounded-md border-slate-600 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 px-4 py-2" />
 
-                <div class="space-y-3">
-                    <div class="p-3 bg-zinc-700 rounded-md">
-                        <p class="text-lg flex items-center gap-2">
-                            <BeakerIcon class="h-5 w-5 text-blue-400" />
-                            Water: {{ timeAgo(lastWater) }}
-                        </p>
+                            <ul v-if="showSuggestions && filteredItems.length" role="listbox"
+                                class="bg-slate-800 border border-slate-600 rounded-md mt-1 text-sm max-h-40 overflow-y-auto absolute z-50 w-full">
+                                <li v-for="(item, i) in filteredItems" :key="item" role="option"
+                                    @mousedown.prevent="chooseItem(item)" :class="[
+                                        'px-4 py-2 cursor-pointer',
+                                        i === activeIndex ? 'bg-emerald-600 text-slate-900' : 'text-slate-300 hover:bg-slate-700'
+                                    ]">
+                                    {{ item }}
+                                </li>
+                            </ul>
+                        </div>
+
+                        <!-- Type selector -->
+                        <div>
+                            <label for="type" class="block text-sm font-medium text-slate-300 mb-2">
+                                Type
+                            </label>
+                            <select id="type" v-model="newLog.type"
+                                class="w-full bg-slate-700 text-slate-200 rounded-md border-slate-600 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 px-4 py-2">
+                                <option value="food">Food</option>
+                                <option value="drink">Drink</option>
+                                <option value="snack">Snack</option>
+                                <option value="treat">Treat</option>
+                            </select>
+                        </div>
+
+                        <!-- When did you eat it -->
+                        <div>
+                            <label for="date" class="block text-sm font-medium text-slate-300 mb-2">
+                                When did you devour it?
+                            </label>
+                            <input id="date" type="datetime-local" v-model="newLog.timestamp"
+                                class="w-full bg-slate-700 text-slate-200 rounded-md border-slate-600 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 px-4 py-2" />
+                        </div>
+
+                        <!-- Quantity -->
+                        <div>
+                            <label for="quantity" class="block text-sm font-medium text-slate-300 mb-2">
+                                How much?
+                            </label>
+                            <div class="flex space-x-2">
+                                <input id="quantity" type="number" v-model.number="newLog.quantity" min="1"
+                                    class="w-20 bg-slate-700 text-slate-200 rounded-md border-slate-600 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 px-4 py-2" />
+                                <select v-model="newLog.unit"
+                                    class="flex-1 bg-slate-700 text-slate-200 rounded-md border-slate-600 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 px-4 py-2">
+                                    <option value="piece">piece(s)</option>
+                                    <option value="cup">cup(s)</option>
+                                    <option value="bowl">bowl(s)</option>
+                                    <option value="plate">plate(s)</option>
+                                    <option value="serving">serving(s)</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
 
-                    <div class="p-3 bg-zinc-700 rounded-md">
-                        <p class="text-lg flex items-center gap-2">
-                            <SunIcon class="h-5 w-5 text-amber-400" />
-                            Breakfast: {{ timeAgo(lastBreakfast) }}
-                        </p>
+                    <!-- Mood Selector -->
+                    <div class="mt-6">
+                        <label class="block text-sm font-medium text-slate-300 mb-3">
+                            How did it make you feel?
+                        </label>
+                        <div class="flex flex-wrap gap-2">
+                            <button v-for="mood in moods" :key="mood.value" @click="selectMood(mood.value)"
+                                class="px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 flex items-center space-x-1"
+                                :class="newLog.mood === mood.value
+                                    ? 'bg-emerald-500 text-slate-900 shadow-md scale-105'
+                                    : 'bg-slate-700 text-slate-300 hover:bg-slate-600'" type="button">
+                                <span class="text-lg">{{ mood.emoji }}</span>
+                                <span>{{ mood.label }}</span>
+                            </button>
+                        </div>
                     </div>
 
-                    <div class="p-3 bg-zinc-700 rounded-md">
-                        <p class="text-lg flex items-center gap-2">
-                            <CakeIcon class="h-5 w-5 text-green-400" />
-                            Lunch: {{ timeAgo(lastLunch) }}
-                        </p>
-                    </div>
-
-                    <div class="p-3 bg-zinc-700 rounded-md">
-                        <p class="text-lg flex items-center gap-2">
-                            <MoonIcon class="h-5 w-5 text-indigo-400" />
-                            Dinner: {{ timeAgo(lastDinner) }}
-                        </p>
-                    </div>
-
-                    <div class="p-3 bg-zinc-700 rounded-md" v-if="lastCoffee">
-                        <p class="text-lg flex items-center gap-2">
-                            <FireIcon class="h-5 w-5 text-amber-500" />
-                            Dare Coffee: {{ timeAgo(lastCoffee) }}
-                        </p>
-                        <p class="text-sm italic text-red-300">Shame.</p>
+                    <!-- Submit Button -->
+                    <div class="mt-8 flex justify-center">
+                        <button @click="addLog" :disabled="!isFormValid"
+                            class="bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-bold px-8 py-3 rounded-lg shadow-lg transition-all duration-200 disabled:bg-slate-600 disabled:cursor-not-allowed transform hover:-translate-y-1 active:translate-y-0">
+                            DEVOUR
+                        </button>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Weekly Overview -->
-        <div class="bg-zinc-800 p-4 rounded-lg mt-4">
-            <h2 class="text-2xl font-bold mb-4">Weekly Overview</h2>
+            <!-- Log Entries -->
+            <transition-group name="list" tag="div" class="space-y-4">
+                <div v-for="(log, index) in sortedLogs" :key="log.id" :class="[
+                    'bg-slate-800 rounded-lg shadow overflow-hidden transition-all duration-300',
+                    log.type === 'food' && 'hover:shadow-[0_0_12px_2px_rgba(244,63,94,0.5)]',
+                    log.type === 'drink' && 'hover:shadow-[0_0_12px_2px_rgba(59,130,246,0.5)]',
+                    log.type === 'snack' && 'hover:shadow-[0_0_12px_2px_rgba(245,158,11,0.5)]',
+                    log.type === 'treat' && 'hover:shadow-[0_0_12px_2px_rgba(168,85,247,0.5)]',
+                    {
+                        'border-l-4 border-rose-500': log.type === 'food',
+                        'border-l-4 border-blue-500': log.type === 'drink',
+                        'border-l-4 border-amber-500': log.type === 'snack',
+                        'border-l-4 border-purple-500': log.type === 'treat'
+                    }
+                ]">
 
-            <div class="grid grid-cols-7 gap-2">
-                <div v-for="(day, index) in weekDays" :key="index" class="p-3 bg-zinc-700 rounded-md">
-                    <h3 class="text-lg font-semibold mb-2">{{ day.name }}</h3>
-                    <div class="space-y-2">
-                        <div class="flex justify-between text-sm">
-                            <span class="flex items-center gap-1">
-                                <SunIcon class="h-4 w-4" />
-                            </span>
-                            <span :class="day.breakfast ? 'text-green-400' : 'text-red-400'">
-                                {{ day.breakfast ? '✓' : '✗' }}
-                            </span>
+                    <div class="p-4 flex items-center justify-between">
+                        <div class="flex items-center space-x-4">
+                            <div class="w-12 h-12 flex items-center justify-center rounded-full text-2xl" :class="{
+                                'bg-rose-500/20': log.type === 'food',
+                                'bg-blue-500/20': log.type === 'drink',
+                                'bg-amber-500/20': log.type === 'snack',
+                                'bg-purple-500/20': log.type === 'treat'
+                            }">
+                                {{ getEmoji(log.type) }}
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-lg text-slate-100">{{ log.item }}</h3>
+                                <div class="text-xs text-slate-400 flex flex-wrap gap-x-4 gap-y-1 mt-1">
+                                    <span>{{ formatDate(log.timestamp) }}</span>
+                                    <span>{{ log.quantity }} {{ log.unit }}</span>
+                                    <span class="flex items-center">
+                                        <span class="mr-1">Mood:</span>
+                                        <span class="text-base">{{ getMoodEmoji(log.mood) }}</span>
+                                    </span>
+                                </div>
+                            </div>
                         </div>
-                        <div class="flex justify-between text-sm">
-                            <span class="flex items-center gap-1">
-                                <CakeIcon class="h-4 w-4" />
-                            </span>
-                            <span :class="day.lunch ? 'text-green-400' : 'text-red-400'">
-                                {{ day.lunch ? '✓' : '✗' }}
-                            </span>
-                        </div>
-                        <div class="flex justify-between text-sm">
-                            <span class="flex items-center gap-1">
-                                <MoonIcon class="h-4 w-4" />
-                            </span>
-                            <span :class="day.dinner ? 'text-green-400' : 'text-red-400'">
-                                {{ day.dinner ? '✓' : '✗' }}
-                            </span>
-                        </div>
-                        <div class="flex justify-between text-sm">
-                            <span class="flex items-center gap-1">
-                                <BeakerIcon class="h-4 w-4" />
-                            </span>
-                            <span>{{ day.waterCount }}/8</span>
-                        </div>
+                        <button @click="deleteLog(index)"
+                            class="text-slate-400 hover:text-rose-400 transition-colors duration-200 p-1"
+                            aria-label="Delete log">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20"
+                                fill="currentColor">
+                                <path fill-rule="evenodd"
+                                    d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                        </button>
                     </div>
                 </div>
+            </transition-group>
+
+            <!-- Empty State -->
+            <div v-if="logs.length === 0" class="mt-10 text-center py-12 bg-slate-800/50 rounded-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto text-slate-600" fill="none"
+                    viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                        d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                </svg>
+                <p class="mt-4 text-slate-400 text-lg font-medium">No consumption logs yet, goblin! Are you starving?
+                </p>
             </div>
         </div>
     </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed, onBeforeUnmount } from 'vue'
-import { firestore } from '@/firebase'
-import { collection, addDoc, query, orderBy, limit, getDocs, serverTimestamp, where, Timestamp } from 'firebase/firestore'
-import {
-    BeakerIcon,
-    SunIcon,
-    MoonIcon,
-    CakeIcon,
-    FireIcon
-} from '@heroicons/vue/24/solid'
+import { ref, computed, onMounted, watch } from 'vue';
+import { collection, addDoc, deleteDoc, doc, onSnapshot, orderBy, query, Timestamp } from 'firebase/firestore';
+import { firestore } from '@/firebase';
+import { useToast } from '@/components/ui/toast'
 
-// Current time tracking
-const currentTime = ref(new Date())
-const currentTimeDisplay = computed(() => {
-    const options = {
-        weekday: 'long',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit'
-    }
-    return currentTime.value.toLocaleString('en-US', options)
-})
+const { toast } = useToast()
 
-// Time state
-const lastWater = ref(null)
-const lastBreakfast = ref(null)
-const lastLunch = ref(null)
-const lastDinner = ref(null)
-const lastCoffee = ref(null)
+const logs = ref([]);
+const logsCollectionName = 'goblinTracker'
+const logsCollection = collection(firestore, logsCollectionName);
 
-// Today's specific actions
-const lastWaterToday = ref(null)
-const lastBreakfastToday = ref(null)
-const lastLunchToday = ref(null)
-const lastDinnerToday = ref(null)
-
-// Weekly data
-const weekDays = ref([
-    { name: 'Mon', breakfast: false, lunch: false, dinner: false, waterCount: 0 },
-    { name: 'Tue', breakfast: false, lunch: false, dinner: false, waterCount: 0 },
-    { name: 'Wed', breakfast: false, lunch: false, dinner: false, waterCount: 0 },
-    { name: 'Thu', breakfast: false, lunch: false, dinner: false, waterCount: 0 },
-    { name: 'Fri', breakfast: false, lunch: false, dinner: false, waterCount: 0 },
-    { name: 'Sat', breakfast: false, lunch: false, dinner: false, waterCount: 0 },
-    { name: 'Sun', breakfast: false, lunch: false, dinner: false, waterCount: 0 }
-])
-
-// Check if meal is needed based on time of day
-const needsBreakfast = computed(() => {
-    const hour = currentTime.value.getHours()
-    return hour >= 7 && hour < 10 && !lastBreakfastToday.value
-})
-
-const needsLunch = computed(() => {
-    const hour = currentTime.value.getHours()
-    return hour >= 11 && hour < 14 && !lastLunchToday.value
-})
-
-const needsDinner = computed(() => {
-    const hour = currentTime.value.getHours()
-    return hour >= 17 && hour < 21 && !lastDinnerToday.value
-})
-
-const needsWater = computed(() => {
-    if (!lastWaterToday.value) return true
-
-    const hoursSinceLastWater = (currentTime.value - lastWaterToday.value) / (1000 * 60 * 60)
-    const currentHour = currentTime.value.getHours()
-
-    // Need water if it's between 7am-10pm and 2+ hours since last water
-    return currentHour >= 7 && currentHour <= 22 && hoursSinceLastWater >= 2
-})
-
-async function logAction(type) {
-    await addDoc(collection(firestore, 'goblinTracker'), {
-        type,
-        timestamp: serverTimestamp(),
-        source: 'manual',
-    })
-
-    // Update the UI immediately with a local timestamp before Firestore returns
-    const localNow = new Date()
-
-    if (type === 'water') {
-        lastWater.value = localNow
-        lastWaterToday.value = localNow
-
-        // Update weekly count
-        const dayIndex = (currentTime.value.getDay() + 6) % 7 // Convert Sunday=0 to Monday=0
-        if (weekDays.value[dayIndex].waterCount < 8) {
-            weekDays.value[dayIndex].waterCount++
-        }
-    }
-    else if (type === 'breakfast') {
-        lastBreakfast.value = localNow
-        lastBreakfastToday.value = localNow
-
-        // Update weekly data
-        const dayIndex = (currentTime.value.getDay() + 6) % 7
-        weekDays.value[dayIndex].breakfast = true
-    }
-    else if (type === 'lunch') {
-        lastLunch.value = localNow
-        lastLunchToday.value = localNow
-
-        // Update weekly data
-        const dayIndex = (currentTime.value.getDay() + 6) % 7
-        weekDays.value[dayIndex].lunch = true
-    }
-    else if (type === 'dinner') {
-        lastDinner.value = localNow
-        lastDinnerToday.value = localNow
-
-        // Update weekly data
-        const dayIndex = (currentTime.value.getDay() + 6) % 7
-        weekDays.value[dayIndex].dinner = true
-    }
-    else if (type === 'coffee') {
-        lastCoffee.value = localNow
-    }
-
-    // Fetch data from Firestore for consistency
-    await fetchAllData()
-}
-
-function timeAgo(date) {
-    if (!date) return 'Never? 😬'
-
-    const diff = Math.floor((currentTime.value - date) / 1000)
-
-    if (diff < 60) return 'Just now'
-    if (diff < 3600) return `${Math.floor(diff / 60)} min ago`
-    if (diff < 86400) return `${Math.floor(diff / 3600)} hr ago`
-    return `${Math.floor(diff / 86400)} days ago`
-}
-
-async function fetchAllData() {
-    const col = collection(firestore, 'goblinTracker')
-
-    // Fetch the last entry of each type
-    const [waterSnap, breakfastSnap, lunchSnap, dinnerSnap, coffeeSnap] = await Promise.all([
-        getDocs(query(col, where("type", "==", "water"), orderBy("timestamp", "desc"), limit(1))),
-        getDocs(query(col, where("type", "==", "breakfast"), orderBy("timestamp", "desc"), limit(1))),
-        getDocs(query(col, where("type", "==", "lunch"), orderBy("timestamp", "desc"), limit(1))),
-        getDocs(query(col, where("type", "==", "dinner"), orderBy("timestamp", "desc"), limit(1))),
-        getDocs(query(col, where("type", "==", "coffee"), orderBy("timestamp", "desc"), limit(1))),
-    ])
-
-    // Update last activity timestamps
-    lastWater.value = waterSnap.docs[0]?.data()?.timestamp?.toDate() || null
-    lastBreakfast.value = breakfastSnap.docs[0]?.data()?.timestamp?.toDate() || null
-    lastLunch.value = lunchSnap.docs[0]?.data()?.timestamp?.toDate() || null
-    lastDinner.value = dinnerSnap.docs[0]?.data()?.timestamp?.toDate() || null
-    lastCoffee.value = coffeeSnap.docs[0]?.data()?.timestamp?.toDate() || null
-
-    // Fetch today's data
-    const startOfDay = new Date(currentTime.value)
-    startOfDay.setHours(0, 0, 0, 0)
-    const startOfDayTimestamp = Timestamp.fromDate(startOfDay)
-
-    const [todayWaterSnap, todayBreakfastSnap, todayLunchSnap, todayDinnerSnap] = await Promise.all([
-        getDocs(query(
-            col,
-            where("type", "==", "water"),
-            where("timestamp", ">=", startOfDayTimestamp),
-            orderBy("timestamp", "desc"),
-            limit(1)
-        )),
-        getDocs(query(
-            col,
-            where("type", "==", "breakfast"),
-            where("timestamp", ">=", startOfDayTimestamp),
-            orderBy("timestamp", "desc"),
-            limit(1)
-        )),
-        getDocs(query(
-            col,
-            where("type", "==", "lunch"),
-            where("timestamp", ">=", startOfDayTimestamp),
-            orderBy("timestamp", "desc"),
-            limit(1)
-        )),
-        getDocs(query(
-            col,
-            where("type", "==", "dinner"),
-            where("timestamp", ">=", startOfDayTimestamp),
-            orderBy("timestamp", "desc"),
-            limit(1)
-        )),
-    ])
-
-    // Update today's data
-    lastWaterToday.value = todayWaterSnap.docs[0]?.data()?.timestamp?.toDate() || null
-    lastBreakfastToday.value = todayBreakfastSnap.docs[0]?.data()?.timestamp?.toDate() || null
-    lastLunchToday.value = todayLunchSnap.docs[0]?.data()?.timestamp?.toDate() || null
-    lastDinnerToday.value = todayDinnerSnap.docs[0]?.data()?.timestamp?.toDate() || null
-
-    // Fetch weekly data
-    await fetchWeeklyData()
-}
-
-async function fetchWeeklyData() {
-    const col = collection(firestore, 'goblinTracker')
-
-    // Calculate start of the week (Monday)
-    const now = new Date(currentTime.value)
-    const dayOfWeek = now.getDay() // 0 = Sunday, 1 = Monday, etc.
-    const startOfWeek = new Date(now)
-    startOfWeek.setDate(now.getDate() - ((dayOfWeek + 6) % 7)) // Adjust to previous Monday
-    startOfWeek.setHours(0, 0, 0, 0)
-    const startOfWeekTimestamp = Timestamp.fromDate(startOfWeek)
-
-    // Get all entries for the week
-    const weeklySnap = await getDocs(query(
-        col,
-        where("timestamp", ">=", startOfWeekTimestamp),
-        orderBy("timestamp", "asc")
-    ))
-
-    // Reset weekly data
-    weekDays.value = weekDays.value.map(day => ({
-        ...day,
-        breakfast: false,
-        lunch: false,
-        dinner: false,
-        waterCount: 0
-    }))
-
-    // Process entries
-    weeklySnap.docs.forEach(doc => {
-        const data = doc.data()
-        if (!data.timestamp) return
-
-        const date = data.timestamp.toDate()
-        const dayIndex = (date.getDay() + 6) % 7 // Convert Sunday=0 to Monday=0
-
-        if (dayIndex >= 0 && dayIndex < 7) {
-            switch (data.type) {
-                case 'breakfast':
-                    weekDays.value[dayIndex].breakfast = true
-                    break
-                case 'lunch':
-                    weekDays.value[dayIndex].lunch = true
-                    break
-                case 'dinner':
-                    weekDays.value[dayIndex].dinner = true
-                    break
-                case 'water':
-                    if (weekDays.value[dayIndex].waterCount < 8) {
-                        weekDays.value[dayIndex].waterCount++
-                    }
-                    break
-            }
-        }
-    })
-}
-
-// Time polling functions
-let timeInterval = null
-
-function updateTime() {
-    currentTime.value = new Date()
-}
-
+// Real-time fetch
 onMounted(() => {
-    fetchAllData()
+    const q = query(logsCollection, orderBy("timestamp", "desc"));
 
-    // Update time every 5 seconds
-    timeInterval = setInterval(() => {
-        updateTime()
-    }, 5000)
-})
+    onSnapshot(q, snapshot => {
+        logs.value = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                timestamp: data.timestamp?.toDate?.() ?? null
+            };
+        });
+    });
+});
 
-onBeforeUnmount(() => {
-    if (timeInterval) {
-        clearInterval(timeInterval)
+function handleBlur() {
+  setTimeout(() => {
+    showSuggestions.value = false;
+  }, 100);
+}
+
+const itemInput = ref('');
+const activeIndex = ref(0);
+const showSuggestions = ref(false);
+
+const previousItems = computed(() => {
+    const unique = new Set(logs.value.map(log => log.item.trim()).filter(Boolean));
+    return Array.from(unique).sort();
+});
+
+const filteredItems = computed(() => {
+    const input = itemInput.value.trim().toLowerCase();
+    return input
+        ? previousItems.value.filter(item =>
+            item.toLowerCase().includes(input)
+        )
+        : [];
+});
+
+watch(itemInput, () => {
+    showSuggestions.value = filteredItems.value.length > 0;
+    activeIndex.value = 0;
+});
+
+function chooseItem(item) {
+    newLog.value.item = item;
+    itemInput.value = item;
+    showSuggestions.value = false;
+    activeIndex.value = 0;
+
+    // Force blur to close suggestions
+    const inputEl = document.getElementById("consumable");
+    inputEl?.blur();
+}
+
+function selectAutocompleteItem(e) {
+    if (showSuggestions.value && filteredItems.value[activeIndex.value]) {
+        e.preventDefault();
+        chooseItem(filteredItems.value[activeIndex.value]);
     }
-})
+}
+
+function handleKeyDown(e) {
+    if (!showSuggestions.value || filteredItems.value.length === 0) return;
+
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        activeIndex.value = (activeIndex.value + 1) % filteredItems.value.length;
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        activeIndex.value = (activeIndex.value - 1 + filteredItems.value.length) % filteredItems.value.length;
+    } else if (e.key === 'Enter') {
+        e.preventDefault();
+        selectAutocompleteItem(e);
+    } else if (e.key === 'Escape') {
+        showSuggestions.value = false;
+    }
+}
+
+// Add log
+async function addLog() {
+    if (!isFormValid.value) return;
+
+    const logData = {
+        ...newLog.value,
+        timestamp: Timestamp.fromDate(new Date(newLog.value.timestamp))
+    };
+
+    await addDoc(collection(firestore, logsCollectionName), logData);
+    toast({
+        title: 'Log Added',
+        description: `${newLog.value.item} has been logged.`,
+        variant: 'success'
+    });
+
+    const currentType = newLog.value.type;
+    newLog.value = {
+        item: '',
+        type: currentType,
+        timestamp: formatDateForInput(new Date()),
+        quantity: 1,
+        unit: 'serving',
+        mood: 'satisfied'
+    };
+
+    itemInput.value = '';
+    recentLog.value = true;
+    setTimeout(() => (recentLog.value = false), 1000);
+}
+
+// Delete log
+async function deleteLog(index) {
+    const log = logs.value[index];
+
+    if (!log?.id) {
+        console.warn('No ID found for log entry:', log);
+        toast({
+            title: 'Deletion Failed',
+            description: 'That log had no valid ID to delete.',
+            variant: 'error'
+        });
+        return;
+    }
+
+    try {
+        const logRef = doc(firestore, logsCollectionName, log.id);
+        await deleteDoc(logRef);
+        console.log('Deleted log:', log.id);
+        toast({
+            title: 'Log Deleted',
+            description: `${log.item} has been banished to the shadow realm.`,
+            variant: 'destructive'
+        });
+    } catch (err) {
+        console.error('Error deleting log:', err);
+        toast({
+            title: 'Error deleting log',
+            description: err.message || 'Something went wrong.',
+            variant: 'Error'
+        });
+    }
+}
+
+const recentLog = ref(false);
+
+const newLog = ref({
+    item: '',
+    type: 'food',
+    timestamp: formatDateForInput(new Date()),
+    quantity: 1,
+    unit: 'serving',
+    mood: 'satisfied'
+});
+
+const moods = [
+    { value: 'delighted', label: 'Delighted', emoji: '😍' },
+    { value: 'satisfied', label: 'Satisfied', emoji: '😊' },
+    { value: 'neutral', label: 'Meh', emoji: '😐' },
+    { value: 'disappointed', label: 'Disappointed', emoji: '😕' },
+    { value: 'regret', label: 'Regret', emoji: '🤢' }
+];
+
+const isFormValid = computed(() => {
+    return newLog.value.item.trim() !== '' && newLog.value.timestamp !== '';
+});
+
+const sortedLogs = computed(() => {
+    return [...logs.value].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+});
+
+function formatDateForInput(date) {
+    const d = new Date(date);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+function formatDate(date) {
+    if (!(date instanceof Date) || isNaN(date)) return 'Invalid date';
+
+    return new Intl.DateTimeFormat('en', {
+        dateStyle: 'medium',
+        timeStyle: 'short'
+    }).format(date);
+}
+
+function getEmoji(type) {
+    const emojis = {
+        food: '🍔',
+        drink: '🥤',
+        snack: '🍿',
+        treat: '🍰'
+    };
+    return emojis[type] || '🍽️';
+}
+
+function getMoodEmoji(mood) {
+    const foundMood = moods.find(m => m.value === mood);
+    return foundMood ? foundMood.emoji : '😐';
+}
+
+function selectMood(mood) {
+    newLog.value.mood = mood;
+}
 </script>
+
+<style>
+/* For Transitions */
+.list-enter-active,
+.list-leave-active {
+    transition: all 0.5s ease;
+}
+
+.list-enter-from {
+    opacity: 0;
+    transform: translateX(-30px);
+}
+
+.list-leave-to {
+    opacity: 0;
+    transform: translateX(30px);
+}
+</style>
