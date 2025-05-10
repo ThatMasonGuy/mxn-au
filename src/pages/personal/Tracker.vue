@@ -19,9 +19,8 @@
                             </label>
                             <input id="consumable" v-model="itemInput" @input="newLog.item = itemInput"
                                 @keydown="handleKeyDown" @keydown.tab.prevent="selectAutocompleteItem($event)"
-                                @focus="showSuggestions = filteredItems.length > 0"
-                                @blur="handleBlur" autocomplete="off"
-                                placeholder="Pizza, Coffee, Human Souls..."
+                                @focus="showSuggestions = filteredItems.length > 0" @blur="handleBlur"
+                                autocomplete="off" placeholder="Pizza, Coffee, Human Souls..."
                                 class="w-full bg-slate-700 text-slate-200 rounded-md border-slate-600 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 px-4 py-2" />
 
                             <ul v-if="showSuggestions && filteredItems.length" role="listbox"
@@ -174,36 +173,63 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
-import { collection, addDoc, deleteDoc, doc, onSnapshot, orderBy, query, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, getDoc, setDoc, deleteDoc, increment, updateDoc, doc, onSnapshot, orderBy, query, Timestamp } from 'firebase/firestore';
 import { firestore } from '@/firebase';
-import { useToast } from '@/components/ui/toast'
+import { useMainStore } from '@/stores/useMainStore';
+import { useToast } from '@/components/ui/toast';
 
-const { toast } = useToast()
+const { toast } = useToast();
+const mainStore = useMainStore();
+const uid = computed(() => mainStore.user?.uid);
 
 const logs = ref([]);
-const logsCollectionName = 'goblinTracker'
-const logsCollection = collection(firestore, logsCollectionName);
+const logsCollection = computed(() => {
+    if (!uid.value) return null;
+    return collection(firestore, 'users', uid.value, 'personal', 'goblinTracker', 'logs');
+});
 
-// Real-time fetch
 onMounted(() => {
-    const q = query(logsCollection, orderBy("timestamp", "desc"));
+    watch(uid, async (newUid) => {
+        if (!newUid || !logsCollection.value) return;
 
-    onSnapshot(q, snapshot => {
-        logs.value = snapshot.docs.map(doc => {
-            const data = doc.data();
-            return {
-                id: doc.id,
-                ...data,
-                timestamp: data.timestamp?.toDate?.() ?? null
-            };
+        await ensureGoblinTrackerDocExists(newUid); // ✅ now works
+
+        const q = query(logsCollection.value, orderBy("timestamp", "desc"));
+        onSnapshot(q, snapshot => {
+            logs.value = snapshot.docs.map(doc => {
+                const data = doc.data();
+                return {
+                    id: doc.id,
+                    ...data,
+                    timestamp: data.timestamp?.toDate?.() ?? null
+                };
+            });
         });
-    });
+    }, { immediate: true });
 });
 
 function handleBlur() {
-  setTimeout(() => {
-    showSuggestions.value = false;
-  }, 100);
+    setTimeout(() => {
+        showSuggestions.value = false;
+    }, 100);
+}
+
+async function ensureGoblinTrackerDocExists(uid) {
+    if (!uid) {
+        return
+    }
+
+    const trackerDocRef = doc(firestore, 'users', uid, 'personal', 'goblinTracker')
+    const snapshot = await getDoc(trackerDocRef)
+
+    if (!snapshot.exists()) {
+
+        await setDoc(trackerDocRef, {
+            dareCountBig: 0,
+            dareCountSmall: 0,
+            initializedAt: new Date().toISOString(),
+        })
+    }
 }
 
 const itemInput = ref('');
@@ -264,20 +290,39 @@ function handleKeyDown(e) {
     }
 }
 
-// Add log
 async function addLog() {
-    if (!isFormValid.value) return;
+    if (!isFormValid.value || !uid.value) return;
 
     const logData = {
         ...newLog.value,
-        timestamp: Timestamp.fromDate(new Date(newLog.value.timestamp))
+        timestamp: Timestamp.fromDate(new Date(newLog.value.timestamp)),
     };
 
-    await addDoc(collection(firestore, logsCollectionName), logData);
+    const logsCollection = collection(
+        firestore,
+        'users',
+        uid.value,
+        'personal',
+        'goblinTracker',
+        'logs'
+    );
+
+    await addDoc(logsCollection, logData);
+
+    // Update dare counters if needed
+    const itemName = newLog.value.item.trim();
+    const trackerDocRef = doc(firestore, 'users', uid.value, 'personal', 'goblinTracker');
+
+    if (itemName === 'Dare Double Espresso (750ml)') {
+        await updateDoc(trackerDocRef, { dareCountBig: increment(newLog.value.quantity) });
+    } else if (itemName === 'Dare Double Espresso (500ml)') {
+        await updateDoc(trackerDocRef, { dareCountSmall: increment(newLog.value.quantity) });
+    }
+
     toast({
         title: 'Log Added',
-        description: `${newLog.value.item} has been logged.`,
-        variant: 'success'
+        description: `${itemName} has been logged.`,
+        variant: 'success',
     });
 
     const currentType = newLog.value.type;
@@ -287,7 +332,7 @@ async function addLog() {
         timestamp: formatDateForInput(new Date()),
         quantity: 1,
         unit: 'serving',
-        mood: 'satisfied'
+        mood: 'satisfied',
     };
 
     itemInput.value = '';
@@ -295,35 +340,43 @@ async function addLog() {
     setTimeout(() => (recentLog.value = false), 1000);
 }
 
-// Delete log
 async function deleteLog(index) {
     const log = logs.value[index];
+    if (!log?.id || !uid.value) return;
 
-    if (!log?.id) {
-        console.warn('No ID found for log entry:', log);
-        toast({
-            title: 'Deletion Failed',
-            description: 'That log had no valid ID to delete.',
-            variant: 'error'
-        });
-        return;
-    }
+    const logRef = doc(
+        firestore,
+        'users',
+        uid.value,
+        'personal',
+        'goblinTracker',
+        'logs',
+        log.id
+    );
 
     try {
-        const logRef = doc(firestore, logsCollectionName, log.id);
         await deleteDoc(logRef);
-        console.log('Deleted log:', log.id);
+
+        const itemName = log.item?.trim();
+        const trackerDocRef = doc(firestore, 'users', uid.value, 'personal', 'goblinTracker');
+
+        if (itemName === 'Dare Double Espresso (750ml)') {
+            await updateDoc(trackerDocRef, { dareCountBig: increment(-log.quantity) });
+        } else if (itemName === 'Dare Double Espresso (500ml)') {
+            await updateDoc(trackerDocRef, { dareCountSmall: increment(-log.quantity) });
+        }
+
         toast({
             title: 'Log Deleted',
             description: `${log.item} has been banished to the shadow realm.`,
-            variant: 'destructive'
+            variant: 'destructive',
         });
     } catch (err) {
         console.error('Error deleting log:', err);
         toast({
             title: 'Error deleting log',
             description: err.message || 'Something went wrong.',
-            variant: 'Error'
+            variant: 'error',
         });
     }
 }

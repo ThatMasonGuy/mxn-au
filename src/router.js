@@ -1,31 +1,25 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { useMainStore } from '@/stores/useMainStore'
+import { personalUnauthorizedRedirect } from '@/routers/modules/personalRoutes'
+import { useToast } from '@/components/ui/toast'
 
 // Dynamically import all route modules from /modules
 const routeModules = import.meta.glob('./routers/modules/*.js', { eager: true })
 
 // Flatten all module exports into a single array
-const routes = Object.values(routeModules)
-    .flatMap(module => module.default || [])
+const routes = Object.values(routeModules).flatMap(module => module.default || [])
 
 const router = createRouter({
     history: createWebHistory(),
     routes,
     scrollBehavior(to, from, savedPosition) {
-        // If using back/forward browser buttons
         if (savedPosition) {
             return savedPosition
         } else {
-            // When navigating to a new route manually
             return { top: 0 }
         }
     },
 })
-
-// Fake auth store for now (replace with your real auth)
-const fakeAuth = {
-    isAuthenticated: false, // Change this to true if logged in
-    userRole: null, // e.g. 'topheroesAdmin', 'serverAdmin', 'translateAdmin'
-}
 
 // --- Router Guards ---
 router.beforeEach((to, from, next) => {
@@ -44,20 +38,46 @@ router.beforeEach((to, from, next) => {
         return next('/404')
     }
 
+    const mainStore = useMainStore()
+    const isAuthenticated = !!mainStore.user
+    const userRole = mainStore.user?.role || null
+    const { toast } = useToast()
+
     // --- 3. Auth Guard ---
-    if (requiresAuth && !fakeAuth.isAuthenticated) {
+    if (requiresAuth && !isAuthenticated) {
         console.warn('Blocked: Login required.')
-        return next('/') // Or your login page
+
+        // Contextual unauthenticated redirects
+        if (to.path.startsWith('/personal')) {
+            toast({
+                title: 'Sign in required',
+                description: 'Please log in to access your personal tools.',
+                variant: 'warning'
+            })
+            return next({ path: '/personal/login', query: { redirect: to.fullPath } })
+        }
+
+        // Default fallback
+        toast({
+            title: 'Authentication required',
+            description: 'You must be logged in to view this page.',
+            variant: 'warning'
+        })
+        return next({ path: '/', query: { redirect: to.fullPath } })
     }
 
     // --- 4. Role Guard ---
-    if (role && fakeAuth.userRole !== role) {
+    if (role && userRole !== role) {
         console.warn(`Blocked: Role "${role}" required.`)
-        return next('/') // Or unauthorized page
+
+        if (to.path.startsWith('/personal')) {
+            return next({ path: personalUnauthorizedRedirect, query: { role } })
+        }
+
+        return next({ path: '/unauthorized', query: { role } })
     }
 
     return next()
 })
-
 
 export default router
