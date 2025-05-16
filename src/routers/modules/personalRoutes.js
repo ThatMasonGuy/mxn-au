@@ -96,4 +96,20 @@ export default [
             requiresOverlay: false,
         },
     },
+    {
+        path: '/personal/journal',
+        name: 'Cozy Journal',
+        component: () => import('@/pages/personal/Journal.vue'),
+        meta: {
+            requiresAuth: true,
+            role: null,
+            title: 'Cozy Journal',
+            drawerRanking: 4,
+            drawerVisible: true,
+            layout: 'default',
+            description: 'Get a hand journalling with prompts from ai.',
+            badge: '',
+            requiresOverlay: false,
+        },
+    },
 ]

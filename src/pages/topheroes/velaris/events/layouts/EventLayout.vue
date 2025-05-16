@@ -1,5 +1,5 @@
 <template>
-    <section v-cloak :class="['bg-gray-50 -mt-28 -pb-12 text-gray-800 font-sans', bgClass]">
+    <section v-cloak :class="['bg-gray-300 -mt-28 text-gray-800 font-sans', bgClass]">
     <slot></slot>
     </section>
 </template>

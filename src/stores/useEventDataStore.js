@@ -98,8 +98,10 @@ export const useEventDataStore = defineStore('eventData', () => {
             const power = parseFloat(String(p.Power).replace('M', '')) || 0
             const castle = Number(p.Castle) || 0
             const total = ALL_DAYS.reduce((sum, d) => sum + (Number(p[`Score (D${d})`]) || 0), 0)
+
             return {
                 ...p,
+                Country: p.Country || '',
                 Power: power,
                 Castle: castle,
                 'Total Score': total,
@@ -109,9 +111,10 @@ export const useEventDataStore = defineStore('eventData', () => {
                     [`Score (D${d})`]: Number(p[`Score (D${d})`]) || 0
                 }), {})
             }
-        }).sort((a, b) => b['Total Score'] - a['Total Score'])
-            .map((p, i) => ({ ...p, 'Total Rank': i + 1 }))
-    }
+        })
+        .sort((a, b) => b['Total Score'] - a['Total Score'])
+        .map((p, i) => ({ ...p, 'Total Rank': i + 1 }))
+    }    
 
     // --- Basic Stats ---
     const totalPlayers = computed(() => players.value.length)

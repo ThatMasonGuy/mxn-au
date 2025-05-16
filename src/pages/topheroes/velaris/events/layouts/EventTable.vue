@@ -68,11 +68,13 @@
                         <td v-for="col in columns" :key="col.key" :class="[
                             'px-4',
                             rowPadding,
+                            columnAlign,
                             col.cellClass || '',
                             styling.column?.[col.label]?.cell || '',
                             eventStore.sortField === col.key ? selectedColumnCellClass : ''
                         ]">
-                            {{ col.format ? col.format(item[col.key], item) : item[col.key] }}
+                            <span v-if="col.html" v-html="col.format ? col.format(item[col.key], item) : item[col.key]"></span>
+                            <span v-else>{{ col.format ? col.format(item[col.key], item) : item[col.key] }}</span>
                         </td>
 
                         <td v-if="actions.length > 0" :class="['px-4', rowPadding, 'text-right']">
@@ -96,6 +98,7 @@
 import { defineProps, computed } from 'vue'
 import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/vue/24/solid'
 import { useEventDataStore } from '@/stores/useEventDataStore'
+import { useFlagIcon } from '@/utils/useFlagIcon'
 
 const eventStore = useEventDataStore()
 
@@ -112,7 +115,8 @@ const props = defineProps({
     rowLines: { type: String, default: '' },
     columnLines: { type: String, default: '' },
     selectedColumnHeaderClass: { type: String, default: 'bg-indigo-100 text-indigo-600' },
-    selectedColumnCellClass: { type: String, default: 'bg-indigo-50' }
+    selectedColumnCellClass: { type: String, default: 'bg-indigo-50' },
+    columnAlign: { type: String, default: 'text-left' }
 })
 
 // Highlight helper

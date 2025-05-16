@@ -83,14 +83,6 @@
                             <p class="text-gray-300 text-sm mb-6 leading-relaxed">{{ event.description }}</p>
                         </div>
 
-                        <!-- Stats section -->
-                        <div class="mb-6 bg-white/5 rounded-lg p-3 border border-white/10">
-                            <div class="flex justify-between text-xs text-gray-400">
-                                <span>Players: {{ event.stats?.players || '42' }}</span>
-                                <span>Duration: {{ event.stats?.duration || '3d 4h' }}</span>
-                            </div>
-                        </div>
-
                         <div class="mt-auto flex items-center justify-between">
                             <div
                                 class="text-fuchsia-400 text-sm font-semibold group-hover:translate-x-1 transition-all duration-300 flex items-center">
@@ -157,26 +149,18 @@ const events = ref([
     {
         event: 'guild-vs-guild',
         id: 'april-2025',
-        name: 'Guild vs Guild - April 2025',
+        name: 'GvG - April 2025',
         description: 'Epic battle with detailed player breakdowns, win rates, and performance analytics.',
         type: 'guild-vs-guild',
-        stats: {
-            players: 64,
-            duration: '4d 8h'
-        },
         date: 'Apr 15, 2025'
     },
     {
-        event: 'guild-race',
-        id: 'april-2025',
-        name: 'Guild Race - April 2025',
-        description: 'Complete race tracking with participation scores, checkpoints and team performance.',
-        type: 'guild-race',
-        stats: {
-            players: 48,
-            duration: '2d 12h'
-        },
-        date: 'Apr 8, 2025'
+        event: 'guild-vs-guild',
+        id: 'may-2025',
+        name: 'GvG - May 2025',
+        description: 'Epic battle with detailed player breakdowns, win rates, and performance analytics.',
+        type: 'guild-vs-guild',
+        date: 'May 12, 2025'
     },
 ])
 

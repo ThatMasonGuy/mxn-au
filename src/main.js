@@ -5,6 +5,7 @@ import router from './router';
 import { createPinia } from 'pinia';
 import piniaPluginPersistedstate from 'pinia-plugin-persistedstate';
 
+import 'flag-icons/css/flag-icons.min.css'
 import "./style.css";
 import VueECharts from 'vue-echarts';
 import * as echarts from 'echarts/core';

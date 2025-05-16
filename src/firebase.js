@@ -4,7 +4,7 @@ import { getAnalytics } from "firebase/analytics";
 import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { getDatabase } from "firebase/database";
-import { getFunctions } from "firebase/functions";
+import { getFunctions } from "firebase/functions"
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -18,12 +18,12 @@ const firebaseConfig = {
 };
 
 const firebaseApp = initializeApp(firebaseConfig);
-setLogLevel('warning'); // Set the desired log level
+setLogLevel('warning');
 
 const analytics = getAnalytics(firebaseApp);
 const firestore = getFirestore(firebaseApp);
 const auth = getAuth(firebaseApp);
 const realTimeDb = getDatabase(firebaseApp);
-const functions = getFunctions(firebaseApp);
+const functions = getFunctions(firebaseApp, 'australia-southeast1');
 
 export { firestore, realTimeDb, analytics, functions, auth };

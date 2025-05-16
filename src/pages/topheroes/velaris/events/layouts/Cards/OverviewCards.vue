@@ -1,8 +1,6 @@
 <!-- OverviewGrid.vue -->
 <template>
-    <div class="grid gap-4 mb-6" :style="{
-        gridTemplateColumns: `repeat(${cards.length}, minmax(0, 1fr))`
-    }">
+    <div class="grid gap-4 mb-6 md:grid-cols-4 grid-cols-2">
         <div v-for="card in cards" :key="card.label"
             class="group p-4 rounded-lg text-center transition-all duration-300" :style="{
                 ...getCardStyle(card.colour),

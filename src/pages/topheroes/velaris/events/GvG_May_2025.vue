@@ -34,23 +34,25 @@
                     </div>
                 </div>
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-                    <WorkbenchCard :theme="theme" title="Avg Score by Role">
+                    <OverallScoreCard :score="totalScoreOverall" />
+
+                    <WorkbenchCard :theme="theme">
                         <WorkbenchChart :option="roleScoreChartOption" :theme="theme" />
                     </WorkbenchCard>
 
-                    <WorkbenchCard :theme="theme" title="Castle Level vs Avg Score">
+                    <WorkbenchCard :theme="theme">
                         <WorkbenchChart :option="castleScoreChartOption" :theme="theme" />
                     </WorkbenchCard>
 
-                    <WorkbenchCard :theme="theme" title="Power vs Total Score">
+                    <WorkbenchCard :theme="theme">
                         <WorkbenchChart :option="powerScatterOption" :theme="theme" />
                     </WorkbenchCard>
 
-                    <WorkbenchCard :theme="theme" title="Daily Performance (Top 5)">
+                    <WorkbenchCard :theme="theme">
                         <WorkbenchChart :option="dailyPerformanceOption" :theme="theme" />
                     </WorkbenchCard>
 
-                    <WorkbenchCard :theme="theme" title="Total Score by Day">
+                    <WorkbenchCard :theme="theme">
                         <WorkbenchChart :option="totalScorePieOption" :theme="theme" />
                     </WorkbenchCard>
                 </div>
@@ -138,6 +140,7 @@ import { AdjustmentsHorizontalIcon } from '@heroicons/vue/24/outline'
 import EventLayout from './layouts/EventLayout.vue';
 import EventHeader from './layouts/EventHeader.vue';
 import OverviewCards from './layouts/Cards/OverviewCards.vue';
+import OverallScoreCard from './layouts/Cards/OverallScoreCard.vue';
 import EventTable from './layouts/EventTable.vue';
 import ComparisonSearchBar from './layouts/PlayerComparison/ComparisonSearchBar.vue'
 import SelectedPlayersBadges from './layouts/PlayerComparison/SelectedPlayersBadges.vue'
@@ -153,6 +156,7 @@ import { useRoleScoreOption } from '@/pages/topheroes/velaris/events/layouts/Cha
 import { usePowerScatterOption } from '@/pages/topheroes/velaris/events/layouts/Charts/options/powerScatterOption'
 import { useDailyPerformanceOption } from '@/pages/topheroes/velaris/events/layouts/Charts/options/dailyPerformanceOption'
 import { useTotalScorePieOption } from '@/pages/topheroes/velaris/events/layouts/Charts/options/totalScorePieOption'
+import { formatPlayerName } from '@/utils/useFormatPlayerName'
 
 echarts.use([TimelineComponent]);
 
@@ -162,7 +166,7 @@ import { useEventDataStore } from '@/stores/useEventDataStore'
 const eventStore = useEventDataStore()
 
 // Load event data
-import eventJson from '@/data/event_vlr_gvg_apr-25.json'
+import eventJson from '@/data/event_vlr_gvg_may-25.json'
 onMounted(() => {
     eventStore.loadEvent(eventJson)
 })
@@ -254,15 +258,6 @@ const overviewCards = computed(() => [
     { label: 'Avg Power', byline: 'Active', value: `${averagePower.value}M`, colour: '#2563eb' },
     { label: 'Avg Castle', byline: 'Active', value: averageCastleLevel, colour: '#16a34a' },
 ])
-const gvgTableColumns = [
-    { label: 'Rank', key: 'dynamicTotalRank', sortable: true, headerClass: 'text-center' },
-    { label: 'Player', key: 'Player', sortable: true },
-    { label: 'Power', key: 'Power', sortable: true, format: (val) => val + 'M' },
-    { label: 'Castle', key: 'Castle', sortable: true },
-    { label: 'Role', key: 'Role', sortable: true },
-    { label: 'Score', key: 'dynamicTotalScore', sortable: true, format: (val) => eventStore.formatNumber(val) },
-    { label: 'Score/Power', key: 'scorePerPower', sortable: true, format: (val) => eventStore.formatNumber(val, 2) }
-]
 const gvgTableActions = (togglePlayerForComparison) => [
     {
         label: 'Compare',
@@ -282,16 +277,65 @@ const gvgTableStyling = {
 const gvgTableHighlight = [
     { column: 'dynamicTotalScore', operator: '<=', value: minimumScore, class: 'bg-red-200' }
 ]
+const gvgTableColumns = [
+  { label: 'Rank', key: 'dynamicTotalRank', sortable: true, headerClass: 'text-center' },
+  {
+    label: 'Player',
+    key: 'Player',
+    sortable: true,
+    html: true,
+    format: formatPlayerName
+  },
+  { label: 'Country', key: 'Country', sortable: true },
+  { label: 'Power', key: 'Power', sortable: true, format: val => val + 'M' },
+  { label: 'Castle', key: 'Castle', sortable: true },
+  { label: 'Role', key: 'Role', sortable: true },
+  {
+    label: 'Score',
+    key: 'dynamicTotalScore',
+    sortable: true,
+    format: val => eventStore.formatNumber(val, 0)
+  },
+  {
+    label: 'Score/Power',
+    key: 'scorePerPower',
+    sortable: true,
+    format: val => eventStore.formatNumber(val, 0)
+  }
+]
+
 const topPerformersColumns = [
-    { label: 'Rank', key: 'Total Rank', sortable: false },
-    { label: 'Player', key: 'Player', sortable: false },
-    { label: 'Total Score', key: 'Total Score', sortable: false, format: val => eventStore.formatNumber(val, 0) }
+  { label: 'Rank', key: 'Total Rank', sortable: false },
+  {
+    label: 'Player',
+    key: 'Player',
+    sortable: false,
+    html: true,
+    format: formatPlayerName
+  },
+  {
+    label: 'Total Score',
+    key: 'Total Score',
+    sortable: false,
+    format: val => eventStore.formatNumber(val, 0)
+  }
 ]
 
 const efficiencyLeadersColumns = [
-    { label: 'Rank', key: 'Total Rank', sortable: false },
-    { label: 'Player', key: 'Player', sortable: false },
-    { label: 'Score/Power', key: 'scorePerPower', sortable: false, format: val => eventStore.formatNumber(val, 2) }
+  { label: 'Rank', key: 'Total Rank', sortable: false },
+  {
+    label: 'Player',
+    key: 'Player',
+    sortable: false,
+    html: true,
+    format: formatPlayerName
+  },
+  {
+    label: 'Score/Power',
+    key: 'scorePerPower',
+    sortable: false,
+    format: val => eventStore.formatNumber(val, 0)
+  }
 ]
 const whiteTableStyling = {
     wrapper: 'bg-white shadow rounded-lg overflow-hidden',

@@ -1,31 +1,36 @@
 // @/stores/useMainStore.js
+import { ref } from 'vue'
 import { defineStore } from 'pinia'
 
-export const useMainStore = defineStore('main', {
-    state: () => ({
-        user: null,
-        token: null,
-        rememberMe: false,
-    }),
+export const useMainStore = defineStore('main', () => {
+    const user = ref(null)
+    const token = ref(null)
+    const rememberMe = ref(false)
 
-    actions: {
-        setUser({ user, token, rememberMe }) {
-            console.log('[Pinia setUser] user:', user, 'token:', token, 'rememberMe:', rememberMe)
-            this.user = user
-            this.token = token
-            this.rememberMe = rememberMe
-        },
+    function setUser({ user: userData, token: userToken, rememberMe: rememberMeValue }) {
+        console.log('[Pinia setUser] user:', userData, 'token:', userToken, 'rememberMe:', rememberMeValue)
+        user.value = userData
+        token.value = userToken
+        rememberMe.value = rememberMeValue
+    }
 
-        clearAuth() {
-            console.log('[Pinia clearAuth] Clearing auth from store...')
-            this.user = null
-            this.token = null
-            this.rememberMe = false
-        }
-    },
+    function clearAuth() {
+        console.log('[Pinia clearAuth] Clearing auth from store...')
+        user.value = null
+        token.value = null
+        rememberMe.value = false
+    }
 
+    return {
+        user,
+        token,
+        rememberMe,
+        setUser,
+        clearAuth
+    }
+}, {
     persist: {
-        storage: localStorage, // Persist into localStorage
-        paths: ['user', 'token', 'rememberMe'], // Only save these fields
-    },
+        storage: localStorage,
+        paths: ['user', 'token', 'rememberMe']
+    }
 })
