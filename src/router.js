@@ -40,7 +40,7 @@ router.beforeEach((to, from, next) => {
 
     const mainStore = useMainStore()
     const isAuthenticated = !!mainStore.user
-    const userRole = mainStore.user?.role || null
+    const userRoles = mainStore.user?.roles || []
     const { toast } = useToast()
 
     // --- 3. Auth Guard ---
@@ -67,7 +67,7 @@ router.beforeEach((to, from, next) => {
     }
 
     // --- 4. Role Guard ---
-    if (role && userRole !== role) {
+    if (role && !userRoles.includes(role)) {
         console.warn(`Blocked: Role "${role}" required.`)
 
         if (to.path.startsWith('/personal')) {

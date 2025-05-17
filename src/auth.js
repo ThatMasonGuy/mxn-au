@@ -80,10 +80,24 @@ onAuthStateChanged(auth, async (user) => {
     if (user) {
         try {
             const token = await user.getIdToken(true)
-            await useHydrateMissingUserFields(user.uid, user.email)
+
+            console.log('Fetching Firestore user profile for:', user.uid)
+            const userDocSnap = await getDoc(doc(getFirestore(), 'users', user.uid))
+            console.log('User doc snapshot:', userDocSnap)
+
+            if (!userDocSnap.exists()) {
+                console.warn(`[onAuthStateChanged] No Firestore profile found for uid: ${user.uid}`)
+                return
+            }
+
+            const firestoreUser = userDocSnap.data()
 
             mainStore.setUser({
-                user: { uid: user.uid, email: user.email },
+                user: {
+                    uid: user.uid,
+                    email: user.email,
+                    ...firestoreUser // 👈 bring in roles, displayName, etc
+                },
                 token,
                 rememberMe: true
             })
