@@ -101,6 +101,7 @@ import PlayerProfileModal from '@/components/velaris/PlayerProfileModal.vue'
 import { useMembers } from '@/composables/topheroes/admin/useMembers'
 import { Button } from '@/components/ui/button'
 import { ChevronDownIcon } from '@heroicons/vue/24/outline'
+import { useToast } from '@/components/ui/toast';
 
 const { members, loadMembers, addMember, updateMember, deleteMemberById } = useMembers()
 

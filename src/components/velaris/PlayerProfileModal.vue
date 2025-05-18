@@ -14,8 +14,8 @@
                     </div>
                 </DialogHeader>
                 <div class="space-x-2 mt-1">
-                    <Button variant="outline" size="sm" @click="$emit('viewEvents')"
-                        class="text-slate-600 hover:text-white">
+                    <Button variant="outline" size="sm" @click="handleViewEvents"
+                        class=" text-slate-600 hover:text-white">
                         <CalendarDaysIcon class="mr-1 h-4 w-4" />
                         Events
                     </Button>
@@ -47,10 +47,6 @@
                         <div class="space-y-2">
                             <Label for="castle">Castle</Label>
                             <Input id="castle" v-model="editForm.castle" />
-                        </div>
-                        <div class="space-y-2">
-                            <Label for="status">Status</Label>
-                            <Input id="status" v-model="editForm.status" />
                         </div>
                         <div class="space-y-2">
                             <Label for="country">Country</Label>
@@ -88,15 +84,15 @@
                                 <SelectContent>
                                     <SelectItem value="active">Active</SelectItem>
                                     <SelectItem value="inactive">Inactive</SelectItem>
-                                    <SelectItem value="retired">Retired</SelectItem>
-                                    <SelectItem value="spy">Spy</SelectItem>
+                                    <SelectItem value="left">Left</SelectItem>
+                                    <SelectItem value="kicked">Kicked</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
                     </div>
                     <div>
                         <Label for="otherNames">Other Names (comma separated)</Label>
-                        <Input id="otherNames" v-model="editForm.otherNames" class="bg-slate-700" required />
+                        <Input id="otherNames" v-model="editForm.otherNames" class="bg-slate-700" />
                     </div>
 
                     <div class="space-y-2">
@@ -193,7 +189,7 @@
                                     <div v-for="(change, key) in entry.changes" :key="key"
                                         class="grid grid-cols-12 gap-2">
                                         <span class="text-slate-400 font-medium col-span-3">{{ formatFieldName(key)
-                                            }}</span>
+                                        }}</span>
                                         <div class="col-span-9 flex items-center">
                                             <span class="line-through text-red-400 bg-red-900/20 px-2 py-0.5 rounded">{{
                                                 change.from || '—' }}</span>
@@ -236,10 +232,13 @@
             </div>
         </DialogContent>
     </Dialog>
+    <MemberEventTimelineModal v-if="showEventModal" :member="member" :events="memberEvents"
+        @close="showEventModal = false" />
+
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import {
     Dialog,
     DialogContent,
@@ -263,6 +262,8 @@ import { useMembers } from '@/composables/topheroes/admin/useMembers'
 import { getAuth } from 'firebase/auth'
 import { serverTimestamp } from 'firebase/firestore'
 import { useToast } from '@/components/ui/toast';
+import MemberEventTimelineModal from './MemberEventTimelineModal.vue'
+import { useMemberEvents } from '@/composables/topheroes/admin/useMemberEvents'
 
 const { toast } = useToast();
 
@@ -287,11 +288,21 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['close', 'edit', 'delete', 'viewEvents'])
+const { events: memberEvents, loadEvents } = useMemberEvents(props.member.id)
+
+onMounted(() => {
+  loadEvents()
+})
 
 // State management
 const showEditForm = ref(false)
 const confirmDelete = ref(false)
 const editForm = ref({})
+const showEventModal = ref(false)
+
+const handleViewEvents = () => {
+    showEventModal.value = true
+}
 
 // Initialize edit form with member data when edit button is clicked
 const initEditForm = () => {

@@ -73,7 +73,7 @@
                     <div>
                         <Label for="discord">Discord</Label>
                         <Input id="discord" v-model="form.discord" placeholder="@username" class="bg-slate-700"
-                            required />
+                             />
                     </div>
 
                     <div>
@@ -83,8 +83,7 @@
 
                     <div>
                         <Label for="gameUid">Game UID</Label>
-                        <Input id="gameUid" v-model="form.gameUid" placeholder="396541251549" class="bg-slate-700"
-                            required />
+                        <Input id="gameUid" v-model="form.gameUid" placeholder="396541251549" class="bg-slate-700" />
                     </div>
                 </div>
 
@@ -92,14 +91,14 @@
                 <div>
                     <Label for="otherNames">Other Names (comma separated)</Label>
                     <Input id="otherNames" v-model="otherNamesInput" placeholder="froggy, frog, frogvader"
-                        class="bg-slate-700" required />
+                        class="bg-slate-700" />
                 </div>
 
                 <!-- Notes -->
                 <div>
                     <Label for="notes">Notes</Label>
                     <Textarea id="notes" v-model="form.notes" placeholder="Optional notes or commentary"
-                        class="bg-slate-700" required />
+                        class="bg-slate-700" />
                 </div>
 
                 <div class="flex items-center gap-2 mt-6">

@@ -4,8 +4,11 @@
     "Guild Short": "VLR",
     "Event": "Guild Race",
     "Event Short": "GR",
-    "EventStartDate": "21-04-2025",
-    "EventEndDate": "27-04-2025",
+    "Event Start Date": "21-04-2025",
+    "Event End Date": "27-04-2025",
+    "Entered Date": "16-05-2025",
+    "Entered by": "Mason",
+    "Event ID": "gr_2025_04",
     "Players": [
       {
         "Name": "DOLUNAY",

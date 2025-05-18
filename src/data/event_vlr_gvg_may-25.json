@@ -4,9 +4,11 @@
     "Guild Short": "VLR",
     "Event": "Guild vs Guild",
     "Event Short": "GvG",
-    "Date": "16-05-2025",
+    "Event Start Date": "11-05-2025",
+    "Event End Date": "17-05-2025",
+    "Entered Date": "16-05-2025",
     "Entered by": "Mason",
-    "Event ID": "gvg_2025_05_16",
+    "Event ID": "gvg_2025_05",
     "Players": [
       {
         "Player": "AnknSkywkr",
