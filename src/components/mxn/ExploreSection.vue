@@ -11,7 +11,8 @@
             class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-10 max-w-6xl w-full relative z-10 animate-fade-up animation-delay-200">
 
             <ToolCard :icon="WrenchIcon" title="DevTools"
-                desc="Development utilities, generators, and personal projects." link="/devtools" :image="DevTools" badge="New!" />
+                desc="Development utilities, generators, and personal projects." link="/devtools" :image="DevTools"
+                badge="New!" />
 
             <ToolCard :icon="PuzzlePieceIcon" title="TopHeroes"
                 desc="Track your Guild Wars, players, stats and event data." link="/topheroes" :image="TopHeroes" />
@@ -20,13 +21,15 @@
                 link="/minecraft" :image="Minecraft" />
 
             <ToolCard :icon="ServerStackIcon" title="Server"
-                desc="Control web servers, deployments, files, and plugins." link="/server" :image="Server" badge="Coming Soon" />
+                desc="Control web servers, deployments, files, and plugins." link="/server" :image="Server"
+                badge="Coming Soon" />
 
             <ToolCard :icon="GlobeAltIcon" title="Translate"
                 desc="Real-time Discord translator and project backend APIs." link="/translate" :image="Translate" />
 
+            <ToolCard :icon="UserIcon" title="Personal"
+                desc="Login and track your real growth, user the goblin tracker or AI journal." link="/personal" :image="Personal" />
         </div>
-
     </section>
 </template>
 
@@ -39,7 +42,8 @@ import {
     PuzzlePieceIcon,
     CubeIcon,
     ServerStackIcon,
-    GlobeAltIcon
+    GlobeAltIcon,
+    UserIcon
 } from '@heroicons/vue/24/outline'
 
 import TopHeroes from '@/assets/images/topHeroes/TopHeroes_2.jpg';
@@ -47,6 +51,7 @@ import DevTools from '@/assets/images/mxn/DevTools_Image.jpg';
 import Minecraft from '@/assets/images/mxn/Minecraft_Image.jpg';
 import Server from '@/assets/images/mxn/Server_Image.jpg';
 import Translate from '@/assets/images/mxn/Translate_Image.jpg';
+import Personal from '@/assets/images/mxn/Personal_Image.png'
 </script>
 
 <style scoped>

@@ -112,4 +112,20 @@ export default [
             requiresOverlay: false,
         },
     },
+    {
+        path: '/personal/usage',
+        name: 'PersonalUsage',
+        component: () => import('@/pages/personal/Usage.vue'),
+        meta: {
+            requiresAuth: true,
+            role: null,
+            title: 'Usage costs',
+            drawerRanking: 4,
+            drawerVisible: true,
+            layout: 'default',
+            description: 'Get an idea for how much using our products costs.',
+            badge: '',
+            requiresOverlay: false,
+        },
+    },
 ]

@@ -23,6 +23,7 @@ export const useMainStore = defineStore('main', () => {
           uid: authUser.uid,
           email: authUser.email,
           displayName: authUser.displayName,
+          userName: authUser.userName,
           ...profileData
         }
       

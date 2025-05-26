@@ -39,6 +39,12 @@ module.exports = {
 				normal: '400',
 				bold: '700'
 			},
+			height: {
+				screen: '100dvh',
+			},
+			minHeight: {
+				screen: '100dvh',
+			},
 			colors: {
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
@@ -190,5 +196,5 @@ module.exports = {
 			}
 		}
 	},
-	plugins: [animate, require("tailwindcss-animate")],
+	plugins: [animate, require("tailwindcss-animate"), require('@tailwindcss/typography')],
 }

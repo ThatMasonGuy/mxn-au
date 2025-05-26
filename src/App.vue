@@ -1,5 +1,5 @@
 <template>
-  <div id="app" class="flex flex-col min-h-screen bg-black text-white relative scroll-smooth">
+  <div id="app" class="flex flex-col bg-black text-white relative scroll-smooth">
     <TooltipProvider>
 
       <!-- Headers -->
@@ -53,8 +53,8 @@ const isTopHeroes = computed(() => route.path.startsWith('/topheroes'))
 </script>
 
 <style>
-#app {
-  min-height: 100vh;
+#app, html, body {
+  min-height: 100dvh;
   background-color: black;
 }
 </style>

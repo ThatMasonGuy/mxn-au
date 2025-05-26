@@ -1,0 +1,80 @@
+// /composables/useImportStore.js
+import { ref } from 'vue'
+
+const file = ref(null)
+
+const sheets = ref([
+    {
+        name: 'New Builds',
+        rowCount: 64,
+        columnCount: 12,
+        hasTables: true,
+        selected: true,
+        tables: [
+            {
+                headers: ['Location', 'Design Category', 'Price'],
+                types: ['string', 'string', 'currency'],
+                preview: [
+                    ['NSW Metro', 'Improved Liveability', '$342.00'],
+                    ['VIC Regional', 'Robust', '$512.00'],
+                    ['QLD Metro', 'Fully Accessible', '$389.00']
+                ],
+                excluded: false
+            }
+        ]
+    },
+    {
+        name: 'Legacy Pricing',
+        rowCount: 39,
+        columnCount: 9,
+        hasTables: true,
+        selected: true,
+        tables: [
+            {
+                headers: ['Legacy Type', 'Region', 'Daily Rate'],
+                preview: [
+                    ['Type A', 'Metro', '$220.00'],
+                    ['Type B', 'Regional', '$210.00'],
+                    ['Type C', 'Remote', '$230.00']
+                ],
+                excluded: false
+            },
+            {
+                tableName: 'Annual Averages',
+                headers: ['Type', 'Year 1', 'Year 2', 'Year 3', 'Year 4', 'Year 5'],
+                preview: [
+                    ['Type A', '$100.00', '$200.00', '$300.00', '$400.00', '$500.00'],
+                    ['Type B', '$110.00', '$210.00', '$310.00', '$410.00', '$510.00'],
+                    ['Type C', '$120.00', '$220.00', '$320.00', '$420.00', '$520.00'],
+                    ['Type D', '$130.00', '$230.00', '$330.00', '$430.00', '$530.00'],
+                    ['Type E', '$140.00', '$240.00', '', '$440.00', '$540.00'],
+                    ['Type F', '$150.00', '$250.00', '$350.00', '', '$550.00']
+                ],
+                excluded: false
+            }
+        ]
+    },
+    {
+        name: 'Calculation Notes',
+        rowCount: 122,
+        columnCount: 4,
+        hasTables: false,
+        selected: false,
+        tables: []
+    },
+    {
+        name: 'Instructions',
+        rowCount: 27,
+        columnCount: 3,
+        hasTables: false,
+        selected: false,
+        tables: []
+    }
+])
+
+export function useImportStore() {
+    return {
+        file,
+        sheets
+    }
+}

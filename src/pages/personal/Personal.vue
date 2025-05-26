@@ -87,11 +87,12 @@ const tools = [
         badges: ['New!', 'Too Real'],
     },
     {
-        title: '🎭 Emotional Audit',
-        description: 'Log breakdowns, glow-ups, and milestones like “didn’t cry in the shower today.”',
-        active: false,
+        title: '🤖 AI.Journal',
+        description: 'Chat to a context aware AI Journal, or switch back to oldschool journalling.',
+        link: '/personal/journal',
+        active: true,
         icon: BeakerIcon,
-        badges: ['Coming Soon'],
+        badges: ['New!'],
     },
     {
         title: '🧠 Memory Vault',

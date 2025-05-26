@@ -30,13 +30,13 @@
             </div>
 
             <div class="flex items-center space-x-4">
-                <RouterLink to="/events" class="text-white/80 hover:text-white transition-colors px-2">Events
+                <RouterLink to="velaris/events" class="text-white/80 hover:text-white transition-colors px-2">Events
                 </RouterLink>
-                <RouterLink to="/guides" class="text-white/80 hover:text-white transition-colors px-2">Guides
+                <RouterLink to="events" class="text-white/80 hover:text-white transition-colors px-2">Guides
                 </RouterLink>
-                <RouterLink to="/members" class="text-white/80 hover:text-white transition-colors px-2">Members
+                <RouterLink to="velaris/members" class="text-white/80 hover:text-white transition-colors px-2">Members
                 </RouterLink>
-                <RouterLink to="/admin"
+                <RouterLink to="velaris/admin"
                     class="ml-2 flex items-center space-x-1 px-3 py-1 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg transition-all group">
                     <span>Admin</span>
                     <svg xmlns="http://www.w3.org/2000/svg"
@@ -69,7 +69,7 @@
             </p>
 
             <div class="flex flex-wrap justify-center gap-4 mt-8 animate-fade-in-delay-2">
-                <RouterLink to="/topheroes/velaris/events"
+                <RouterLink to="velaris/events"
                     class="inline-flex items-center bg-gradient-to-r from-pink-600 to-violet-600 hover:from-pink-500 hover:to-violet-500 text-white text-lg font-semibold px-6 py-3 rounded-xl shadow-glow-pink transition-all duration-300 group">
                     <span>🔥 Check Events</span>
                     <svg xmlns="http://www.w3.org/2000/svg"
@@ -130,7 +130,7 @@
                 <h3 class="text-2xl font-bold mb-2 text-pink-300">Live Event Tracking</h3>
                 <p class="text-white/80">Stay updated with our real-time data on server-wide events and member progress.
                 </p>
-                <RouterLink to="/events" class="inline-flex items-center mt-4 text-pink-400 hover:text-pink-300 group">
+                <RouterLink to="velaris/events" class="inline-flex items-center mt-4 text-pink-400 hover:text-pink-300 group">
                     <span>View events</span>
                     <svg xmlns="http://www.w3.org/2000/svg"
                         class="h-4 w-4 ml-1 transition-transform group-hover:translate-x-1" fill="none"
@@ -152,7 +152,7 @@
                 </div>
                 <h3 class="text-2xl font-bold mb-2 text-violet-300">Strategic Playbooks</h3>
                 <p class="text-white/80">Access detailed guides and tactics written by top-tier Velaris strategists.</p>
-                <RouterLink to="/guides"
+                <RouterLink to="events"
                     class="inline-flex items-center mt-4 text-violet-400 hover:text-violet-300 group">
                     <span>Browse guides</span>
                     <svg xmlns="http://www.w3.org/2000/svg"
@@ -209,7 +209,7 @@
                         </svg>
                         <span>Join Us on Discord</span>
                     </a>
-                    <RouterLink to="/apply"
+                    <RouterLink to="topheroes/velaris/apply"
                         class="inline-flex items-center px-8 py-3 text-lg font-semibold border border-purple-500 text-white rounded-xl hover:bg-purple-500/20 transition-all group">
                         <span>Apply to Guild</span>
                         <svg xmlns="http://www.w3.org/2000/svg"
