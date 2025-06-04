@@ -45,7 +45,8 @@
     "vue-echarts": "^7.0.3",
     "vue-router": "^4.0.13",
     "vue-sonner": "^1.1.2",
-    "vue3-grid-layout": "^1.0.0"
+    "vue3-grid-layout": "^1.0.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.16",

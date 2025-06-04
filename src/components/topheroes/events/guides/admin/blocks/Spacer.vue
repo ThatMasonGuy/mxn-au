@@ -17,8 +17,24 @@
     </div>
 </template>
 
-<script setup>
-const props = defineProps({
-    block: Object
+<script>
+import { defineComponent } from 'vue'
+
+export default defineComponent({
+    props: {
+        block: Object
+    }
 })
+
+export const defaultData = {
+    size: 'small'
+}
+
+export const meta = {
+    id: 'Spacer',
+    title: 'Spacer',
+    icon: 'ChevronDoubleDownIcon',
+    description: 'Creates vertical spacing between sections.',
+    category: 'Layout'
+}
 </script>

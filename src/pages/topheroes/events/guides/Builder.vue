@@ -1,48 +1,6 @@
 <template>
     <div class="flex h-screen text-white bg-zinc-900 overflow-hidden">
-        <!-- Collapsible Sidebar -->
-        <div class="flex flex-col border-r border-zinc-700 transition-all duration-300 ease-in-out"
-            :class="[sidebarCollapsed ? 'w-14' : 'w-72']">
-            <!-- Sidebar Header with Toggle -->
-            <div class="p-4 border-b border-zinc-700 flex items-center justify-between">
-                <div v-if="!sidebarCollapsed" class="flex-1">
-                    <h2 class="text-xl font-semibold">🧱 Add Block</h2>
-                    <p class="text-sm text-zinc-400">Component library</p>
-                </div>
-                <button @click="toggleSidebar"
-                    class="p-1 rounded-md hover:bg-zinc-700 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    :title="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
-                        stroke="currentColor" :class="{ 'rotate-180': sidebarCollapsed }">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-                    </svg>
-                </button>
-            </div>
-
-            <!-- Sidebar Content -->
-            <div class="flex-1 overflow-hidden bg-zinc-800">
-                <div v-if="sidebarCollapsed" class="flex flex-col items-center py-4 space-y-4">
-                    <button v-for="(items, group) in allGroups" :key="group"
-                        @click="showQuickAdd = !showQuickAdd; activeGroup = group"
-                        class="w-8 h-8 rounded-md hover:bg-zinc-700 flex items-center justify-center text-xs font-bold transition-colors"
-                        :title="group">
-                        {{ group.charAt(0) }}
-                    </button>
-                </div>
-                <GuideBlockLibrary v-else @new-block="addBlock" class="h-full" />
-            </div>
-
-            <!-- Quick add popup when sidebar is collapsed -->
-            <div v-if="showQuickAdd && sidebarCollapsed"
-                class="absolute top-0 left-14 mt-16 bg-zinc-800 border border-zinc-700 rounded-md shadow-xl p-2 z-10 w-48">
-                <div class="text-sm font-semibold mb-2 px-2">{{ activeGroup }}</div>
-                <button v-for="type in allGroups[activeGroup]" :key="type" @click="addBlock(type); showQuickAdd = false"
-                    class="w-full text-left px-3 py-2 text-white rounded-md hover:bg-zinc-700 hover:text-purple-300 transition-colors">
-                    {{ type }}
-                </button>
-            </div>
-        </div>
+        <GuideBlockLibrary @new-block="addBlock" class="h-full" />
 
         <!-- Main content area -->
         <main class="flex-1 flex flex-col overflow-hidden">
@@ -110,7 +68,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import GuideBlockLibrary from '@/components/topheroes/events/guides/admin/GuideBlockLibrary.vue'
 import GuideBuilder from '@/components/topheroes/events/guides/admin/GuideBuilder.vue'
 import GuideJsonEditor from '@/components/topheroes/events/guides/admin/GuideJsonEditor.vue'
-import { buildEmptyBlock } from '@/composables/topheroes/admin/useGuideHelpers.js'
+import { buildEmptyBlock } from '@/composables/useGuideHelpers.js'
 
 // State for blocks
 const guideBlocks = ref([])
@@ -118,7 +76,6 @@ const guideBlocks = ref([])
 // State for sidebar collapse
 const sidebarCollapsed = ref(false)
 const showQuickAdd = ref(false)
-const activeGroup = ref('')
 
 // State for JSON viewer height
 const jsonViewerHeight = ref(200)
@@ -127,22 +84,12 @@ const isResizing = ref(false)
 const startY = ref(0)
 const startHeight = ref(0)
 
-// Groups data for quick-add menu when sidebar is collapsed
-const allGroups = {
-    Layout: ['TitleSection', 'Divider', 'Spacer'],
-    Content: ['TipList', 'CalloutBox', 'WarningBox', 'QuoteHighlight'],
-    Data: ['TimelineSection', 'ItemTable'],
-    Media: ['HeroImageBanner', 'ImageGallery', 'VideoEmbed']
-}
-
 // Functions
 function addBlock(type) {
-    guideBlocks.value.push(buildEmptyBlock(type))
-}
-
-function toggleSidebar() {
-    sidebarCollapsed.value = !sidebarCollapsed.value
-    showQuickAdd.value = false
+  const block = buildEmptyBlock(type)
+  if (block) {
+    guideBlocks.value.push(block)
+  }
 }
 
 function copyJson() {

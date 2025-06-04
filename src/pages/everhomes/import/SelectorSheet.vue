@@ -13,14 +13,14 @@
             </p>
 
             <!-- Empty state -->
-            <div v-if="sheets.length === 0" class="text-center text-sm text-gray-400 py-12">
+            <div v-if="parsedSheets.length === 0" class="text-center text-sm text-gray-400 py-12">
                 <FolderIcon class="h-10 w-10 mx-auto mb-2 text-gray-600" />
                 No sheets were detected in this file.
             </div>
 
             <!-- Sheet cards -->
             <TransitionGroup name="fade-slide" appear tag="div" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div v-for="sheet in sheets" :key="sheet.name" tabindex="0"
+                <div v-for="sheet in parsedSheets" :key="sheet.name" tabindex="0"
                     class="group border rounded-xl p-5 transition cursor-pointer outline-none" :class="[
                         sheet.selected ? 'border-teal-400 bg-gray-800/60' : 'border-gray-600 bg-gray-800/30',
                         'hover:border-teal-300 hover:shadow-md'
@@ -39,6 +39,11 @@
                     <p class="text-xs text-gray-400">
                         {{ sheet.rowCount }} rows × {{ sheet.columnCount }} columns
                     </p>
+
+                    <div class="text-xs mt-1 text-gray-500 flex items-center gap-1" v-if="sheet.hasTables">
+                        <CheckCircleIcon class="h-4 w-4 text-green-400" />
+                        {{ sheet.tables.length }} table{{ sheet.tables.length !== 1 ? 's' : '' }}
+                    </div>
 
                     <div class="text-xs mt-1 text-gray-500 flex items-center gap-1" v-if="!sheet.hasTables">
                         <ExclamationTriangleIcon class="h-4 w-4 text-yellow-400" />
@@ -64,25 +69,39 @@
 
 <script setup>
 import { computed } from 'vue'
+import * as XLSX from 'xlsx'
 import LayoutComponent from '@/components/everhomes/layouts/LayoutComponent.vue'
 import { useImportStore } from '@/composables/everhomes/useImportStore'
 import {
     FolderIcon,
-    ExclamationTriangleIcon
+    ExclamationTriangleIcon,
+    CheckCircleIcon
 } from '@heroicons/vue/24/solid'
 import { useRouter } from 'vue-router'
+import { useTableExtractor } from '@/composables/everhomes/useTableExtractor'
+const { extractTablesFromWorkbook } = useTableExtractor()
 
-const { sheets } = useImportStore()
+const { parsedSheets, file: importFile } = useImportStore()
 const router = useRouter()
 
-const selectedCount = computed(() => sheets.value.filter(s => s.selected).length)
+const selectedCount = computed(() => parsedSheets.value.filter(s => s.selected).length)
 
-function toggleSheet(sheet) {
-    sheet.selected = !sheet.selected
+function toggleSheet(parsedSheets) {
+    parsedSheets.selected = !parsedSheets.selected
 }
 
-function goToNextStep() {
-    router.push({ name: 'TableReview' }) // or wherever you're routing next
+async function goToNextStep() {
+	const workbook = XLSX.read(await importFile.value.arrayBuffer(), { type: 'array' })
+	const extracted = extractTablesFromWorkbook(workbook)
+
+	for (const sheet of parsedSheets.value) {
+		if (!sheet.selected) continue
+		sheet.tables = extracted[sheet.name] || []
+		sheet.hasTables = sheet.tables.length > 0
+		sheet.tableCount = sheet.tables.length
+	}
+
+	router.push({ name: 'TableReview' })
 }
 </script>
 

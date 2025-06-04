@@ -10,21 +10,38 @@
     </div>
 </template>
 
-<script setup>
-const props = defineProps({
-    block: Object
+<script>
+import { defineComponent } from 'vue'
+
+export default defineComponent({
+    props: {
+        block: Object
+    },
+    setup() {
+        function formatEmbedUrl(url) {
+            if (url.includes('youtube.com/watch')) {
+                return url.replace('watch?v=', 'embed/')
+            }
+            if (url.includes('youtu.be/')) {
+                return url.replace('youtu.be/', 'youtube.com/embed/')
+            }
+            if (url.includes('vimeo.com/')) {
+                return url.replace('vimeo.com/', 'player.vimeo.com/video/')
+            }
+            return url
+        }
+
+        return {
+            formatEmbedUrl
+        }
+    }
 })
 
-function formatEmbedUrl(url) {
-    if (url.includes('youtube.com/watch')) {
-        return url.replace('watch?v=', 'embed/')
-    }
-    if (url.includes('youtu.be/')) {
-        return url.replace('youtu.be/', 'youtube.com/embed/')
-    }
-    if (url.includes('vimeo.com/')) {
-        return url.replace('vimeo.com/', 'player.vimeo.com/video/')
-    }
-    return url
+export const meta = {
+    id: 'VideoEmbed',
+    title: 'Video Embed',
+    icon: 'PlayCircleIcon',
+    description: 'Embeds videos from YouTube, Vimeo, or custom sources.',
+    category: 'Media'
 }
 </script>

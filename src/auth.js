@@ -9,6 +9,7 @@ import router from './router'
 
 const emailRegex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/
 const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#%^&/.,><';":])[A-Za-z\d@$!%*?&#%^&/.,><';":]{8,}$/
+const EXTENSION_ID = "ppbpipbkkmndolmdbakacjomopaagldo";
 
 function formatDateToDDMMYYYY(date) {
     const day = String(date.getDate()).padStart(2, '0')
@@ -62,6 +63,10 @@ export const signUp = async (
             dateOfBirth: rawDateOfBirth
         })
 
+        if (window.location.href.includes('source=extension')) {
+            await sendAuthToExtension()
+        }
+
         return user
     } catch (error) {
         console.error('[signUp] Error:', error)
@@ -72,18 +77,12 @@ export const signUp = async (
 // --- Auth State Watcher ---
 onAuthStateChanged(auth, async (user) => {
     const mainStore = useMainStore()
-    console.log('[onAuthStateChanged] Fired. user:', user)
-
     const currentRoute = router.currentRoute.value
-    console.log('[onAuthStateChanged] Current route:', currentRoute.fullPath)
 
     if (user) {
         try {
             const token = await user.getIdToken(true)
-
-            console.log('Fetching Firestore user profile for:', user.uid)
-            const userDocSnap = await getDoc(doc(getFirestore(), 'users', user.uid))
-            console.log('User doc snapshot:', userDocSnap)
+            const userDocSnap = await getDoc(doc(firestore, 'users', user.uid))
 
             if (!userDocSnap.exists()) {
                 console.warn(`[onAuthStateChanged] No Firestore profile found for uid: ${user.uid}`)
@@ -96,13 +95,15 @@ onAuthStateChanged(auth, async (user) => {
                 user: {
                     uid: user.uid,
                     email: user.email,
-                    ...firestoreUser // 👈 bring in roles, displayName, etc
+                    ...firestoreUser
                 },
                 token,
                 rememberMe: true
             })
 
-            console.log('[onAuthStateChanged] User profile hydrated and stored.')
+            if (window.location.href.includes('source=extension')) {
+                await sendAuthToExtension()
+            }
 
         } catch (error) {
             console.error('[onAuthStateChanged] Error during user hydration:', error)
@@ -143,6 +144,11 @@ export const signIn = async (email, password, rememberMe = false) => {
         })
 
         console.log('[signIn] User data saved to Pinia store. All good.')
+
+        if (window.location.href.includes('source=extension')) {
+            await sendAuthToExtension()
+        }
+
         return user
     } catch (error) {
         console.error('[signIn] Error during login:', error)
@@ -173,6 +179,34 @@ export const signOut = async () => {
         throw error
     }
 }
+
+export const sendAuthToExtension = async () => {
+    const user = auth.currentUser;
+
+    if (!user) {
+        console.warn('[sendAuthToExtension] No user is signed in.');
+        return;
+    }
+
+    try {
+        const token = await user.getIdToken();
+
+        if (window.chrome?.runtime?.sendMessage) {
+            chrome.runtime.sendMessage(EXTENSION_ID, {
+                type: "TOKEN_RECEIVED",
+                token,
+                email: user.email,
+                uid: user.uid,
+              });
+
+            console.log('[sendAuthToExtension] Token sent to extension:', user.email);
+        } else {
+            console.warn('[sendAuthToExtension] Not running inside an extension context.');
+        }
+    } catch (error) {
+        console.error('[sendAuthToExtension] Failed to get token or send:', error);
+    }
+};
 
 // --- Export any needed utils
 export { emailRegex, passwordRegex, formatDateToDDMMYYYY }

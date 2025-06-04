@@ -49,10 +49,10 @@ import {
     TableCellsIcon
 } from '@heroicons/vue/24/solid'
 
-const { sheets } = useImportStore()
+const { parsedSheets } = useImportStore()
 const router = useRouter()
 
-const selectedSheets = sheets.value.filter(s => s.selected)
+const selectedSheets = parsedSheets.value.filter(s => s.selected)
 
 function goToNextStep() {
     router.push({ name: 'DatasetSummary' })

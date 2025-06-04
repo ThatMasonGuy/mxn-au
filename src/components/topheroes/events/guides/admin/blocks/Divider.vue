@@ -19,8 +19,24 @@
     </div>
 </template>
 
-<script setup>
-const props = defineProps({
-    block: Object
+<script>
+import { defineComponent } from 'vue'
+
+export default defineComponent({
+    props: {
+        block: Object
+    }
 })
+
+export const defaultData = {
+    style: 'solid'
+}
+
+export const meta = {
+    id: 'Divider',
+    title: 'Divider',
+    icon: 'MinusIcon',
+    description: 'Horizontal divider to visually separate content blocks.',
+    category: 'Layout'
+}
 </script>

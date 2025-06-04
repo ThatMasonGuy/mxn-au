@@ -14,8 +14,20 @@
     </div>
 </template>
 
-<script setup>
-const props = defineProps({
-    block: Object
+<script>
+import { defineComponent } from 'vue'
+
+export default defineComponent({
+    props: {
+        block: Object
+    },
 })
+
+export const meta = {
+    id: 'WarningBox',
+    title: 'Warning Box',
+    icon: 'ExclamationTriangleIcon',
+    description: 'A colored box to alert users of critical information or risks.',
+    category: 'Content'
+}
 </script>

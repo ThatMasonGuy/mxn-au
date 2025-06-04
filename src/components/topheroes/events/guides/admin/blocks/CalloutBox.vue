@@ -30,8 +30,24 @@
     </div>
 </template>
 
-<script setup>
-const props = defineProps({
-    block: Object
+<script>
+import { defineComponent } from 'vue'
+
+export default defineComponent({
+    props: {
+        block: Object
+    }
 })
+
+export const defaultData = {
+    calloutType: 'info'
+}
+
+export const meta = {
+    id: 'CalloutBox',
+    title: 'Callout Box',
+    icon: 'ChatBubbleLeftRightIcon',
+    description: 'A stylized block for highlighting key content or summaries.',
+    category: 'Content'
+}
 </script>

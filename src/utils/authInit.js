@@ -2,7 +2,8 @@
 import { onAuthStateChanged, getAuth } from 'firebase/auth'
 import { useMainStore } from '@/stores/useMainStore'
 import { useHydrateMissingUserFields } from '@/utils/useHydrateMissingUserFields'
-import { getDoc, doc, getFirestore } from 'firebase/firestore'
+import { getDoc, doc } from 'firebase/firestore'
+import { firestore } from '@/firebase'
 
 export async function initAuth(router) {
     const auth = getAuth()
@@ -13,7 +14,7 @@ export async function initAuth(router) {
             if (user) {
                 const token = await user.getIdToken(true)
 
-                const userDoc = await getDoc(doc(getFirestore(), 'users', user.uid))
+                const userDoc = await getDoc(doc(firestore, 'users', user.uid))
                 const profile = userDoc.exists() ? userDoc.data() : {}
 
                 mainStore.setUser({

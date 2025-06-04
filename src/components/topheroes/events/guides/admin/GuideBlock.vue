@@ -7,7 +7,7 @@
                 </div>
             </div>
             <div v-else>
-                <component :is="getComponent(block.type)" :block="block" />
+                <component :is="getComponent(block.type) || Fallback" :block="block" />
             </div>
         </div>
     </div>
@@ -15,18 +15,7 @@
 
 <script setup>
 import { defineProps } from 'vue'
-import TitleSection from './blocks/TitleSection.vue'
-import Divider from './blocks/Divider.vue'
-import CalloutBox from './blocks/CalloutBox.vue'
-import Spacer from './blocks/Spacer.vue'
-import TipList from './blocks/TipList.vue'
-import WarningBox from './blocks/WarningBox.vue'
-import QuoteHighlight from './blocks/QuoteHighlight.vue'
-import TimelineSection from './blocks/TimelineSection.vue'
-import ItemTable from './blocks/ItemTable.vue'
-import HeroImageBanner from './blocks/HeroImageBanner.vue'
-import ImageGallery from './blocks/ImageGallery.vue'
-import VideoEmbed from './blocks/VideoEmbed.vue'
+import { useBlockRegistry } from '@/composables/useBlockRegistry'
 import Fallback from './blocks/Fallback.vue'
 
 const props = defineProps({
@@ -34,31 +23,5 @@ const props = defineProps({
     isExpanded: Boolean
 })
 
-function getBlockPreview(block) {
-    switch (block.type) {
-        case 'TitleSection': return block.data.title || 'Untitled Section'
-        case 'Divider': return `Divider (${block.data.style || 'solid'})`
-        case 'CalloutBox': return `${block.data.title || 'Untitled'} - ${block.data.calloutType || 'info'} callout`
-        default: return `${block.type} block`
-    }
-}
-
-function getComponent(type) {
-  const components = {
-    TitleSection,
-    Divider,
-    CalloutBox,
-    Spacer,
-    TipList,
-    WarningBox,
-    QuoteHighlight,
-    TimelineSection,
-    ItemTable,
-    HeroImageBanner,
-    ImageGallery,
-    VideoEmbed
-  }
-  if (!components[type]) console.warn(`Unknown block type: ${type}`)
-  return components[type] || Fallback
-}
+const { getComponent, getBlockPreview } = useBlockRegistry()
 </script>

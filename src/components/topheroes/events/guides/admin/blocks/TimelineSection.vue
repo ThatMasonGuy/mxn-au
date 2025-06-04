@@ -13,15 +13,36 @@
     </div>
 </template>
 
-<script setup>
-const props = defineProps({
-    block: Object
+<script>
+import { defineComponent } from 'vue'
+
+export default defineComponent({
+    props: {
+        block: Object
+    },
+    setup(props) {
+        const block = props.block
+
+        function addEvent() {
+            if (!Array.isArray(block.data.events)) block.data.events = []
+            block.data.events.push({ title: '', description: '' })
+        }
+
+        return {
+            addEvent
+        }
+    }
 })
 
-const block = props.block
+export const defaultData = {
+    size: 'small'
+}
 
-function addEvent() {
-    if (!Array.isArray(block.data.events)) block.data.events = []
-    block.data.events.push({ title: '', description: '' })
+export const meta = {
+    id: 'TimelineSection',
+    title: 'Timeline Section',
+    icon: 'ClockIcon',
+    description: 'A visual representation of events or milestones in chronological order.',
+    category: 'Data'
 }
 </script>

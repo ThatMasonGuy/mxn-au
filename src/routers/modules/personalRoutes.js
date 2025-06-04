@@ -113,6 +113,22 @@ export default [
         },
     },
     {
+        path: '/personal/notes',
+        name: 'PersonalNotes',
+        component: () => import('@/pages/personal/Notes.vue'),
+        meta: {
+            requiresAuth: true,
+            role: null,
+            title: 'Notes App',
+            drawerRanking: 4,
+            drawerVisible: true,
+            layout: 'default',
+            description: 'Basic notes app.',
+            badge: '',
+            requiresOverlay: false,
+        },
+    },
+    {
         path: '/personal/usage',
         name: 'PersonalUsage',
         component: () => import('@/pages/personal/Usage.vue'),

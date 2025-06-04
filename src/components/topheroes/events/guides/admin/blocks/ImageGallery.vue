@@ -20,8 +20,20 @@
     </div>
 </template>
 
-<script setup>
-const props = defineProps({
-    block: Object
+<script>
+import { defineComponent } from 'vue'
+
+export default defineComponent({
+    props: {
+        block: Object
+    }
 })
+
+export const meta = {
+    id: 'ImageGallery',
+    title: 'Image Gallery',
+    icon: 'Squares2X2Icon',
+    description: 'A responsive grid of images with optional lightbox.',
+    category: 'Media'
+}
 </script>

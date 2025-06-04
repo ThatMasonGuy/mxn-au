@@ -27,34 +27,53 @@
     </div>
 </template>
 
-<script setup>
-import { computed, onMounted } from 'vue'
+<script>
+import { defineComponent, computed, onMounted } from 'vue'
 
-const props = defineProps({
-    block: Object,
-    align: {
-        type: String,
-        default: 'left'
+export default defineComponent({
+    props: {
+        block: Object,
+        align: {
+            type: String,
+            default: 'left'
+        },
+    },
+    setup(props) {
+        const block = props.block
+
+        onMounted(() => {
+            if (!block.data) block.data = {}
+            if (typeof block.data.title !== 'string') block.data.title = ''
+            if (typeof block.data.subtitle !== 'string') block.data.subtitle = ''
+            if (typeof block.data.align !== 'string') block.data.align = 'left'
+        })
+
+        const alignmentClasses = computed(() => {
+            switch (block.data.align || props.align) {
+                case 'center':
+                    return 'text-center'
+                case 'right':
+                    return 'text-right'
+                default:
+                    return 'text-left'
+            }
+        })
+
+        return {
+            alignmentClasses
+        }
     }
 })
 
-const block = props.block
+export const defaultData = {
+    align: 'left'
+}
 
-onMounted(() => {
-    if (!block.data) block.data = {}
-    if (typeof block.data.title !== 'string') block.data.title = ''
-    if (typeof block.data.subtitle !== 'string') block.data.subtitle = ''
-    if (typeof block.data.align !== 'string') block.data.align = 'left'
-})
-
-const alignmentClasses = computed(() => {
-    switch (block.data.align || props.align) {
-        case 'center':
-            return 'text-center'
-        case 'right':
-            return 'text-right'
-        default:
-            return 'text-left'
-    }
-})
+export const meta = {
+    id: 'TitleSection',
+    title: 'Title Section',
+    icon: 'ViewColumnsIcon',
+    description: 'A full-width section with a main heading and subheading.',
+    category: 'Layout'
+}
 </script>

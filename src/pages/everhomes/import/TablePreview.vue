@@ -57,6 +57,7 @@ import {
     XCircleIcon,
     RectangleGroupIcon
 } from '@heroicons/vue/24/solid'
+import SmartInput from '@/components/everhomes/ui/SmartInput.vue'
 
 const props = defineProps({
     table: {
@@ -67,7 +68,6 @@ const props = defineProps({
     sheetName: String
 })
 
-// Ensure types array is initialized if missing
 if (!props.table.types || props.table.types.length !== props.table.headers.length) {
     props.table.types = props.table.headers.map(() => 'string')
 }

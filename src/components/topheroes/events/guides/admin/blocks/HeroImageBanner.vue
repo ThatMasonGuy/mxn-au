@@ -10,8 +10,20 @@
     </div>
 </template>
 
-<script setup>
-const props = defineProps({
-    block: Object
+<script>
+import { defineComponent } from 'vue'
+
+export default defineComponent({
+    props: {
+        block: Object
+    }
 })
+
+export const meta = {
+    id: 'HeroImageBanner',
+    title: 'Hero Image Banner',
+    icon: 'PhotoIcon',
+    description: 'A large header image section with optional overlay text.',
+    category: 'Media'
+}
 </script>

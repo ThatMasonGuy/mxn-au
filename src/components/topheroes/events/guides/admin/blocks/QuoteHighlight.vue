@@ -10,8 +10,20 @@
     </div>
 </template>
 
-<script setup>
-const props = defineProps({
-    block: Object
+<script>
+import { defineComponent } from 'vue'
+
+export default defineComponent({
+    props: {
+        block: Object
+    }
 })
+
+export const meta = {
+    id: 'QuoteHighlight',
+    title: 'Quote Highlight',
+    icon: 'RectangleGroupIcon',
+    description: 'Used to highlight quotes or key statements in stylized format.',
+    category: 'Content'
+}
 </script>

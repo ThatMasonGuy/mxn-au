@@ -17,18 +17,14 @@
             </div>
         </div>
 
-        <!-- List of blocks with animations -->
         <TransitionGroup name="list" tag="div" class="space-y-4">
             <div v-for="(block, index) in blocks" :key="block.id" class="relative group">
-                <!-- Block controls overlay -->
                 <div
                     class="absolute -left-10 top-0 bottom-0 w-8 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                 </div>
 
-                <!-- Block content with hover effect -->
                 <div
                     class="bg-zinc-800 border border-zinc-700 rounded-xl overflow-hidden hover:border-purple-600/30 transition-colors shadow-lg hover:shadow-purple-900/10">
-                    <!-- Block header -->
                     <div class="bg-zinc-900 px-4 py-3 flex items-center justify-between border-b border-zinc-700">
                         <div class="flex items-center">
                             <span class="text-xs uppercase tracking-wider font-mono text-purple-300 mr-2">
@@ -38,7 +34,6 @@
                         </div>
 
                         <div class="flex items-center space-x-2">
-                            <!-- Move Up -->
                             <button v-if="index > 0" @click="moveBlock(index, 'up')" title="Move up"
                                 class="hover:text-purple-400 text-zinc-400 transition-colors">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
@@ -48,7 +43,6 @@
                                 </svg>
                             </button>
 
-                            <!-- Move Down -->
                             <button v-if="index < blocks.length - 1" @click="moveBlock(index, 'down')" title="Move down"
                                 class="hover:text-purple-400 text-zinc-400 transition-colors">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
@@ -58,7 +52,6 @@
                                 </svg>
                             </button>
 
-                            <!-- Delete -->
                             <button @click="removeBlock(index)" title="Delete"
                                 class="hover:text-red-500 text-zinc-400 transition-colors">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
@@ -68,7 +61,6 @@
                                 </svg>
                             </button>
 
-                            <!-- Expand/Collapse -->
                             <button @click="toggleBlockExpand(block.id)"
                                 class="hover:text-purple-300 text-zinc-400 transition-colors"
                                 :title="expandedBlocks[block.id] ? 'Collapse' : 'Expand'">
@@ -82,7 +74,6 @@
                         </div>
                     </div>
 
-                    <!-- Block content -->
                     <div class="p-4">
                         <GuideBlock :block="block" :is-expanded="expandedBlocks[block.id]" />
                     </div>
@@ -102,14 +93,12 @@ const props = defineProps({
 
 const expandedBlocks = ref({})
 
-// Initialize all blocks as expanded
 onMounted(() => {
     props.blocks.forEach(block => {
         expandedBlocks.value[block.id] = true
     })
 })
 
-// Watch for new blocks and set them as expanded
 watch(
     () => props.blocks,
     (newBlocks) => {
@@ -139,14 +128,11 @@ function moveBlock(index, direction) {
 }
 
 function removeBlock(index) {
-    if (confirm('Are you sure you want to delete this block?')) {
-        props.blocks.splice(index, 1)
-    }
+  props.blocks.splice(index, 1)
 }
 </script>
 
 <style scoped>
-/* List animation */
 .list-move,
 .list-enter-active,
 .list-leave-active {
@@ -159,7 +145,6 @@ function removeBlock(index) {
     transform: translateY(30px);
 }
 
-/* Ensure leaving items don't affect layout */
 .list-leave-active {
     position: absolute;
 }

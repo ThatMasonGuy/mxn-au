@@ -14,15 +14,32 @@
     </div>
 </template>
 
-<script setup>
-const props = defineProps({
-    block: Object
+<script>
+import { defineComponent } from 'vue'
+
+export default defineComponent({
+    props: {
+        block: Object
+    },
+    setup(props) {
+        const block = props.block
+
+        function addTip() {
+            if (!Array.isArray(block.data.items)) block.data.items = []
+            block.data.items.push('')
+        }
+
+        return {
+            addTip
+        }
+    }
 })
 
-const block = props.block
-
-function addTip() {
-    if (!Array.isArray(block.data.items)) block.data.items = []
-    block.data.items.push('')
+export const meta = {
+    id: 'TipList',
+    title: 'Tip List',
+    icon: 'LightBulbIcon',
+    description: 'A list of helpful tips with icons or emphasis.',
+    category: 'Content'
 }
 </script>

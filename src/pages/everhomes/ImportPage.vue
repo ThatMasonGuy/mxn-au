@@ -91,6 +91,7 @@
 
 <script setup>
 import { ref } from 'vue'
+import * as XLSX from 'xlsx'
 import LayoutComponent from '@/components/everhomes/layouts/LayoutComponent.vue'
 import HeroComponent from '@/components/everhomes/ui/HeroComponent.vue'
 import {
@@ -106,8 +107,12 @@ import {
 } from '@heroicons/vue/24/solid'
 import { useRouter } from 'vue-router'
 import { useImportStore } from '@/composables/everhomes/useImportStore'
+import { useSpreadsheetParser } from '@/composables/everhomes/useSpreadsheetParser'
+import { useTableExtractor } from '@/composables/everhomes/useTableExtractor'
 
-const { file: importFile } = useImportStore()
+const { parseSpreadsheet } = useSpreadsheetParser()
+const { extractTablesFromWorkbook } = useTableExtractor()
+const { file: importFile, setParsedSheets } = useImportStore()
 const router = useRouter()
 
 const file = ref(null)
@@ -147,14 +152,38 @@ function handleDrop(event) {
     isDraggingOver.value = false
 }
 
-function processFile(selectedFile) {
+async function processFile(selectedFile) {
     file.value = selectedFile
     importFile.value = selectedFile
     isLoading.value = true
 
-    setTimeout(() => {
-        isLoading.value = false
-    }, 1200)
+    try {
+        const buffer = await selectedFile.arrayBuffer()
+        const workbook = XLSX.read(buffer, { type: 'array' })
+        const parsed = await parseSpreadsheet(selectedFile)
+        const extractedTables = extractTablesFromWorkbook(workbook)
+
+        const enriched = parsed.map((sheet) => {
+            const tables = extractedTables[sheet.name] || []
+            const tableCount = tables.length
+
+            return {
+                ...sheet,
+                tables,
+                hasTables: tableCount > 0,
+                tableCount,
+                selected: tableCount > 0, // auto-exclude empty sheets
+                createdAt: new Date().toISOString(),
+                schemaVersion: '1.0'
+            }
+        })
+
+        setParsedSheets(enriched)
+    } catch (err) {
+        console.error('Failed to parse file:', err)
+    }
+
+    isLoading.value = false
 }
 
 function formatSize(bytes) {

@@ -78,75 +78,88 @@
     </div>
 </template>
 
-<script setup>
-import { ref, onMounted } from 'vue'
+<script>
+import { ref, onMounted, defineComponent } from 'vue'
 
-const props = defineProps({
-    block: Object
+export default defineComponent({
+    props: {
+        block: Object
+    },
+    setup(props) {
+        const block = props.block
+        const hoveredRowIndex = ref(null)
+        const hoveredColIndex = ref(null)
+
+        onMounted(() => {
+            if (!block.data.columns || block.data.columns.length === 0) {
+                block.data.columns = ['']
+            }
+            if (!block.data.rows || block.data.rows.length === 0) {
+                block.data.rows = [[...block.data.columns.map(() => '')]]
+            }
+
+            ensureRowsMatchColumns()
+        })
+
+        function ensureRowsMatchColumns() {
+            const columnCount = block.data.columns.length
+
+            block.data.rows.forEach((row, index) => {
+                while (row.length < columnCount) {
+                    row.push('')
+                }
+                if (row.length > columnCount) {
+                    block.data.rows[index] = row.slice(0, columnCount)
+                }
+            })
+        }
+
+        function addRow(index) {
+            const newRow = block.data.columns.map(() => '')
+            block.data.rows.splice(index, 0, newRow)
+
+            setTimeout(() => {
+                hoveredRowIndex.value = null
+            }, 300)
+        }
+
+        function removeRow(index) {
+            block.data.rows.splice(index, 1)
+            hoveredRowIndex.value = null
+        }
+
+        function addColumn(index) {
+            block.data.columns.splice(index, 0, '')
+            block.data.rows.forEach(row => row.splice(index, 0, ''))
+
+            setTimeout(() => {
+                hoveredColIndex.value = null
+            }, 300)
+        }
+
+        function removeColumn(index) {
+            block.data.columns.splice(index, 1)
+            block.data.rows.forEach(row => row.splice(index, 1))
+            hoveredColIndex.value = null
+        }
+
+        return {
+            hoveredRowIndex,
+            hoveredColIndex,
+            addRow,
+            removeRow,
+            addColumn,
+            removeColumn
+        }
+    }
 })
 
-const block = props.block
-const hoveredRowIndex = ref(null)
-const hoveredColIndex = ref(null)
-
-onMounted(() => {
-    // Initialize with default values if empty
-    if (!block.data.columns || block.data.columns.length === 0) {
-        block.data.columns = ['']
-    }
-    if (!block.data.rows || block.data.rows.length === 0) {
-        block.data.rows = [[...block.data.columns.map(() => '')]]
-    }
-
-    // Ensure rows match column count
-    ensureRowsMatchColumns()
-})
-
-function ensureRowsMatchColumns() {
-    const columnCount = block.data.columns.length
-
-    // Make sure each row has the correct number of cells
-    block.data.rows.forEach((row, index) => {
-        // Add missing cells
-        while (row.length < columnCount) {
-            row.push('')
-        }
-        // Remove extra cells
-        if (row.length > columnCount) {
-            block.data.rows[index] = row.slice(0, columnCount)
-        }
-    })
-}
-
-function addRow(index) {
-    const newRow = block.data.columns.map(() => '')
-    block.data.rows.splice(index, 0, newRow)
-
-    // Brief delay before clearing hovered state to allow for visual feedback
-    setTimeout(() => {
-        hoveredRowIndex.value = null
-    }, 300)
-}
-
-function removeRow(index) {
-    block.data.rows.splice(index, 1)
-    hoveredRowIndex.value = null
-}
-
-function addColumn(index) {
-    block.data.columns.splice(index, 0, '')
-    block.data.rows.forEach(row => row.splice(index, 0, ''))
-
-    // Brief delay before clearing hovered state to allow for visual feedback
-    setTimeout(() => {
-        hoveredColIndex.value = null
-    }, 300)
-}
-
-function removeColumn(index) {
-    block.data.columns.splice(index, 1)
-    block.data.rows.forEach(row => row.splice(index, 1))
-    hoveredColIndex.value = null
+export const meta = {
+    id: 'ItemTable',
+    title: 'Item Table',
+    icon: 'TableCellsIcon',
+    description: 'Displays tabular data with headers and rows.',
+    category: 'Data'
 }
 </script>
 

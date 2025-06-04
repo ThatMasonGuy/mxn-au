@@ -32,12 +32,6 @@ router.beforeEach((to, from, next) => {
         document.title = 'MXN.au'
     }
 
-    // --- 2. Check for unmatched route ---
-    if (!to.matched.length) {
-        console.warn('No matching route, redirecting to /404')
-        return next('/404')
-    }
-
     const mainStore = useMainStore()
     const isAuthenticated = !!mainStore.user
     const userRoles = mainStore.user?.roles || []

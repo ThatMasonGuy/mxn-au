@@ -1,7 +1,7 @@
 <template>
     <div class="space-y-2">
         <div class="flex items-center gap-4">
-            <span class="text-sm text-zinc-400">Type:</span>
+            <span class="text-sm text-zinc-400">FALLBACK - Type:</span>
             <select v-model="block.data.calloutType"
                 class="bg-zinc-700 border border-zinc-600 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
                 <option value="info">Info</option>
@@ -30,8 +30,24 @@
     </div>
 </template>
 
-<script setup>
-const props = defineProps({
-    block: Object
+<script>
+import { defineComponent } from 'vue'
+
+export default defineComponent({
+    props: {
+        block: Object
+    }
 })
+
+export const defaultData = {
+    calloutType: 'info'
+}
+
+export const meta = {
+    id: 'CalloutBox',
+    title: 'Callout Box',
+    icon: 'ChatBubbleLeftRightIcon',
+    description: 'A stylized block for highlighting key content or summaries.',
+    category: 'Content'
+}
 </script>
