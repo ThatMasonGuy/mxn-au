@@ -92,9 +92,10 @@ Your job is to summarise **the user's experience**, not the AI's responses.
 
         let raw = ''
         let parsed = null
+        let resp
 
         try {
-          const resp = await openai.chat.completions.create({
+          resp = await openai.chat.completions.create({
             model: 'gpt-4.1-mini',
             messages: chatMessages,
             temperature: 0.7
