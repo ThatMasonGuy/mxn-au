@@ -2,102 +2,47 @@ import * as XLSX from 'xlsx'
 import { simpleHash } from '@/utils/hash'
 import { slugify } from '@/utils/slugify'
 
-function labelForMethod(method) {
-    switch (method) {
-        case 'named-range':
-            return 'Named Range'
-        case 'defined-table':
-            return 'Defined Table'
-        case 'heuristic':
-        default:
-            return 'Heuristic Match'
-    }
-}
-
 export function useTableExtractor() {
     function extractTablesFromWorkbook(workbook) {
         const sheetTables = {}
-
-        const definedTables = (workbook.Workbook?.Names || []).filter(n => n.name === '_xlnm._FilterDatabase')
-
-        for (const table of definedTables) {
-            const ref = table.Ref
-            const sheetMatch = ref.match(/^'?([^']+)'?!/)
-            if (!sheetMatch) continue
-
-            const sheetName = sheetMatch[1]
-            const range = ref.split('!')[1].replace(/^'/, '')
-            const worksheet = workbook.Sheets[sheetName]
-            if (!worksheet || !range.includes(':')) continue
-
-            try {
-                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, range })
-
-                if (!jsonData.length) continue
-
-                const headers = jsonData[0]
-                const preview = jsonData.slice(1, 6)
-                const types = guessTypes(preview)
-                const hash = simpleHash({ headers, types, preview })
-
-                if (!sheetTables[sheetName]) sheetTables[sheetName] = []
-
-                sheetTables[sheetName].push({
-                    sourceSheet: sheetName,
-                    tableName: `Auto Table ${sheetTables[sheetName].length + 1} - ${labelForMethod('defined-table')}`,
-                    detectionMethod: 'defined-table',
-                    tableId: `${slugify(sheetName)}-defined-${hash.slice(0, 5)}`,
-                    createdAt: new Date().toISOString(),
-                    detectedHeaders: headers,
-                    detectedTypes: types,
-                    headers: [...headers],
-                    columnTypes: [...types],
-                    preview,
-                    rowCount: jsonData.length - 1,
-                    columnCount: headers.length,
-                    hash,
-                    excluded: false,
-                    cellReference: range,
-                    detected: true,
-                    updated: false,
-                    schemaVersion: '1.0'
-                })
-            } catch (err) {
-                console.warn(`⚠️ Failed to parse defined table on sheet "${sheetName}" with range "${range}"`, err)
-            }
-        }
-
-        const namedRanges = workbook.Workbook?.Names || []
-        console.log('Workbook Names:', workbook.Workbook?.Names)
+        const namedRanges = (workbook.Workbook?.Names || []).filter(n => {
+            const name = n.Name || n.name
+            const ref = n.Ref || n.ref
+            return name && ref && !name.startsWith('_xlnm')
+        })
 
         for (const named of namedRanges) {
-            if (!named.ref || !named.name || named.name.startsWith('_xlnm')) continue
-        
-            const match = named.ref.match(/^'?([^']+)'?!\$?[A-Z]+\$?\d+:\$?[A-Z]+\$?\d+/)
-            if (!match) continue
-        
-            const sheetName = match[1]
-            const range = named.ref.split('!')[1].replace(/^'/, '')
-            const worksheet = workbook.Sheets[sheetName]
-            if (!worksheet || !range.includes(':')) continue
-        
+            const name = named.Name || named.name
+            const ref = named.Ref || named.ref
+            if (!ref.includes('!')) continue
+
+            const [sheetPart, rangePart] = ref.split('!')
+            const sheetName = sheetPart.replace(/^'/, '').replace(/'$/, '').trim()
+            const range = rangePart
+
+            const actualSheetName = Object.keys(workbook.Sheets).find(
+                key => key.trim().replace(/^'/, '').replace(/'$/, '') === sheetName
+            )
+
+            if (!actualSheetName || !range.includes(':')) continue
+            const worksheet = workbook.Sheets[actualSheetName]
+
             try {
-                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, range })
-                if (!jsonData.length) continue
-        
+                const jsonData = extractRawCells(worksheet, range)
+
                 const headers = jsonData[0]
                 const preview = jsonData.slice(1, 6)
                 const types = guessTypes(preview)
                 const hash = simpleHash({ headers, types, preview })
-        
+
                 if (!sheetTables[sheetName]) sheetTables[sheetName] = []
-        
+
                 sheetTables[sheetName].push({
                     sourceSheet: sheetName,
-                    tableName: `Auto Table ${sheetTables[sheetName].length + 1} - ${labelForMethod('named-range')}`,
+                    tableName: name,
                     detectionMethod: 'named-range',
-                    originalName: named.name,
-                    tableId: `${slugify(sheetName)}-${slugify(named.name)}-${hash.slice(0, 5)}`,
+                    originalName: name,
+                    tableId: `${slugify(sheetName)}-${slugify(name)}-${hash.slice(0, 5)}`,
                     createdAt: new Date().toISOString(),
                     detectedHeaders: headers,
                     detectedTypes: types,
@@ -113,67 +58,65 @@ export function useTableExtractor() {
                     updated: false,
                     schemaVersion: '1.0'
                 })
+
             } catch (err) {
-                console.warn(`⚠️ Failed to parse named range "${named.name}" on "${sheetName}" at ${range}`, err)
+                console.error(`[💥 CRASHED] "${name}" on "${sheetName}" | range ${range}`, err)
             }
-        }        
 
-        for (const sheetName of workbook.SheetNames) {
-            const worksheet = workbook.Sheets[sheetName]
-            const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1 })
+        }
 
-            if (!rawData.length) continue
-            if (!sheetTables[sheetName]) sheetTables[sheetName] = []
+        return sheetTables
+    }
 
-            const alreadyCoveredRanges = sheetTables[sheetName].map(t => t.cellReference)
+    function extractRawCells(worksheet, range) {
+        const decoded = XLSX.utils.decode_range(range)
+        const headers = []
+        const dataRows = []
 
-            let current = null
+        const colStart = decoded.s.c
+        const colEnd = decoded.e.c
+        const rowStart = decoded.s.r
+        const rowEnd = decoded.e.r
 
-            for (let i = 0; i < rawData.length; i++) {
-                const row = rawData[i]
-                const isEmpty = row.every(c => c == null || c === '')
+        const headerRowIndex = rowStart - 1
 
-                if (!isEmpty && !current) {
-                    current = { start: i, rows: [row] }
-                } else if (!isEmpty && current) {
-                    current.rows.push(row)
-                } else if (isEmpty && current) {
-                    if (current.rows.length > 1) {
-                        const start = current.start + 1
-                        const end = current.start + current.rows.length
-                        const range = `A${start}:Z${end}` // refine range if needed
-                        const headers = current.rows[0]
-                        const preview = current.rows.slice(1, 6)
-                        const types = guessTypes(preview)
-                        const hash = simpleHash({ headers, types, preview })
+        // --- HEADER ROW EXTRACTION ---
+        if (headerRowIndex < 0) {
+            console.warn(`[⚠️ Named range starts at row 1 — no row above for headers. Using placeholder headers.]`)
+            for (let c = colStart; c <= colEnd; c++) {
+                const columnLetter = XLSX.utils.encode_col(c)
+                headers.push(`Column ${columnLetter}`)
+            }
+        } else {
+            let allNull = true
+            for (let c = colStart; c <= colEnd; c++) {
+                const cellRef = XLSX.utils.encode_cell({ r: headerRowIndex, c })
+                const cell = worksheet[cellRef]
+                const val = cell?.v ?? null
+                if (val !== null) allNull = false
+                headers.push(val)
+            }
 
-                        sheetTables[sheetName].push({
-                            sourceSheet: sheetName,
-                            tableName: `Auto Table ${sheetTables[sheetName].length + 1} - ${labelForMethod('heuristic')}`,
-                            detectionMethod: 'heuristic',
-                            tableId: `${slugify(sheetName)}-auto-${hash.slice(0, 5)}`,
-                            createdAt: new Date().toISOString(),
-                            detectedHeaders: headers,
-                            detectedTypes: types,
-                            headers: [...headers],
-                            columnTypes: [...types],
-                            preview,
-                            rowCount: current.rows.length - 1,
-                            columnCount: headers.length,
-                            hash,
-                            excluded: false,
-                            cellReference: range,
-                            detected: true,
-                            updated: false,
-                            schemaVersion: '1.0'
-                        })
-                    }
-                    current = null
+            if (allNull) {
+                console.warn(`[⚠️ Header row is entirely empty — falling back to Column A/B/etc names.]`)
+                for (let i = 0; i < headers.length; i++) {
+                    headers[i] = headers[i] ?? `Column ${XLSX.utils.encode_col(colStart + i)}`
                 }
             }
         }
 
-        return sheetTables
+        // --- DATA ROW EXTRACTION ---
+        for (let r = rowStart; r <= rowEnd; r++) {
+            const row = []
+            for (let c = colStart; c <= colEnd; c++) {
+                const cellRef = XLSX.utils.encode_cell({ r, c })
+                const cell = worksheet[cellRef]
+                row.push(cell?.v ?? null)
+            }
+            dataRows.push(row)
+        }
+
+        return [headers, ...dataRows]
     }
 
     function guessTypes(previewRows) {
@@ -189,5 +132,21 @@ export function useTableExtractor() {
         return types
     }
 
-    return { extractTablesFromWorkbook }
+    function enrichParsedSheets(parsedSheets, extractedTables) {
+        return parsedSheets.map(sheet => {
+            const normalizedSheetName = sheet.name.trim().replace(/^'/, '').replace(/'$/, '')
+            const tables = extractedTables[normalizedSheetName] || []
+            const tableCount = tables.length
+
+            return {
+                ...sheet,
+                tables,
+                hasTables: tableCount > 0,
+                tableCount,
+                selected: sheet.selected ?? tableCount > 0
+            }
+        })
+    }
+
+    return { extractTablesFromWorkbook, enrichParsedSheets }
 }

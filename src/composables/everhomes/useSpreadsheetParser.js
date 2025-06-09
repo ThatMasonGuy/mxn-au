@@ -1,3 +1,4 @@
+// @/composables/everhomes/useSpreadsheetParser.js
 import * as XLSX from 'xlsx'
 
 export function useSpreadsheetParser() {
@@ -7,7 +8,7 @@ export function useSpreadsheetParser() {
 
         return workbook.SheetNames.map((sheetName) => {
             const worksheet = workbook.Sheets[sheetName]
-            const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) // Raw 2D array
+            const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 })
             return {
                 name: sheetName,
                 rawData: json,

@@ -68,8 +68,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import * as XLSX from 'xlsx'
+import { computed, onMounted } from 'vue'
 import LayoutComponent from '@/components/everhomes/layouts/LayoutComponent.vue'
 import { useImportStore } from '@/composables/everhomes/useImportStore'
 import {
@@ -78,10 +77,8 @@ import {
     CheckCircleIcon
 } from '@heroicons/vue/24/solid'
 import { useRouter } from 'vue-router'
-import { useTableExtractor } from '@/composables/everhomes/useTableExtractor'
-const { extractTablesFromWorkbook } = useTableExtractor()
 
-const { parsedSheets, file: importFile } = useImportStore()
+const { parsedSheets } = useImportStore()
 const router = useRouter()
 
 const selectedCount = computed(() => parsedSheets.value.filter(s => s.selected).length)
@@ -91,18 +88,12 @@ function toggleSheet(parsedSheets) {
 }
 
 async function goToNextStep() {
-	const workbook = XLSX.read(await importFile.value.arrayBuffer(), { type: 'array' })
-	const extracted = extractTablesFromWorkbook(workbook)
-
-	for (const sheet of parsedSheets.value) {
-		if (!sheet.selected) continue
-		sheet.tables = extracted[sheet.name] || []
-		sheet.hasTables = sheet.tables.length > 0
-		sheet.tableCount = sheet.tables.length
-	}
-
 	router.push({ name: 'TableReview' })
 }
+
+onMounted(() => {
+  console.log(parsedSheets.value)
+})
 </script>
 
 <style scoped>

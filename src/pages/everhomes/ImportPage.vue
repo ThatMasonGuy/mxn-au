@@ -111,7 +111,7 @@ import { useSpreadsheetParser } from '@/composables/everhomes/useSpreadsheetPars
 import { useTableExtractor } from '@/composables/everhomes/useTableExtractor'
 
 const { parseSpreadsheet } = useSpreadsheetParser()
-const { extractTablesFromWorkbook } = useTableExtractor()
+const { extractTablesFromWorkbook, enrichParsedSheets } = useTableExtractor()
 const { file: importFile, setParsedSheets } = useImportStore()
 const router = useRouter()
 
@@ -160,23 +160,10 @@ async function processFile(selectedFile) {
     try {
         const buffer = await selectedFile.arrayBuffer()
         const workbook = XLSX.read(buffer, { type: 'array' })
+
         const parsed = await parseSpreadsheet(selectedFile)
         const extractedTables = extractTablesFromWorkbook(workbook)
-
-        const enriched = parsed.map((sheet) => {
-            const tables = extractedTables[sheet.name] || []
-            const tableCount = tables.length
-
-            return {
-                ...sheet,
-                tables,
-                hasTables: tableCount > 0,
-                tableCount,
-                selected: tableCount > 0, // auto-exclude empty sheets
-                createdAt: new Date().toISOString(),
-                schemaVersion: '1.0'
-            }
-        })
+        const enriched = enrichParsedSheets(parsed, extractedTables)
 
         setParsedSheets(enriched)
     } catch (err) {

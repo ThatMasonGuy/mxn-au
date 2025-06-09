@@ -42,10 +42,10 @@
                 </div>
 
                 <div class="grid grid-cols-2 lg:grid-cols-4 gap-6">
-                    <StatCard label="Total Members" :value="95" />
-                    <StatCard label="R5–R4 Officers" :value="9" />
-                    <StatCard label="Active Players" :value="90" />
-                    <StatCard label="Turn over" :value="15" />
+                    <StatCard label="Total Members" :value="totalMembers" />
+                    <StatCard label="R5–R4 Officers" :value="officerCount" />
+                    <StatCard label="Active Players" :value="activePlayers" />
+                    <StatCard label="Turn over" :value="turnover" />
                 </div>
             </div>
 
@@ -68,4 +68,36 @@
 <script setup>
 import CardLink from '@/components/velaris/CardLink.vue'
 import StatCard from '@/components/velaris/StatCard.vue'
+import { computed, onMounted } from 'vue'
+import { useMembers } from '@/composables/topheroes/admin/useMembers'
+
+const { members, loadMembers } = useMembers()
+
+onMounted(() => {
+  loadMembers()
+})
+const totalMembers = computed(() => 
+members.value.filter(m =>
+    ['active', 'inactive'].includes((m.status || '').toLowerCase())
+  ).length
+)
+
+const officerCount = computed(() =>
+  members.value.filter(m =>
+    ['R4', 'R5'].includes((m.role || '').toUpperCase()) &&
+    (m.status || '').toLowerCase() === 'active'
+  ).length
+)
+
+const activePlayers = computed(() =>
+  members.value.filter(m =>
+    (m.status || '').toLowerCase() === 'active'
+  ).length
+)
+
+const turnover = computed(() =>
+  members.value.filter(m =>
+    ['left', 'kicked'].includes((m.status || '').toLowerCase())
+  ).length
+)
 </script>

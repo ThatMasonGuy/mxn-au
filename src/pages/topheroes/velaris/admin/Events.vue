@@ -1,107 +1,95 @@
 <template>
     <div class="bg-gray-900 min-h-screen">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-            <!-- Header Section with Improved Styling -->
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
-                <div>
-                    <h1 class="text-3xl font-bold text-white">Event Management</h1>
-                    <p class="text-gray-400 mt-1">Manage your game events and tournaments</p>
-                </div>
-                <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                    <Button @click="toggleView" variant="outline" class="w-full sm:w-auto">
-                        <span class="flex items-center gap-2">
-                            <span v-if="viewMode === 'card'" class="i-lucide-list text-lg"></span>
-                            <span v-else class="i-lucide-grid text-lg"></span>
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <!-- Header Section -->
+            <div class="mb-8">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
+                    <div>
+                        <h1 class="text-4xl font-bold text-white mb-2">Event Management</h1>
+                        <p class="text-gray-300 text-lg">Manage your game events and tournaments</p>
+                    </div>
+                    <div class="flex gap-3 w-full sm:w-auto">
+                        <button @click="toggleView"
+                            class="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 hover:text-white border border-gray-600 hover:border-gray-500 rounded-lg transition-all duration-200 flex-1 sm:flex-none justify-center">
+                            <TableCellsIcon v-if="viewMode === 'card'" class="w-5 h-5" />
+                            <RectangleStackIcon v-else class="w-5 h-5" />
                             {{ viewMode === 'card' ? 'Table View' : 'Card View' }}
-                        </span>
-                    </Button>
-                    <Button @click="showAddEvent = true"
-                        class="bg-indigo-600 hover:bg-indigo-700 text-white w-full sm:w-auto">
-                        <span class="flex items-center gap-2">
-                            <span class="i-lucide-plus-circle text-lg"></span>
+                        </button>
+                        <button @click="showAddEvent = true"
+                            class="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-lg transition-all duration-200 shadow-lg hover:shadow-indigo-500/25 flex-1 sm:flex-none justify-center">
+                            <PlusIcon class="w-5 h-5" />
                             New Event
-                        </span>
-                    </Button>
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            <!-- Search and Filter Bar -->
-            <div class="bg-gray-800 rounded-lg p-4 mb-6">
-                <div class="flex flex-col md:flex-row gap-4">
-                    <div class="relative grow">
-                        <span
-                            class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
-                            <span class="i-lucide-search text-lg"></span>
-                        </span>
-                        <input type="text" v-model="searchQuery" placeholder="Search events..."
-                            class="bg-gray-700 text-white py-2 pl-10 pr-4 rounded-md w-full focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-                    </div>
+            <!-- Search and Filter Section -->
+            <div class="mb-8">
+                <div class="flex flex-col lg:flex-row gap-4">
+                    <SmartSearch :data="events" :queries="['name', 'description', 'eventId']" :sorted-by="'startDate'"
+                        :secondary-sort="'status'" :preserve-case="false" @update:results="filteredEvents = $event"
+                        :filter-key="'status'" :filter-value="filterStatus" placeholder="Search events by name or description..." />
+
                     <div class="flex gap-3">
-                        <select v-model="filterStatus"
-                            class="bg-gray-700 text-white px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                            <option value="all">All Status</option>
-                            <option value="active">Active</option>
-                            <option value="upcoming">Upcoming</option>
-                            <option value="completed">Completed</option>
-                        </select>
-                        <Button @click="resetFilters" variant="ghost" class="text-gray-300 hover:text-white">
-                            Reset
-                        </Button>
+                        <SmartInput v-model="filterStatus" type="select" class="min-w-36" :options="[
+                            { label: 'All', value: 'all' },
+                            { label: 'Active', value: 'active' },
+                            { label: 'Upcoming', value: 'upcoming' },
+                            { label: 'Completed', value: 'completed' }
+                        ]" placeholder="Filter status" />
                     </div>
                 </div>
             </div>
 
-            <!-- Content Views with Loading State -->
-            <div v-if="loading" class="flex justify-center items-center py-16">
+            <!-- Content Section -->
+            <div v-if="loading" class="flex justify-center items-center py-20">
                 <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
             </div>
 
-            <div v-else-if="filteredEvents.length === 0" class="bg-gray-800 rounded-lg p-8 text-center">
-                <span class="i-lucide-calendar-x text-5xl text-gray-500 mx-auto mb-4"></span>
-                <h3 class="text-xl text-white font-medium">No events found</h3>
-                <p class="text-gray-400 mt-2">Try adjusting your search or filters, or create a new event.</p>
-                <Button @click="showAddEvent = true" class="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white">
+            <div v-else-if="filteredEvents.length === 0" class="bg-gray-800 rounded-lg p-12 text-center">
+                <CalendarDaysIcon class="h-12 w-12 mx-auto text-gray-500 block mb-4" />
+                <h3 class="text-xl text-white font-medium mb-2">No events found</h3>
+                <p class="text-gray-400 mb-6">
+                    {{ searchQuery || filterStatus !== 'all'
+                        ? 'Try adjusting your search or filters.'
+                        : 'Get started by creating your first event.'
+                    }}
+                </p>
+                <Button @click="showAddEvent = true" class="bg-indigo-600 hover:bg-indigo-700 text-white">
+                    <span class="i-lucide-plus-circle mr-2"></span>
                     Create New Event
                 </Button>
             </div>
 
             <div v-else>
                 <!-- Card View -->
-                <div v-if="viewMode === 'card'" class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                    <TransitionGroup name="fade">
+                <div v-if="viewMode === 'card'" class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    <TransitionGroup name="card-fade">
                         <EventCard v-for="event in filteredEvents" :key="event.id" :event="event"
-                            @click="editEvent(event)"
-                            class="bg-gray-800 border border-gray-700 hover:border-indigo-500 transition-all" />
+                            @click="editEvent(event)" />
                     </TransitionGroup>
                 </div>
 
                 <!-- Table View -->
-                <div v-else class="bg-gray-800 rounded-lg overflow-hidden">
+                <div v-else class="bg-gray-800 rounded-lg overflow-hidden border border-gray-700">
                     <EventTable :events="filteredEvents" @edit="editEvent" @delete="confirmDelete" />
                 </div>
 
-                <!-- Pagination -->
-                <div class="mt-6 flex justify-between items-center text-gray-400">
+                <!-- Results Summary -->
+                <div class="mt-6 flex justify-between items-center text-sm text-gray-400">
                     <div>
                         Showing {{ filteredEvents.length }} of {{ events.length }} events
                     </div>
-                    <div class="flex gap-2">
-                        <Button variant="outline" size="sm" :disabled="currentPage === 1" @click="currentPage--">
-                            Previous
-                        </Button>
-                        <Button variant="outline" size="sm" :disabled="currentPage >= totalPages"
-                            @click="currentPage++">
-                            Next
-                        </Button>
+                    <div v-if="searchQuery || filterStatus !== 'all'" class="text-indigo-400">
+                        <span class="i-lucide-filter mr-1"></span>
+                        Filtered results
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- Modals -->
-        <EventEditorModal v-if="editingEvent" :event="editingEvent" @close="editingEvent = null"
-            @saved="handleEventSaved" />
-
         <AddEventModal v-if="showAddEvent" @close="showAddEvent = false" @created="handleEventCreated" />
 
         <ConfirmDialog v-if="deletingEvent" :title="`Delete ${deletingEvent.name}?`"
@@ -112,73 +100,38 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { CalendarDaysIcon, PlusIcon, TableCellsIcon, RectangleStackIcon } from '@heroicons/vue/24/outline'
 import { useEventCollection } from '@/composables/topheroes/admin/useEventCollection'
 import EventCard from '@/components/velaris/EventCard.vue'
 import EventTable from '@/components/velaris/EventTable.vue'
-import EventEditorModal from '@/components/velaris/EventEditorModal.vue'
 import AddEventModal from '@/components/velaris/AddEventModal.vue'
 import ConfirmDialog from '@/components/velaris/ConfirmDialog.vue'
 import { Button } from '@/components/ui/button'
-import { useToast } from '@/components/ui/toast';
+import { useToast } from '@/components/ui/toast'
 import { useRouter } from 'vue-router'
-const router = useRouter()
+import SmartInput from '@/components/ui/SmartInput.vue'
+import SmartSearch from '@/components/ui/SmartSearch.vue'
 
-const { toast } = useToast();
+const router = useRouter()
+const { toast } = useToast()
 const { events, loadEvents, deleteEventById } = useEventCollection()
 
 // UI State
 const viewMode = ref('card')
 const showAddEvent = ref(false)
-const editingEvent = ref(null)
 const deletingEvent = ref(null)
 const loading = ref(true)
 
 // Search and Filter
 const searchQuery = ref('')
 const filterStatus = ref('all')
-const currentPage = ref(1)
-const itemsPerPage = ref(9)
 
-const filteredEvents = computed(() => {
-    let result = [...events.value]
+const filteredEvents = ref([])
 
-    // Apply search
-    if (searchQuery.value.trim()) {
-        const query = searchQuery.value.toLowerCase()
-        result = result.filter(event =>
-            event.name.toLowerCase().includes(query) ||
-            event.description.toLowerCase().includes(query)
-        )
-    }
-
-    // Apply status filter
-    if (filterStatus.value !== 'all') {
-        result = result.filter(event => event.status === filterStatus.value)
-    }
-
-    // Sort by start date (newest first)
-    result.sort((a, b) => new Date(b.startDate) - new Date(a.startDate))
-
-    return result
-})
-
-const totalPages = computed(() => {
-    return Math.ceil(filteredEvents.value.length / itemsPerPage.value)
-})
-
-// Reset filter and search
-const resetFilters = () => {
-    searchQuery.value = ''
-    filterStatus.value = 'all'
-    currentPage.value = 1
-}
-
-// View toggle
 const toggleView = () => {
     viewMode.value = viewMode.value === 'card' ? 'table' : 'card'
 }
 
-// Event operations
 const editEvent = (event) => {
     router.push(`/topheroes/velaris/admin/events/${event.id}/edit`)
 }
@@ -192,8 +145,8 @@ const deleteEvent = async () => {
         await deleteEventById(deletingEvent.value.id)
         toast({
             variant: 'success',
-            title: 'Delete Successful',
-            description: `${deletingEvent.value.id} was deleted.`
+            title: 'Event Deleted',
+            description: `${deletingEvent.value.name} was successfully deleted.`
         })
         deletingEvent.value = null
     } catch (error) {
@@ -201,30 +154,18 @@ const deleteEvent = async () => {
             variant: 'destructive',
             title: 'Delete Failed',
             description: 'Failed to delete event: ' + error.message
-    })
-    }
-}
-
-const handleEventSaved = () => {
-    editingEvent.value = null
-    toast({
-            variant: 'success',
-            title: 'Event updated successfully',
         })
+    }
 }
 
 const handleEventCreated = () => {
     showAddEvent.value = false
     toast({
-            variant: 'success',
-            title: 'New event created successfully',
-        })
+        variant: 'success',
+        title: 'Event Created',
+        description: 'New event created successfully'
+    })
 }
-
-// Watch for filter changes to reset pagination
-watch([searchQuery, filterStatus], () => {
-    currentPage.value = 1
-})
 
 // Load events on component mount
 onMounted(async () => {
@@ -233,24 +174,33 @@ onMounted(async () => {
     } catch (error) {
         toast({
             variant: 'destructive',
-            title: 'Loading Events Failed',
+            title: 'Loading Failed',
             description: 'Failed to load events: ' + error.message
-    })
+        })
     } finally {
         loading.value = false
     }
 })
+
+// Watch for changes in the events array
+watch(events, () => {
+    loading.value = false
+})
 </script>
 
 <style scoped>
-.fade-enter-active,
-.fade-leave-active {
-    transition: opacity 0.3s ease, transform 0.3s ease;
+.card-fade-enter-active,
+.card-fade-leave-active {
+    transition: all 0.3s ease;
 }
 
-.fade-enter-from,
-.fade-leave-to {
+.card-fade-enter-from,
+.card-fade-leave-to {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(20px) scale(0.95);
+}
+
+.card-fade-move {
+    transition: transform 0.3s ease;
 }
 </style>

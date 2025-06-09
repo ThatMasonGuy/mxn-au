@@ -149,7 +149,7 @@ const props = defineProps({
   initial: Object
 })
 
-defineEmits(['close'])
+const emit = defineEmits(['close'])
 
 const onBulkImport = () => {
   showBulkImport.value = false

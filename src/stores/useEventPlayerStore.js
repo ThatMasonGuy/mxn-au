@@ -20,7 +20,6 @@ export const useEventPlayerStore = defineStore('eventPlayers', () => {
       ...updates
     }
 
-    // Only mark as local if not explicitly false
     if (updates.localOnly !== false) {
       merged.localOnly = true
     } else {

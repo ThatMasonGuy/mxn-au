@@ -189,7 +189,7 @@
                                     <div v-for="(change, key) in entry.changes" :key="key"
                                         class="grid grid-cols-12 gap-2">
                                         <span class="text-slate-400 font-medium col-span-3">{{ formatFieldName(key)
-                                        }}</span>
+                                            }}</span>
                                         <div class="col-span-9 flex items-center">
                                             <span class="line-through text-red-400 bg-red-900/20 px-2 py-0.5 rounded">{{
                                                 change.from || '—' }}</span>
@@ -267,7 +267,6 @@ import { useMemberEvents } from '@/composables/topheroes/admin/useMemberEvents'
 
 const { toast } = useToast();
 
-// Import Heroicons
 import {
     CalendarDaysIcon,
     PencilIcon,
@@ -291,10 +290,9 @@ const emit = defineEmits(['close', 'edit', 'delete', 'viewEvents'])
 const { events: memberEvents, loadEvents } = useMemberEvents(props.member.id)
 
 onMounted(() => {
-  loadEvents()
+    loadEvents()
 })
 
-// State management
 const showEditForm = ref(false)
 const confirmDelete = ref(false)
 const editForm = ref({})
@@ -304,12 +302,10 @@ const handleViewEvents = () => {
     showEventModal.value = true
 }
 
-// Initialize edit form with member data when edit button is clicked
 const initEditForm = () => {
     editForm.value = { ...props.member }
 }
 
-// Watch for edit button click to initialize form
 watch(showEditForm, (newVal) => {
     if (newVal) initEditForm()
 })
@@ -327,7 +323,6 @@ const getChanges = (oldData, newData) => {
     return changes
 }
 
-// Save changes
 const saveEdit = async () => {
     const auth = getAuth()
     const user = auth.currentUser
@@ -335,6 +330,14 @@ const saveEdit = async () => {
 
     const oldData = props.member
     const newData = { ...editForm.value }
+
+    // 🛠 Normalize otherNames into a proper array if needed
+    if (typeof newData.otherNames === 'string') {
+        newData.otherNames = newData.otherNames
+            .split(',')
+            .map(name => name.trim())
+            .filter(name => !!name)
+    }
 
     const changes = getChanges(oldData, newData)
     if (!Object.keys(changes).length) {
@@ -387,8 +390,8 @@ const handleDelete = async () => {
             description: `Deleted member ${props.member.name}.`
         })
 
-        emit('delete', props.member.id) // Optional if parent needs to react
-        emit('close') // 💥 Close the modal
+        emit('delete', props.member.id)
+        emit('close')
         confirmDelete.value = false
     } catch (err) {
         console.error('Failed to delete member:', err)
@@ -429,10 +432,9 @@ const formatDate = (d) => {
     })
 }
 
-// Format field names for better display
 const formatFieldName = (key) => {
     if (!key) return ''
-    // Convert camelCase to Title Case with spaces
+
     return key
         .replace(/([A-Z])/g, ' $1')
         .replace(/^./, (str) => str.toUpperCase())

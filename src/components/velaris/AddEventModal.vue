@@ -9,29 +9,38 @@
             <form @submit.prevent="handleSubmit" class="space-y-4 mt-4"
                 :class="{ 'opacity-50 pointer-events-none': isSubmitting }">
                 <div>
-                    <Label for="eventId" class="text-sm">Event ID</Label>
-                    <Input id="eventId" v-model="form.eventId" required
-                        class="bg-slate-800 border-slate-700 text-white" />
-                </div>
-
-                <div>
-                    <Label for="type" class="text-sm">Event Type</Label>
-                    <Select v-model="form.type" @update:modelValue="updateEventName">
-                        <SelectTrigger class="bg-slate-800 border-slate-700 text-white">
-                            <SelectValue placeholder="Select type" />
-                        </SelectTrigger>
-                        <SelectContent class="bg-slate-800 text-white">
-                            <SelectItem value="KvK">KvK</SelectItem>
-                            <SelectItem value="GvG">GvG</SelectItem>
-                            <SelectItem value="GR">GR</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-
-                <div>
                     <Label for="guildShort" class="text-sm">Guild Short Code</Label>
                     <Input id="guildShort" v-model="form.guildShort" required
-                        class="bg-slate-800 border-slate-700 text-white" />
+                        class="bg-slate-800 border-slate-700 text-white" maxlength="3" />
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <Label for="type" class="text-sm">Event Status</Label>
+                        <Select v-model="form.status" @update:modelValue="updateEventName">
+                            <SelectTrigger class="bg-slate-800 border-slate-700 text-white w-full">
+                                <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                            <SelectContent class="bg-slate-800 text-white">
+                                <SelectItem value="active">Active</SelectItem>
+                                <SelectItem value="upcoming">Upcoming</SelectItem>
+                                <SelectItem value="completed">Completed</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div>
+                        <Label for="type" class="text-sm">Event Type</Label>
+                        <Select v-model="form.type">
+                            <SelectTrigger class="bg-slate-800 border-slate-700 text-white w-full">
+                                <SelectValue placeholder="Select type" />
+                            </SelectTrigger>
+                            <SelectContent class="bg-slate-800 text-white">
+                                <SelectItem value="KvK">KvK</SelectItem>
+                                <SelectItem value="GvG">GvG</SelectItem>
+                                <SelectItem value="GR">GR</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
                 </div>
 
                 <div class="grid grid-cols-2 gap-4">
@@ -46,10 +55,15 @@
                             class="bg-slate-800 border-slate-700 text-white" />
                     </div>
                 </div>
+                <div>
+                    <Label for="eventId" class="text-sm">Generated Event ID</Label>
+                    <Input id="eventId" :value="generatedId" readonly
+                        class="bg-slate-800 border-slate-700 text-gray-400" />
+                </div>
 
                 <div class="flex justify-end gap-2 pt-2">
-                    <Button variant="outline" type="button" @click="$emit('close')"
-                        :disabled="isSubmitting">Cancel</Button>
+                    <Button variant="outline" type="button" @click="$emit('close')" :disabled="isSubmitting"
+                        class="text-gray-700">Cancel</Button>
                     <Button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white" :disabled="isSubmitting">
                         <span v-if="!isSubmitting">Create</span>
                         <span v-else class="flex items-center gap-2">
@@ -70,13 +84,13 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { setDoc, doc, serverTimestamp } from 'firebase/firestore'
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { firestore } from '@/firebase'
 import { useToast } from '@/components/ui/toast'
 import { getAuth } from 'firebase/auth'
@@ -86,20 +100,18 @@ const router = useRouter()
 const emit = defineEmits(['close'])
 const { toast } = useToast()
 
-const today = new Date().toISOString().split('T')[0]
 const user = getAuth().currentUser
 const isSubmitting = ref(false)
 
 const form = ref({
     eventId: '',
+    status: 'active',
     type: '',
     event: '',
     guild: 'Velaris',
     guildShort: 'VLR',
     startDate: '',
     endDate: '',
-    enteredDate: today,
-    enteredBy: user?.displayName || 'Unknown'
 })
 
 const updateEventName = (val) => {
@@ -107,17 +119,29 @@ const updateEventName = (val) => {
     form.value.event = map[val] || ''
 }
 
+const generatedId = computed(() => {
+    if (!form.value.type || !form.value.guildShort || !form.value.startDate) return ''
+    const date = new Date(form.value.startDate)
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const year = date.getFullYear()
+    return `${form.value.guildShort.toLowerCase()}-${form.value.type.toLowerCase()}-${month}-${year}`
+})
+
 const handleSubmit = async () => {
     isSubmitting.value = true
     try {
-        const docRef = doc(firestore, `topheroes/velaris/events/${form.value.eventId}`)
+        const eventId = generatedId.value
+        const eventRef = doc(firestore, `topheroes/velaris/events/${eventId}`)
 
-        await setDoc(docRef, {
+        await setDoc(eventRef, {
             ...form.value,
+            eventId,
             startDate: new Date(form.value.startDate),
             endDate: new Date(form.value.endDate),
-            enteredDate: new Date(),
-            createdAt: serverTimestamp()
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+            memberIds: [],
+            enteredBy: user?.userName || 'Unknown'
         })
 
         toast({
@@ -140,5 +164,3 @@ const handleSubmit = async () => {
     }
 }
 </script>
-
-<style scoped></style>

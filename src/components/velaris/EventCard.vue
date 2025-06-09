@@ -1,28 +1,26 @@
 <template>
-    <div @click="$emit('click')"
-        class="group bg-slate-800 border border-slate-700 hover:border-indigo-500 rounded-xl p-4 cursor-pointer transition-shadow hover:shadow-lg">
-        <div class="flex justify-between items-start mb-2">
-            <span :class="['text-xs font-bold px-2 py-0.5 rounded-full', badgeColor(event.type)]">
-                {{ event.type }}
-            </span>
-            <span class="text-slate-400 text-xs">{{ formatDate(event.enteredDate) }}</span>
-        </div>
+        <div @click="$emit('click')"
+            class="group hover:border-indigo-500 duration-300 hover:shadow-indigo-500/40 group bg-slate-800 border border-slate-700 rounded-xl p-4 cursor-pointer transition-all hover:shadow-lg">
+            <div class="flex justify-between items-start mb-2">
+                <span :class="['text-xs font-bold px-2 py-0.5 rounded-full', badgeColor(event.type)]">
+                    {{ event.type }}
+                </span>
+                <span class="text-slate-400 text-xs">{{ formatDate(event.enteredDate) }}</span>
+            </div>
 
-        <div class="text-lg font-bold text-white truncate">
-            {{ event.eventId }}
-        </div>
+            <div class="text-lg font-bold text-white truncate">
+                {{ event.eventId }}
+            </div>
 
-        <div class="mt-2 text-slate-400 text-sm">
-            <div>Guild: <span class="text-white font-medium">{{ event.guild }}</span></div>
-            <div>Players: <span class="text-white">—</span></div>
-            <div>Score Format: <span class="text-white">{{ scoreFormat(event.type) }}</span></div>
+            <div class="mt-2 text-slate-400 text-sm">
+                <div>Guild: <span class="text-white font-medium">{{ event.guild }}</span></div>
+                <div>Players: <span class="text-white">—</span></div>
+                <div>Score Format: <span class="text-white">{{ scoreFormat(event.type) }}</span></div>
+            </div>
         </div>
-    </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
-
 const props = defineProps({
     event: Object
 })
@@ -52,5 +50,3 @@ const scoreFormat = (type) => {
     }[type] || 'Unknown'
 }
 </script>
-
-<style scoped></style>
