@@ -16,8 +16,29 @@
     ],
     "rewrites": [
       {
-        "source": "/api/generateJournalSummary",
-        "function": "generateJournalSummary"
+        "source": "/destiny/oauth",
+        "function": "startBungieOAuth",
+        "region": "australia-southeast1"
+      },
+      {
+        "source": "/destiny/oauth/callback",
+        "function": "bungieOAuthCallback",
+        "region": "australia-southeast1"
+      },
+      {
+        "source": "/destiny/get-challenges",
+        "function": "getChallenges",
+        "region": "australia-southeast1"
+      },
+      {
+        "source": "/destiny/ai-suggest",
+        "function": "aiSuggest",
+        "region": "australia-southeast1"
+      },
+      {
+        "source": "/translate/post",
+        "function": "aiTranslate",
+        "region": "australia-southeast1"
       },
       {
         "source": "**",

@@ -37,33 +37,33 @@
                 <form @submit.prevent="saveEdit" class="space-y-4">
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div class="space-y-2">
-                            <Label for="name">Name</Label>
-                            <Input id="name" v-model="editForm.name" />
+                            <Label class="text-slate-400" for="name">Name</Label>
+                            <Input class="bg-slate-400" id="name" v-model="editForm.name" />
                         </div>
                         <div class="space-y-2">
-                            <Label for="power">Power</Label>
-                            <Input id="power" v-model="editForm.power" type="number" />
+                            <Label class="text-slate-400" for="power">Power</Label>
+                            <Input class="bg-slate-400" id="power" v-model="editForm.power" type="number" />
                         </div>
                         <div class="space-y-2">
-                            <Label for="castle">Castle</Label>
-                            <Input id="castle" v-model="editForm.castle" />
+                            <Label class="text-slate-400" for="castle">Castle</Label>
+                            <Input class="bg-slate-400" id="castle" v-model="editForm.castle" />
                         </div>
                         <div class="space-y-2">
-                            <Label for="country">Country</Label>
-                            <Input id="country" v-model="editForm.country" />
+                            <Label class="text-slate-400" for="country">Country</Label>
+                            <Input class="bg-slate-400" id="country" v-model="editForm.country" />
                         </div>
                         <div class="space-y-2">
-                            <Label for="discord">Discord</Label>
-                            <Input id="discord" v-model="editForm.discord" />
+                            <Label class="text-slate-400" for="discord">Discord</Label>
+                            <Input class="bg-slate-400" id="discord" v-model="editForm.discord" />
                         </div>
                         <div class="space-y-2">
-                            <Label for="server">Server</Label>
-                            <Input id="server" v-model="editForm.server" />
+                            <Label class="text-slate-400" for="server">Server</Label>
+                            <Input class="bg-slate-400" id="server" v-model="editForm.server" />
                         </div>
                         <div class="space-y-2">
-                            <Label for="role">Role</Label>
-                            <Select v-model="editForm.role" class="bg-slate-700" required>
-                                <SelectTrigger class="bg-slate-700">
+                            <Label class="text-slate-400" for="role">Role</Label>
+                            <Select v-model="editForm.role" required>
+                                <SelectTrigger class="bg-slate-400">
                                     <SelectValue placeholder="Select Role" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -76,9 +76,9 @@
                             </Select>
                         </div>
                         <div class="space-y-2">
-                            <Label for="status">Status</Label>
+                            <Label class="text-slate-400" for="status">Status</Label>
                             <Select v-model="editForm.status">
-                                <SelectTrigger class="bg-slate-700" required>
+                                <SelectTrigger class="bg-slate-400" required>
                                     <SelectValue placeholder="Select Status" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -91,13 +91,13 @@
                         </div>
                     </div>
                     <div>
-                        <Label for="otherNames">Other Names (comma separated)</Label>
-                        <Input id="otherNames" v-model="editForm.otherNames" class="bg-slate-700" />
+                        <Label class="text-slate-400" for="otherNames">Other Names (comma separated)</Label>
+                        <Input class="bg-slate-400" id="otherNames" v-model="editForm.otherNames" />
                     </div>
 
                     <div class="space-y-2">
-                        <Label for="notes">Notes</Label>
-                        <Textarea id="notes" v-model="editForm.notes" rows="3" />
+                        <Label class="text-slate-400" for="notes">Notes</Label>
+                        <Textarea class="bg-slate-400" id="notes" v-model="editForm.notes" rows="3" />
                     </div>
 
                     <div class="flex justify-end space-x-2">

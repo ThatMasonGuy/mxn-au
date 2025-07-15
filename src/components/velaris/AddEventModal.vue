@@ -107,17 +107,20 @@ const form = ref({
     eventId: '',
     status: 'active',
     type: '',
-    event: '',
     guild: 'Velaris',
     guildShort: 'VLR',
     startDate: '',
     endDate: '',
-})
+});
 
 const updateEventName = (val) => {
-    const map = { KvK: 'Kingdom vs Kingdom', GvG: 'Guild vs Guild', GR: 'Guild Race' }
-    form.value.event = map[val] || ''
-}
+    const map = {
+        KvK: 'Kingdom vs Kingdom',
+        GvG: 'Guild vs Guild',
+        GR: 'Guild Race',
+    };
+    return map[val] || 'Unknown Event';
+};
 
 const generatedId = computed(() => {
     if (!form.value.type || !form.value.guildShort || !form.value.startDate) return ''
@@ -132,17 +135,19 @@ const handleSubmit = async () => {
     try {
         const eventId = generatedId.value
         const eventRef = doc(firestore, `topheroes/velaris/events/${eventId}`)
+        const eventTitle = updateEventName(form.value.type);
 
         await setDoc(eventRef, {
             ...form.value,
             eventId,
+            event: eventTitle,
             startDate: new Date(form.value.startDate),
             endDate: new Date(form.value.endDate),
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
             memberIds: [],
-            enteredBy: user?.userName || 'Unknown'
-        })
+            enteredBy: user?.userName || 'Unknown',
+        });
 
         toast({
             variant: 'success',

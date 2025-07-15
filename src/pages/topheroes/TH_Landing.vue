@@ -46,6 +46,9 @@
                     <ToolCard :icon="ChartBarIcon" title="Speed-Ups Calculator"
                         desc="Calculate how many speed-ups you need for buildings, troops, and research."
                         link="/topheroes/tools/speedups" :image="TopHeroes_1" />
+                    <ToolCard :icon="StarIcon" title="Star Calculator"
+                        desc="See how many shards you need to max your heroes."
+                        link="/topheroes/tools/stars" :image="StarsImage" badge="New!" />                        
                     <ToolCard :icon="UsersIcon" title="Resource Calculator"
                         desc="Track how much gold, food, and wood you’ll need based on progression."
                         link="/topheroes/tools/resources" :image="TopHeroes_2" badge="New!" />
@@ -115,6 +118,7 @@ import {
     ArrowsRightLeftIcon,
     BellAlertIcon,
     TrophyIcon,
+    StarIcon
 } from '@heroicons/vue/24/outline'
 import ToolCard from '@/components/topheroes/ToolCard.vue'
 import TopHeroes_1 from '@/assets/images/topHeroes/TopHeroes_1.jpg';
@@ -123,6 +127,7 @@ import DarkEmpireInvasion from '@/assets/images/topHeroes/DarkEmpireInvasion.jpg
 import TopHeroesBanner from '@/assets/images/topHeroes/TopHeroesBanner.jpg';
 import KingdomDuelsBanner from '@/assets/images/topHeroes/KingdomDuelsBanner.jpg';
 import FortContest from '@/assets/images/topHeroes/FortContest.jpg';
+import StarsImage from '@/assets/images/topHeroes/1stAnniversary.jpg'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 

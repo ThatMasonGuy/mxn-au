@@ -1,5 +1,5 @@
 <template>
-    <ColourBlobBackground>
+    <ColourBlobBackground v-if="background">
         <GradientBackground :hue="210">
             <div class="min-h-screen flex flex-col bg-slate-700/20 text-white">
                 <EverhomesHeader v-if="header" />
@@ -12,6 +12,15 @@
             </div>
         </GradientBackground>
     </ColourBlobBackground>
+    <div v-else class="min-h-screen flex flex-col text-white">
+        <EverhomesHeader v-if="header" />
+
+        <main class="flex-grow">
+            <slot />
+        </main>
+
+        <EverhomesFooter v-if="footer" />
+    </div>
 </template>
 
 <script setup>
@@ -22,6 +31,7 @@ import GradientBackground from '@/components/common/backgrounds/GradientBackgrou
 
 const props = defineProps({
     header: { type: Boolean, default: true },
-    footer: { type: Boolean, default: true }
+    footer: { type: Boolean, default: true },
+    background: { type: Boolean, default: true }
 })
 </script>

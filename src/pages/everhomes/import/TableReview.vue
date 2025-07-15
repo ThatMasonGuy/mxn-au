@@ -40,7 +40,7 @@
 
 <script setup>
 import LayoutComponent from '@/components/everhomes/layouts/LayoutComponent.vue'
-import TablePreview from '@/pages/everhomes/import/TablePreview.vue'
+import TablePreview from '@/components/everhomes/ui/TablePreview.vue'
 import { useImportStore } from '@/composables/everhomes/useImportStore'
 import { useRouter } from 'vue-router'
 

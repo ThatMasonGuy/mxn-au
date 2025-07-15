@@ -1,3 +1,4 @@
+// @/composables/topheroes/admin/useMemberEvents.js
 import { ref } from 'vue'
 import { collection, doc, onSnapshot, updateDoc } from 'firebase/firestore'
 import { firestore } from '@/firebase'

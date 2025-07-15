@@ -43,7 +43,7 @@ import { Button } from '@/components/ui/button'
 import { useMembers } from '@/composables/topheroes/admin/useMembers'
 import BulkMemberEventImportReviewModal from './BulkMemberEventImportReviewModal.vue'
 
-const emit = defineEmits(['close', 'review-matches'])
+const emit = defineEmits(['close', 'review-matches', 'finalize'])
 const { members, loadMembers } = useMembers()
 const matchedRows = ref([])
 const loading = ref(true)

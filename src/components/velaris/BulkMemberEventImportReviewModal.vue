@@ -7,6 +7,12 @@
                     Match imported names to existing members before finalizing.
                 </DialogDescription>
             </DialogHeader>
+            <div class="flex justify-end mb-2">
+                <Button size="sm" class="bg-green-700 hover:bg-green-800 text-white" @click="acceptAllExact"
+                    :disabled="allExactAccepted">
+                    Accept All Exact Matches
+                </Button>
+            </div>
 
             <div class="mt-4 max-h-[60vh] overflow-y-auto">
                 <table class="w-full text-sm">
@@ -161,13 +167,24 @@ const unmatchedMembers = computed(() => {
     return members.value.filter(m => !usedIds.includes(m.id))
 })
 
+function acceptAllExact() {
+    props.rows.forEach((row, i) => {
+        if (row.match.type === 'exact' && !row.resolved) {
+            confirmRow(i)
+        }
+    })
+}
+const allExactAccepted = computed(() =>
+    props.rows.filter(r => r.match.type === 'exact').every(r => r.resolved)
+)
+
 function submitMatches() {
-    const finalMapped = props.rows.map(row => ({
-        memberId: row.finalMemberId,
-        ...row.raw
-    }))
+    const finalMapped = props.rows
+        .filter(row => row && row.raw && row.finalMemberId)
+        .map(row => ({
+            memberId: row.finalMemberId,
+            ...row.raw
+        }))
     emit('finalize', finalMapped)
 }
-
-
 </script>

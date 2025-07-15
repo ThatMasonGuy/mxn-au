@@ -6,12 +6,12 @@
 
         <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <ToolSearchComponent v-model="searchQuery" @search="triggerSearch" />
+                <ToolSearchComponent v-model="searchQuery" />
                 <ToolTagSelector :tags="allTags" v-model="selectedTags" :tooltipMap="tagTooltips" :maxSelectable="3"
                     :clearAll="true" :tag-color-map="tagsColourMap" />
             </div>
 
-            <CardContainerComponent :cols="{ base: 1, sm: 2, lg: 3 }" :align="start" id="tools">
+            <CardContainerComponent :cols="{ base: 1, sm: 2, lg: 3 }" id="tools">
                 <TransitionGroup name="card" tag="div" class="contents" appear
                     enter-active-class="transition duration-300 ease-out"
                     leave-active-class="transition duration-200 ease-in" enter-from-class="opacity-0 translate-y-3"
@@ -37,7 +37,8 @@ import {
     WrenchScrewdriverIcon,
     CurrencyDollarIcon,
     BanknotesIcon,
-    BuildingOffice2Icon
+    BuildingOffice2Icon,
+    CloudArrowUpIcon
 } from '@heroicons/vue/24/solid'
 
 const searchQuery = ref('')
@@ -88,6 +89,17 @@ const tools = [
         colorHex: '#8b5cf6',
         badges: [{ label: 'In Progress!', type: 'soon' }],
         tags: ['Finance', 'SDA', 'Returns'],
+        disabled: false
+    },
+    {
+        id: 'import',
+        title: 'Import Data',
+        byline: 'Upload and import data to the system',
+        link: '/everhomes/import',
+        icon: CloudArrowUpIcon,
+        colorHex: '#ffbf00',
+        badges: [{ label: 'In Progress!', type: 'soon' }],
+        tags: ['Finance'],
         disabled: false
     }
 ]

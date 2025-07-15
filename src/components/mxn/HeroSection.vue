@@ -1,6 +1,6 @@
 <template>
     <section
-        class="relative min-h-screen flex flex-col justify-center items-center text-center overflow-hidden text-white px-6">
+        class="relative min-h-screen flex flex-col justify-center items-center text-center overflow-hidden text-white px-6 sm:pt-12">
 
         <!-- Main Content -->
         <div class="relative z-10 space-y-8 animate-fade-up">
@@ -15,7 +15,6 @@
                         class="absolute -bottom-1 left-0 w-full h-1 bg-gradient-to-r from-pink-500 to-indigo-500 rounded-full scale-x-0 group-hover:scale-x-100 transform origin-left transition-transform duration-300"></span>
                 </span>
             </h1>
-
 
             <!-- Subtitle -->
             <p

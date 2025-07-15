@@ -1,23 +1,24 @@
 <template>
-        <div @click="$emit('click')"
-            class="group hover:border-indigo-500 duration-300 hover:shadow-indigo-500/40 group bg-slate-800 border border-slate-700 rounded-xl p-4 cursor-pointer transition-all hover:shadow-lg">
-            <div class="flex justify-between items-start mb-2">
-                <span :class="['text-xs font-bold px-2 py-0.5 rounded-full', badgeColor(event.type)]">
-                    {{ event.type }}
-                </span>
-                <span class="text-slate-400 text-xs">{{ formatDate(event.enteredDate) }}</span>
-            </div>
-
-            <div class="text-lg font-bold text-white truncate">
-                {{ event.eventId }}
-            </div>
-
-            <div class="mt-2 text-slate-400 text-sm">
-                <div>Guild: <span class="text-white font-medium">{{ event.guild }}</span></div>
-                <div>Players: <span class="text-white">—</span></div>
-                <div>Score Format: <span class="text-white">{{ scoreFormat(event.type) }}</span></div>
-            </div>
+    <div @click="$emit('click')"
+        class="group hover:border-indigo-500 duration-300 hover:shadow-indigo-500/40 group bg-slate-800 border border-slate-700 rounded-xl p-4 cursor-pointer transition-all hover:shadow-lg">
+        <div class="flex justify-between items-start mb-2">
+            <span :class="['text-xs font-bold px-2 py-0.5 rounded-full', badgeColor(event.type)]">
+                {{ event.type }}
+            </span>
+            <span class="text-slate-400 text-xs">{{ formatDate(event.startDate) + ' - ' + formatDate(event.endDate)
+                }}</span>
         </div>
+
+        <div class="text-lg font-bold text-white truncate">
+            {{ eventHeader(event) }}
+        </div>
+
+        <div class="mt-2 text-slate-400 text-sm">
+            <div>Guild: <span class="text-white font-medium">{{ event.guild }}</span></div>
+            <div>Players: <span class="text-white">{{ event.memberIds.length }}</span></div>
+            <div>Score Format: <span class="text-white">{{ scoreFormat(event.type) }}</span></div>
+        </div>
+    </div>
 </template>
 
 <script setup>
@@ -33,6 +34,16 @@ const formatDate = (d) => {
         day: 'numeric'
     })
 }
+
+const eventHeader = (event) => {
+  // Defensive date parsing (supports Firestore Timestamps, strings, and Dates)
+  const dateObj = typeof event.startDate?.toDate === 'function'
+    ? event.startDate.toDate()
+    : new Date(event.startDate);
+  // Get full month
+  const month = dateObj.toLocaleString('en-AU', { month: 'long' });
+  return `${event.event} | ${month}`;
+};
 
 const badgeColor = (type) => {
     return {

@@ -2,7 +2,8 @@
   <div class="px-4 sm:px-6 py-8 bg-slate-900 min-h-screen">
     <div class="max-w-7xl mx-auto">
       <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-        <h1 class="text-2xl font-bold text-white">Fill In Player Data for <span class="text-indigo-400">{{ event?.eventId
+        <h1 class="text-2xl font-bold text-white">Fill In Player Data for <span class="text-indigo-400">{{
+          event?.eventId
           || 'Event' }}</span></h1>
         <div>
           <Button @click="showBulkImportModal = true" class="bg-indigo-600 hover:bg-indigo-700 text-white">
@@ -61,7 +62,7 @@
         @close="showAddMissingModal = false" @add="handleMemberAdded" />
     </div>
     <BulkMemberEventImportModal v-if="showBulkImportModal" @close="showBulkImportModal = false"
-      @review-matches="matchedRows = $event" :event="event" />
+      @review-matches="matchedRows = $event" @finalize="handleFinalized" :event="event" />
   </div>
 </template>
 
@@ -200,7 +201,7 @@ const loadMembersWithEventData = async () => {
   try {
     await loadAllMembers();
 
-    const playerPromises = baseMembers.map(async (member) => {
+    const playerPromises = allMembers.value.map(async (member) => {
       const eventSpecificDataRef = doc(firestore, `topheroes/velaris/members/${member.id}/events/${eventId}`);
       const eventSpecificSnap = await getDoc(eventSpecificDataRef);
 
@@ -348,6 +349,131 @@ const saveAll = async () => {
   isSaving.value = false;
 };
 
+const FIELD_ALIASES = {
+  name: ['name', 'player name', 'player'],
+  castle: ['castle'],
+  power: ['power'],
+  role: ['role'],
+  score: ['score', 'total', 'overall'],
+  notes: ['notes', 'note'],
+  overallRank: ['overallRank', 'overall rank', 'rank'],
+  scoreD1: ['scoreD1', 'score d1', 'score (d1)', 'd1'],
+  scoreD2: ['scoreD2', 'score d2', 'score (d2)', 'd2'],
+  scoreD3: ['scoreD3', 'score d3', 'score (d3)', 'd3'],
+  scoreD4: ['scoreD4', 'score d4', 'score (d4)', 'd4'],
+  scoreD5: ['scoreD5', 'score d5', 'score (d5)', 'd5'],
+  scoreD6: ['scoreD6', 'score d6', 'score (d6)', 'd6'],
+};
+
+function getField(raw, aliases) {
+  const keys = Object.keys(raw).reduce((map, k) => {
+    map[k.trim().toLowerCase()] = raw[k];
+    return map;
+  }, {});
+  for (const alias of aliases) {
+    if (keys.hasOwnProperty(alias.toLowerCase().trim())) {
+      return keys[alias.toLowerCase().trim()];
+    }
+  }
+  return '';
+}
+
+const SCORE_FIELDS = [
+  'scoreD1', 'scoreD2', 'scoreD3', 'scoreD4', 'scoreD5', 'scoreD6'
+];
+
+const handleFinalized = (imported) => {
+  const allMembersMap = {};
+  allMembers.value.forEach(m => { allMembersMap[m.id] = m; });
+
+  const prevPlayers = store.getPlayers(eventId) || [];
+  const prevMap = {};
+  prevPlayers.forEach(p => { prevMap[p.id] = p; });
+
+  function hasAnyScore(player) {
+    return SCORE_FIELDS.some(f => Number(player?.[f]) > 0);
+  }
+
+  function normalizeRow(row) {
+    return {
+      name: getField(row, FIELD_ALIASES.name),
+      castle: getField(row, FIELD_ALIASES.castle),
+      power: getField(row, FIELD_ALIASES.power),
+      role: getField(row, FIELD_ALIASES.role),
+      score: getField(row, FIELD_ALIASES.score),
+      notes: getField(row, FIELD_ALIASES.notes),
+      overallRank: getField(row, FIELD_ALIASES.overallRank),
+      scoreD1: getField(row, FIELD_ALIASES.scoreD1),
+      scoreD2: getField(row, FIELD_ALIASES.scoreD2),
+      scoreD3: getField(row, FIELD_ALIASES.scoreD3),
+      scoreD4: getField(row, FIELD_ALIASES.scoreD4),
+      scoreD5: getField(row, FIELD_ALIASES.scoreD5),
+      scoreD6: getField(row, FIELD_ALIASES.scoreD6),
+    }
+  }
+
+  const importedMap = {};
+  imported.forEach(row => { importedMap[row.memberId] = true; });
+
+  const merged = [];
+
+  imported.forEach(rawRow => {
+    const row = normalizeRow(rawRow);
+    const baseMember = allMembersMap[rawRow.memberId] || {};
+    const prev = prevMap[rawRow.memberId] || {};
+
+    const player = {
+      id: rawRow.memberId,
+      player: baseMember.name || row.name || "",
+      name: baseMember.name || row.name || "",
+      discord: baseMember.discord || "",
+      power: Number(row.power) || baseMember.power || 0,
+      castle: row.castle || baseMember.castle || "",
+      role: row.role || baseMember.role || "",
+      status: baseMember.status || "active",
+      overallRank: row.overallRank || "",
+      enteredBy: "Unknown",
+      type: event.value?.type || "",
+      score: row.score || "",
+      notes: row.notes || "",
+      eventId: eventId,
+      overallScore: null,
+      playerId: rawRow.memberId,
+      guild: event.value?.guildShort || "",
+      enteredDate: new Date(),
+      localOnly: true,
+    };
+
+    SCORE_FIELDS.forEach(field => {
+      const importedScore = Number(row[field] ?? 0);
+      const prevScore = Number(prev[field] ?? 0);
+      if (importedScore > 0 || !prevScore) {
+        player[field] = importedScore || "";
+      } else {
+        player[field] = prevScore;
+      }
+    });
+
+    merged.push(player);
+  });
+
+  prevPlayers.forEach(prev => {
+    if (!importedMap[prev.id] && hasAnyScore(prev)) {
+      merged.push(prev);
+    }
+  });
+
+  store.setAllPlayers(eventId, merged);
+
+  toast({
+    title: 'Import Applied',
+    description: `Imported/updated ${imported.length} players. Kept ${merged.length - imported.length} players with scores.`,
+    variant: 'success',
+  });
+
+  showBulkImportModal.value = false;
+};
+
 onMounted(async () => {
   await loadEvent();
   if (event.value) {
@@ -356,6 +482,7 @@ onMounted(async () => {
       await loadMembersWithEventData();
     } else {
       toast({ variant: 'info', title: 'Local Data Loaded', description: 'Using previously stored data. Refresh if needed.' });
+      console.log(store.getPlayers(eventId))
     }
   }
 });

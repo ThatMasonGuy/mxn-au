@@ -117,6 +117,22 @@ export default [
             requiresOverlay: true,
         },
     },
+    {
+        path: '/topheroes/tools/stars',
+        name: 'THStarCalc',
+        component: () => import('@/pages/topheroes/TH_CalcStars.vue'),
+        meta: {
+            requiresAuth: false,
+            role: null,
+            title: 'Star Calculator',
+            drawerRanking: 2,
+            drawerVisible: true,
+            layout: 'default',
+            description: 'Calculate resource needs in TopHeroes.',
+            badge: '',
+            requiresOverlay: true,
+        },
+    },
 
     // --- Velaris Events ---
     {

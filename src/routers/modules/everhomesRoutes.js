@@ -22,7 +22,7 @@ export default [
         path: '/everhomes/import',
         alias: ['/everhomes/upload'],
         name: 'Everhomes | Import',
-        component: () => import('@/pages/everhomes/ImportPage.vue'),
+        component: () => import('@/pages/everhomes/ImportWizard.vue'),
         meta: {
             requiresAuth: false,
             role: null,
