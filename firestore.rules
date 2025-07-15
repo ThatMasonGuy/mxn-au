@@ -3,7 +3,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-		match /mailing/{docId} {
+    match /mailing/{docId} {
       allow create: if true;
       allow read: if false;
     }
@@ -12,25 +12,30 @@ service cloud.firestore {
       allow read: if request.auth != null && request.auth.uid == userId;
       allow write: if request.auth != null && request.auth.uid == userId;
       allow create: if request.auth != null && request.auth.uid == userId ||
-                       request.auth == null && request.resource.data.keys().hasAll(['firstName', 'lastName', 'userName', 'emailAddress', 'phoneNumber', 'dateOfBirth']);
+                     request.auth == null && request.resource.data.keys().hasAll(['firstName', 'lastName', 'userName', 'emailAddress', 'phoneNumber', 'dateOfBirth']);
       
       match /{document=**} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
     }
-    
-    match /castleData/{docId} {
+
+    match /castleData/{document=**} {
       allow read: if true;
       allow write: if request.auth != null && (
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles.hasAny(['admin', 'topheroesAdmin'])
       );
     }
 
-    match /topheroes/{docId} {
+    match /topheroes/{document=**} {
       allow read: if true;
       allow write: if request.auth != null && (
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles.hasAny(['admin', 'topheroesAdmin'])
       );
+    }
+
+    match /translations/{docId} {
+      allow read: if docId == 'meta';
+      allow write: if false;
     }
 
     match /{document=**} {
