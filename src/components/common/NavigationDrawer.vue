@@ -49,7 +49,7 @@
 
             <!-- Drawer Footer -->
             <div class="pt-6 border-t border-white/10 mt-4">
-                <RouterLink to="/topheroes/admin/signin"
+                <RouterLink to="/login"
                     class="flex items-center gap-2 text-white px-3 py-2 rounded-lg bg-gradient-to-r from-indigo-700 to-purple-700 font-semibold shadow-md">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24"
                         stroke="currentColor">

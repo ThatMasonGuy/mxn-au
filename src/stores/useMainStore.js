@@ -1,53 +1,54 @@
 // @/stores/useMainStore.js
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
-import { doc, getDoc } from 'firebase/firestore'
-import { firestore } from '@/firebase'
 
 export const useMainStore = defineStore('main', () => {
-    const user = ref(null)
-    const token = ref(null)
-    const rememberMe = ref(false)
+  const user = ref(null)
+  const token = ref(null)
+  const rememberMe = ref(false)
 
-    async function setUser({ user: authUser, token: userToken, rememberMe: remember }) {
-      
-        const userDocRef = doc(firestore, 'users', authUser.uid)
-        const userSnap = await getDoc(userDocRef)
-      
-        let profileData = {}
-        if (userSnap.exists()) {
-          profileData = userSnap.data()
-        }
-      
-        user.value = {
-          uid: authUser.uid,
-          email: authUser.email,
-          displayName: authUser.displayName,
-          userName: authUser.userName,
-          ...profileData
-        }
-      
-        token.value = userToken
-        rememberMe.value = remember
-      }
+  // Computed helpers
+  const isAuthenticated = computed(() => !!user.value)
+  const userRoles = computed(() => user.value?.roles || [])
+  const hasRole = computed(() => (role) => userRoles.value.includes(role))
+  const hasPermission = computed(() => (permission) => user.value?.permissions?.[permission] || false)
 
-    function clearAuth() {
-        console.log('[Pinia clearAuth] Clearing auth from store...')
-        user.value = null
-        token.value = null
-        rememberMe.value = false
+  async function setUser({ user: authUser, token: userToken, rememberMe: remember }) {
+    user.value = authUser
+    token.value = userToken
+    rememberMe.value = remember
+  }
+
+  function updateUser(updates) {
+    if (user.value) {
+      user.value = { ...user.value, ...updates }
     }
+  }
 
-    return {
-        user,
-        token,
-        rememberMe,
-        setUser,
-        clearAuth
-    }
+  function clearAuth() {
+    user.value = null
+    token.value = null
+    rememberMe.value = false
+  }
+
+  return {
+    // State
+    user,
+    token,
+    rememberMe,
+    // Computed
+    isAuthenticated,
+    userRoles,
+    hasRole,
+    hasPermission,
+    // Actions
+    setUser,
+    updateUser,
+    clearAuth
+  }
 }, {
-    persist: {
-        storage: localStorage,
-        paths: ['user', 'token', 'rememberMe']
-    }
+  persist: {
+    storage: localStorage,
+    paths: ['user', 'token', 'rememberMe']
+  }
 })

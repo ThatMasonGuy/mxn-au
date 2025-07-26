@@ -48,7 +48,7 @@ const handleLogout = async () => {
   try {
     await signOut()
     mainStore.clearAuth()
-    router.push('/topheroes/admin/login')
+    router.push('/login')
   } catch (error) {
     console.error('[handleLogout] Error during logout:', error)
   }

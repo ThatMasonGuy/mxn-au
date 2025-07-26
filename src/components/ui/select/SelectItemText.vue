@@ -1,3 +1,4 @@
+// @/components/ui/select/SelectItemText.vue
 <script setup>
 import { SelectItemText } from "radix-vue";
 

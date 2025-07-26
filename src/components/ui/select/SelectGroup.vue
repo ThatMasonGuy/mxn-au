@@ -1,3 +1,4 @@
+// @/components/ui/select/SelectGroup.vue
 <script setup>
 import { computed } from "vue";
 import { SelectGroup } from "radix-vue";

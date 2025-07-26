@@ -1,3 +1,4 @@
+// @/components/ui/select/Select.vue
 <script setup>
 import { SelectRoot, useForwardPropsEmits } from "radix-vue";
 

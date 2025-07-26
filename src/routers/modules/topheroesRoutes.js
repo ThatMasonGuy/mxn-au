@@ -231,6 +231,7 @@ export default [
             requiresOverlay: true,
         },
     },
+    /*
     {
         path: '/topheroes/velaris/events/guild-vs-guild/may-2025',
         name: 'Velaris Event - GvG May',
@@ -294,7 +295,24 @@ export default [
             badge: 'New',
             requiresOverlay: true,
         },
-    },
+    }, 
+    */
+    {
+        path: '/topheroes/velaris/events/:eventId',
+        name: 'Velaris Dynamic Event',
+        component: () => import('@/pages/topheroes/velaris/events/GvG_Event.vue'),
+        meta: {
+            requiresAuth: false,
+            role: null,
+            title: 'Event Details',
+            drawerRanking: null,
+            drawerVisible: false,
+            layout: 'default',
+            description: 'Dynamic Guild vs Guild event statistics for Velaris.',
+            badge: 'Dynamic',
+            requiresOverlay: true,
+        },
+    },    
 
     // --- TopHeroes Events ---
     {
@@ -348,22 +366,6 @@ export default [
 
     // --- TopHeroes Admin Extras ---
     {
-        path: '/topheroes/admin/signup',
-        name: 'TopHeroes - Admin Sign-up',
-        component: () => import('@/pages/topheroes/admin/TH_AdminSignUp.vue'),
-        meta: {
-            requiresAuth: false,
-            role: null,
-            title: 'Admin Sign Up',
-            drawerRanking: null,
-            drawerVisible: false,
-            layout: 'auth',
-            description: 'Sign up to become a TopHeroes Admin.',
-            badge: '',
-            requiresOverlay: false,
-        },
-    },
-    {
         path: '/topheroes/admin/castledata',
         name: 'TopHeroes - Admin Castle Data',
         component: () => import('@/pages/topheroes/admin/TH_AdminCastleData.vue'),
@@ -380,33 +382,17 @@ export default [
         },
     },
     {
-        path: '/topheroes/admin/login',
-        name: 'TopHeroes - Admin Login',
-        component: () => import('@/pages/topheroes/admin/TH_AdminLogin.vue'),
-        meta: {
-            requiresAuth: false,
-            role: null,
-            title: 'Admin Login',
-            drawerRanking: 1,
-            drawerVisible: true,
-            layout: 'auth',
-            description: 'Login page for TopHeroes admins.',
-            badge: '',
-            requiresOverlay: false,
-        },
-    },
-    {
         path: '/topheroes/admin/events/guides/guide-builder',
         name: 'TopHeroes - Guide Builder',
         component: () => import('@/pages/topheroes/events/guides/Builder.vue'),
         meta: {
             requiresAuth: false,
             role: ROLES.TOPHEROES_ADMIN,
-            title: 'Admin Login',
+            title: 'Guide Builder',
             drawerRanking: 1,
             drawerVisible: true,
             layout: 'auth',
-            description: 'Login page for TopHeroes admins.',
+            description: 'Guide building page for TopHeroes admins.',
             badge: '',
             requiresOverlay: false,
         },

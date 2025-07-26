@@ -1,70 +1,138 @@
 <template>
     <div
-        class="min-h-screen bg-gradient-to-br from-indigo-950 via-purple-950 to-gray-900 flex flex-col items-center px-4 py-8">
+        class="min-h-screen bg-gradient-to-br from-indigo-950 via-purple-950 to-gray-900 flex flex-col items-center px-4 pt-12 pb-4">
         <div class="w-full max-w-6xl">
             <!-- Header -->
-            <div class="text-center mb-8">
-                <h1
-                    class="text-5xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-indigo-400 bg-clip-text text-transparent mb-2 tracking-tight">
-                    Destiny 2 Challenge Optimizer
-                </h1>
-                <p class="text-xl text-gray-300 max-w-2xl mx-auto">
-                    Pull your real progress, min-max your season, and never miss a reward. Powered by <b>OpenAI</b>, built by <b>Mason</b>
+            <div class="text-center mb-10">
+                <div class="relative inline-block">
+                    <h1 class="text-4xl md:text-5xl font-bold text-white mb-3 relative">
+                        <span class="text-violet-400 font-black">Challenge Optimizer</span>
+                        <div
+                            class="absolute -bottom-1 left-0 right-0 h-px bg-gradient-to-r from-transparent via-violet-400 to-transparent opacity-60">
+                        </div>
+                    </h1>
+                </div>
+
+                <p class="text-lg text-gray-300 mb-2 max-w-2xl mx-auto">
+                    Pull your real progress, min-max your season, and never miss a reward.
                 </p>
             </div>
 
             <!-- Bungie Connect -->
-            <div v-if="!bungieLinked" class="flex flex-col items-center my-12">
-                <div class="bg-black/40 backdrop-blur-sm rounded-3xl p-8 border border-purple-500/20 shadow-2xl">
+            <div v-if="!bungieLinked" class="flex flex-col items-center">
+                <div
+                    class="bg-black/30 backdrop-blur-xl rounded-3xl p-10 border border-white/10 shadow-2xl shadow-purple-500/10 max-w-lg w-full">
+
+                    <!-- TOKEN EXPIRED -->
                     <template v-if="tokenExpired">
-                        <div class="text-center">
+                        <div class="flex flex-col items-center text-center">
+
+                            <!-- Alert Icon with animated pulse -->
                             <div
-                                class="w-16 h-16 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                                </svg>
+                                class="relative w-24 h-24 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full flex items-center justify-center mb-8 shadow-lg shadow-orange-500/25">
+                                <AlertTriangle class="w-12 h-12 text-white" />
+                                <div
+                                    class="absolute inset-0 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full opacity-20">
+                                </div>
                             </div>
-                            <p class="text-yellow-300 mb-6 text-lg font-semibold">
-                                Your Bungie session has expired.<br>
-                                Please re-link your account to continue.
+
+                            <h3 class="text-2xl font-bold text-white mb-3">Session Expired</h3>
+                            <p class="text-gray-300 mb-8 leading-relaxed text-lg">
+                                Your Bungie session has expired. Please re-authenticate to continue tracking your
+                                challenge progress and unlock AI-powered optimization.
                             </p>
-                            <button @click="linkBungie" :disabled="loading"
-                                class="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 px-8 py-4 rounded-2xl shadow-lg text-white text-lg font-semibold transition-all duration-300 flex items-center justify-center gap-3 transform hover:scale-105">
-                                <svg v-if="loading" class="w-6 h-6 animate-spin" fill="none" viewBox="0 0 24 24">
-                                    <circle class="opacity-30" cx="12" cy="12" r="10" stroke="currentColor"
-                                        stroke-width="4" />
-                                    <path class="opacity-70" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
-                                </svg>
-                                <span>{{ loading ? 'Connecting…' : 'Re-Link Bungie Account' }}</span>
+
+                            <!-- Enhanced Button -->
+                            <button @click="handleLinkBungie" :disabled="loading"
+                                class="w-full bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 hover:from-violet-500 hover:via-purple-500 hover:to-fuchsia-500 disabled:from-gray-600 disabled:to-gray-700 px-8 py-4 rounded-2xl shadow-lg shadow-violet-500/25 hover:shadow-violet-500/60 hover:shadow-2xl text-white text-lg font-semibold transition-all duration-300 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden">
+                                <div
+                                    class="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000">
+                                </div>
+                                <component :is="loading ? RotateCw : Link2Off" class="w-6 h-6 relative z-10"
+                                    :class="{ 'animate-spin': loading }" />
+                                <span class="relative z-10">{{ loading ? 'Reconnecting…' : 'Re-Link Account' }}</span>
                             </button>
                         </div>
                     </template>
+
+                    <!-- FRESH CONNECT -->
                     <template v-else>
-                        <div class="text-center">
+                        <div class="flex flex-col items-center text-center">
+
+                            <!-- Enhanced Connect Icon -->
                             <div
-                                class="w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-6">
-                                <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                                </svg>
+                                class="relative w-28 h-28 bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-500 rounded-full flex items-center justify-center mb-8 shadow-lg shadow-violet-500/25">
+                                <PlugZap class="w-14 h-14 text-white" />
+                                <div
+                                    class="absolute inset-0 bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-500 rounded-full animate-pulse opacity-30">
+                                </div>
+                                <!-- Orbiting dots -->
+                                <div class="absolute inset-0 animate-spin">
+                                    <div
+                                        class="absolute top-0 left-1/2 w-2 h-2 bg-white rounded-full transform -translate-x-1/2 -translate-y-1">
+                                    </div>
+                                    <div
+                                        class="absolute bottom-0 left-1/2 w-2 h-2 bg-white rounded-full transform -translate-x-1/2 translate-y-1">
+                                    </div>
+                                </div>
                             </div>
-                            <p class="text-gray-300 mb-6 text-lg">
-                                Connect your Bungie account to start pulling your live challenge data.
+
+                            <h3 class="text-3xl font-bold text-white mb-4">Connect Your Account</h3>
+                            <p class="text-gray-300 mb-8 leading-relaxed text-lg">
+                                Link your Bungie account to unlock real-time challenge tracking, progress analytics, and
+                                AI-powered optimization strategies to maximize your seasonal rewards.
                             </p>
-                            <button @click="linkBungie" :disabled="loading"
-                                class="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 px-8 py-4 rounded-2xl shadow-lg text-white text-lg font-semibold transition-all duration-300 flex items-center justify-center gap-3 transform hover:scale-105">
-                                <svg v-if="loading" class="w-6 h-6 animate-spin" fill="none" viewBox="0 0 24 24">
-                                    <circle class="opacity-30" cx="12" cy="12" r="10" stroke="currentColor"
-                                        stroke-width="4" />
-                                    <path class="opacity-70" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
-                                </svg>
-                                <span>{{ loading ? 'Connecting…' : 'Connect Bungie Account' }}</span>
+
+                            <!-- Feature highlights -->
+                            <div class="grid grid-cols-1 gap-3 mb-8 w-full">
+                                <div class="flex items-center gap-3 text-gray-300">
+                                    <div
+                                        class="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+                                        <Check class="w-4 h-4 text-white" />
+                                    </div>
+                                    <span>Real-time challenge progress tracking</span>
+                                </div>
+                                <div class="flex items-center gap-3 text-gray-300">
+                                    <div
+                                        class="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+                                        <Zap class="w-4 h-4 text-white" />
+                                    </div>
+                                    <span>AI-powered optimization recommendations</span>
+                                </div>
+                                <div class="flex items-center gap-3 text-gray-300">
+                                    <div
+                                        class="w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
+                                        <TrendingUp class="w-4 h-4 text-white" />
+                                    </div>
+                                    <span>Advanced progress analytics</span>
+                                </div>
+                            </div>
+
+                            <!-- Enhanced Button -->
+                            <button @click="handleLinkBungie" :disabled="loading"
+                                class="w-full bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 hover:from-violet-500 hover:via-purple-500 hover:to-fuchsia-500 disabled:from-gray-600 disabled:to-gray-700 px-8 py-4 rounded-2xl shadow-lg shadow-violet-500/25 hover:shadow-violet-500/60 hover:shadow-2xl text-white text-lg font-semibold transition-all duration-300 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group">
+                                <div
+                                    class="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000">
+                                </div>
+                                <component :is="loading ? RotateCw : Link2" class="w-6 h-6 relative z-10"
+                                    :class="{ 'animate-spin': loading }" />
+                                <span class="relative z-10">{{ loading ? 'Connecting…' : 'Connect Bungie Account'
+                                }}</span>
                             </button>
                         </div>
                     </template>
                 </div>
-                <p v-if="error" class="text-red-400 mt-6 text-center bg-red-900/20 px-4 py-2 rounded-lg">{{ error }}</p>
+
+                <!-- Error Message -->
+                <div v-if="error" class="mt-6 max-w-lg w-full">
+                    <div
+                        class="bg-red-900/30 border border-red-500/30 backdrop-blur-sm px-6 py-4 rounded-2xl flex items-center gap-3">
+                        <AlertCircle class="w-5 h-5 text-red-400 flex-shrink-0" />
+                        <p class="text-red-300 font-medium">
+                            {{ error }}
+                        </p>
+                    </div>
+                </div>
             </div>
 
             <!-- Main App -->
@@ -85,21 +153,14 @@
                                     {{ profile.displayName || 'Guardian' }}
                                 </div>
                                 <div class="text-sm text-gray-400">
-                                    {{ profile.platform || 'Destiny 2' }} • {{ challengesArray.length }} challenges
+                                    {{ getPlatform }} • {{ challengesArray.length }} challenges
                                 </div>
                             </div>
                         </div>
                         <button @click="fetchChallenges" :disabled="loading"
-                            class="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 px-6 py-3 rounded-xl shadow-lg text-white font-semibold transition-all duration-300 flex items-center gap-2 transform hover:scale-105">
-                            <svg v-if="loading" class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-30" cx="12" cy="12" r="10" stroke="currentColor"
-                                    stroke-width="4" />
-                                <path class="opacity-70" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
-                            </svg>
-                            <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                            </svg>
+                            class="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 px-6 py-3 rounded-xl shadow-lg shadow-green-500/25 hover:shadow-green-500/60 hover:shadow-2xl text-white font-semibold transition-all duration-300 flex items-center gap-2">
+                            <component :is="loading ? RotateCw : RefreshCw" class="w-5 h-5"
+                                :class="{ 'animate-spin': loading }" />
                             <span>{{ loading ? 'Refreshing...' : 'Refresh' }}</span>
                         </button>
                     </div>
@@ -130,42 +191,37 @@
 
                     <!-- Filters & Sorting -->
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <!-- Filter Status Select -->
+                        <MultiSelect v-model="filterStatus">
+                            <MultiSelectTrigger class="w-full bg-gray-800/50 text-white border-gray-600"
+                                placeholder="Filter challenges..." :max-display="3" />
+                            <MultiSelectContent class="bg-gray-800 text-white border-gray-600">
+                                <MultiSelectItem value="All Challenges">All Challenges</MultiSelectItem>
+                                <MultiSelectItem value="Completed">Completed</MultiSelectItem>
+                                <MultiSelectItem value="Incomplete">Incomplete</MultiSelectItem>
+                                <MultiSelectItem value="Near Complete">Near Complete (80%+)</MultiSelectItem>
+                            </MultiSelectContent>
+                        </MultiSelect>
+
+                        <!-- Sort By Select -->
+                        <Select v-model="sortBy">
+                            <SelectTrigger class="w-full bg-gray-800/50 text-white border-gray-600">
+                                <SelectValue placeholder="Sort by..." />
+                            </SelectTrigger>
+                            <SelectContent class="bg-gray-800 text-white border-gray-600">
+                                <SelectItem value="name">Sort by Name</SelectItem>
+                                <SelectItem value="progress">Sort by Progress</SelectItem>
+                                <SelectItem value="remaining">Sort by Remaining</SelectItem>
+                                <SelectItem value="completion">Sort by Completion</SelectItem>
+                            </SelectContent>
+                        </Select>
+
+                        <!-- Search Input -->
                         <div class="relative">
-                            <select v-model="filterStatus"
-                                class="w-full bg-gray-800/50 border border-gray-600 rounded-xl px-4 py-3 text-white appearance-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent">
-                                <option value="all">All Challenges</option>
-                                <option value="completed">Completed</option>
-                                <option value="incomplete">Incomplete</option>
-                                <option value="near-complete">Near Complete (80%+)</option>
-                            </select>
-                            <svg class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none"
-                                fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M19 9l-7 7-7-7" />
-                            </svg>
-                        </div>
-                        <div class="relative">
-                            <select v-model="sortBy"
-                                class="w-full bg-gray-800/50 border border-gray-600 rounded-xl px-4 py-3 text-white appearance-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent">
-                                <option value="name">Sort by Name</option>
-                                <option value="progress">Sort by Progress</option>
-                                <option value="remaining">Sort by Remaining</option>
-                                <option value="completion">Sort by Completion</option>
-                            </select>
-                            <svg class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none"
-                                fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M19 9l-7 7-7-7" />
-                            </svg>
-                        </div>
-                        <div class="relative">
-                            <input v-model="searchTerm" type="text" placeholder="Search challenges..."
-                                class="w-full bg-gray-800/50 border border-gray-600 rounded-xl px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent">
-                            <svg class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none"
-                                fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                            </svg>
+                            <Input v-model="searchTerm" type="text" placeholder="Search challenges..."
+                                class="w-full bg-gray-800/50 text-white border-gray-600 placeholder-gray-400 pr-10" />
+                            <component :is="searchTerm ? X : Search" @click="searchTerm = ''"
+                                class="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 cursor-pointer" />
                         </div>
                     </div>
                 </div>
@@ -177,10 +233,7 @@
                         <div class="flex items-center gap-3">
                             <div
                                 class="w-12 h-12 bg-gradient-to-br from-pink-500 to-purple-500 rounded-full flex items-center justify-center">
-                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                </svg>
+                                <Zap class="w-6 h-6 text-white" />
                             </div>
                             <div>
                                 <h2 class="text-2xl font-bold text-pink-300">AI Optimization Plan</h2>
@@ -188,16 +241,9 @@
                             </div>
                         </div>
                         <button @click="suggestPlan" :disabled="suggestLoading || loading || !challengesArray.length"
-                            class="bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed px-6 py-3 rounded-xl shadow-lg text-white font-semibold transition-all duration-300 flex items-center gap-2 transform hover:scale-105">
-                            <svg v-if="suggestLoading" class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-30" cx="12" cy="12" r="10" stroke="currentColor"
-                                    stroke-width="4" />
-                                <path class="opacity-70" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
-                            </svg>
-                            <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                            </svg>
+                            class="bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed px-6 py-3 rounded-xl shadow-lg shadow-pink-500/25 hover:shadow-pink-500/60 hover:shadow-2xl text-white font-semibold transition-all duration-300 flex items-center gap-2">
+                            <component :is="suggestLoading ? RotateCw : Lightbulb" class="w-5 h-5"
+                                :class="{ 'animate-spin': suggestLoading }" />
                             <span>{{ suggestLoading ? 'Analyzing...' : 'Generate Plan' }}</span>
                         </button>
                     </div>
@@ -210,10 +256,7 @@
                     <div v-else class="text-center py-8">
                         <div
                             class="w-16 h-16 bg-gradient-to-br from-pink-500/20 to-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <svg class="w-8 h-8 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M13 10V3L4 14h7v7l9-11h-7z" />
-                            </svg>
+                            <Zap class="w-8 h-8 text-pink-400" />
                         </div>
                         <p class="text-gray-400 text-lg">Click "Generate Plan" to get AI-powered optimization
                             suggestions</p>
@@ -241,44 +284,28 @@
                     <div v-if="loading" class="text-center py-12">
                         <div
                             class="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
-                            <svg class="w-8 h-8 text-white animate-spin" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-30" cx="12" cy="12" r="10" stroke="currentColor"
-                                    stroke-width="4" />
-                                <path class="opacity-70" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
-                            </svg>
+                            <RotateCw class="w-8 h-8 text-white animate-spin" />
                         </div>
                         <p class="text-purple-200 text-lg">Loading challenges...</p>
                     </div>
 
-                    <div v-else-if="filteredChallenges.length" class="space-y-4">
-                        <div v-for="challenge in filteredChallenges" :key="challenge.id"
+                    <div v-else-if="displayedChallenges.length" class="space-y-4">
+                        <div v-for="challenge in displayedChallenges" :key="challenge.id"
                             class="group relative bg-gradient-to-r from-gray-800/50 to-gray-700/50 rounded-2xl p-5 border border-gray-600/30 hover:border-purple-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/10">
 
                             <!-- Completion Status Indicator -->
                             <div class="absolute top-4 right-4">
                                 <div v-if="challenge.complete"
                                     class="w-6 h-6 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
-                                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M5 13l4 4L19 7" />
-                                    </svg>
+                                    <Check class="w-4 h-4 text-white" />
                                 </div>
                                 <div v-else-if="challenge.progressPercent >= 80"
                                     class="w-6 h-6 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-full flex items-center justify-center">
-                                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                                    </svg>
+                                    <Sun class="w-4 h-4 text-white" />
                                 </div>
                                 <div v-else
                                     class="w-6 h-6 bg-gradient-to-br from-gray-500 to-gray-600 rounded-full flex items-center justify-center">
-                                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
+                                    <Clock class="w-4 h-4 text-white" />
                                 </div>
                             </div>
 
@@ -295,7 +322,7 @@
                                     </div>
                                 </div>
 
-                                <div class="flex items-center justify-between">
+                                <div class="flex items-center justify-between mb-2">
                                     <div class="flex items-center gap-4">
                                         <div class="flex items-center gap-2">
                                             <div class="text-2xl font-mono font-bold text-purple-300">
@@ -310,13 +337,12 @@
                                             {{ challenge.progressPercent.toFixed(1) }}% complete
                                         </div>
                                     </div>
-                                    <div v-if="!challenge.complete" class="text-sm text-gray-400">
-                                        {{ challenge.remaining }} remaining
-                                    </div>
                                 </div>
+                            </div>
 
-                                <!-- Progress Bar -->
-                                <div class="mt-4 w-full h-2 bg-gray-700 rounded-full overflow-hidden">
+                            <!-- Progress Bar with Remaining Text -->
+                            <div class="flex items-center gap-3">
+                                <div class="flex-1 h-2 bg-gray-700 rounded-full overflow-hidden">
                                     <div class="h-full transition-all duration-500 rounded-full" :class="{
                                         'bg-gradient-to-r from-green-500 to-emerald-500': challenge.complete,
                                         'bg-gradient-to-r from-yellow-500 to-orange-500': !challenge.complete && challenge.progressPercent >= 80,
@@ -325,17 +351,31 @@
                                     }" :style="{ width: `${challenge.progressPercent}%` }">
                                     </div>
                                 </div>
+                                <div v-if="!challenge.complete" class="text-sm text-gray-400 whitespace-nowrap">
+                                    {{ challenge.remaining }} remaining
+                                </div>
                             </div>
+                        </div>
+
+                        <!-- Load More Buttons -->
+                        <div v-if="filteredChallenges.length > displayCount" class="flex justify-center gap-4 pt-6">
+                            <button @click="loadMore"
+                                class="bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 px-6 py-3 rounded-xl shadow-lg shadow-purple-500/25 hover:shadow-purple-500/60 hover:shadow-2xl text-white font-semibold transition-all duration-300 flex items-center gap-2">
+                                <ChevronDown class="w-5 h-5" />
+                                <span>Load 10 More</span>
+                            </button>
+                            <button @click="loadAll"
+                                class="bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 px-6 py-3 rounded-xl shadow-lg shadow-gray-500/25 hover:shadow-gray-500/60 hover:shadow-2xl text-white font-semibold transition-all duration-300 flex items-center gap-2">
+                                <FileText class="w-5 h-5" />
+                                <span>Load All ({{ filteredChallenges.length - displayCount }} more)</span>
+                            </button>
                         </div>
                     </div>
 
                     <div v-else class="text-center py-12">
                         <div
                             class="w-16 h-16 bg-gradient-to-br from-gray-500/20 to-gray-600/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
+                            <FileText class="w-8 h-8 text-gray-400" />
                         </div>
                         <p class="text-gray-400 text-lg">No challenges match your current filters</p>
                         <p class="text-gray-500 text-sm mt-2">Try adjusting your search or filter settings</p>
@@ -344,15 +384,54 @@
 
                 <p v-if="error" class="text-red-400 text-center bg-red-900/20 px-4 py-3 rounded-lg">{{ error }}</p>
             </div>
+
+            <!-- Footer Tagline -->
+            <div class="text-center mt-16 pt-8 border-t border-gray-700/30">
+                <p class="text-sm text-gray-500">
+                    Built by <span class="text-violet-300 font-medium">Mason</span> • Powered by <span
+                        class="text-cyan-300 font-medium">OpenAI</span>
+                </p>
+            </div>
         </div>
     </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useDestinyStore } from '@/stores/useDestinyStore'
 import MarkdownIt from 'markdown-it'
+import {
+    Link2,
+    Link2Off,
+    RotateCw,
+    AlertTriangle,
+    PlugZap,
+    AlertCircle,
+    Check,
+    Zap,
+    TrendingUp,
+    RefreshCw,
+    ChevronDown,
+    Search,
+    Lightbulb,
+    Sun,
+    Clock,
+    FileText,
+    X
+} from 'lucide-vue-next'
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+    MultiSelect,
+    MultiSelectContent,
+    MultiSelectItem,
+    MultiSelectTrigger,
+    Input
+} from '@/components/ui'
 
 const destiny = useDestinyStore()
 const {
@@ -366,13 +445,29 @@ const {
     suggestLoading,
 } = storeToRefs(destiny)
 
-// Filter and sort state
-const filterStatus = ref('all')
 const sortBy = ref('progress')
 const searchTerm = ref('')
+const filterStatus = ref(['All Challenges'])
+const displayCount = ref(10)
 
+// Filter and sort state
 const md = new MarkdownIt({ html: true, breaks: true })
 const renderedMarkdown = computed(() => md.render(aiSuggestion.value))
+const getPlatform = computed(() => {
+    const platformId = profile.value?.platform
+
+    const platformMap = {
+        1: 'Xbox',
+        2: 'PlayStation',
+        3: 'Steam',
+        4: 'Blizzard',
+        5: 'Stadia',
+        6: 'Epic Games',
+        10: 'Internal'
+    }
+
+    return platformMap[platformId] || 'Destiny 2'
+})
 
 // Convert Bungie milestones object to array with enhanced data
 const challengesArray = computed(() => {
@@ -397,20 +492,47 @@ const challengesArray = computed(() => {
     });
 });
 
-// Filtered and sorted challenges
+// Watch for changes and handle "All Challenges" logic
+watch(filterStatus, (newValue, oldValue) => {
+    if (newValue.includes('All Challenges') && !oldValue.includes('All Challenges')) {
+        filterStatus.value = ['All Challenges']
+    }
+
+    else if (newValue.length > 1 && newValue.includes('All Challenges')) {
+        filterStatus.value = newValue.filter(v => v !== 'All Challenges')
+    }
+
+    else if (newValue.length === 0) {
+        filterStatus.value = ['All Challenges']
+    }
+}, { deep: true })
+
+// Reset display count when filters change
+watch([filterStatus, searchTerm, sortBy], () => {
+    displayCount.value = 10
+})
+
 const filteredChallenges = computed(() => {
     let filtered = challengesArray.value;
 
-    // Apply status filter
-    if (filterStatus.value === 'completed') {
-        filtered = filtered.filter(c => c.complete);
-    } else if (filterStatus.value === 'incomplete') {
-        filtered = filtered.filter(c => !c.complete);
-    } else if (filterStatus.value === 'near-complete') {
-        filtered = filtered.filter(c => !c.complete && c.progressPercent >= 80);
+    if (filterStatus.value.length > 0 && !filterStatus.value.includes('All Challenges')) {
+        filtered = filtered.filter(c => {
+
+            return filterStatus.value.some(status => {
+                switch (status) {
+                    case 'Completed':
+                        return c.complete;
+                    case 'Incomplete':
+                        return !c.complete;
+                    case 'Near Complete':
+                        return !c.complete && c.progressPercent >= 80;
+                    default:
+                        return false;
+                }
+            });
+        });
     }
 
-    // Apply search filter
     if (searchTerm.value) {
         const search = searchTerm.value.toLowerCase();
         filtered = filtered.filter(c =>
@@ -419,7 +541,6 @@ const filteredChallenges = computed(() => {
         );
     }
 
-    // Apply sorting
     filtered.sort((a, b) => {
         switch (sortBy.value) {
             case 'name':
@@ -440,6 +561,11 @@ const filteredChallenges = computed(() => {
     return filtered;
 });
 
+// Display only a subset of challenges based on displayCount
+const displayedChallenges = computed(() => {
+    return filteredChallenges.value.slice(0, displayCount.value);
+});
+
 // Statistics
 const completedCount = computed(() => challengesArray.value.filter(c => c.complete).length);
 const inProgressCount = computed(() => challengesArray.value.filter(c => !c.complete && c.progress > 0).length);
@@ -454,7 +580,8 @@ onMounted(() => {
     destiny.loadDestinyState()
 })
 
-function linkBungie() {
+function handleLinkBungie() {
+    loading.value = true
     destiny.startBungieAuth()
 }
 
@@ -464,5 +591,13 @@ function fetchChallenges() {
 
 function suggestPlan() {
     destiny.getAISuggestion()
+}
+
+function loadMore() {
+    displayCount.value += 10
+}
+
+function loadAll() {
+    displayCount.value = filteredChallenges.value.length
 }
 </script>

@@ -6,7 +6,7 @@
                 <h1 class="text-3xl font-bold mb-1">
                     {{ guildName }} – {{ eventName }} Event Dashboard
                 </h1>
-                <p class="text-indigo-100 text-sm">{{ byline }}</p>
+                <p class="text-indigo-100/80 text-sm">{{ byline }}</p>
             </div>
 
             <div class="flex gap-3 mt-2 md:mt-0">

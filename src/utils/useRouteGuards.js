@@ -1,3 +1,4 @@
+// @/utils/useRouteGuards.js
 import { useMainStore } from '@/stores/useMainStore'
 import { useToast } from '@/components/ui/toast'
 
@@ -5,39 +6,65 @@ export function checkRouteAccess(to) {
     const store = useMainStore()
     const { toast } = useToast()
 
-    const requiresAuth = to.meta?.requiresAuth
-    const requiredRole = to.meta?.role
-    const isAuthenticated = !!store.user
-    const userRole = store.user?.role || null
+    // No requirements? Allow access
+    if (!to.meta?.requiresAuth && !to.meta?.role) {
+        return { blocked: false }
+    }
 
-    const base = '/' + (to.path.split('/')[1] || '') // e.g. /personal or /topheroes
-    const pathFor = (suffix) => `${base}/${suffix}`
-
-    // --- Auth Guard ---
-    if (requiresAuth && !isAuthenticated) {
+    // Auth required but not authenticated
+    if (to.meta.requiresAuth && !store.isAuthenticated) {
         toast({
-            title: 'Sign in required',
-            description: 'Please log in to access this area.',
+            title: 'Authentication required',
+            description: 'Please log in to continue.',
             variant: 'warning',
         })
 
         return {
             blocked: true,
-            redirect: { path: pathFor('login'), query: { redirect: to.fullPath } },
+            redirect: {
+                path: '/login',
+                query: { redirect: to.fullPath }
+            },
         }
     }
 
-    // --- Role Guard ---
-    if (requiredRole && userRole !== requiredRole) {
+    // Role required but user lacks it
+    if (to.meta.role && !store.hasRole(to.meta.role)) {
         toast({
             title: 'Unauthorized',
-            description: `You need the '${requiredRole}' role to view this page.`,
+            description: `You need the '${to.meta.role}' role to access this page.`,
             variant: 'error',
         })
 
         return {
             blocked: true,
-            redirect: { path: pathFor('unauthorized'), query: { role: requiredRole } },
+            redirect: {
+                path: '/unauth',
+                query: {
+                    role: to.meta.role,
+                    redirect: to.fullPath
+                }
+            },
+        }
+    }
+
+    // Permission-based access (optional)
+    if (to.meta.permission && !store.hasPermission(to.meta.permission)) {
+        toast({
+            title: 'Insufficient permissions',
+            description: 'You do not have permission to access this feature.',
+            variant: 'error',
+        })
+
+        return {
+            blocked: true,
+            redirect: {
+                path: '/unauth',
+                query: {
+                    permission: to.meta.permission,
+                    redirect: to.fullPath
+                }
+            },
         }
     }
 

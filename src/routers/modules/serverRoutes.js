@@ -17,6 +17,22 @@ export default [
             requiresOverlay: false,
         },
     },
+    {
+      path: '/server/discord',
+      name: 'Discord Server',
+      component: () => import('@/pages/server/DiscordServer.vue'),
+      meta: {
+          requiresAuth: true,
+          role: ROLES.SERVER_ADMIN,
+          title: 'Discord Server',
+          drawerRanking: 2,
+          drawerVisible: true,
+          layout: 'admin',
+          description: 'View, search and filter discord data.',
+          badge: '',
+          requiresOverlay: false,
+      },
+  },
     /*
     {
       path: '/server/old',

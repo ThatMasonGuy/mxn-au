@@ -1,3 +1,4 @@
+// @/components/ui/select/SelectSeparator.vue
 <script setup>
 import { computed } from "vue";
 import { SelectSeparator } from "radix-vue";

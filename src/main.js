@@ -4,7 +4,6 @@ import App from './App.vue';
 import router from './router';
 import { createPinia } from 'pinia';
 import piniaPluginPersistedstate from 'pinia-plugin-persistedstate';
-import { initAuth } from '@/utils/authInit'
 
 import 'flag-icons/css/flag-icons.min.css'
 import "./style.css";
@@ -41,8 +40,6 @@ pinia.use(piniaPluginPersistedstate);
 app.use(pinia);
 
 (async () => {
-  await initAuth(router)
-
   app.use(router)
   app.mount('#app')
 })()

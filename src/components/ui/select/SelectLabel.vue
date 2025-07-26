@@ -1,3 +1,4 @@
+// @/components/ui/select/SelectLabel.vue
 <script setup>
 import { SelectLabel } from "radix-vue";
 import { cn } from "@/lib/utils";

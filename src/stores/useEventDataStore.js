@@ -2,11 +2,20 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { getInstanceByDom } from 'echarts/core'
+import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore'
+import { firestore } from '@/firebase'
 
 export const useEventDataStore = defineStore('eventData', () => {
     // --- Raw and Meta ---
     const rawData = ref([])
     const eventMeta = ref({ guildName: '', eventName: '', byline: '' })
+
+    // --- Cache Management ---
+    const lastFetchTime = ref(null)
+    const cachedEventId = ref(null) // Track which event is cached
+    const cacheExpiryTime = 15 * 60 * 1000 // 15 minutes in milliseconds
+    const isLoading = ref(false)
+    const loadError = ref(null)
 
     // --- Core Player Data ---
     const players = ref([])
@@ -29,12 +38,12 @@ export const useEventDataStore = defineStore('eventData', () => {
     const maxComparisonPlayers = 10
     const comparisonSearchTerm = ref('')
     const comparisonFields = [
-        { key: 'Power', label: 'Power', fmt: v => `${v.toFixed(2)}M` },
+        { key: 'Power', label: 'Power', fmt: v => v.toLocaleString() },
         { key: 'Castle', label: 'Castle', fmt: v => v },
         { key: 'Role', label: 'Role', fmt: v => v },
         { key: 'Total Score', label: 'Total Score', fmt: v => v.toLocaleString() },
         { key: 'Total Rank', label: 'Total Rank', fmt: v => v || '-' },
-        { key: 'scorePerPower', label: 'Score Per Power', fmt: v => v.toLocaleString(undefined, { maximumFractionDigits: 2 }) }
+        { key: 'scorePerPower', label: 'Score Per Power', fmt: v => formatNumber(v * 1000000).toLocaleString(undefined, { maximumFractionDigits: 2 }) }
     ]
 
     // Player Color Map
@@ -82,7 +91,138 @@ export const useEventDataStore = defineStore('eventData', () => {
         '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'
     ]
 
-    // --- Loaders ---
+    // --- Cache Helper Functions ---
+    const isCacheValid = (eventId) => {
+        if (!lastFetchTime.value || !cachedEventId.value) return false
+        if (cachedEventId.value !== eventId) return false // Different event
+        return Date.now() - lastFetchTime.value < cacheExpiryTime
+    }
+
+    const clearCache = () => {
+        rawData.value = []
+        players.value = []
+        eventMeta.value = { guildName: '', eventName: '', byline: '' }
+        lastFetchTime.value = null
+        cachedEventId.value = null
+        isLoaded.value = false
+    }
+
+    // --- Firestore Loaders ---
+    async function loadFromFirestore(eventId) {
+        if (isLoading.value) return
+
+        try {
+            // Check if we have valid cached data for this specific event
+            if (isLoaded.value && isCacheValid(eventId)) {
+                console.log('Using cached event data for event:', eventId)
+                return
+            }
+
+            // Clear cache if we're loading a different event
+            if (cachedEventId.value && cachedEventId.value !== eventId) {
+                console.log('Clearing cache - switching from event', cachedEventId.value, 'to', eventId)
+                clearCache()
+            }
+
+            isLoading.value = true
+            loadError.value = null
+
+            // Fetch event metadata
+            const eventDocRef = doc(firestore, 'topheroes', 'velaris', 'events', eventId)
+            const eventDocSnap = await getDoc(eventDocRef)
+
+            if (!eventDocSnap.exists()) {
+                throw new Error('Event not found')
+            }
+
+            const eventData = eventDocSnap.data()
+
+            // Update event metadata
+            eventMeta.value = {
+                guildName: eventData.guild || '',
+                eventName: eventData.event || '',
+                byline: formatDateRange(eventData.startDate, eventData.endDate) || ''
+            }
+
+            // Fetch all member event data with member profiles
+            const memberEventData = await Promise.all(
+                eventData.memberIds.map(async (memberId) => {
+                    try {
+                        // Fetch member profile for country and other base info
+                        const memberDocRef = doc(firestore, 'topheroes', 'velaris', 'members', memberId)
+                        const memberDocSnap = await getDoc(memberDocRef)
+
+                        // Fetch member event data
+                        const memberEventDocRef = doc(firestore, 'topheroes', 'velaris', 'members', memberId, 'events', eventId)
+                        const memberEventDocSnap = await getDoc(memberEventDocRef)
+
+                        if (memberEventDocSnap.exists()) {
+                            const memberProfile = memberDocSnap.exists() ? memberDocSnap.data() : {}
+                            const eventData = memberEventDocSnap.data()
+
+                            // Merge member profile data with event data
+                            return {
+                                ...eventData,
+                                // Add country from member profile
+                                country: memberProfile.country || '',
+                                // Add other member profile fields that might be useful
+                                memberId: memberId
+                            }
+                        }
+                        return null
+                    } catch (error) {
+                        console.warn(`Failed to fetch data for member ${memberId}:`, error)
+                        return null
+                    }
+                })
+            )
+
+            // Filter out null entries and transform to expected format
+            const validMemberData = memberEventData
+                .filter(data => data !== null)
+                .map(transformFirestoreToPlayerData)
+
+            rawData.value = validMemberData
+            players.value = normalizePlayerData(validMemberData)
+
+            // Update cache timestamp and event ID
+            lastFetchTime.value = Date.now()
+            cachedEventId.value = eventId
+            isLoaded.value = true
+
+            console.log(`Loaded ${validMemberData.length} players from Firestore for event:`, eventId)
+
+        } catch (error) {
+            console.error('Failed to load event data from Firestore:', error)
+            loadError.value = error.message
+        } finally {
+            isLoading.value = false
+        }
+    }
+
+    // Transform Firestore document format to expected player data format
+    function transformFirestoreToPlayerData(firestoreDoc) {
+        return {
+            Player: firestoreDoc.player || '',
+            Power: firestoreDoc.power || 0,
+            Castle: firestoreDoc.castle || 0,
+            Role: firestoreDoc.role || '',
+            Country: firestoreDoc.country || '', // Now populated from member profile
+            'Score (D1)': firestoreDoc.scoreD1 || 0,
+            'Score (D2)': firestoreDoc.scoreD2 || 0,
+            'Score (D3)': firestoreDoc.scoreD3 || 0,
+            'Score (D4)': firestoreDoc.scoreD4 || 0,
+            'Score (D5)': firestoreDoc.scoreD5 || 0,
+            'Score (D6)': firestoreDoc.scoreD6 || 0,
+            // Additional fields that might be useful
+            notes: firestoreDoc.notes || '',
+            enteredBy: firestoreDoc.enteredBy || '',
+            playerId: firestoreDoc.playerId || '',
+            memberId: firestoreDoc.memberId || ''
+        }
+    }
+
+    // Keep the original loadEvent function for backwards compatibility
     function loadEvent(eventJson) {
         const base = Array.isArray(eventJson) ? eventJson[0] : eventJson
         rawData.value = base.Players || []
@@ -90,12 +230,39 @@ export const useEventDataStore = defineStore('eventData', () => {
         eventMeta.value.eventName = base.Event || base.eventName || ''
         eventMeta.value.byline = base.Byline || base.byline || ''
         players.value = normalizePlayerData(rawData.value)
+        lastFetchTime.value = Date.now()
+        cachedEventId.value = null // JSON loads don't have event IDs
         isLoaded.value = true
+    }
+
+    function formatDateRange(startDate, endDate) {
+        if (!startDate || !endDate) return ''
+
+        try {
+            // Convert Firestore timestamps to Date objects
+            const start = startDate.toDate ? startDate.toDate() : new Date(startDate)
+            const end = endDate.toDate ? endDate.toDate() : new Date(endDate)
+
+            // Format dates as readable strings
+            const options = {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            }
+
+            const startStr = start.toLocaleDateString('en-US', options)
+            const endStr = end.toLocaleDateString('en-US', options)
+
+            return `${startStr} - ${endStr}`
+        } catch (error) {
+            console.warn('Error formatting date range:', error)
+            return ''
+        }
     }
 
     function normalizePlayerData(data) {
         return data.map(p => {
-            const power = parseFloat(String(p.Power).replace('M', '')) || 0
+            const power = p.Power || 0
             const castle = Number(p.Castle) || 0
             const total = ALL_DAYS.reduce((sum, d) => sum + (Number(p[`Score (D${d})`]) || 0), 0)
 
@@ -112,9 +279,9 @@ export const useEventDataStore = defineStore('eventData', () => {
                 }), {})
             }
         })
-        .sort((a, b) => b['Total Score'] - a['Total Score'])
-        .map((p, i) => ({ ...p, 'Total Rank': i + 1 }))
-    }    
+            .sort((a, b) => b['Total Score'] - a['Total Score'])
+            .map((p, i) => ({ ...p, 'Total Rank': i + 1 }))
+    }
 
     // --- Basic Stats ---
     const totalPlayers = computed(() => players.value.length)
@@ -148,7 +315,6 @@ export const useEventDataStore = defineStore('eventData', () => {
             disabled: !dayHasData.value[day]
         }))
     ])
-
 
     // --- Player Rankings ---
     const topPerformers = computed(() => {
@@ -185,11 +351,11 @@ export const useEventDataStore = defineStore('eventData', () => {
         if (!activePowerFilters.value.includes('all')) data = data.filter(p => {
             const pow = p.Power
             return activePowerFilters.value.some(f => {
-                if (f === '0-25M') return pow < 25
-                if (f === '25-50M') return pow >= 25 && pow < 50
-                if (f === '50-75M') return pow >= 50 && pow < 75
-                if (f === '75-100M') return pow >= 75 && pow < 100
-                if (f === '100M+') return pow >= 100
+                if (f === '0-25M') return pow < 25000000
+                if (f === '25-50M') return pow >= 25000000 && pow < 50000000
+                if (f === '50-75M') return pow >= 50000000 && pow < 75000000
+                if (f === '75-100M') return pow >= 75000000 && pow < 100000000
+                if (f === '100M+') return pow >= 100000000
             })
         })
         if (lowScoreFilter.value) {
@@ -219,23 +385,24 @@ export const useEventDataStore = defineStore('eventData', () => {
     const averagePlayer = computed(() => {
         const activePlayers = players.value.filter(p => p['Total Score'] > 0)
         if (!activePlayers.length) return null
-    
+
         const avg = (field) => activePlayers.reduce((sum, p) => sum + (Number(p[field]) || 0), 0) / activePlayers.length
-    
+
         return {
             Player: 'Average Player',
-            Power: Number(avg('Power').toFixed(2)),
+            Power: Number(avg('Power')),
             Castle: Math.round(avg('Castle')),
             Role: 'N/A',
+            Country: 'N/A',
             'Total Score': Math.round(avg('Total Score')),
-            scorePerPower: Number(avg('scorePerPower').toFixed(2)),
+            scorePerPower: Number(avg('scorePerPower')),
             'Total Rank': 0,
             ...ALL_DAYS.reduce((acc, day) => ({
                 ...acc,
                 [`Score (D${day})`]: Math.round(avg(`Score (D${day})`))
             }), {})
         }
-    })    
+    })
 
     function togglePlayerForComparison(player) {
         const idx = selectedComparisonPlayers.value.findIndex(p => p.Player === player.Player)
@@ -327,6 +494,7 @@ export const useEventDataStore = defineStore('eventData', () => {
         }
         page.value = 1
     }
+
     const toggleLowScoreFilter = () => {
         lowScoreFilter.value = !lowScoreFilter.value
         page.value = 1
@@ -345,7 +513,7 @@ export const useEventDataStore = defineStore('eventData', () => {
 
         // Build the full search pool
         let pool = [...processedFilteredData.value]
-        if (averagePlayer.value) pool.push(averagePlayer.value) // ⬅️ inject Average Player if it exists
+        if (averagePlayer.value) pool.push(averagePlayer.value)
 
         return pool.filter(p =>
             p.Player.toLowerCase().includes(term) &&
@@ -357,7 +525,6 @@ export const useEventDataStore = defineStore('eventData', () => {
         comparisonSearchTerm.value = value
     }
 
-
     function formatNumber(num, decimals = 0) {
         const number = Number(num);
         if (isNaN(number)) return '-';
@@ -367,27 +534,51 @@ export const useEventDataStore = defineStore('eventData', () => {
         });
     }
 
+    // Force refresh function to bypass cache
+    const forceRefresh = async (eventId) => {
+        clearCache()
+        await loadFromFirestore(eventId)
+    }
+
     return {
+        // Data
         rawData, eventMeta, players, isLoaded,
+
+        // Cache & Loading
+        isLoading, loadError, lastFetchTime, cachedEventId, isCacheValid, clearCache, forceRefresh,
+
+        // Stats
         totalPlayers, activePlayers, totalScoreOverall, averagePower, averageCastle,
+
+        // Days
         allDays, daysWithData, dayHasData, dayOptions,
-        loadEvent,
+
+        // Loaders
+        loadFromFirestore, loadEvent,
+
+        // UI State
         searchTerm, sortField, sortDirection,
         activeRoleFilters, activeCastleFilters, activePowerFilters, activeDayFilters,
         lowScoreFilter, page, itemsPerPage, paginatedData,
         summaryView, comparisonView, selectedComparisonPlayers, comparisonSearchTerm, maxComparisonPlayers,
+
+        // Computed data
         filteredData, filteredAndSortedData,
+
+        // Actions
         toggleFilter, updateSort,
-        topPerformers, efficiencyLeaders, formatNumber, toggleRoleFilter,
-        toggleCastleFilter,
-        togglePowerFilter,
-        toggleDayFilter,
-        toggleLowScoreFilter,
-        togglePlayerForComparison,
-        addPlayerToComparisonFromSearch, updateComparisonSearchTerm, filteredComparisonSearchResults,
-        comparisonFields,
-        playerColorMap,
-        highlightSeries,
-        downplaySeries, averagePlayer
+        topPerformers, efficiencyLeaders, formatNumber,
+        toggleRoleFilter, toggleCastleFilter, togglePowerFilter, toggleDayFilter, toggleLowScoreFilter,
+        togglePlayerForComparison, addPlayerToComparisonFromSearch,
+        updateComparisonSearchTerm, filteredComparisonSearchResults,
+
+        // Comparison
+        comparisonFields, playerColorMap, highlightSeries, downplaySeries, averagePlayer
+    }
+}, {
+    persist: {
+        key: 'eventDataStore',
+        paths: ['rawData', 'eventMeta', 'players', 'isLoaded', 'lastFetchTime', 'cachedEventId'],
+        storage: localStorage
     }
 })

@@ -1,77 +1,52 @@
+// @/router.js
 import { createRouter, createWebHistory } from 'vue-router'
+import { checkRouteAccess } from '@/utils/useRouteGuards'
+import { waitForAuth } from '@/auth'
 import { useMainStore } from '@/stores/useMainStore'
-import { personalUnauthorizedRedirect } from '@/routers/modules/personalRoutes'
-import { useToast } from '@/components/ui/toast'
 
-// Dynamically import all route modules from /modules
 const routeModules = import.meta.glob('./routers/modules/*.js', { eager: true })
-
-// Flatten all module exports into a single array
 const routes = Object.values(routeModules).flatMap(module => module.default || [])
 
 const router = createRouter({
     history: createWebHistory(),
     routes,
     scrollBehavior(to, from, savedPosition) {
-        if (savedPosition) {
-            return savedPosition
-        } else {
-            return { top: 0 }
-        }
+        return savedPosition || { top: 0 }
     },
 })
 
-// --- Router Guards ---
-router.beforeEach((to, from, next) => {
-    const { requiresAuth, role, title } = to.meta
+let lastLoggedPath = null
+let pageViewDebounce = null
 
-    // --- 1. Dynamic Title ---
-    if (title) {
-        document.title = `${title} | MXN.au`
-    } else {
-        document.title = 'MXN.au'
+router.beforeEach(async (to, from, next) => {
+    document.title = to.meta.title ? `${to.meta.title} | MXN.au` : 'MXN.au'
+
+    await waitForAuth()
+    const accessCheck = checkRouteAccess(to)
+    if (accessCheck.blocked) {
+        return next(accessCheck.redirect)
+    }
+    next()
+})
+
+router.afterEach((to, from) => {
+
+    if (pageViewDebounce) {
+        clearTimeout(pageViewDebounce)
     }
 
-    const mainStore = useMainStore()
-    const isAuthenticated = !!mainStore.user
-    const userRoles = mainStore.user?.roles || []
-    const { toast } = useToast()
+    pageViewDebounce = setTimeout(() => {
+        const store = useMainStore()
+        if (store.isAuthenticated &&
+            to.path !== lastLoggedPath &&
+            to.path !== from.path) {
+            lastLoggedPath = to.path
 
-    // --- 3. Auth Guard ---
-    if (requiresAuth && !isAuthenticated) {
-        console.warn('Blocked: Login required.')
-
-        // Contextual unauthenticated redirects
-        if (to.path.startsWith('/personal')) {
-            toast({
-                title: 'Sign in required',
-                description: 'Please log in to access your personal tools.',
-                variant: 'warning'
-            })
-            return next({ path: '/personal/login', query: { redirect: to.fullPath } })
+            import('@/utils/useLogUserEvent')
+                .then(({ logPageView }) => logPageView(to.path))
+                .catch(err => console.warn('[Router] Failed to log page view:', err))
         }
-
-        // Default fallback
-        toast({
-            title: 'Authentication required',
-            description: 'You must be logged in to view this page.',
-            variant: 'warning'
-        })
-        return next({ path: '/', query: { redirect: to.fullPath } })
-    }
-
-    // --- 4. Role Guard ---
-    if (role && !userRoles.includes(role)) {
-        console.warn(`Blocked: Role "${role}" required.`)
-
-        if (to.path.startsWith('/personal')) {
-            return next({ path: personalUnauthorizedRedirect, query: { role } })
-        }
-
-        return next({ path: '/unauthorized', query: { role } })
-    }
-
-    return next()
+    }, 300)
 })
 
 export default router

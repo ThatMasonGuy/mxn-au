@@ -1,3 +1,4 @@
+// @/components/ui/select/SelectTrigger.vue
 <script setup>
 import { computed } from "vue";
 import { SelectIcon, SelectTrigger, useForwardProps } from "radix-vue";

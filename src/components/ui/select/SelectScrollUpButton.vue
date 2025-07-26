@@ -1,3 +1,4 @@
+// @/components/ui/select/SelectScrollUpButton.vue
 <script setup>
 import { computed } from "vue";
 import { SelectScrollUpButton, useForwardProps } from "radix-vue";
