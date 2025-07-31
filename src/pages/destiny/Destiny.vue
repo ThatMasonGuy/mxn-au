@@ -443,6 +443,7 @@ const {
     error,
     aiSuggestion,
     suggestLoading,
+    initializeDestinyState
 } = storeToRefs(destiny)
 
 const sortBy = ref('progress')
@@ -577,7 +578,7 @@ const avgProgress = computed(() => {
 });
 
 onMounted(() => {
-    destiny.loadDestinyState()
+    destiny.initializeDestinyState()
 })
 
 function handleLinkBungie() {

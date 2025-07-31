@@ -18,4 +18,20 @@ export default [
             requiresOverlay: false,
         },
     },
+    {
+        path: '/destiny/usage',
+        name: 'DestinyUsage',
+        component: () => import('@/pages/destiny/DestinyStats.vue'),
+        meta: {
+            requiresAuth: false,
+            role: null,
+            title: 'Destiny 2',
+            drawerRanking: 1,
+            drawerVisible: true,
+            layout: 'default',
+            description: 'View usage statistics for the MXN Destiny 2 web app.',
+            badge: '',
+            requiresOverlay: false,
+        },
+    },
 ]

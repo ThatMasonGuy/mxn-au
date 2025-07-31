@@ -5,6 +5,104 @@ import { defineSecret } from "firebase-functions/params";
 
 const bungieApiKey = defineSecret('BUNGIE_API_KEY');
 
+// Update global challenge statistics
+async function updateGlobalChallengeStats(userId, challengeStats) {
+    try {
+        const batch = getFirestore().batch();
+
+        // Main global stats document
+        const globalRef = getFirestore().doc('destiny/global');
+        const globalUpdate = {
+            'challenge_stats.totalChallengesSeen': getFirestore().FieldValue.increment(challengeStats.totalChallenges),
+            'challenge_stats.totalChallengesCompleted': getFirestore().FieldValue.increment(challengeStats.completedChallenges),
+            'challenge_stats.totalRefreshCalls': getFirestore().FieldValue.increment(1),
+            'challenge_stats.lastRefreshAt': Date.now(),
+            'challenge_stats.updatedAt': Date.now()
+        };
+
+        batch.set(globalRef, globalUpdate, { merge: true });
+
+        // Track unique users who have connected
+        const userRef = getFirestore().doc(`destiny/global/connected_users/${userId}`);
+        batch.set(userRef, {
+            lastRefresh: Date.now(),
+            totalRefreshes: getFirestore().FieldValue.increment(1),
+            totalChallengesSeen: getFirestore().FieldValue.increment(challengeStats.totalChallenges),
+            totalChallengesCompleted: getFirestore().FieldValue.increment(challengeStats.completedChallenges)
+        }, { merge: true });
+
+        // Season-specific stats
+        if (challengeStats.seasonHash) {
+            const seasonStatsRef = getFirestore().doc(`destiny/global/season_stats/${challengeStats.seasonHash}`);
+            batch.set(seasonStatsRef, {
+                seasonHash: challengeStats.seasonHash,
+                seasonName: challengeStats.seasonName,
+                totalChallengesSeen: getFirestore().FieldValue.increment(challengeStats.totalChallenges),
+                totalChallengesCompleted: getFirestore().FieldValue.increment(challengeStats.completedChallenges),
+                uniqueUsers: getFirestore().FieldValue.arrayUnion(userId),
+                lastUpdate: Date.now()
+            }, { merge: true });
+        }
+
+        // Daily challenge tracking
+        const today = new Date().toISOString().split('T')[0];
+        const dailyRef = getFirestore().doc(`destiny/global/challenge_daily_stats/${today}`);
+        batch.set(dailyRef, {
+            date: today,
+            refreshCalls: getFirestore().FieldValue.increment(1),
+            uniqueUsers: getFirestore().FieldValue.arrayUnion(userId),
+            totalChallengesSeen: getFirestore().FieldValue.increment(challengeStats.totalChallenges),
+            totalChallengesCompleted: getFirestore().FieldValue.increment(challengeStats.completedChallenges),
+            challengesUpdated: getFirestore().FieldValue.increment(challengeStats.updatedChallenges),
+            updatedAt: Date.now()
+        }, { merge: true });
+
+        await batch.commit();
+        console.log(`[updateGlobalChallengeStats] Updated global challenge stats`);
+    } catch (err) {
+        console.error(`[updateGlobalChallengeStats] Error:`, err);
+        // Don't throw - stats failure shouldn't break the main flow
+    }
+}
+
+// Calculate completion rate and other stats
+async function calculateAndUpdateGlobalStats() {
+    try {
+        const globalRef = getFirestore().doc('destiny/global');
+        const globalDoc = await globalRef.get();
+
+        if (globalDoc.exists) {
+            const data = globalDoc.data();
+            const challengeStats = data.challenge_stats || {};
+
+            // Calculate completion rate
+            const completionRate = challengeStats.totalChallengesSeen > 0
+                ? (challengeStats.totalChallengesCompleted / challengeStats.totalChallengesSeen) * 100
+                : 0;
+
+            // Count unique connected users
+            const connectedUsersSnapshot = await getFirestore().collection('destiny/global/connected_users').count().get();
+            const totalConnectedUsers = connectedUsersSnapshot.data().count;
+
+            // Count unique AI users
+            const aiUsersSnapshot = await getFirestore().collection('destiny/global/ai_users').count().get();
+            const totalAIUsers = aiUsersSnapshot.data().count;
+
+            // Update calculated stats
+            await globalRef.update({
+                'calculated_stats.avgCompletionRate': completionRate,
+                'calculated_stats.totalConnectedUsers': totalConnectedUsers,
+                'calculated_stats.totalAIUsers': totalAIUsers,
+                'calculated_stats.lastCalculated': Date.now()
+            });
+
+            console.log(`[calculateAndUpdateGlobalStats] Updated calculated stats - Completion rate: ${completionRate.toFixed(2)}%`);
+        }
+    } catch (err) {
+        console.error(`[calculateAndUpdateGlobalStats] Error:`, err);
+    }
+}
+
 // --- Lightweight Season Metadata Caching Only ---
 
 // Get cached season metadata (including challenge hashes and basic challenge info)
@@ -45,22 +143,20 @@ async function cacheSeasonMeta(seasonHash, seasonData, challengeHashes, challeng
 
         const metadata = {
             seasonHash,
-            seasonName: seasonData.season_name,
+            seasonName: seasonData.seasonName,
             challengesNodeHash,
             challengeHashes,
             challengeCount: challengeHashes.length,
-            // Store basic challenge info to avoid re-parsing definitions
             challengeDefinitions: challengeDefinitions || {},
             cachedAt: Date.now(),
-            seasonStart: seasonData.season_start,
-            seasonEnd: seasonData.season_end,
-            autoDetected: seasonData.auto_detected || false,
-            season_active: seasonData.season_active || false
+            seasonStart: seasonData.seasonStart,
+            seasonEnd: seasonData.seasonEnd,
+            autoDetected: seasonData.autoDetected || false,
+            seasonActive: seasonData.seasonActive || false
         };
 
-        // Use set with merge to create document if it doesn't exist
         await metaRef.set(metadata, { merge: true });
-        console.log(`[cacheSeasonMeta] Cached metadata for season ${seasonData.season_name} with ${challengeHashes.length} challenges`);
+        console.log(`[cacheSeasonMeta] Cached metadata for season ${seasonData.seasonName} with ${challengeHashes.length} challenges`);
 
     } catch (err) {
         console.error(`[cacheSeasonMeta] Error:`, err);
@@ -73,11 +169,11 @@ async function cacheSeasonMeta(seasonHash, seasonData, challengeHashes, challeng
 async function getActiveSeason() {
     try {
         const seasonsRef = getFirestore().collection('destiny/global/seasons');
-        const activeSeasonQuery = await seasonsRef.where('season_active', '==', true).limit(1).get();
+        const activeSeasonQuery = await seasonsRef.where('seasonActive', '==', true).limit(1).get();
 
         if (!activeSeasonQuery.empty) {
             const seasonDoc = activeSeasonQuery.docs[0];
-            console.log(`[getActiveSeason] Found active season: ${seasonDoc.data().season_name}`);
+            console.log(`[getActiveSeason] Found active season: ${seasonDoc.data().seasonName}`);
             return {
                 id: seasonDoc.id,
                 ...seasonDoc.data()
@@ -160,17 +256,17 @@ async function getCurrentSeasonFromAPI() {
                 }
 
                 currentSeason = {
-                    season_hash: hash,
-                    season_name: season.displayProperties.name,
-                    season_start: season.startDate,
-                    season_end: season.endDate,
-                    season_active: true,
-                    challenges_node_hash: seasonalChallengesHash,
-                    auto_detected: true,
-                    created_at: Date.now()
+                    seasonHash: hash,
+                    seasonName: season.displayProperties.name,
+                    seasonStart: season.startDate,
+                    seasonEnd: season.endDate,
+                    seasonActive: true,
+                    challengesNodeHash: seasonalChallengesHash,
+                    autoDetected: true,
+                    createdAt: Date.now()
                 };
 
-                console.log(`[getCurrentSeasonFromAPI] Found current season: ${currentSeason.season_name}`);
+                console.log(`[getCurrentSeasonFromAPI] Found current season: ${currentSeason.seasonName}`);
                 break;
             }
         }
@@ -184,18 +280,17 @@ async function getCurrentSeasonFromAPI() {
             if (sortedSeasons.length > 0) {
                 const [hash, season] = sortedSeasons[0];
                 currentSeason = {
-                    season_hash: hash,
-                    season_name: season.displayProperties.name,
-                    season_start: season.startDate,
-                    season_end: season.endDate,
-                    season_active: true,
-                    challenges_node_hash: null, // Will need manual configuration
-                    auto_detected: true,
-                    fallback_latest: true,
-                    created_at: Date.now()
+                    seasonHash: hash,
+                    seasonName: season.displayProperties.name,
+                    seasonStart: season.startDate,
+                    seasonEnd: season.endDate,
+                    seasonActive: true,
+                    challengesNodeHash: seasonalChallengesHash,
+                    autoDetected: true,
+                    createdAt: Date.now()
                 };
 
-                console.log(`[getCurrentSeasonFromAPI] Using latest season as fallback: ${currentSeason.season_name}`);
+                console.log(`[getCurrentSeasonFromAPI] Using latest season as fallback: ${currentSeason.seasonName}`);
             }
         }
 
@@ -214,18 +309,18 @@ async function saveActiveSeason(seasonData) {
         const batch = getFirestore().batch();
 
         // First, deactivate all existing seasons
-        const existingSeasons = await seasonsRef.where('season_active', '==', true).get();
+        const existingSeasons = await seasonsRef.where('seasonActive', '==', true).get();
         existingSeasons.forEach(doc => {
-            batch.update(doc.ref, { season_active: false, deactivated_at: Date.now() });
+            batch.update(doc.ref, { seasonActive: false, deactivatedAt: Date.now() });
         });
 
         // Add the new active season with merge to create if doesn't exist
-        const newSeasonRef = seasonsRef.doc(seasonData.season_hash);
+        const newSeasonRef = seasonsRef.doc(seasonData.seasonHash);
         batch.set(newSeasonRef, seasonData, { merge: true });
 
         await batch.commit();
 
-        console.log(`[saveActiveSeason] Saved active season: ${seasonData.season_name}`);
+        console.log(`[saveActiveSeason] Saved active season: ${seasonData.seasonName}`);
         return seasonData;
 
     } catch (err) {
@@ -399,7 +494,7 @@ export const getChallenges = onRequest(
                 currentSeason = await saveActiveSeason(apiSeason);
             }
 
-            console.log(`[getChallenges] Using season: ${currentSeason.season_name} (${currentSeason.season_hash})`);
+            console.log(`[getChallenges] Using season: ${currentSeason.seasonName} (${currentSeason.seasonHash})`);
 
         } catch (err) {
             return fail(500, "Error determining current season", { errorDetail: err?.message });
@@ -412,7 +507,7 @@ export const getChallenges = onRequest(
 
         try {
             // Try to get cached season metadata first
-            const cachedMeta = await getCachedSeasonMeta(currentSeason.season_hash, 'current');
+            const cachedMeta = await getCachedSeasonMeta(currentSeason.seasonHash, 'current');
 
             if (cachedMeta && cachedMeta.challengeHashes?.length > 0) {
                 console.log(`[getChallenges] Using cached challenge data (${cachedMeta.challengeHashes.length} challenges)`);
@@ -446,7 +541,7 @@ export const getChallenges = onRequest(
                 const presDefs = await presDefRes.json();
 
                 // Determine the challenges node hash to use
-                challengesNodeHash = currentSeason.challenges_node_hash || req.body?.challengesNodeHash || "3971879360";
+                challengesNodeHash = currentSeason.challengesNodeHash || req.body?.challengesNodeHash || "3971879360";
 
                 const parentNode = presDefs[challengesNodeHash];
                 if (!parentNode) {
@@ -465,7 +560,7 @@ export const getChallenges = onRequest(
 
                 // Cache the season metadata for next time (without heavy definitions initially)
                 cacheSeasonMeta(
-                    currentSeason.season_hash,
+                    currentSeason.seasonHash,
                     currentSeason,
                     challengeHashes,
                     challengesNodeHash,
@@ -525,6 +620,13 @@ export const getChallenges = onRequest(
         let unchangedChallenges = [];
         let errorHashes = [];
         let newDefinitions = {};
+        let challengeStats = {
+            totalChallenges: 0,
+            completedChallenges: 0,
+            updatedChallenges: 0,
+            seasonHash: currentSeason.seasonHash,
+            seasonName: currentSeason.seasonName
+        };
 
         // Get manifest info for on-demand definition fetching
         let manifestInfo = null;
@@ -650,8 +752,8 @@ export const getChallenges = onRequest(
 
                 const newChallengeData = {
                     hash,
-                    seasonHash: currentSeason.season_hash,
-                    seasonName: currentSeason.season_name,
+                    seasonHash: currentSeason.seasonHash,
+                    seasonName: currentSeason.seasonName,
                     name: def.displayProperties?.name || '',
                     description: def.displayProperties?.description || '',
                     xp,
@@ -662,6 +764,12 @@ export const getChallenges = onRequest(
                     objectives,
                     updatedAt: Date.now()
                 };
+
+                // Update stats
+                challengeStats.totalChallenges++;
+                if (newChallengeData.completed) {
+                    challengeStats.completedChallenges++;
+                }
 
                 // Check if this challenge needs updating
                 const existingChallenge = existingChallenges[hash];
@@ -674,6 +782,7 @@ export const getChallenges = onRequest(
                     }
 
                     challengeDocs.push(newChallengeData);
+                    challengeStats.updatedChallenges++;
                     updatedChallenges.push({
                         hash,
                         name: newChallengeData.name,
@@ -692,7 +801,7 @@ export const getChallenges = onRequest(
         if (Object.keys(newDefinitions).length > 0) {
             console.log(`[getChallenges] Updating cached definitions with ${Object.keys(newDefinitions).length} new entries`);
             cacheSeasonMeta(
-                currentSeason.season_hash,
+                currentSeason.seasonHash,
                 currentSeason,
                 challengeHashes,
                 challengesNodeHash,
@@ -702,26 +811,38 @@ export const getChallenges = onRequest(
             });
         }
 
-        // --- 9. Save Updated Challenges to Firestore ---
+        // --- 9. Update Global Stats ---
+        await updateGlobalChallengeStats(userId, challengeStats);
+
+        // Calculate global stats periodically (every 10th call or so)
+        if (Math.random() < 0.1) {
+            calculateAndUpdateGlobalStats().catch(err => {
+                console.error("Failed to calculate global stats:", err);
+            });
+        }
+
+        // --- 10. Save Updated Challenges to Firestore ---
         try {
             if (challengeDocs.length === 0) {
                 return res.json({
                     ok: true,
-                    updated: 0,
+                    updated: challengeDocs.length,
                     unchanged: unchangedChallenges.length,
+                    updatedChallenges,
                     errorHashes,
                     updatedAt: Date.now(),
                     season: {
-                        name: currentSeason.season_name,
-                        hash: currentSeason.season_hash,
-                        autoDetected: currentSeason.auto_detected || false,
+                        name: currentSeason.seasonName,
+                        hash: currentSeason.seasonHash,
+                        autoDetected: currentSeason.autoDetected || false,
                         challengesNodeHash
                     },
                     cacheStats: {
                         definitionsCached: Object.keys(cachedDefinitions).length,
                         definitionsFetched: Object.keys(newDefinitions).length
                     },
-                    message: "No challenges needed updating"
+                    globalStats: challengeStats,
+                    sample: challengeDocs[0],
                 });
             }
 
@@ -742,17 +863,18 @@ export const getChallenges = onRequest(
                 errorHashes,
                 updatedAt: Date.now(),
                 season: {
-                    name: currentSeason.season_name,
-                    hash: currentSeason.season_hash,
-                    autoDetected: currentSeason.auto_detected || false,
+                    name: currentSeason.seasonName,
+                    hash: currentSeason.seasonHash,
+                    autoDetected: currentSeason.autoDetected || false,
                     challengesNodeHash
                 },
                 cacheStats: {
                     definitionsCached: Object.keys(cachedDefinitions).length,
                     definitionsFetched: Object.keys(newDefinitions).length
                 },
+                globalStats: challengeStats,
                 sample: challengeDocs[0],
-            });
+
         } catch (err) {
             return fail(500, "Firestore write failed", { errorDetail: err?.message, challengeDocsLength: challengeDocs.length });
         }
