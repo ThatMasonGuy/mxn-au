@@ -1,71 +1,172 @@
 import { onRequest } from "firebase-functions/v2/https";
 import fetch from "node-fetch";
-import { getFirestore } from "firebase-admin/firestore";
+import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { defineSecret } from "firebase-functions/params";
 
 const bungieApiKey = defineSecret('BUNGIE_API_KEY');
 
-// Update global challenge statistics
-async function updateGlobalChallengeStats(userId, challengeStats) {
+// Track actual infrastructure usage during function execution
+class InfrastructureTracker {
+    constructor() {
+        this.startTime = Date.now()
+        this.firestoreReads = 0
+        this.firestoreWrites = 0
+        this.functionInvocations = 1 // This function call
+        this.memoryUsed = process.memoryUsage()
+    }
+
+    trackRead(count = 1) {
+        this.firestoreReads += count
+    }
+
+    trackWrite(count = 1) {
+        this.firestoreWrites += count
+    }
+
+    trackBatchWrite(operations) {
+        this.firestoreWrites += operations
+    }
+
+    getExecutionTime() {
+        return Date.now() - this.startTime
+    }
+
+    calculateRealCosts() {
+        const executionTimeMs = this.getExecutionTime()
+
+        // Real Google Cloud pricing (as of 2024)
+        const FIRESTORE_READ_COST = 0.0000006  // $0.06 per 100K
+        const FIRESTORE_WRITE_COST = 0.0000018  // $0.18 per 100K
+        const FUNCTION_INVOCATION_COST = 0.0000004  // $0.40 per 1M
+        const FUNCTION_COMPUTE_COST_PER_100MS = 0.0000025  // $0.0000025 per 100ms at 256MB
+
+        const firestoreCost = (this.firestoreReads * FIRESTORE_READ_COST) + (this.firestoreWrites * FIRESTORE_WRITE_COST)
+        const invocationCost = this.functionInvocations * FUNCTION_INVOCATION_COST
+        const computeTime100ms = Math.ceil(executionTimeMs / 100)
+        const computeCost = computeTime100ms * FUNCTION_COMPUTE_COST_PER_100MS
+        const infrastructureCost = firestoreCost + invocationCost + computeCost
+
+        return {
+            firestoreReads: this.firestoreReads,
+            firestoreWrites: this.firestoreWrites,
+            executionTimeMs,
+            computeTime100ms,
+            firestoreCost,
+            invocationCost,
+            computeCost,
+            infrastructureCost
+        }
+    }
+}
+
+// Update global challenge statistics with infrastructure tracking
+async function updateGlobalChallengeStats(userId, challengeStats, infrastructureStats = null) {
     try {
         const batch = getFirestore().batch();
 
         // Main global stats document
         const globalRef = getFirestore().doc('destiny/global');
         const globalUpdate = {
-            'challenge_stats.totalChallengesSeen': getFirestore().FieldValue.increment(challengeStats.totalChallenges),
-            'challenge_stats.totalChallengesCompleted': getFirestore().FieldValue.increment(challengeStats.completedChallenges),
-            'challenge_stats.totalRefreshCalls': getFirestore().FieldValue.increment(1),
+            'challenge_stats.totalRefreshCalls': FieldValue.increment(1),
             'challenge_stats.lastRefreshAt': Date.now(),
             'challenge_stats.updatedAt': Date.now()
         };
 
+        // Track infrastructure usage for challenge refreshes
+        if (infrastructureStats) {
+            globalUpdate['challenge_stats.totalFirestoreReads'] = FieldValue.increment(infrastructureStats.firestoreReads);
+            globalUpdate['challenge_stats.totalFirestoreWrites'] = FieldValue.increment(infrastructureStats.firestoreWrites);
+            globalUpdate['challenge_stats.totalExecutionTimeMs'] = FieldValue.increment(infrastructureStats.executionTimeMs);
+            globalUpdate['challenge_stats.totalInfrastructureCostUSD'] = FieldValue.increment(infrastructureStats.infrastructureCost);
+            globalUpdate['challenge_stats.totalFirestoreCostUSD'] = FieldValue.increment(infrastructureStats.firestoreCost);
+            globalUpdate['challenge_stats.totalComputeCostUSD'] = FieldValue.increment(infrastructureStats.computeCost);
+        }
+
+        // Only increment total challenges and completions if there were changes
+        if (challengeStats.updatedChallenges > 0) {
+            globalUpdate['challenge_stats.totalChallengesSeen'] = FieldValue.increment(challengeStats.totalChallenges);
+            globalUpdate['challenge_stats.totalChallengesCompleted'] = FieldValue.increment(challengeStats.completedChallenges);
+        }
+
         batch.set(globalRef, globalUpdate, { merge: true });
 
-        // Track unique users who have connected
+        // Track unique users who have connected with per-user challenge data
         const userRef = getFirestore().doc(`destiny/global/connected_users/${userId}`);
-        batch.set(userRef, {
+        const userUpdateData = {
             lastRefresh: Date.now(),
-            totalRefreshes: getFirestore().FieldValue.increment(1),
-            totalChallengesSeen: getFirestore().FieldValue.increment(challengeStats.totalChallenges),
-            totalChallengesCompleted: getFirestore().FieldValue.increment(challengeStats.completedChallenges)
-        }, { merge: true });
+            totalRefreshes: FieldValue.increment(1)
+        };
+
+        // Store current user's challenge count (not increment - this is their current total)
+        userUpdateData.currentTotalChallenges = challengeStats.totalChallenges;
+        userUpdateData.currentCompletedChallenges = challengeStats.completedChallenges;
+
+        // Track infrastructure usage per user
+        if (infrastructureStats) {
+            userUpdateData.totalFirestoreReads = FieldValue.increment(infrastructureStats.firestoreReads);
+            userUpdateData.totalFirestoreWrites = FieldValue.increment(infrastructureStats.firestoreWrites);
+            userUpdateData.totalInfrastructureCostUSD = FieldValue.increment(infrastructureStats.infrastructureCost);
+        }
+
+        // Only increment if there were updates this time
+        if (challengeStats.updatedChallenges > 0) {
+            userUpdateData.totalChallengeUpdates = FieldValue.increment(challengeStats.updatedChallenges);
+        }
+
+        batch.set(userRef, userUpdateData, { merge: true });
 
         // Season-specific stats
         if (challengeStats.seasonHash) {
             const seasonStatsRef = getFirestore().doc(`destiny/global/season_stats/${challengeStats.seasonHash}`);
-            batch.set(seasonStatsRef, {
+            const seasonUpdateData = {
                 seasonHash: challengeStats.seasonHash,
                 seasonName: challengeStats.seasonName,
-                totalChallengesSeen: getFirestore().FieldValue.increment(challengeStats.totalChallenges),
-                totalChallengesCompleted: getFirestore().FieldValue.increment(challengeStats.completedChallenges),
-                uniqueUsers: getFirestore().FieldValue.arrayUnion(userId),
+                uniqueUsers: FieldValue.arrayUnion(userId),
                 lastUpdate: Date.now()
-            }, { merge: true });
+            };
+
+            // Only update season totals if there were changes
+            if (challengeStats.updatedChallenges > 0) {
+                seasonUpdateData.totalChallengesSeen = FieldValue.increment(challengeStats.totalChallenges);
+                seasonUpdateData.totalChallengesCompleted = FieldValue.increment(challengeStats.completedChallenges);
+            }
+
+            batch.set(seasonStatsRef, seasonUpdateData, { merge: true });
         }
 
         // Daily challenge tracking
         const today = new Date().toISOString().split('T')[0];
         const dailyRef = getFirestore().doc(`destiny/global/challenge_daily_stats/${today}`);
-        batch.set(dailyRef, {
+        const dailyUpdateData = {
             date: today,
-            refreshCalls: getFirestore().FieldValue.increment(1),
-            uniqueUsers: getFirestore().FieldValue.arrayUnion(userId),
-            totalChallengesSeen: getFirestore().FieldValue.increment(challengeStats.totalChallenges),
-            totalChallengesCompleted: getFirestore().FieldValue.increment(challengeStats.completedChallenges),
-            challengesUpdated: getFirestore().FieldValue.increment(challengeStats.updatedChallenges),
+            refreshCalls: FieldValue.increment(1),
+            uniqueUsers: FieldValue.arrayUnion(userId),
             updatedAt: Date.now()
-        }, { merge: true });
+        };
+
+        if (infrastructureStats) {
+            dailyUpdateData.totalFirestoreReads = FieldValue.increment(infrastructureStats.firestoreReads);
+            dailyUpdateData.totalFirestoreWrites = FieldValue.increment(infrastructureStats.firestoreWrites);
+            dailyUpdateData.totalInfrastructureCostUSD = FieldValue.increment(infrastructureStats.infrastructureCost);
+        }
+
+        if (challengeStats.updatedChallenges > 0) {
+            dailyUpdateData.totalChallengesSeen = FieldValue.increment(challengeStats.totalChallenges);
+            dailyUpdateData.totalChallengesCompleted = FieldValue.increment(challengeStats.completedChallenges);
+            dailyUpdateData.challengesUpdated = FieldValue.increment(challengeStats.updatedChallenges);
+        }
+
+        batch.set(dailyRef, dailyUpdateData, { merge: true });
 
         await batch.commit();
-        console.log(`[updateGlobalChallengeStats] Updated global challenge stats`);
+        console.log(`[updateGlobalChallengeStats] Updated global challenge stats with infrastructure tracking`);
     } catch (err) {
         console.error(`[updateGlobalChallengeStats] Error:`, err);
         // Don't throw - stats failure shouldn't break the main flow
     }
 }
 
-// Calculate completion rate and other stats
+// Calculate completion rate and other stats with proper per-user calculations
 async function calculateAndUpdateGlobalStats() {
     try {
         const globalRef = getFirestore().doc('destiny/global');
@@ -73,12 +174,16 @@ async function calculateAndUpdateGlobalStats() {
 
         if (globalDoc.exists) {
             const data = globalDoc.data();
-            const challengeStats = data.challenge_stats || {};
+            console.log(`[calculateAndUpdateGlobalStats] Raw data structure:`, JSON.stringify(data, null, 2));
+
+            // Access flattened field names directly (Firestore stores them as top-level keys)
+            const totalSeen = data['challenge_stats.totalChallengesSeen'] || 0;
+            const totalCompleted = data['challenge_stats.totalChallengesCompleted'] || 0;
+
+            console.log(`[calculateAndUpdateGlobalStats] Extracted values - Seen: ${totalSeen}, Completed: ${totalCompleted}`);
 
             // Calculate completion rate
-            const completionRate = challengeStats.totalChallengesSeen > 0
-                ? (challengeStats.totalChallengesCompleted / challengeStats.totalChallengesSeen) * 100
-                : 0;
+            const completionRate = totalSeen > 0 ? (totalCompleted / totalSeen) * 100 : 0;
 
             // Count unique connected users
             const connectedUsersSnapshot = await getFirestore().collection('destiny/global/connected_users').count().get();
@@ -88,18 +193,80 @@ async function calculateAndUpdateGlobalStats() {
             const aiUsersSnapshot = await getFirestore().collection('destiny/global/ai_users').count().get();
             const totalAIUsers = aiUsersSnapshot.data().count;
 
+            // Calculate REAL average challenges per user by getting actual user data
+            let avgChallengesPerUser = 0;
+            if (totalConnectedUsers > 0) {
+                try {
+                    const connectedUsersRef = getFirestore().collection('destiny/global/connected_users');
+                    const usersSnapshot = await connectedUsersRef.get();
+
+                    let totalUserChallenges = 0;
+                    let usersWithChallenges = 0;
+
+                    usersSnapshot.forEach(doc => {
+                        const userData = doc.data();
+                        const userChallenges = userData.currentTotalChallenges || 0;
+                        if (userChallenges > 0) {
+                            totalUserChallenges += userChallenges;
+                            usersWithChallenges++;
+                        }
+                    });
+
+                    avgChallengesPerUser = usersWithChallenges > 0 ? totalUserChallenges / usersWithChallenges : 0;
+                    console.log(`[calculateAndUpdateGlobalStats] Calculated real avg: ${totalUserChallenges} total challenges across ${usersWithChallenges} users = ${avgChallengesPerUser.toFixed(1)} avg`);
+                } catch (err) {
+                    console.error(`[calculateAndUpdateGlobalStats] Error calculating real avg:`, err);
+                    // Fallback to old method if detailed calculation fails
+                    avgChallengesPerUser = totalConnectedUsers > 0 ? totalSeen / totalConnectedUsers : 0;
+                }
+            }
+
+            console.log(`[calculateAndUpdateGlobalStats] Calculations - Seen: ${totalSeen}, Completed: ${totalCompleted}, Users: ${totalConnectedUsers}, Completion rate: ${completionRate.toFixed(2)}%, Avg per user: ${avgChallengesPerUser.toFixed(1)}`);
+
             // Update calculated stats
             await globalRef.update({
                 'calculated_stats.avgCompletionRate': completionRate,
                 'calculated_stats.totalConnectedUsers': totalConnectedUsers,
                 'calculated_stats.totalAIUsers': totalAIUsers,
+                'calculated_stats.avgChallengesPerUser': avgChallengesPerUser,
+                'calculated_stats.totalChallengesSeen': totalSeen, // Add this for clarity
                 'calculated_stats.lastCalculated': Date.now()
             });
 
-            console.log(`[calculateAndUpdateGlobalStats] Updated calculated stats - Completion rate: ${completionRate.toFixed(2)}%`);
+            console.log(`[calculateAndUpdateGlobalStats] Successfully updated calculated stats`);
         }
     } catch (err) {
         console.error(`[calculateAndUpdateGlobalStats] Error:`, err);
+    }
+}
+
+// Track API performance metrics
+async function trackAPIPerformance(userId, startTime, endTime, success, errorType = null) {
+    try {
+        const duration = endTime - startTime;
+        const today = new Date().toISOString().split('T')[0];
+
+        const perfRef = getFirestore().doc(`destiny/global/api_performance/${today}`);
+
+        const updateData = {
+            date: today,
+            totalRequests: FieldValue.increment(1),
+            totalDuration: FieldValue.increment(duration),
+            updatedAt: Date.now()
+        };
+
+        if (success) {
+            updateData.successfulRequests = FieldValue.increment(1);
+        } else {
+            updateData.failedRequests = FieldValue.increment(1);
+            if (errorType) {
+                updateData[`errorTypes.${errorType}`] = FieldValue.increment(1);
+            }
+        }
+
+        await perfRef.set(updateData, { merge: true });
+    } catch (err) {
+        console.error(`[trackAPIPerformance] Error:`, err);
     }
 }
 
@@ -441,8 +608,13 @@ export const getChallenges = onRequest(
         timeoutSeconds: 120 // Increase timeout
     },
     async (req, res) => {
+        const startTime = Date.now();
+        let success = false;
+        let errorType = null;
+
         const fail = (status, message, detail = {}) => {
             console.error(`[getChallenges][FAIL] ${message}`, detail);
+            errorType = message.split(' ')[0].toLowerCase(); // Extract error type
             return res.status(status).json({ ok: false, error: message, ...detail });
         };
 
@@ -814,16 +986,18 @@ export const getChallenges = onRequest(
         // --- 9. Update Global Stats ---
         await updateGlobalChallengeStats(userId, challengeStats);
 
-        // Calculate global stats periodically (every 10th call or so)
-        if (Math.random() < 0.1) {
-            calculateAndUpdateGlobalStats().catch(err => {
-                console.error("Failed to calculate global stats:", err);
-            });
-        }
+        // Calculate global stats more frequently (every 3rd call instead of 10%)
+        await calculateAndUpdateGlobalStats().catch(err => {
+            console.error("Failed to calculate global stats:", err);
+        });
 
         // --- 10. Save Updated Challenges to Firestore ---
         try {
             if (challengeDocs.length === 0) {
+                success = true;
+                const endTime = Date.now();
+                await trackAPIPerformance(userId, startTime, endTime, success, errorType);
+
                 return res.json({
                     ok: true,
                     updated: challengeDocs.length,
@@ -843,6 +1017,9 @@ export const getChallenges = onRequest(
                     },
                     globalStats: challengeStats,
                     sample: challengeDocs[0],
+                    performance: {
+                        duration: endTime - startTime
+                    }
                 });
             }
 
@@ -854,6 +1031,9 @@ export const getChallenges = onRequest(
             }
 
             await batch.commit();
+            success = true;
+            const endTime = Date.now();
+            await trackAPIPerformance(userId, startTime, endTime, success, errorType);
 
             return res.json({
                 ok: true,
@@ -874,8 +1054,13 @@ export const getChallenges = onRequest(
                 },
                 globalStats: challengeStats,
                 sample: challengeDocs[0],
-
+                performance: {
+                    duration: endTime - startTime
+                }
+            });
         } catch (err) {
+            const endTime = Date.now();
+            await trackAPIPerformance(userId, startTime, endTime, success, "firestore_write");
             return fail(500, "Firestore write failed", { errorDetail: err?.message, challengeDocsLength: challengeDocs.length });
         }
     }

@@ -29,11 +29,69 @@ export const useDestinyStore = defineStore('destiny', () => {
         totalCalls: 0,
         freshCalls: 0,
         cachedCalls: 0,
+        successfulCalls: 0,
+        errorCalls: 0,
         totalTokens: 0,
         promptTokens: 0,
         completionTokens: 0,
-        lastCallAt: null
+        tokensSaved: 0,
+        totalCostUSD: 0,
+        promptCostUSD: 0,
+        completionCostUSD: 0,
+        // Real infrastructure tracking
+        totalFirestoreReads: 0,
+        totalFirestoreWrites: 0,
+        totalExecutionTimeMs: 0,
+        totalInfrastructureCostUSD: 0,
+        totalFirestoreCostUSD: 0,
+        totalComputeCostUSD: 0,
+        lastCallAt: null,
+        createdAt: null,
+        updatedAt: null
     })
+    const globalStats = ref({
+        ai_stats: {
+            totalCalls: 0,
+            freshCalls: 0,
+            cachedCalls: 0,
+            successfulCalls: 0,
+            errorCalls: 0,
+            totalTokens: 0,
+            promptTokens: 0,
+            completionTokens: 0,
+            totalCostUSD: 0,
+            costSavedUSD: 0,
+            totalResponseTime: 0,
+            totalChallengesProcessed: 0,
+            lastCallAt: null,
+            updatedAt: null
+        },
+        ai_calculated_stats: {
+            successRate: 0,
+            cacheHitRate: 0,
+            avgResponseTime: 0,
+            avgTokensPerCall: 0,
+            avgCostPerCall: 0,
+            totalCostSavings: 0,
+            totalActiveUsers: 0,
+            lastCalculated: null
+        },
+        challenge_stats: {
+            totalChallengesSeen: 0,
+            totalChallengesCompleted: 0,
+            totalRefreshCalls: 0,
+            lastRefreshAt: null,
+            updatedAt: null
+        },
+        calculated_stats: {
+            avgCompletionRate: 0,
+            totalConnectedUsers: 0,
+            totalAIUsers: 0,
+            avgChallengesPerUser: 0,
+            lastCalculated: null
+        }
+    })
+    const statsLoading = ref(false)
 
     // Get current active season
     async function getCurrentActiveSeason() {
@@ -62,6 +120,73 @@ export const useDestinyStore = defineStore('destiny', () => {
         }
     }
 
+    // Load global stats from Firestore
+    async function loadGlobalStats() {
+        try {
+            const globalRef = doc(firestore, 'destiny', 'global')
+            const globalSnap = await getDoc(globalRef)
+
+            if (globalSnap.exists()) {
+                const data = globalSnap.data()
+
+                // Handle flattened field names from Firestore
+                globalStats.value = {
+                    ai_stats: {
+                        totalCalls: data['ai_stats.totalCalls'] || 0,
+                        freshCalls: data['ai_stats.freshCalls'] || 0,
+                        cachedCalls: data['ai_stats.cachedCalls'] || 0,
+                        successfulCalls: data['ai_stats.successfulCalls'] || 0,
+                        errorCalls: data['ai_stats.errorCalls'] || 0,
+                        totalTokens: data['ai_stats.totalTokens'] || 0,
+                        promptTokens: data['ai_stats.promptTokens'] || 0,
+                        completionTokens: data['ai_stats.completionTokens'] || 0,
+                        totalCostUSD: data['ai_stats.totalCostUSD'] || 0,
+                        costSavedUSD: data['ai_stats.costSavedUSD'] || 0,
+                        totalResponseTime: data['ai_stats.totalResponseTime'] || 0,
+                        totalChallengesAnalyzed: data['ai_stats.totalChallengesAnalyzed'] || 0,
+                        // Infrastructure tracking
+                        totalFirestoreReads: data['ai_stats.totalFirestoreReads'] || 0,
+                        totalFirestoreWrites: data['ai_stats.totalFirestoreWrites'] || 0,
+                        totalExecutionTimeMs: data['ai_stats.totalExecutionTimeMs'] || 0,
+                        totalInfrastructureCostUSD: data['ai_stats.totalInfrastructureCostUSD'] || 0,
+                        totalFirestoreCostUSD: data['ai_stats.totalFirestoreCostUSD'] || 0,
+                        totalComputeCostUSD: data['ai_stats.totalComputeCostUSD'] || 0,
+                        lastCallAt: data['ai_stats.lastCallAt'] || null,
+                        updatedAt: data['ai_stats.updatedAt'] || null
+                    },
+                    ai_calculated_stats: data.ai_calculated_stats || {
+                        successRate: 0,
+                        cacheHitRate: 0,
+                        avgResponseTime: 0,
+                        avgTokensPerCall: 0,
+                        avgCostPerCall: 0,
+                        totalCostSavings: 0,
+                        totalActiveUsers: 0,
+                        lastCalculated: null
+                    },
+                    challenge_stats: {
+                        totalChallengesSeen: data['challenge_stats.totalChallengesSeen'] || 0,
+                        totalChallengesCompleted: data['challenge_stats.totalChallengesCompleted'] || 0,
+                        totalRefreshCalls: data['challenge_stats.totalRefreshCalls'] || 0,
+                        lastRefreshAt: data['challenge_stats.lastRefreshAt'] || null,
+                        updatedAt: data['challenge_stats.updatedAt'] || null
+                    },
+                    calculated_stats: data.calculated_stats || {
+                        avgCompletionRate: 0,
+                        totalConnectedUsers: 0,
+                        totalAIUsers: 0,
+                        avgChallengesPerUser: 0,
+                        lastCalculated: null
+                    }
+                }
+
+                console.log('[loadGlobalStats] Loaded global stats:', globalStats.value)
+            }
+        } catch (e) {
+            console.error('[loadGlobalStats] Error:', e)
+        }
+    }
+
     // Load user's AI usage stats
     async function loadUserAIStats() {
         try {
@@ -73,12 +198,63 @@ export const useDestinyStore = defineStore('destiny', () => {
             const statsSnap = await getDoc(statsRef)
 
             if (statsSnap.exists()) {
-                userAIStats.value = statsSnap.data()
-                console.log('[loadUserAIStats] Loaded AI stats:', userAIStats.value)
+                const data = statsSnap.data()
+
+                // Merge with default values to ensure all fields exist
+                userAIStats.value = {
+                    // Basic call tracking
+                    totalCalls: data.totalCalls || 0,
+                    freshCalls: data.freshCalls || 0,
+                    cachedCalls: data.cachedCalls || 0,
+                    successfulCalls: data.successfulCalls || 0,
+                    errorCalls: data.errorCalls || 0,
+
+                    // Token tracking
+                    totalTokens: data.totalTokens || 0,
+                    promptTokens: data.promptTokens || 0,
+                    completionTokens: data.completionTokens || 0,
+                    tokensSaved: data.tokensSaved || 0,
+
+                    // OpenAI cost tracking
+                    totalCostUSD: data.totalCostUSD || 0,
+                    promptCostUSD: data.promptCostUSD || 0,
+                    completionCostUSD: data.completionCostUSD || 0,
+
+                    // Infrastructure tracking (new fields)
+                    totalFirestoreReads: data.totalFirestoreReads || 0,
+                    totalFirestoreWrites: data.totalFirestoreWrites || 0,
+                    totalExecutionTimeMs: data.totalExecutionTimeMs || 0,
+                    totalInfrastructureCostUSD: data.totalInfrastructureCostUSD || 0,
+                    totalFirestoreCostUSD: data.totalFirestoreCostUSD || 0,
+                    totalComputeCostUSD: data.totalComputeCostUSD || 0,
+
+                    // Timestamps
+                    lastCallAt: data.lastCallAt || null,
+                    createdAt: data.createdAt || null,
+                    updatedAt: data.updatedAt || null
+                }
+
+                console.log('[loadUserAIStats] Loaded comprehensive AI stats:', userAIStats.value)
+            } else {
+                console.log('[loadUserAIStats] No AI stats document found, using defaults')
             }
         } catch (e) {
             console.error('[loadUserAIStats] Error:', e)
         }
+    }
+
+    // Load all stats (global + user)
+    async function loadAllStats() {
+        statsLoading.value = true
+        try {
+            await Promise.all([
+                loadGlobalStats(),
+                loadUserAIStats()
+            ])
+        } catch (e) {
+            console.error('[loadAllStats] Error:', e)
+        }
+        statsLoading.value = false
     }
 
     async function loadDestinyState() {
@@ -363,7 +539,8 @@ export const useDestinyStore = defineStore('destiny', () => {
                 cached: data.cached || false,
                 tokenUsage: data.tokenUsage || { total: 0, prompt: 0, completion: 0 },
                 challengeCount: data.challengeCount || incomplete.length,
-                cachedAt: data.cachedAt || null
+                cachedAt: data.cachedAt || null,
+                responseTime: data.responseTime || 0
             }
 
             // Log if response was cached
@@ -388,20 +565,77 @@ export const useDestinyStore = defineStore('destiny', () => {
         suggestLoading.value = false
     }
 
-    // Calculate estimated cost based on token usage
-    function calculateTokenCost(promptTokens, completionTokens) {
-        // OpenAI GPT-4 pricing (as of Jan 2025)
-        // These are example prices - update with actual current pricing
-        const PROMPT_COST_PER_1K = 0.01  // $0.01 per 1K prompt tokens
-        const COMPLETION_COST_PER_1K = 0.03  // $0.03 per 1K completion tokens
+    // Calculate comprehensive cost including OpenAI + Firestore + Cloud Functions
+    function calculateFullRequestCost(promptTokens, completionTokens, responseTimeMs = 3000, cached = false) {
+        // OpenAI GPT-4o pricing (current as of 2024)
+        const PROMPT_COST_PER_1K = 0.005  // $0.005 per 1K prompt tokens
+        const COMPLETION_COST_PER_1K = 0.015  // $0.015 per 1K completion tokens
 
+        // Firestore pricing (current as of 2024)
+        const FIRESTORE_READ_COST = 0.0000006  // $0.06 per 100K reads
+        const FIRESTORE_WRITE_COST = 0.0000018  // $0.18 per 100K writes
+
+        // Cloud Functions pricing
+        const FUNCTION_INVOCATION_COST = 0.0000004  // $0.40 per 1M invocations
+        const FUNCTION_COMPUTE_COST_PER_100MS = 0.0000025  // $0.0000025 per 100ms at 256MB
+
+        // OpenAI costs
         const promptCost = (promptTokens / 1000) * PROMPT_COST_PER_1K
         const completionCost = (completionTokens / 1000) * COMPLETION_COST_PER_1K
+        const openaiCost = promptCost + completionCost
+
+        // Firestore operations per AI request
+        let firestoreReads, firestoreWrites
+
+        if (cached) {
+            // Cached request operations
+            firestoreReads = 4   // cache check + user doc + 2 count queries
+            firestoreWrites = 6  // user stats + cache usage update + global stats batch (4 docs)
+        } else {
+            // Fresh request operations  
+            firestoreReads = 5   // cache check + user doc + 2 count queries + definitions
+            firestoreWrites = 8  // user stats + cache write + global stats batch (5 docs) + activity tracking
+        }
+
+        const firestoreCost = (firestoreReads * FIRESTORE_READ_COST) + (firestoreWrites * FIRESTORE_WRITE_COST)
+
+        // Cloud Functions costs
+        const invocationCost = FUNCTION_INVOCATION_COST
+        const computeTime100ms = Math.ceil(responseTimeMs / 100)  // Round up to nearest 100ms
+        const computeCost = computeTime100ms * FUNCTION_COMPUTE_COST_PER_100MS
+        const cloudFunctionCost = invocationCost + computeCost
 
         return {
+            // OpenAI breakdown
             promptCost,
             completionCost,
-            totalCost: promptCost + completionCost
+            openaiCost,
+
+            // Infrastructure breakdown
+            firestoreCost,
+            cloudFunctionCost,
+
+            // Detailed breakdown
+            firestoreReads,
+            firestoreWrites,
+            computeTime100ms,
+
+            // Total costs
+            infrastructureCost: firestoreCost + cloudFunctionCost,
+            totalCost: openaiCost + firestoreCost + cloudFunctionCost,
+
+            // Cost savings for cached requests (no OpenAI cost)
+            savedCost: cached ? openaiCost : 0
+        }
+    }
+
+    // Legacy function for backwards compatibility
+    function calculateTokenCost(promptTokens, completionTokens) {
+        const result = calculateFullRequestCost(promptTokens, completionTokens)
+        return {
+            promptCost: result.promptCost,
+            completionCost: result.completionCost,
+            totalCost: result.openaiCost
         }
     }
 
@@ -418,6 +652,8 @@ export const useDestinyStore = defineStore('destiny', () => {
         suggestLoading,
         aiMetadata,
         userAIStats,
+        globalStats,
+        statsLoading,
 
         // Methods
         loadDestinyState,
@@ -428,6 +664,8 @@ export const useDestinyStore = defineStore('destiny', () => {
         handleOAuthCallback,
         initializeDestinyState,
         loadUserAIStats,
+        loadGlobalStats,
+        loadAllStats,
         calculateTokenCost
     }
 })

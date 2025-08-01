@@ -1,10 +1,64 @@
 import { onRequest } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
-import { getFirestore } from "firebase-admin/firestore";
+import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import OpenAI from "openai";
 import crypto from "crypto";
 
 const openaiKey = defineSecret("OPENAI_API_KEY");
+
+// Track actual infrastructure usage during function execution
+class InfrastructureTracker {
+    constructor() {
+        this.startTime = Date.now()
+        this.firestoreReads = 0
+        this.firestoreWrites = 0
+        this.functionInvocations = 1 // This function call
+        this.memoryUsed = process.memoryUsage()
+    }
+
+    trackRead(count = 1) {
+        this.firestoreReads += count
+    }
+
+    trackWrite(count = 1) {
+        this.firestoreWrites += count
+    }
+
+    trackBatchWrite(operations) {
+        this.firestoreWrites += operations
+    }
+
+    getExecutionTime() {
+        return Date.now() - this.startTime
+    }
+
+    calculateRealCosts() {
+        const executionTimeMs = this.getExecutionTime()
+
+        // Real Google Cloud pricing (as of 2024)
+        const FIRESTORE_READ_COST = 0.0000006  // $0.06 per 100K
+        const FIRESTORE_WRITE_COST = 0.0000018  // $0.18 per 100K
+        const FUNCTION_INVOCATION_COST = 0.0000004  // $0.40 per 1M
+        const FUNCTION_COMPUTE_COST_PER_100MS = 0.0000025  // $0.0000025 per 100ms at 256MB
+
+        const firestoreCost = (this.firestoreReads * FIRESTORE_READ_COST) + (this.firestoreWrites * FIRESTORE_WRITE_COST)
+        const invocationCost = this.functionInvocations * FUNCTION_INVOCATION_COST
+        const computeTime100ms = Math.ceil(executionTimeMs / 100)
+        const computeCost = computeTime100ms * FUNCTION_COMPUTE_COST_PER_100MS
+        const infrastructureCost = firestoreCost + invocationCost + computeCost
+
+        return {
+            firestoreReads: this.firestoreReads,
+            firestoreWrites: this.firestoreWrites,
+            executionTimeMs,
+            computeTime100ms,
+            firestoreCost,
+            invocationCost,
+            computeCost,
+            infrastructureCost
+        }
+    }
+}
 
 // Generate hash of challenge data for caching
 function generateChallengeHash(challenges) {
@@ -54,108 +108,269 @@ async function getCachedSuggestion(userId, hash) {
     }
 }
 
-// Update user's usage statistics
-async function updateUsageStats(userId, tokenUsage, cached = false) {
+// Update user's usage statistics with real infrastructure tracking
+async function updateUsageStats(userId, tokenUsage, cached = false, errorOccurred = false, infrastructureStats = null) {
     try {
         // Path: users/{userId}/destiny/ai_suggestions
         const statsRef = getFirestore().doc(`users/${userId}/destiny/ai_suggestions`);
 
         const updateData = {
-            totalCalls: getFirestore().FieldValue.increment(1),
+            totalCalls: FieldValue.increment(1),
             lastCallAt: Date.now(),
             updatedAt: Date.now()
         };
 
-        if (cached) {
-            updateData.cachedCalls = getFirestore().FieldValue.increment(1);
+        if (errorOccurred) {
+            updateData.errorCalls = FieldValue.increment(1);
         } else {
-            updateData.freshCalls = getFirestore().FieldValue.increment(1);
+            updateData.successfulCalls = FieldValue.increment(1);
+        }
+
+        if (cached) {
+            updateData.cachedCalls = FieldValue.increment(1);
+            updateData.tokensSaved = FieldValue.increment(tokenUsage?.total || 0);
+        } else {
+            updateData.freshCalls = FieldValue.increment(1);
             if (tokenUsage) {
                 // Track prompt and completion tokens separately for accurate costing
-                updateData.totalTokens = getFirestore().FieldValue.increment(tokenUsage.total || 0);
-                updateData.promptTokens = getFirestore().FieldValue.increment(tokenUsage.prompt || 0);
-                updateData.completionTokens = getFirestore().FieldValue.increment(tokenUsage.completion || 0);
+                updateData.totalTokens = FieldValue.increment(tokenUsage.total || 0);
+                updateData.promptTokens = FieldValue.increment(tokenUsage.prompt || 0);
+                updateData.completionTokens = FieldValue.increment(tokenUsage.completion || 0);
+
+                // Calculate costs (GPT-4o pricing as of 2024)
+                const promptCost = (tokenUsage.prompt || 0) * 0.005 / 1000;
+                const completionCost = (tokenUsage.completion || 0) * 0.015 / 1000;
+
+                updateData.totalCostUSD = FieldValue.increment(promptCost + completionCost);
+                updateData.promptCostUSD = FieldValue.increment(promptCost);
+                updateData.completionCostUSD = FieldValue.increment(completionCost);
             }
         }
 
+        // Track REAL infrastructure usage
+        if (infrastructureStats) {
+            updateData.totalFirestoreReads = FieldValue.increment(infrastructureStats.firestoreReads);
+            updateData.totalFirestoreWrites = FieldValue.increment(infrastructureStats.firestoreWrites);
+            updateData.totalExecutionTimeMs = FieldValue.increment(infrastructureStats.executionTimeMs);
+            updateData.totalInfrastructureCostUSD = FieldValue.increment(infrastructureStats.infrastructureCost);
+            updateData.totalFirestoreCostUSD = FieldValue.increment(infrastructureStats.firestoreCost);
+            updateData.totalComputeCostUSD = FieldValue.increment(infrastructureStats.computeCost);
+        }
+
         await statsRef.set(updateData, { merge: true });
-        console.log(`[updateUsageStats] Updated user stats - cached: ${cached}, tokens: ${JSON.stringify(tokenUsage || {})}`);
+        console.log(`[updateUsageStats] Updated user stats - cached: ${cached}, infrastructure: ${JSON.stringify(infrastructureStats || {})}`);
     } catch (err) {
         console.error(`[updateUsageStats] Error:`, err);
         // Don't throw - stats failure shouldn't break the main flow
     }
 }
 
-// Update global usage statistics
-async function updateGlobalStats(userId, challengeCount, tokenUsage, cached = false, error = false) {
+// Update global usage statistics with real infrastructure tracking
+async function updateGlobalStats(userId, challengeCount, tokenUsage, cached = false, error = false, suggestedActivity = null, responseTime = 0, infrastructureStats = null) {
     try {
         const batch = getFirestore().batch();
 
         // Main global stats document
         const globalRef = getFirestore().doc('destiny/global');
         const globalUpdate = {
-            'ai_stats.totalCalls': getFirestore().FieldValue.increment(1),
+            'ai_stats.totalCalls': FieldValue.increment(1),
             'ai_stats.lastCallAt': Date.now(),
-            'ai_stats.updatedAt': Date.now()
+            'ai_stats.updatedAt': Date.now(),
+            'ai_stats.totalResponseTime': FieldValue.increment(responseTime)
         };
 
+        // Track REAL infrastructure usage globally
+        if (infrastructureStats) {
+            globalUpdate['ai_stats.totalFirestoreReads'] = FieldValue.increment(infrastructureStats.firestoreReads);
+            globalUpdate['ai_stats.totalFirestoreWrites'] = FieldValue.increment(infrastructureStats.firestoreWrites);
+            globalUpdate['ai_stats.totalExecutionTimeMs'] = FieldValue.increment(infrastructureStats.executionTimeMs);
+            globalUpdate['ai_stats.totalInfrastructureCostUSD'] = FieldValue.increment(infrastructureStats.infrastructureCost);
+            globalUpdate['ai_stats.totalFirestoreCostUSD'] = FieldValue.increment(infrastructureStats.firestoreCost);
+            globalUpdate['ai_stats.totalComputeCostUSD'] = FieldValue.increment(infrastructureStats.computeCost);
+        }
+
         if (cached) {
-            globalUpdate['ai_stats.cachedCalls'] = getFirestore().FieldValue.increment(1);
-            globalUpdate['ai_stats.tokensSaved'] = getFirestore().FieldValue.increment(tokenUsage?.total || 0);
+            globalUpdate['ai_stats.cachedCalls'] = FieldValue.increment(1);
+            globalUpdate['ai_stats.tokensSaved'] = FieldValue.increment(tokenUsage?.total || 0);
+            // Calculate cost savings from cache hits
+            if (tokenUsage?.total) {
+                const savedCost = (tokenUsage.prompt || 0) * 0.005 / 1000 + (tokenUsage.completion || 0) * 0.015 / 1000;
+                globalUpdate['ai_stats.costSavedUSD'] = FieldValue.increment(savedCost);
+            }
         } else {
-            globalUpdate['ai_stats.freshCalls'] = getFirestore().FieldValue.increment(1);
+            globalUpdate['ai_stats.freshCalls'] = FieldValue.increment(1);
             if (tokenUsage) {
-                globalUpdate['ai_stats.totalTokens'] = getFirestore().FieldValue.increment(tokenUsage.total || 0);
-                globalUpdate['ai_stats.promptTokens'] = getFirestore().FieldValue.increment(tokenUsage.prompt || 0);
-                globalUpdate['ai_stats.completionTokens'] = getFirestore().FieldValue.increment(tokenUsage.completion || 0);
+                globalUpdate['ai_stats.totalTokens'] = FieldValue.increment(tokenUsage.total || 0);
+                globalUpdate['ai_stats.promptTokens'] = FieldValue.increment(tokenUsage.prompt || 0);
+                globalUpdate['ai_stats.completionTokens'] = FieldValue.increment(tokenUsage.completion || 0);
+
+                // Calculate and track costs
+                const promptCost = (tokenUsage.prompt || 0) * 0.005 / 1000;
+                const completionCost = (tokenUsage.completion || 0) * 0.015 / 1000;
+                const totalCost = promptCost + completionCost;
+
+                globalUpdate['ai_stats.totalCostUSD'] = FieldValue.increment(totalCost);
+                globalUpdate['ai_stats.promptCostUSD'] = FieldValue.increment(promptCost);
+                globalUpdate['ai_stats.completionCostUSD'] = FieldValue.increment(completionCost);
             }
         }
 
         if (error) {
-            globalUpdate['ai_stats.errorCalls'] = getFirestore().FieldValue.increment(1);
+            globalUpdate['ai_stats.errorCalls'] = FieldValue.increment(1);
         } else {
-            globalUpdate['ai_stats.successfulCalls'] = getFirestore().FieldValue.increment(1);
-            globalUpdate['ai_stats.totalChallengesProcessed'] = getFirestore().FieldValue.increment(challengeCount);
+            globalUpdate['ai_stats.successfulCalls'] = FieldValue.increment(1);
+            // Only count challenges processed for this specific AI request
+            globalUpdate['ai_stats.totalChallengesAnalyzed'] = FieldValue.increment(challengeCount);
         }
 
         batch.set(globalRef, globalUpdate, { merge: true });
 
-        // Track unique users
+        // Track unique users with enhanced analytics
         const userRef = getFirestore().doc(`destiny/global/ai_users/${userId}`);
-        batch.set(userRef, {
+        const userAnalyticsData = {
             lastUsed: Date.now(),
-            totalCalls: getFirestore().FieldValue.increment(1),
-            totalTokens: getFirestore().FieldValue.increment(tokenUsage?.total || 0)
-        }, { merge: true });
+            totalCalls: FieldValue.increment(1),
+            totalTokens: FieldValue.increment(tokenUsage?.total || 0),
+            totalChallengesAnalyzed: FieldValue.increment(challengeCount), // Challenges analyzed in AI requests
+            avgResponseTime: responseTime // Will be calculated properly in analytics function
+        };
 
-        // Daily stats tracking
+        if (infrastructureStats) {
+            userAnalyticsData.totalFirestoreReads = FieldValue.increment(infrastructureStats.firestoreReads);
+            userAnalyticsData.totalFirestoreWrites = FieldValue.increment(infrastructureStats.firestoreWrites);
+            userAnalyticsData.totalInfrastructureCostUSD = FieldValue.increment(infrastructureStats.infrastructureCost);
+        }
+
+        if (cached) {
+            userAnalyticsData.cachedCalls = FieldValue.increment(1);
+        } else {
+            userAnalyticsData.freshCalls = FieldValue.increment(1);
+        }
+
+        if (error) {
+            userAnalyticsData.errorCalls = FieldValue.increment(1);
+        }
+
+        batch.set(userRef, userAnalyticsData, { merge: true });
+
+        // Daily stats tracking with enhanced metrics
         const today = new Date().toISOString().split('T')[0];
         const dailyRef = getFirestore().doc(`destiny/global/ai_daily_stats/${today}`);
         const dailyUpdate = {
             date: today,
-            calls: getFirestore().FieldValue.increment(1),
-            uniqueUsers: getFirestore().FieldValue.arrayUnion(userId),
+            calls: FieldValue.increment(1),
+            uniqueUsers: FieldValue.arrayUnion(userId),
+            totalChallengesAnalyzed: FieldValue.increment(challengeCount),
+            totalResponseTime: FieldValue.increment(responseTime),
             updatedAt: Date.now()
         };
 
+        if (infrastructureStats) {
+            dailyUpdate.totalFirestoreReads = FieldValue.increment(infrastructureStats.firestoreReads);
+            dailyUpdate.totalFirestoreWrites = FieldValue.increment(infrastructureStats.firestoreWrites);
+            dailyUpdate.totalInfrastructureCostUSD = FieldValue.increment(infrastructureStats.infrastructureCost);
+        }
+
         if (cached) {
-            dailyUpdate.cachedCalls = getFirestore().FieldValue.increment(1);
+            dailyUpdate.cachedCalls = FieldValue.increment(1);
+            dailyUpdate.cacheHits = FieldValue.increment(1);
         } else {
-            dailyUpdate.freshCalls = getFirestore().FieldValue.increment(1);
+            dailyUpdate.freshCalls = FieldValue.increment(1);
+            dailyUpdate.cacheMisses = FieldValue.increment(1);
             if (tokenUsage) {
-                dailyUpdate.totalTokens = getFirestore().FieldValue.increment(tokenUsage.total || 0);
-                dailyUpdate.promptTokens = getFirestore().FieldValue.increment(tokenUsage.prompt || 0);
-                dailyUpdate.completionTokens = getFirestore().FieldValue.increment(tokenUsage.completion || 0);
+                dailyUpdate.totalTokens = FieldValue.increment(tokenUsage.total || 0);
+                dailyUpdate.promptTokens = FieldValue.increment(tokenUsage.prompt || 0);
+                dailyUpdate.completionTokens = FieldValue.increment(tokenUsage.completion || 0);
+
+                const totalCost = (tokenUsage.prompt || 0) * 0.005 / 1000 + (tokenUsage.completion || 0) * 0.015 / 1000;
+                dailyUpdate.dailyCostUSD = FieldValue.increment(totalCost);
             }
+        }
+
+        if (error) {
+            dailyUpdate.errorCalls = FieldValue.increment(1);
         }
 
         batch.set(dailyRef, dailyUpdate, { merge: true });
 
+        // Track popular suggested activities
+        if (suggestedActivity && !error) {
+            const activityRef = getFirestore().doc(`destiny/global/suggested_activities/${encodeURIComponent(suggestedActivity)}`);
+            batch.set(activityRef, {
+                activity: suggestedActivity,
+                suggestionCount: FieldValue.increment(1),
+                lastSuggested: Date.now(),
+                uniqueUsers: FieldValue.arrayUnion(userId)
+            }, { merge: true });
+        }
+
+        // Hourly usage patterns for performance optimization
+        const hour = new Date().getHours();
+        const hourlyRef = getFirestore().doc(`destiny/global/ai_hourly_stats/${today}`);
+        batch.set(hourlyRef, {
+            date: today,
+            [`hour_${hour}.calls`]: FieldValue.increment(1),
+            [`hour_${hour}.responseTime`]: FieldValue.increment(responseTime),
+            [`hour_${hour}.uniqueUsers`]: FieldValue.arrayUnion(userId),
+            updatedAt: Date.now()
+        }, { merge: true });
+
         await batch.commit();
-        console.log(`[updateGlobalStats] Updated global stats`);
+        console.log(`[updateGlobalStats] Updated global AI stats with real infrastructure tracking`);
     } catch (err) {
         console.error(`[updateGlobalStats] Error:`, err);
         // Don't throw - stats failure shouldn't break the main flow
+    }
+}
+
+// Calculate and update AI performance metrics
+async function calculateAIPerformanceStats() {
+    try {
+        const globalRef = getFirestore().doc('destiny/global');
+        const globalDoc = await globalRef.get();
+
+        if (globalDoc.exists) {
+            const data = globalDoc.data();
+            const aiStats = data['ai_stats'] || {};
+
+            // Calculate performance metrics
+            const totalCalls = aiStats.totalCalls || 0;
+            const successfulCalls = aiStats.successfulCalls || 0;
+            const cachedCalls = aiStats.cachedCalls || 0;
+            const freshCalls = aiStats.freshCalls || 0;
+            const totalResponseTime = aiStats.totalResponseTime || 0;
+            const totalTokens = aiStats.totalTokens || 0;
+            const totalCost = aiStats.totalCostUSD || 0;
+            const costSaved = aiStats.costSavedUSD || 0;
+
+            // Calculate derived metrics
+            const successRate = totalCalls > 0 ? (successfulCalls / totalCalls) * 100 : 0;
+            const cacheHitRate = totalCalls > 0 ? (cachedCalls / totalCalls) * 100 : 0;
+            const avgResponseTime = freshCalls > 0 ? totalResponseTime / freshCalls : 0;
+            const avgTokensPerCall = freshCalls > 0 ? totalTokens / freshCalls : 0;
+            const avgCostPerCall = freshCalls > 0 ? totalCost / freshCalls : 0;
+            const totalSavings = costSaved;
+
+            // Count unique users
+            const aiUsersSnapshot = await getFirestore().collection('destiny/global/ai_users').count().get();
+            const totalAIUsers = aiUsersSnapshot.data().count;
+
+            // Update calculated stats
+            await globalRef.update({
+                'ai_calculated_stats.successRate': successRate,
+                'ai_calculated_stats.cacheHitRate': cacheHitRate,
+                'ai_calculated_stats.avgResponseTime': avgResponseTime,
+                'ai_calculated_stats.avgTokensPerCall': avgTokensPerCall,
+                'ai_calculated_stats.avgCostPerCall': avgCostPerCall,
+                'ai_calculated_stats.totalCostSavings': totalSavings,
+                'ai_calculated_stats.totalActiveUsers': totalAIUsers,
+                'ai_calculated_stats.lastCalculated': Date.now()
+            });
+
+            console.log(`[calculateAIPerformanceStats] Updated AI performance stats - Success rate: ${successRate.toFixed(2)}%, Cache hit rate: ${cacheHitRate.toFixed(2)}%`);
+        }
+    } catch (err) {
+        console.error(`[calculateAIPerformanceStats] Error:`, err);
     }
 }
 
@@ -202,7 +417,7 @@ async function updateCacheUsage(userId, hash) {
         const cachedRef = getFirestore().doc(`users/${userId}/destiny/ai_suggestions/suggestions/${hash}`);
         await cachedRef.update({
             usedAt: Date.now(),
-            usageCount: getFirestore().FieldValue.increment(1)
+            usageCount: FieldValue.increment(1)
         });
     } catch (err) {
         console.error(`[updateCacheUsage] Error:`, err);
@@ -217,19 +432,40 @@ async function initializeAISuggestionsDoc(userId) {
 
         if (!statsDoc.exists) {
             const initialData = {
+                // Basic call tracking
                 totalCalls: 0,
                 freshCalls: 0,
                 cachedCalls: 0,
+                successfulCalls: 0,
+                errorCalls: 0,
+
+                // Token tracking
                 totalTokens: 0,
                 promptTokens: 0,
                 completionTokens: 0,
+                tokensSaved: 0,
+
+                // OpenAI cost tracking
+                totalCostUSD: 0,
+                promptCostUSD: 0,
+                completionCostUSD: 0,
+
+                // Infrastructure tracking
+                totalFirestoreReads: 0,
+                totalFirestoreWrites: 0,
+                totalExecutionTimeMs: 0,
+                totalInfrastructureCostUSD: 0,
+                totalFirestoreCostUSD: 0,
+                totalComputeCostUSD: 0,
+
+                // Timestamps
                 createdAt: Date.now(),
                 updatedAt: Date.now(),
                 lastCallAt: null
             };
 
             await statsRef.set(initialData);
-            console.log(`[initializeAISuggestionsDoc] Created AI suggestions document for user ${userId}`);
+            console.log(`[initializeAISuggestionsDoc] Created comprehensive AI suggestions document for user ${userId}`);
         }
     } catch (err) {
         console.error(`[initializeAISuggestionsDoc] Error:`, err);
@@ -256,8 +492,14 @@ export const aiSuggest = onRequest({
     region: "australia-southeast1",
     secrets: [openaiKey]
 }, async (req, res) => {
+    const tracker = new InfrastructureTracker();
+    let responseTime = 0;
+    let error = false;
+
     const fail = (status, message, detail = {}) => {
         console.error(`[aiSuggest][FAIL] ${message}`, detail);
+        error = true;
+        responseTime = tracker.getExecutionTime();
         return res.status(status).json({ error: message, ...detail });
     };
 
@@ -277,12 +519,14 @@ export const aiSuggest = onRequest({
 
     // --- 2. Initialize AI suggestions document ---
     await initializeAISuggestionsDoc(userId);
+    tracker.trackWrite(1); // Document initialization
 
     // --- 3. Validate Input ---
     const { challenges } = req.body || {};
     if (!Array.isArray(challenges) || challenges.length === 0) {
-        await updateUsageStats(userId, null, false);
-        await updateGlobalStats(userId, 0, null, false, false);
+        const infrastructureStats = tracker.calculateRealCosts();
+        await updateUsageStats(userId, null, false, false, infrastructureStats);
+        await updateGlobalStats(userId, 0, null, false, false, null, tracker.getExecutionTime(), infrastructureStats);
         return res.json({ plan: "No challenge data found." });
     }
 
@@ -310,8 +554,9 @@ export const aiSuggest = onRequest({
     console.log(`[aiSuggest] Filtered ${challenges.length} challenges down to ${pending.length} incomplete ones`);
 
     if (!pending.length) {
-        await updateUsageStats(userId, null, false);
-        await updateGlobalStats(userId, 0, null, false, false);
+        const infrastructureStats = tracker.calculateRealCosts();
+        await updateUsageStats(userId, null, false, false, infrastructureStats);
+        await updateGlobalStats(userId, 0, null, false, false, null, tracker.getExecutionTime(), infrastructureStats);
         return res.json({ plan: "You've completed all seasonal challenges. Go touch grass!" });
     }
 
@@ -321,22 +566,30 @@ export const aiSuggest = onRequest({
 
     try {
         const cached = await getCachedSuggestion(userId, challengeHash);
+        tracker.trackRead(1); // Cache check
+
         if (cached) {
             // Update cache usage and stats
             updateCacheUsage(userId, challengeHash).catch(err => {
                 console.error("Failed to update cache usage:", err);
             });
+            tracker.trackWrite(1); // Cache usage update
 
             const cachedTokenUsage = cached.tokenUsage || { total: 0, prompt: 0, completion: 0 };
-            await updateUsageStats(userId, null, true);
-            await updateGlobalStats(userId, cached.challengeCount, cachedTokenUsage, true, false);
+            responseTime = tracker.getExecutionTime();
+            const infrastructureStats = tracker.calculateRealCosts();
+
+            await updateUsageStats(userId, cachedTokenUsage, true, false, infrastructureStats);
+            await updateGlobalStats(userId, cached.challengeCount, cachedTokenUsage, true, false, cached.suggestedActivity, responseTime, infrastructureStats);
 
             return res.json({
                 plan: cached.suggestion,
                 cached: true,
                 cachedAt: cached.createdAt,
                 challengeCount: cached.challengeCount,
-                tokenUsage: cachedTokenUsage
+                tokenUsage: cachedTokenUsage,
+                responseTime: responseTime,
+                infrastructureStats
             });
         }
     } catch (err) {
@@ -410,7 +663,9 @@ Only suggest one "next step" per response, always maximizing challenge overlap. 
             completion: gptRes.usage?.completion_tokens || 0
         };
 
-        console.log(`[aiSuggest] Received AI response: ${aiPlan.substring(0, 100)}... (${tokenUsage.total} tokens)`);
+        responseTime = tracker.getExecutionTime();
+
+        console.log(`[aiSuggest] Received AI response: ${aiPlan.substring(0, 100)}... (${tokenUsage.total} tokens, ${responseTime}ms)`);
 
         // Extract suggested activity from response
         const suggestedActivity = extractSuggestedActivity(aiPlan);
@@ -422,25 +677,51 @@ Only suggest one "next step" per response, always maximizing challenge overlap. 
         cacheSuggestion(userId, challengeHash, pending, aiPlan, seasonHash, tokenUsage, suggestedActivity).catch(err => {
             console.error("Failed to cache AI suggestion:", err);
         });
+        tracker.trackWrite(1); // Cache write
 
-        // Update usage stats
-        await updateUsageStats(userId, tokenUsage, false);
-        await updateGlobalStats(userId, pending.length, tokenUsage, false, false);
+        // Calculate real infrastructure costs
+        const infrastructureStats = tracker.calculateRealCosts();
+
+        console.log(`[aiSuggest] Infrastructure stats:`, {
+            reads: infrastructureStats.firestoreReads,
+            writes: infrastructureStats.firestoreWrites,
+            executionTime: infrastructureStats.executionTimeMs,
+            costs: {
+                firestore: infrastructureStats.firestoreCost,
+                compute: infrastructureStats.computeCost,
+                total: infrastructureStats.infrastructureCost
+            }
+        });
+
+        // Update usage stats with real infrastructure tracking
+        await updateUsageStats(userId, tokenUsage, false, false, infrastructureStats);
+        await updateGlobalStats(userId, pending.length, tokenUsage, false, false, suggestedActivity, responseTime, infrastructureStats);
+
+        calculateAIPerformanceStats().catch(err => {
+            console.error("Failed to calculate AI performance stats:", err);
+        });
 
         return res.json({
             plan: aiPlan,
             cached: false,
             challengeCount: pending.length,
-            tokenUsage: tokenUsage
+            tokenUsage: tokenUsage,
+            responseTime: responseTime,
+            infrastructureStats
         });
 
     } catch (e) {
         console.error(`[aiSuggest] OpenAI error:`, e);
-        await updateUsageStats(userId, null, false); // Track failed calls too
-        await updateGlobalStats(userId, pending.length, null, false, true); // Track as error
+        responseTime = tracker.getExecutionTime();
+        const infrastructureStats = tracker.calculateRealCosts();
+
+        await updateUsageStats(userId, null, false, true, infrastructureStats); // Track failed calls too
+        await updateGlobalStats(userId, pending.length, null, false, true, null, responseTime, infrastructureStats); // Track as error
         return fail(500, "Failed to generate suggestion", {
             errorDetail: e.message,
-            challengeCount: pending.length
+            challengeCount: pending.length,
+            responseTime: responseTime,
+            infrastructureStats
         });
     }
 });
