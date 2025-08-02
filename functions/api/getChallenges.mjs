@@ -1,252 +1,665 @@
+// getChallenges.mjs (Optimized)
 import { onRequest } from "firebase-functions/v2/https";
-import fetch from "node-fetch";
-import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { defineSecret } from "firebase-functions/params";
+import { FieldValue } from "firebase-admin/firestore";
+import {
+    InfrastructureTracker,
+    verifyAuthToken,
+    getCurrentWeek,
+    getDb,
+    FirestoreBatch
+} from "./shared/utils.mjs";
+import { StatsManager } from "./shared/statsManager.mjs";
+import { CacheManager } from "./shared/cacheManager.mjs";
+import { BungieApiClient } from "./shared/bungieApiClient.mjs";
 
 const bungieApiKey = defineSecret('BUNGIE_API_KEY');
 
-// Track actual infrastructure usage during function execution
-class InfrastructureTracker {
-    constructor() {
-        this.startTime = Date.now()
-        this.firestoreReads = 0
-        this.firestoreWrites = 0
-        this.functionInvocations = 1 // This function call
-        this.memoryUsed = process.memoryUsage()
-    }
+// Build comprehensive season reference
+async function buildSeasonReference(bungieClient, seasonData, challengesNodeHash, tracker) {
+    try {
+        console.log(`[buildSeasonReference] Building reference for ${seasonData.seasonName}`);
 
-    trackRead(count = 1) {
-        this.firestoreReads += count
-    }
+        // Get manifest and definitions
+        const manifest = await bungieClient.getManifest();
+        const definitions = await bungieClient.getDefinitions(
+            ['DestinyPresentationNodeDefinition', 'DestinyRecordDefinition', 'DestinyObjectiveDefinition'],
+            manifest.jsonWorldComponentContentPaths.en
+        );
 
-    trackWrite(count = 1) {
-        this.firestoreWrites += count
-    }
+        const presDefs = definitions.DestinyPresentationNodeDefinition;
+        const recordDefs = definitions.DestinyRecordDefinition;
 
-    trackBatchWrite(operations) {
-        this.firestoreWrites += operations
-    }
+        // Collect all challenge hashes
+        const challengeHashes = collectAllRecordHashes(challengesNodeHash, presDefs);
+        console.log(`[buildSeasonReference] Found ${challengeHashes.length} total challenges`);
 
-    getExecutionTime() {
-        return Date.now() - this.startTime
-    }
-
-    calculateRealCosts() {
-        const executionTimeMs = this.getExecutionTime()
-
-        // Real Google Cloud pricing (as of 2024)
-        const FIRESTORE_READ_COST = 0.0000006  // $0.06 per 100K
-        const FIRESTORE_WRITE_COST = 0.0000018  // $0.18 per 100K
-        const FUNCTION_INVOCATION_COST = 0.0000004  // $0.40 per 1M
-        const FUNCTION_COMPUTE_COST_PER_100MS = 0.0000025  // $0.0000025 per 100ms at 256MB
-
-        const firestoreCost = (this.firestoreReads * FIRESTORE_READ_COST) + (this.firestoreWrites * FIRESTORE_WRITE_COST)
-        const invocationCost = this.functionInvocations * FUNCTION_INVOCATION_COST
-        const computeTime100ms = Math.ceil(executionTimeMs / 100)
-        const computeCost = computeTime100ms * FUNCTION_COMPUTE_COST_PER_100MS
-        const infrastructureCost = firestoreCost + invocationCost + computeCost
-
-        return {
-            firestoreReads: this.firestoreReads,
-            firestoreWrites: this.firestoreWrites,
-            executionTimeMs,
-            computeTime100ms,
-            firestoreCost,
-            invocationCost,
-            computeCost,
-            infrastructureCost
+        if (challengeHashes.length === 0) {
+            throw new Error(`No challenges found for node ${challengesNodeHash}`);
         }
+
+        // Build weekly structure
+        const weeklyData = buildWeeklyChallengeMap(challengesNodeHash, presDefs);
+
+        // Build challenge definitions
+        const challengeDefinitions = {};
+        for (const hash of challengeHashes) {
+            const def = recordDefs[hash];
+            if (def) {
+                challengeDefinitions[hash] = {
+                    name: def.displayProperties?.name || '',
+                    description: def.displayProperties?.description || '',
+                    rewardItems: def.rewardItems || [],
+                    objectiveHashes: def.objectiveHashes || [],
+                    hash: hash
+                };
+            }
+        }
+
+        // Create reference
+        const reference = {
+            seasonHash: seasonData.seasonHash,
+            seasonName: seasonData.seasonName,
+            challengesNodeHash,
+            allChallenges: challengeHashes,
+            challengeCount: challengeHashes.length,
+            challengeDefinitions,
+            weeklyMap: weeklyData.weeklyMap,
+            hasWeeklyStructure: weeklyData.hasWeeklyStructure,
+            totalWeeks: Object.keys(weeklyData.weeklyMap).length,
+            highestWeekNumber: weeklyData.highestWeekNumber || Object.keys(weeklyData.weeklyMap).length,
+            persistentChallenges: weeklyData.persistentChallenges || [],
+            seasonStart: seasonData.seasonStart,
+            seasonEnd: seasonData.seasonEnd,
+            seasonActive: seasonData.seasonActive,
+            manifestVersion: manifest.version,
+            cacheVersion: 3,
+            builtAt: Date.now(),
+            validUntil: Date.now() + (7 * 24 * 60 * 60 * 1000),
+        };
+
+        return reference;
+    } catch (err) {
+        console.error(`[buildSeasonReference] Error:`, err);
+        throw err;
     }
 }
 
-// Update global challenge statistics with infrastructure tracking
-async function updateGlobalChallengeStats(userId, challengeStats, infrastructureStats = null) {
-    try {
-        const batch = getFirestore().batch();
+// Simplified weekly challenge map builder
+function buildWeeklyChallengeMap(challengesNodeHash, presDefs) {
+    const seasonNode = presDefs[challengesNodeHash];
+    if (!seasonNode || !seasonNode.children?.presentationNodes?.length) {
+        return { weeklyMap: {}, hasWeeklyStructure: false, persistentChallenges: [] };
+    }
 
-        // Main global stats document
-        const globalRef = getFirestore().doc('destiny/global');
-        const globalUpdate = {
-            'challenge_stats.totalRefreshCalls': FieldValue.increment(1),
-            'challenge_stats.lastRefreshAt': Date.now(),
-            'challenge_stats.updatedAt': Date.now()
+    const weeklyMap = {};
+    const persistentChallenges = [];
+    let weeklyStructureDetected = false;
+    let highestWeekNumber = 0;
+
+    const weeklyPatterns = [/week\s*(\d+)/i, /^\s*(\d+)\s*$/, /chapter\s*(\d+)/i];
+    const persistentPatterns = [/redacted/i, /special/i, /bonus/i, /hidden/i, /secret/i];
+
+    // Process all nodes
+    seasonNode.children.presentationNodes.forEach((nodeRef, idx) => {
+        const node = presDefs[nodeRef.presentationNodeHash];
+        if (!node) return;
+
+        const nodeName = node.displayProperties?.name || '';
+        const isPersistent = persistentPatterns.some(p => p.test(nodeName));
+
+        // Process direct records and sub-nodes
+        const processNode = (n, name, parentName = '') => {
+            if (n.children?.records?.length > 0) {
+                const recordHashes = n.children.records.map(r => String(r.recordHash));
+
+                let weekNumber = null;
+                for (const pattern of weeklyPatterns) {
+                    const match = name.match(pattern) || parentName.match(pattern);
+                    if (match && match[1]) {
+                        weekNumber = parseInt(match[1]);
+                        break;
+                    }
+                }
+
+                if (weekNumber && weekNumber > 0 && weekNumber <= 20) {
+                    const weekKey = `week_${weekNumber}`;
+                    if (weeklyMap[weekKey]) {
+                        weeklyMap[weekKey].challenges.push(...recordHashes);
+                        weeklyMap[weekKey].challengeCount = weeklyMap[weekKey].challenges.length;
+                    } else {
+                        weeklyMap[weekKey] = {
+                            challenges: recordHashes,
+                            nodeName: name,
+                            nodeHash: n.hash,
+                            challengeCount: recordHashes.length,
+                            weekNumber: weekNumber
+                        };
+                    }
+                    weeklyStructureDetected = true;
+                    highestWeekNumber = Math.max(highestWeekNumber, weekNumber);
+                } else if (isPersistent || idx >= 10) {
+                    persistentChallenges.push(...recordHashes);
+                }
+            }
         };
 
-        // Track infrastructure usage for challenge refreshes
-        if (infrastructureStats) {
-            globalUpdate['challenge_stats.totalFirestoreReads'] = FieldValue.increment(infrastructureStats.firestoreReads);
-            globalUpdate['challenge_stats.totalFirestoreWrites'] = FieldValue.increment(infrastructureStats.firestoreWrites);
-            globalUpdate['challenge_stats.totalExecutionTimeMs'] = FieldValue.increment(infrastructureStats.executionTimeMs);
-            globalUpdate['challenge_stats.totalInfrastructureCostUSD'] = FieldValue.increment(infrastructureStats.infrastructureCost);
-            globalUpdate['challenge_stats.totalFirestoreCostUSD'] = FieldValue.increment(infrastructureStats.firestoreCost);
-            globalUpdate['challenge_stats.totalComputeCostUSD'] = FieldValue.increment(infrastructureStats.computeCost);
+        processNode(node, nodeName);
+
+        // Process sub-nodes
+        if (node.children?.presentationNodes?.length > 0) {
+            node.children.presentationNodes.forEach(subRef => {
+                const subNode = presDefs[subRef.presentationNodeHash];
+                if (subNode) {
+                    processNode(subNode, subNode.displayProperties?.name || '', nodeName);
+                }
+            });
         }
+    });
 
-        // Only increment total challenges and completions if there were changes
-        if (challengeStats.updatedChallenges > 0) {
-            globalUpdate['challenge_stats.totalChallengesSeen'] = FieldValue.increment(challengeStats.totalChallenges);
-            globalUpdate['challenge_stats.totalChallengesCompleted'] = FieldValue.increment(challengeStats.completedChallenges);
+    // Fill missing weeks
+    if (weeklyStructureDetected) {
+        for (let week = 1; week <= highestWeekNumber; week++) {
+            const weekKey = `week_${week}`;
+            if (!weeklyMap[weekKey]) {
+                weeklyMap[weekKey] = {
+                    challenges: [],
+                    nodeName: `Week ${week} (Empty)`,
+                    nodeHash: null,
+                    challengeCount: 0,
+                    weekNumber: week
+                };
+            }
         }
+    }
 
-        batch.set(globalRef, globalUpdate, { merge: true });
+    return {
+        weeklyMap,
+        hasWeeklyStructure: weeklyStructureDetected,
+        persistentChallenges: [...new Set(persistentChallenges)],
+        highestWeekNumber
+    };
+}
 
-        // Track unique users who have connected with per-user challenge data
-        const userRef = getFirestore().doc(`destiny/global/connected_users/${userId}`);
-        const userUpdateData = {
-            lastRefresh: Date.now(),
-            totalRefreshes: FieldValue.increment(1)
+// Recursive challenge collection
+function collectAllRecordHashes(nodeHash, presDefs, visited = new Set()) {
+    if (!nodeHash || visited.has(nodeHash)) return [];
+    visited.add(nodeHash);
+
+    const node = presDefs[nodeHash];
+    if (!node) return [];
+
+    let hashes = [];
+
+    if (node.children?.records?.length) {
+        hashes.push(...node.children.records.map(rec => String(rec.recordHash)));
+    }
+
+    if (node.children?.presentationNodes?.length) {
+        for (const sub of node.children.presentationNodes) {
+            hashes.push(...collectAllRecordHashes(sub.presentationNodeHash, presDefs, visited));
+        }
+    }
+
+    return hashes;
+}
+
+// Check if challenge is active
+function isChallengeActive(challengeHash, seasonReference, currentWeek) {
+    // Persistent challenges are always active
+    if (seasonReference.persistentChallenges?.includes(challengeHash)) {
+        return true;
+    }
+
+    // No weekly structure = all active
+    if (!seasonReference.hasWeeklyStructure) {
+        return true;
+    }
+
+    // Find which week this challenge belongs to
+    for (let week = 1; week <= seasonReference.highestWeekNumber; week++) {
+        const weekKey = `week_${week}`;
+        const weekData = seasonReference.weeklyMap[weekKey];
+
+        if (weekData?.challenges?.includes(challengeHash)) {
+            return week <= currentWeek;
+        }
+    }
+
+    // Default to active if past all known weeks
+    return currentWeek > seasonReference.highestWeekNumber;
+}
+
+// Main function
+export const getChallenges = onRequest(
+    {
+        region: 'australia-southeast1',
+        secrets: [bungieApiKey],
+        memory: '512MiB',
+        timeoutSeconds: 120
+    },
+    async (req, res) => {
+        const startTime = Date.now();
+        const tracker = new InfrastructureTracker();
+        const db = getDb();
+        const cacheManager = new CacheManager(tracker);
+        const statsManager = new StatsManager(tracker);
+
+        const fail = (status, message, detail = {}) => {
+            console.error(`[getChallenges][FAIL] ${message}`, detail);
+            return res.status(status).json({ ok: false, error: message, ...detail });
         };
 
-        // Store current user's challenge count (not increment - this is their current total)
-        userUpdateData.currentTotalChallenges = challengeStats.totalChallenges;
-        userUpdateData.currentCompletedChallenges = challengeStats.completedChallenges;
+        try {
+            // 1. Authentication
+            const decoded = await verifyAuthToken(req.headers.authorization);
+            const userId = decoded.uid;
 
-        // Track infrastructure usage per user
-        if (infrastructureStats) {
-            userUpdateData.totalFirestoreReads = FieldValue.increment(infrastructureStats.firestoreReads);
-            userUpdateData.totalFirestoreWrites = FieldValue.increment(infrastructureStats.firestoreWrites);
-            userUpdateData.totalInfrastructureCostUSD = FieldValue.increment(infrastructureStats.infrastructureCost);
-        }
+            // 2. Get user Bungie meta
+            const metaDoc = await db.doc(`users/${userId}/destiny/meta`).get();
+            tracker.trackRead(1, 'user destiny meta');
 
-        // Only increment if there were updates this time
-        if (challengeStats.updatedChallenges > 0) {
-            userUpdateData.totalChallengeUpdates = FieldValue.increment(challengeStats.updatedChallenges);
-        }
-
-        batch.set(userRef, userUpdateData, { merge: true });
-
-        // Season-specific stats
-        if (challengeStats.seasonHash) {
-            const seasonStatsRef = getFirestore().doc(`destiny/global/season_stats/${challengeStats.seasonHash}`);
-            const seasonUpdateData = {
-                seasonHash: challengeStats.seasonHash,
-                seasonName: challengeStats.seasonName,
-                uniqueUsers: FieldValue.arrayUnion(userId),
-                lastUpdate: Date.now()
-            };
-
-            // Only update season totals if there were changes
-            if (challengeStats.updatedChallenges > 0) {
-                seasonUpdateData.totalChallengesSeen = FieldValue.increment(challengeStats.totalChallenges);
-                seasonUpdateData.totalChallengesCompleted = FieldValue.increment(challengeStats.completedChallenges);
+            if (!metaDoc.exists) {
+                return fail(404, "No Destiny account linked");
             }
 
-            batch.set(seasonStatsRef, seasonUpdateData, { merge: true });
-        }
+            const meta = metaDoc.data();
+            if (!meta.accessToken || !meta.platformType || !meta.bungieMembershipId) {
+                return fail(400, "Destiny account metadata is incomplete", { meta });
+            }
 
-        // Daily challenge tracking
-        const today = new Date().toISOString().split('T')[0];
-        const dailyRef = getFirestore().doc(`destiny/global/challenge_daily_stats/${today}`);
-        const dailyUpdateData = {
-            date: today,
-            refreshCalls: FieldValue.increment(1),
-            uniqueUsers: FieldValue.arrayUnion(userId),
-            updatedAt: Date.now()
-        };
+            if (meta.tokenExpires < Date.now()) {
+                return fail(401, "Access token expired. Please re-link your Bungie account.");
+            }
 
-        if (infrastructureStats) {
-            dailyUpdateData.totalFirestoreReads = FieldValue.increment(infrastructureStats.firestoreReads);
-            dailyUpdateData.totalFirestoreWrites = FieldValue.increment(infrastructureStats.firestoreWrites);
-            dailyUpdateData.totalInfrastructureCostUSD = FieldValue.increment(infrastructureStats.infrastructureCost);
-        }
+            // 3. Initialize Bungie API client
+            const bungieClient = new BungieApiClient(bungieApiKey.value(), tracker);
 
-        if (challengeStats.updatedChallenges > 0) {
-            dailyUpdateData.totalChallengesSeen = FieldValue.increment(challengeStats.totalChallenges);
-            dailyUpdateData.totalChallengesCompleted = FieldValue.increment(challengeStats.completedChallenges);
-            dailyUpdateData.challengesUpdated = FieldValue.increment(challengeStats.updatedChallenges);
-        }
+            // 4. Get current season (check cache first)
+            let currentSeason = await getActiveSeason(db, tracker);
+            if (!currentSeason) {
+                console.log("[getChallenges] No active season in Firestore, querying Bungie API...");
+                currentSeason = await bungieClient.getCurrentSeason();
 
-        batch.set(dailyRef, dailyUpdateData, { merge: true });
+                if (!currentSeason) {
+                    return fail(500, "Could not determine current season from Bungie API");
+                }
 
-        await batch.commit();
-        console.log(`[updateGlobalChallengeStats] Updated global challenge stats with infrastructure tracking`);
-    } catch (err) {
-        console.error(`[updateGlobalChallengeStats] Error:`, err);
-        // Don't throw - stats failure shouldn't break the main flow
-    }
-}
+                currentSeason = await saveActiveSeason(db, currentSeason, tracker);
+            }
 
-// Calculate completion rate and other stats with proper per-user calculations
-async function calculateAndUpdateGlobalStats() {
-    try {
-        const globalRef = getFirestore().doc('destiny/global');
-        const globalDoc = await globalRef.get();
+            console.log(`[getChallenges] Using season: ${currentSeason.seasonName} (${currentSeason.seasonHash})`);
 
-        if (globalDoc.exists) {
-            const data = globalDoc.data();
-            console.log(`[calculateAndUpdateGlobalStats] Raw data structure:`, JSON.stringify(data, null, 2));
+            // 5. Get or build season reference
+            let seasonReference = await cacheManager.getSeasonReference(currentSeason.seasonHash);
 
-            // Access flattened field names directly (Firestore stores them as top-level keys)
-            const totalSeen = data['challenge_stats.totalChallengesSeen'] || 0;
-            const totalCompleted = data['challenge_stats.totalChallengesCompleted'] || 0;
+            if (!seasonReference) {
+                console.log(`[getChallenges] Building new reference...`);
+                const challengesNodeHash = currentSeason.challengesNodeHash || req.body?.challengesNodeHash || "3971879360";
+                seasonReference = await buildSeasonReference(bungieClient, currentSeason, challengesNodeHash, tracker);
+                await cacheManager.saveSeasonReference(seasonReference);
+            }
 
-            console.log(`[calculateAndUpdateGlobalStats] Extracted values - Seen: ${totalSeen}, Completed: ${totalCompleted}`);
+            // 6. Calculate current week
+            const currentWeek = getCurrentWeek(seasonReference.seasonStart, seasonReference.highestWeekNumber);
+            console.log(`[getChallenges] Current week: ${currentWeek}`);
 
-            // Calculate completion rate
-            const completionRate = totalSeen > 0 ? (totalCompleted / totalSeen) * 100 : 0;
+            // 7. Fetch player records
+            const profileData = await bungieClient.getProfile(
+                meta.platformType,
+                meta.bungieMembershipId,
+                [900, 100], // Records components
+                meta.accessToken
+            );
 
-            // Count unique connected users
-            const connectedUsersSnapshot = await getFirestore().collection('destiny/global/connected_users').count().get();
-            const totalConnectedUsers = connectedUsersSnapshot.data().count;
+            let allRecords = profileData.Response?.profileRecords?.data?.records || {};
 
-            // Count unique AI users
-            const aiUsersSnapshot = await getFirestore().collection('destiny/global/ai_users').count().get();
-            const totalAIUsers = aiUsersSnapshot.data().count;
+            // Merge character records
+            const charRecords = profileData.Response?.characterRecords?.data || {};
+            for (const charId in charRecords) {
+                const recs = charRecords[charId].records || {};
+                Object.assign(allRecords, recs);
+            }
 
-            // Calculate REAL average challenges per user by getting actual user data
-            let avgChallengesPerUser = 0;
-            if (totalConnectedUsers > 0) {
-                try {
-                    const connectedUsersRef = getFirestore().collection('destiny/global/connected_users');
-                    const usersSnapshot = await connectedUsersRef.get();
+            console.log(`[getChallenges] Loaded ${Object.keys(allRecords).length} player records`);
 
-                    let totalUserChallenges = 0;
-                    let usersWithChallenges = 0;
+            // 8. Get existing challenges
+            const collRef = db.collection(`users/${userId}/destiny/challenges/seasonal_challenges`);
+            const existingDocs = await collRef.get();
+            tracker.trackRead(existingDocs.size, 'existing user challenges');
 
-                    usersSnapshot.forEach(doc => {
-                        const userData = doc.data();
-                        const userChallenges = userData.currentTotalChallenges || 0;
-                        if (userChallenges > 0) {
-                            totalUserChallenges += userChallenges;
-                            usersWithChallenges++;
-                        }
-                    });
+            const existingChallenges = {};
+            existingDocs.forEach(doc => {
+                existingChallenges[doc.id] = doc.data();
+            });
 
-                    avgChallengesPerUser = usersWithChallenges > 0 ? totalUserChallenges / usersWithChallenges : 0;
-                    console.log(`[calculateAndUpdateGlobalStats] Calculated real avg: ${totalUserChallenges} total challenges across ${usersWithChallenges} users = ${avgChallengesPerUser.toFixed(1)} avg`);
-                } catch (err) {
-                    console.error(`[calculateAndUpdateGlobalStats] Error calculating real avg:`, err);
-                    // Fallback to old method if detailed calculation fails
-                    avgChallengesPerUser = totalConnectedUsers > 0 ? totalSeen / totalConnectedUsers : 0;
+            // 9. Process challenges
+            const batch = new FirestoreBatch(db, tracker);
+            const challengeStats = {
+                totalChallenges: 0,
+                completedChallenges: 0,
+                activeChallenges: 0,
+                updatedChallenges: 0,
+                seasonHash: seasonReference.seasonHash,
+                seasonName: seasonReference.seasonName
+            };
+
+            let stats = {
+                totalProcessed: 0,
+                updated: 0,
+                unchanged: 0,
+                completed: 0,
+                active: 0,
+                persistent: 0
+            };
+
+            // Process all challenges
+            for (const hash of seasonReference.allChallenges) {
+                const record = allRecords[hash];
+                const definition = seasonReference.challengeDefinitions[hash];
+
+                if (!record || record.state === undefined || !definition) {
+                    continue;
+                }
+
+                stats.totalProcessed++;
+
+                // Check if active
+                const active = isChallengeActive(hash, seasonReference, currentWeek);
+                if (active) stats.active++;
+
+                // Check if persistent
+                if (seasonReference.persistentChallenges?.includes(hash)) {
+                    stats.persistent++;
+                }
+
+                // Build challenge data
+                const challengeData = {
+                    hash,
+                    seasonHash: seasonReference.seasonHash,
+                    seasonName: seasonReference.seasonName,
+                    name: definition.name,
+                    description: definition.description,
+                    completed: !!(record.state & 1),
+                    claimed: !!(record.state & 2),
+                    visible: !(record.state & 4),
+                    active,
+                    weekUnlocked: findChallengeWeek(hash, seasonReference.weeklyMap),
+                    parentNodeHash: seasonReference.challengesNodeHash,
+                    hasWeeklyStructure: seasonReference.hasWeeklyStructure,
+                    isPersistent: seasonReference.persistentChallenges?.includes(hash) || false,
+                    objectives: processObjectives(record.objectives),
+                    xp: extractXPTier(definition.rewardItems),
+                    updatedAt: Date.now()
+                };
+
+                // Update stats
+                challengeStats.totalChallenges++;
+                if (challengeData.completed) {
+                    challengeStats.completedChallenges++;
+                    stats.completed++;
+                }
+                if (challengeData.active) {
+                    challengeStats.activeChallenges++;
+                }
+
+                // Check if needs updating
+                const existing = existingChallenges[hash];
+                if (hasSignificantChanges(existing, challengeData)) {
+                    challengeData.createdAt = existing?.createdAt || Date.now();
+                    batch.set(collRef.doc(hash), challengeData, { merge: true });
+                    challengeStats.updatedChallenges++;
+                    stats.updated++;
+                } else {
+                    stats.unchanged++;
                 }
             }
 
-            console.log(`[calculateAndUpdateGlobalStats] Calculations - Seen: ${totalSeen}, Completed: ${totalCompleted}, Users: ${totalConnectedUsers}, Completion rate: ${completionRate.toFixed(2)}%, Avg per user: ${avgChallengesPerUser.toFixed(1)}`);
+            // 10. Commit batch
+            await batch.commit('challenge updates');
 
-            // Update calculated stats
-            await globalRef.update({
-                'calculated_stats.avgCompletionRate': completionRate,
-                'calculated_stats.totalConnectedUsers': totalConnectedUsers,
-                'calculated_stats.totalAIUsers': totalAIUsers,
-                'calculated_stats.avgChallengesPerUser': avgChallengesPerUser,
-                'calculated_stats.totalChallengesSeen': totalSeen, // Add this for clarity
-                'calculated_stats.lastCalculated': Date.now()
+            // 11. Calculate weekly info
+            const weeklyInfo = calculateWeeklyInfo(seasonReference, currentWeek);
+
+            // 12. Update stats
+            const infrastructureStats = tracker.calculateRealCosts();
+
+            await Promise.all([
+                statsManager.updateChallengeStats({
+                    userId,
+                    challengeStats,
+                    weeklyInfo,
+                    infrastructureStats
+                }),
+                statsManager.calculatePerformanceMetrics()
+            ]);
+
+            // 13. Track API performance
+            const endTime = Date.now();
+            await trackAPIPerformance(db, userId, startTime, endTime, true, null, tracker);
+
+            // Return response
+            return res.json({
+                ok: true,
+                updated: stats.updated,
+                unchanged: stats.unchanged,
+                season: {
+                    name: seasonReference.seasonName,
+                    hash: seasonReference.seasonHash,
+                    challengesNodeHash: seasonReference.challengesNodeHash,
+                    autoDetected: currentSeason.autoDetected || false
+                },
+                weeklyInfo: {
+                    ...weeklyInfo,
+                    currentWeekChallenges: weeklyInfo.currentWeekNewChallenges
+                },
+                referenceInfo: {
+                    hasWeeklyStructure: seasonReference.hasWeeklyStructure,
+                    totalWeeks: seasonReference.totalWeeks,
+                    highestWeekNumber: seasonReference.highestWeekNumber,
+                    persistentChallengesCount: seasonReference.persistentChallenges?.length || 0,
+                    builtAt: seasonReference.builtAt,
+                    validUntil: seasonReference.validUntil,
+                    cacheVersion: seasonReference.cacheVersion
+                },
+                globalStats: challengeStats,
+                infrastructureStats,
+                performance: {
+                    duration: endTime - startTime
+                }
             });
 
-            console.log(`[calculateAndUpdateGlobalStats] Successfully updated calculated stats`);
+        } catch (err) {
+            const endTime = Date.now();
+            await trackAPIPerformance(db, userId, startTime, endTime, false, err.message, tracker);
+            return fail(500, "Error processing challenges", { errorDetail: err.message });
         }
+    }
+);
+
+// Helper functions
+async function getActiveSeason(db, tracker) {
+    try {
+        const seasonsRef = db.collection('destiny/global/seasons');
+        const activeSeasonQuery = await seasonsRef.where('seasonActive', '==', true).limit(1).get();
+        tracker.trackRead(1, 'active season query');
+
+        if (!activeSeasonQuery.empty) {
+            const seasonDoc = activeSeasonQuery.docs[0];
+            return {
+                id: seasonDoc.id,
+                ...seasonDoc.data()
+            };
+        }
+        return null;
     } catch (err) {
-        console.error(`[calculateAndUpdateGlobalStats] Error:`, err);
+        console.error('[getActiveSeason] Error:', err);
+        return null;
     }
 }
 
-// Track API performance metrics
-async function trackAPIPerformance(userId, startTime, endTime, success, errorType = null) {
+async function saveActiveSeason(db, seasonData, tracker) {
+    try {
+        const batch = db.batch();
+
+        // Deactivate existing seasons
+        const existingSeasons = await db.collection('destiny/global/seasons')
+            .where('seasonActive', '==', true).get();
+        tracker.trackRead(existingSeasons.size, 'existing active seasons');
+
+        existingSeasons.forEach(doc => {
+            batch.update(doc.ref, { seasonActive: false, deactivatedAt: Date.now() });
+        });
+
+        // Add new season
+        const newSeasonRef = db.collection('destiny/global/seasons').doc(seasonData.seasonHash);
+        batch.set(newSeasonRef, seasonData, { merge: true });
+
+        await batch.commit();
+        tracker.trackBatchWrite(existingSeasons.size + 1, 'season activation');
+
+        return seasonData;
+    } catch (err) {
+        console.error('[saveActiveSeason] Error:', err);
+        throw err;
+    }
+}
+
+function findChallengeWeek(challengeHash, weeklyMap) {
+    for (const [weekKey, weekData] of Object.entries(weeklyMap)) {
+        if (weekData.challenges?.includes(challengeHash)) {
+            return parseInt(weekKey.replace('week_', ''));
+        }
+    }
+    return null;
+}
+
+function processObjectives(recordObjectives) {
+    if (!recordObjectives || typeof recordObjectives !== 'object') {
+        return [];
+    }
+
+    const objArray = Array.isArray(recordObjectives) ? recordObjectives : Object.values(recordObjectives);
+
+    return objArray.map(obj => ({
+        objectiveHash: obj?.objectiveHash || 0,
+        description: obj?.description || '',
+        progress: obj?.progress || 0,
+        completionValue: obj?.completionValue || 1,
+        complete: obj?.complete || false,
+    }));
+}
+
+function extractXPTier(rewardItems) {
+    if (!rewardItems?.length) return null;
+
+    for (const r of rewardItems) {
+        const desc = r.rewardedLabel || r.displayProperties?.name || '';
+        const match = desc.match(/XP(\+{1,5})/);
+        if (match) {
+            const tier = match[1].length;
+            return ['Large', 'XL', 'XXL', '4XL', '8XL'][tier - 1] || 'Unknown';
+        }
+    }
+    return null;
+}
+
+function hasSignificantChanges(existing, newData) {
+    if (!existing) return true;
+
+    const significantFields = ['completed', 'claimed', 'visible', 'active', 'seasonHash', 'name', 'description'];
+
+    for (const field of significantFields) {
+        if (existing[field] !== newData[field]) {
+            return true;
+        }
+    }
+
+    // Check objectives
+    if (!existing.objectives || !newData.objectives) {
+        return existing.objectives !== newData.objectives;
+    }
+
+    if (existing.objectives.length !== newData.objectives.length) {
+        return true;
+    }
+
+    for (let i = 0; i < existing.objectives.length; i++) {
+        if (existing.objectives[i].progress !== newData.objectives[i].progress ||
+            existing.objectives[i].complete !== newData.objectives[i].complete) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function calculateWeeklyInfo(seasonReference, currentWeek) {
+    const availableChallenges = new Set();
+    const availableByWeek = {};
+    let currentWeekNewChallenges = 0;
+
+    // Add persistent challenges
+    if (seasonReference.persistentChallenges?.length > 0) {
+        seasonReference.persistentChallenges.forEach(hash => availableChallenges.add(hash));
+    }
+
+    if (seasonReference.hasWeeklyStructure) {
+        // Add challenges up to current week
+        for (let week = 1; week <= currentWeek; week++) {
+            const weekKey = `week_${week}`;
+            const weekData = seasonReference.weeklyMap[weekKey];
+
+            if (weekData?.challenges?.length > 0) {
+                availableByWeek[weekKey] = {
+                    ...weekData,
+                    isCurrentWeek: week === currentWeek,
+                    isAvailable: true
+                };
+
+                weekData.challenges.forEach(hash => availableChallenges.add(hash));
+
+                if (week === currentWeek) {
+                    currentWeekNewChallenges = weekData.challenges.length;
+                }
+            }
+        }
+
+        // Add future weeks as unavailable
+        const maxWeek = seasonReference.highestWeekNumber || seasonReference.totalWeeks;
+        for (let week = currentWeek + 1; week <= maxWeek; week++) {
+            const weekKey = `week_${week}`;
+            const weekData = seasonReference.weeklyMap[weekKey];
+
+            if (weekData) {
+                availableByWeek[weekKey] = {
+                    ...weekData,
+                    isCurrentWeek: false,
+                    isAvailable: false
+                };
+            }
+        }
+    } else {
+        // No weekly structure - all available
+        seasonReference.allChallenges.forEach(hash => availableChallenges.add(hash));
+    }
+
+    return {
+        currentWeek,
+        hasWeeklyStructure: seasonReference.hasWeeklyStructure,
+        totalWeeks: seasonReference.highestWeekNumber || seasonReference.totalWeeks,
+        availableChallenges: availableChallenges.size,
+        currentWeekNewChallenges,
+        totalPersistentChallenges: seasonReference.persistentChallenges?.length || 0,
+        availableByWeek
+    };
+}
+
+async function trackAPIPerformance(db, userId, startTime, endTime, success, errorType, tracker) {
     try {
         const duration = endTime - startTime;
         const today = new Date().toISOString().split('T')[0];
-
-        const perfRef = getFirestore().doc(`destiny/global/api_performance/${today}`);
+        const perfRef = db.doc(`destiny/global/api_performance/${today}`);
 
         const updateData = {
             date: today,
@@ -265,803 +678,8 @@ async function trackAPIPerformance(userId, startTime, endTime, success, errorTyp
         }
 
         await perfRef.set(updateData, { merge: true });
+        tracker.trackWrite(1, 'api performance tracking');
     } catch (err) {
-        console.error(`[trackAPIPerformance] Error:`, err);
+        console.error('[trackAPIPerformance] Error:', err);
     }
 }
-
-// --- Lightweight Season Metadata Caching Only ---
-
-// Get cached season metadata (including challenge hashes and basic challenge info)
-async function getCachedSeasonMeta(seasonHash, manifestVersion) {
-    try {
-        const metaRef = getFirestore().doc(`destiny/global/seasons/${seasonHash}`);
-        const metaDoc = await metaRef.get();
-
-        if (!metaDoc.exists) {
-            console.log(`[getCachedSeasonMeta] No cached metadata found for season ${seasonHash}`);
-            return null;
-        }
-
-        const metadata = metaDoc.data();
-
-        // Check if metadata is recent enough (refresh every 24 hours)
-        const age = Date.now() - metadata.cachedAt;
-        const maxAge = 24 * 60 * 60 * 1000; // 24 hours
-
-        if (age > maxAge) {
-            console.log(`[getCachedSeasonMeta] Season metadata too old (${Math.round(age / (60 * 60 * 1000))} hours)`);
-            return null;
-        }
-
-        console.log(`[getCachedSeasonMeta] Using cached season metadata for ${seasonHash}`);
-        return metadata;
-
-    } catch (err) {
-        console.error(`[getCachedSeasonMeta] Error:`, err);
-        return null;
-    }
-}
-
-// Cache just the essential season metadata (lightweight)
-async function cacheSeasonMeta(seasonHash, seasonData, challengeHashes, challengesNodeHash, challengeDefinitions) {
-    try {
-        const metaRef = getFirestore().doc(`destiny/global/seasons/${seasonHash}`);
-
-        const metadata = {
-            seasonHash,
-            seasonName: seasonData.seasonName,
-            challengesNodeHash,
-            challengeHashes,
-            challengeCount: challengeHashes.length,
-            challengeDefinitions: challengeDefinitions || {},
-            cachedAt: Date.now(),
-            seasonStart: seasonData.seasonStart,
-            seasonEnd: seasonData.seasonEnd,
-            autoDetected: seasonData.autoDetected || false,
-            seasonActive: seasonData.seasonActive || false
-        };
-
-        await metaRef.set(metadata, { merge: true });
-        console.log(`[cacheSeasonMeta] Cached metadata for season ${seasonData.seasonName} with ${challengeHashes.length} challenges`);
-
-    } catch (err) {
-        console.error(`[cacheSeasonMeta] Error:`, err);
-    }
-}
-
-// --- Helper Functions ---
-
-// Check Firestore for currently active season
-async function getActiveSeason() {
-    try {
-        const seasonsRef = getFirestore().collection('destiny/global/seasons');
-        const activeSeasonQuery = await seasonsRef.where('seasonActive', '==', true).limit(1).get();
-
-        if (!activeSeasonQuery.empty) {
-            const seasonDoc = activeSeasonQuery.docs[0];
-            console.log(`[getActiveSeason] Found active season: ${seasonDoc.data().seasonName}`);
-            return {
-                id: seasonDoc.id,
-                ...seasonDoc.data()
-            };
-        }
-
-        console.log(`[getActiveSeason] No active season found in Firestore`);
-        return null;
-    } catch (err) {
-        console.error(`[getActiveSeason] Error:`, err);
-        return null;
-    }
-}
-
-// Get current season from Bungie API
-async function getCurrentSeasonFromAPI() {
-    try {
-        // Get the manifest first to find season definitions
-        const manifestRes = await fetch("https://www.bungie.net/Platform/Destiny2/Manifest/", {
-            headers: { "X-API-Key": bungieApiKey.value() }
-        });
-
-        if (!manifestRes.ok) {
-            throw new Error(`Manifest fetch failed: ${manifestRes.status}`);
-        }
-
-        const manifest = await manifestRes.json();
-        const seasonPath = manifest.Response.jsonWorldComponentContentPaths.en.DestinySeasonDefinition;
-        const presPath = manifest.Response.jsonWorldComponentContentPaths.en.DestinyPresentationNodeDefinition;
-
-        // Get season definitions
-        const seasonDefRes = await fetch(`https://www.bungie.net${seasonPath}`, {
-            headers: { "X-API-Key": bungieApiKey.value() }
-        });
-
-        if (!seasonDefRes.ok) {
-            throw new Error(`Season definitions fetch failed: ${seasonDefRes.status}`);
-        }
-
-        const seasonDefs = await seasonDefRes.json();
-
-        // Get presentation node definitions to find seasonal challenge nodes
-        const presDefRes = await fetch(`https://www.bungie.net${presPath}`, {
-            headers: { "X-API-Key": bungieApiKey.value() }
-        });
-
-        if (!presDefRes.ok) {
-            throw new Error(`Presentation definitions fetch failed: ${presDefRes.status}`);
-        }
-
-        const presDefs = await presDefRes.json();
-
-        // Find the current active season
-        const currentDate = new Date();
-        let currentSeason = null;
-
-        for (const [hash, season] of Object.entries(seasonDefs)) {
-            if (!season.displayProperties?.name) continue;
-
-            const startDate = new Date(season.startDate);
-            const endDate = new Date(season.endDate);
-
-            // Check if current date falls within season dates
-            if (currentDate >= startDate && currentDate <= endDate) {
-                // Find the seasonal challenges presentation node for this season
-                let seasonalChallengesHash = null;
-
-                // Look for presentation nodes that might be seasonal challenges
-                for (const [nodeHash, node] of Object.entries(presDefs)) {
-                    if (node.displayProperties?.name?.toLowerCase().includes('seasonal challenges') ||
-                        (node.displayProperties?.name?.toLowerCase().includes('challenges') &&
-                            node.displayProperties?.description?.toLowerCase().includes('seasonal'))) {
-
-                        // Additional checks to ensure this belongs to current season
-                        if (node.children?.records?.length > 0) {
-                            seasonalChallengesHash = nodeHash;
-                            break;
-                        }
-                    }
-                }
-
-                currentSeason = {
-                    seasonHash: hash,
-                    seasonName: season.displayProperties.name,
-                    seasonStart: season.startDate,
-                    seasonEnd: season.endDate,
-                    seasonActive: true,
-                    challengesNodeHash: seasonalChallengesHash,
-                    autoDetected: true,
-                    createdAt: Date.now()
-                };
-
-                console.log(`[getCurrentSeasonFromAPI] Found current season: ${currentSeason.seasonName}`);
-                break;
-            }
-        }
-
-        if (!currentSeason) {
-            // Fallback: find the most recent season if no current active season
-            const sortedSeasons = Object.entries(seasonDefs)
-                .filter(([hash, season]) => season.displayProperties?.name)
-                .sort(([, a], [, b]) => new Date(b.startDate) - new Date(a.startDate));
-
-            if (sortedSeasons.length > 0) {
-                const [hash, season] = sortedSeasons[0];
-                currentSeason = {
-                    seasonHash: hash,
-                    seasonName: season.displayProperties.name,
-                    seasonStart: season.startDate,
-                    seasonEnd: season.endDate,
-                    seasonActive: true,
-                    challengesNodeHash: seasonalChallengesHash,
-                    autoDetected: true,
-                    createdAt: Date.now()
-                };
-
-                console.log(`[getCurrentSeasonFromAPI] Using latest season as fallback: ${currentSeason.seasonName}`);
-            }
-        }
-
-        return currentSeason;
-
-    } catch (err) {
-        console.error(`[getCurrentSeasonFromAPI] Error:`, err);
-        throw err;
-    }
-}
-
-// Save season to Firestore and deactivate others
-async function saveActiveSeason(seasonData) {
-    try {
-        const seasonsRef = getFirestore().collection('destiny/global/seasons');
-        const batch = getFirestore().batch();
-
-        // First, deactivate all existing seasons
-        const existingSeasons = await seasonsRef.where('seasonActive', '==', true).get();
-        existingSeasons.forEach(doc => {
-            batch.update(doc.ref, { seasonActive: false, deactivatedAt: Date.now() });
-        });
-
-        // Add the new active season with merge to create if doesn't exist
-        const newSeasonRef = seasonsRef.doc(seasonData.seasonHash);
-        batch.set(newSeasonRef, seasonData, { merge: true });
-
-        await batch.commit();
-
-        console.log(`[saveActiveSeason] Saved active season: ${seasonData.seasonName}`);
-        return seasonData;
-
-    } catch (err) {
-        console.error(`[saveActiveSeason] Error:`, err);
-        throw err;
-    }
-}
-
-// Recursive node traversal
-function collectAllRecordHashes(nodeHash, presDefs, nodeLogs = [], depth = 0, visited = new Set()) {
-    if (!nodeHash || visited.has(nodeHash)) return [];
-    visited.add(nodeHash);
-    const node = presDefs[nodeHash];
-    if (!node) {
-        nodeLogs.push(`[${' '.repeat(depth)}] MISSING NODE: ${nodeHash}`);
-        return [];
-    }
-    let hashes = [];
-    if (node.children?.records?.length) {
-        nodeLogs.push(`[${' '.repeat(depth)}] Found ${node.children.records.length} records at ${node.displayProperties?.name || nodeHash}`);
-        hashes.push(...node.children.records.map(rec => String(rec.recordHash)));
-    }
-    if (node.children?.presentationNodes?.length) {
-        for (const sub of node.children.presentationNodes) {
-            const subNode = presDefs[sub.presentationNodeHash];
-            nodeLogs.push(`[${' '.repeat(depth)}] ${node.displayProperties?.name || nodeHash} → ${subNode?.displayProperties?.name || sub.presentationNodeHash}`);
-            hashes.push(...collectAllRecordHashes(sub.presentationNodeHash, presDefs, nodeLogs, depth + 1, visited));
-        }
-    }
-    return hashes;
-}
-
-// Compare challenge data to detect changes
-function hasChanges(existing, newData) {
-    if (!existing) return true;
-
-    // Check basic properties
-    if (existing.completed !== newData.completed ||
-        existing.claimed !== newData.claimed ||
-        existing.visible !== newData.visible ||
-        existing.seasonHash !== newData.seasonHash) {
-        return true;
-    }
-
-    // Check objectives progress
-    if (!existing.objectives || !newData.objectives) {
-        return existing.objectives !== newData.objectives;
-    }
-
-    if (existing.objectives.length !== newData.objectives.length) {
-        return true;
-    }
-
-    for (let i = 0; i < existing.objectives.length; i++) {
-        const existingObj = existing.objectives[i];
-        const newObj = newData.objectives[i];
-
-        if (existingObj.progress !== newObj.progress ||
-            existingObj.complete !== newObj.complete ||
-            existingObj.objectiveHash !== newObj.objectiveHash) {
-            return true;
-        }
-    }
-
-    return false;
-}
-
-// Helper function to generate a summary of what changed
-function getChangeSummary(existing, newData) {
-    const changes = [];
-
-    if (!existing) {
-        changes.push("New challenge");
-        return changes;
-    }
-
-    if (existing.completed !== newData.completed) {
-        changes.push(`Completion: ${existing.completed} → ${newData.completed}`);
-    }
-
-    if (existing.claimed !== newData.claimed) {
-        changes.push(`Claimed: ${existing.claimed} → ${newData.claimed}`);
-    }
-
-    if (existing.visible !== newData.visible) {
-        changes.push(`Visibility: ${existing.visible} → ${newData.visible}`);
-    }
-
-    if (existing.seasonHash !== newData.seasonHash) {
-        changes.push(`Season: ${existing.seasonHash} → ${newData.seasonHash}`);
-    }
-
-    // Check for objective progress changes
-    if (existing.objectives && newData.objectives) {
-        for (let i = 0; i < Math.min(existing.objectives.length, newData.objectives.length); i++) {
-            const oldObj = existing.objectives[i];
-            const newObj = newData.objectives[i];
-
-            if (oldObj.progress !== newObj.progress) {
-                changes.push(`Objective ${i + 1} progress: ${oldObj.progress} → ${newObj.progress}`);
-            }
-
-            if (oldObj.complete !== newObj.complete) {
-                changes.push(`Objective ${i + 1} complete: ${oldObj.complete} → ${newObj.complete}`);
-            }
-        }
-    }
-
-    return changes;
-}
-
-// --- Main Function ---
-export const getChallenges = onRequest(
-    {
-        region: 'australia-southeast1',
-        secrets: [bungieApiKey],
-        memory: '512MiB', // Increase memory limit
-        timeoutSeconds: 120 // Increase timeout
-    },
-    async (req, res) => {
-        const startTime = Date.now();
-        let success = false;
-        let errorType = null;
-
-        const fail = (status, message, detail = {}) => {
-            console.error(`[getChallenges][FAIL] ${message}`, detail);
-            errorType = message.split(' ')[0].toLowerCase(); // Extract error type
-            return res.status(status).json({ ok: false, error: message, ...detail });
-        };
-
-        // --- 1. Auth ---
-        let userId;
-        try {
-            const authHeader = req.headers.authorization || '';
-            const match = authHeader.match(/^Bearer (.+)$/);
-            if (!match) return fail(401, 'No Authorization header');
-            const idToken = match[1];
-            const { getAuth } = await import('firebase-admin/auth');
-            const decoded = await getAuth().verifyIdToken(idToken);
-            userId = decoded.uid;
-        } catch (err) {
-            return fail(401, "Invalid Firebase token", { errorDetail: err?.message });
-        }
-
-        // --- 2. Get User Bungie Meta ---
-        let meta;
-        try {
-            const metaDoc = await getFirestore().doc(`users/${userId}/destiny/meta`).get();
-            if (!metaDoc.exists) return fail(404, "No Destiny account linked");
-            meta = metaDoc.data();
-            if (!meta.accessToken || !meta.platformType || !meta.bungieMembershipId)
-                return fail(400, "Destiny account metadata is incomplete", { meta });
-            if (meta.tokenExpires < Date.now())
-                return fail(401, "Access token expired. Please re-link your Bungie account.");
-        } catch (err) {
-            return fail(500, "Firestore error fetching Destiny meta", { errorDetail: err?.message });
-        }
-
-        // --- 3. Determine Current Season ---
-        let currentSeason;
-        try {
-            // First check Firestore for active season
-            currentSeason = await getActiveSeason();
-
-            if (!currentSeason) {
-                console.log("[getChallenges] No active season in Firestore, querying Bungie API...");
-
-                // Get current season from Bungie API
-                const apiSeason = await getCurrentSeasonFromAPI();
-
-                if (!apiSeason) {
-                    return fail(500, "Could not determine current season from Bungie API");
-                }
-
-                // Save the new season to Firestore
-                currentSeason = await saveActiveSeason(apiSeason);
-            }
-
-            console.log(`[getChallenges] Using season: ${currentSeason.seasonName} (${currentSeason.seasonHash})`);
-
-        } catch (err) {
-            return fail(500, "Error determining current season", { errorDetail: err?.message });
-        }
-
-        // --- 4. Get Challenge Data (with lightweight caching) ---
-        let challengeHashes;
-        let challengesNodeHash;
-        let cachedDefinitions = {};
-
-        try {
-            // Try to get cached season metadata first
-            const cachedMeta = await getCachedSeasonMeta(currentSeason.seasonHash, 'current');
-
-            if (cachedMeta && cachedMeta.challengeHashes?.length > 0) {
-                console.log(`[getChallenges] Using cached challenge data (${cachedMeta.challengeHashes.length} challenges)`);
-                challengeHashes = cachedMeta.challengeHashes;
-                challengesNodeHash = cachedMeta.challengesNodeHash;
-                cachedDefinitions = cachedMeta.challengeDefinitions || {};
-            } else {
-                console.log(`[getChallenges] Cache miss, fetching fresh challenge data...`);
-
-                // Get current manifest version
-                const manifestRes = await fetch("https://www.bungie.net/Platform/Destiny2/Manifest/", {
-                    headers: { "X-API-Key": bungieApiKey.value() }
-                });
-
-                if (!manifestRes.ok) {
-                    throw new Error(`Manifest fetch failed: ${manifestRes.status}`);
-                }
-
-                const manifest = await manifestRes.json();
-                const presPath = manifest.Response.jsonWorldComponentContentPaths.en.DestinyPresentationNodeDefinition;
-
-                // Download ONLY presentation node definitions (much smaller)
-                const presDefRes = await fetch(`https://www.bungie.net${presPath}`, {
-                    headers: { "X-API-Key": bungieApiKey.value() }
-                });
-
-                if (!presDefRes.ok) {
-                    throw new Error(`Presentation definitions fetch failed: ${presDefRes.status}`);
-                }
-
-                const presDefs = await presDefRes.json();
-
-                // Determine the challenges node hash to use
-                challengesNodeHash = currentSeason.challengesNodeHash || req.body?.challengesNodeHash || "3971879360";
-
-                const parentNode = presDefs[challengesNodeHash];
-                if (!parentNode) {
-                    return fail(500, "Parent presentation node not found in manifest", { challengesNodeHash });
-                }
-
-                // Traverse nodes to find challenge hashes
-                let nodeLogs = [];
-                challengeHashes = collectAllRecordHashes(challengesNodeHash, presDefs, nodeLogs, 0, new Set());
-
-                if (!challengeHashes.length) {
-                    return fail(500, "No child challenge hashes found after traversal", { parentNode, nodeLogs });
-                }
-
-                console.log("[getChallenges] Node traversal logs:\n", nodeLogs.join('\n'));
-
-                // Cache the season metadata for next time (without heavy definitions initially)
-                cacheSeasonMeta(
-                    currentSeason.seasonHash,
-                    currentSeason,
-                    challengeHashes,
-                    challengesNodeHash,
-                    {} // Start with empty definitions, we'll populate as we go
-                ).catch(err => {
-                    console.error("Failed to cache season metadata:", err);
-                });
-            }
-
-        } catch (err) {
-            return fail(500, "Error collecting challenge data", { errorDetail: err?.message });
-        }
-
-        // --- 5. Fetch Player Records ---
-        let allRecords;
-        try {
-            const url = `https://www.bungie.net/Platform/Destiny2/${meta.platformType}/Profile/${meta.bungieMembershipId}/?components=900,100`;
-            const bungieRes = await fetch(url, {
-                headers: { "Authorization": `Bearer ${meta.accessToken}`, "X-API-Key": bungieApiKey.value() }
-            });
-            if (!bungieRes.ok) {
-                const text = await bungieRes.text();
-                return fail(bungieRes.status, "Bungie API /Profile fetch failed", { response: text });
-            }
-            const bungieJson = await bungieRes.json();
-            allRecords = bungieJson?.Response?.profileRecords?.data?.records || {};
-            const charRecords = bungieJson?.Response?.characterRecords?.data || {};
-            for (const charId in charRecords) {
-                const recs = charRecords[charId].records || {};
-                for (const [hash, value] of Object.entries(recs)) {
-                    if (!allRecords[hash]) {
-                        allRecords[hash] = value;
-                    }
-                }
-            }
-            console.log(`[getChallenges] Loaded ${Object.keys(allRecords).length} player records`);
-        } catch (err) {
-            return fail(500, "Error fetching Destiny2 profile records", { errorDetail: err?.message });
-        }
-
-        // --- 6. Fetch Existing Challenges ---
-        let existingChallenges = {};
-        try {
-            const collRef = getFirestore().collection(`users/${userId}/destiny/challenges/seasonal_challenges`);
-            const existingDocs = await collRef.get();
-            existingDocs.forEach(doc => {
-                existingChallenges[doc.id] = doc.data();
-            });
-            console.log(`[getChallenges] Found ${existingDocs.size} existing challenges`);
-        } catch (err) {
-            return fail(500, "Error fetching existing challenges", { errorDetail: err?.message });
-        }
-
-        // --- 7. Build Challenge Data (fetch definitions only as needed) ---
-        let challengeDocs = [];
-        let updatedChallenges = [];
-        let unchangedChallenges = [];
-        let errorHashes = [];
-        let newDefinitions = {};
-        let challengeStats = {
-            totalChallenges: 0,
-            completedChallenges: 0,
-            updatedChallenges: 0,
-            seasonHash: currentSeason.seasonHash,
-            seasonName: currentSeason.seasonName
-        };
-
-        // Get manifest info for on-demand definition fetching
-        let manifestInfo = null;
-        const hashesNeedingDefinitions = challengeHashes.filter(hash => !cachedDefinitions[hash]);
-
-        if (hashesNeedingDefinitions.length > 0) {
-            console.log(`[getChallenges] Need to fetch definitions for ${hashesNeedingDefinitions.length} challenges`);
-
-            try {
-                const manifestRes = await fetch("https://www.bungie.net/Platform/Destiny2/Manifest/", {
-                    headers: { "X-API-Key": bungieApiKey.value() }
-                });
-
-                if (manifestRes.ok) {
-                    const manifest = await manifestRes.json();
-                    manifestInfo = {
-                        recordPath: manifest.Response.jsonWorldComponentContentPaths.en.DestinyRecordDefinition,
-                        objectivePath: manifest.Response.jsonWorldComponentContentPaths.en.DestinyObjectiveDefinition
-                    };
-                }
-            } catch (err) {
-                console.error("Failed to get manifest info for definitions:", err);
-            }
-        }
-
-        // Fetch definitions if needed (but only once)
-        let recordsDef = {};
-        let objectiveDefs = {};
-
-        if (manifestInfo && hashesNeedingDefinitions.length > 0) {
-            try {
-                console.log("[getChallenges] Fetching record and objective definitions...");
-
-                const [recordsDefRes, objDefRes] = await Promise.all([
-                    fetch(`https://www.bungie.net${manifestInfo.recordPath}`, {
-                        headers: { "X-API-Key": bungieApiKey.value() }
-                    }),
-                    fetch(`https://www.bungie.net${manifestInfo.objectivePath}`, {
-                        headers: { "X-API-Key": bungieApiKey.value() }
-                    })
-                ]);
-
-                if (recordsDefRes.ok && objDefRes.ok) {
-                    recordsDef = await recordsDefRes.json();
-                    objectiveDefs = await objDefRes.json();
-                    console.log("[getChallenges] Successfully loaded definitions");
-                }
-            } catch (err) {
-                console.error("Failed to fetch definitions:", err);
-                // Continue without definitions - we'll use cached data where possible
-            }
-        }
-
-        for (const hash of challengeHashes) {
-            try {
-                const record = allRecords[hash];
-                if (!record) {
-                    console.log(`[DEBUG] No record found for hash ${hash}`);
-                    continue;
-                }
-                if (record.state === undefined) continue;
-
-                // Try to get definition from cache first, then from fresh download
-                let def = cachedDefinitions[hash];
-                if (!def && recordsDef[hash]) {
-                    def = recordsDef[hash];
-                    newDefinitions[hash] = def; // Cache for next time
-                }
-
-                if (!def) {
-                    errorHashes.push(hash + ": No definition found");
-                    continue;
-                }
-
-                // Parse objectives and progress
-                let objectives = [];
-                const recObjectives = record.objectives;
-                if (recObjectives && typeof recObjectives === 'object') {
-                    if (Array.isArray(recObjectives)) {
-                        for (const obj of recObjectives) {
-                            const objDef = objectiveDefs[obj.objectiveHash] || {};
-                            objectives.push({
-                                objectiveHash: obj.objectiveHash || 0,
-                                description: objDef.progressDescription || objDef.displayProperties?.description || '',
-                                progress: obj.progress || 0,
-                                completionValue: objDef.completionValue || obj.completionValue || 1,
-                                complete: obj.complete || false,
-                            });
-                        }
-                    } else {
-                        for (const [objectiveHash, obj] of Object.entries(recObjectives)) {
-                            const objDef = objectiveDefs[objectiveHash] || {};
-                            objectives.push({
-                                objectiveHash: objectiveHash || 0,
-                                description: objDef.progressDescription || objDef.displayProperties?.description || '',
-                                progress: obj.progress || 0,
-                                completionValue: objDef.completionValue || obj.completionValue || 1,
-                                complete: obj.complete || false,
-                            });
-                        }
-                    }
-                }
-
-                // XP reward parsing
-                let xp = null, xpTier = null;
-                const rewardItems = def.rewardItems || [];
-                for (const r of rewardItems) {
-                    const desc = r.rewardedLabel || r.displayProperties?.name || '';
-                    const match = desc.match(/XP(\+{1,5})/);
-                    if (match) {
-                        xpTier = match[1].length;
-                        xp = ['Large', 'XL', 'XXL', '4XL', '8XL'][xpTier - 1] || 'Unknown';
-                        break;
-                    }
-                }
-                if (!xp && def.displayProperties?.description) {
-                    const match = def.displayProperties.description.match(/XP(\+{1,5})/);
-                    if (match) {
-                        xpTier = match[1].length;
-                        xp = ['Large', 'XL', 'XXL', '4XL', '8XL'][xpTier - 1] || 'Unknown';
-                    }
-                }
-
-                const newChallengeData = {
-                    hash,
-                    seasonHash: currentSeason.seasonHash,
-                    seasonName: currentSeason.seasonName,
-                    name: def.displayProperties?.name || '',
-                    description: def.displayProperties?.description || '',
-                    xp,
-                    xpTier,
-                    completed: !!(record.state & 1),
-                    claimed: !!(record.state & 2),
-                    visible: !(record.state & 4),
-                    objectives,
-                    updatedAt: Date.now()
-                };
-
-                // Update stats
-                challengeStats.totalChallenges++;
-                if (newChallengeData.completed) {
-                    challengeStats.completedChallenges++;
-                }
-
-                // Check if this challenge needs updating
-                const existingChallenge = existingChallenges[hash];
-                if (hasChanges(existingChallenge, newChallengeData)) {
-                    // Preserve original creation date if it exists
-                    if (existingChallenge?.createdAt) {
-                        newChallengeData.createdAt = existingChallenge.createdAt;
-                    } else {
-                        newChallengeData.createdAt = Date.now();
-                    }
-
-                    challengeDocs.push(newChallengeData);
-                    challengeStats.updatedChallenges++;
-                    updatedChallenges.push({
-                        hash,
-                        name: newChallengeData.name,
-                        changes: getChangeSummary(existingChallenge, newChallengeData)
-                    });
-                } else {
-                    unchangedChallenges.push(hash);
-                }
-
-            } catch (err) {
-                errorHashes.push(hash + ": " + (err?.message || err));
-            }
-        }
-
-        // --- 8. Update cached definitions if we fetched new ones ---
-        if (Object.keys(newDefinitions).length > 0) {
-            console.log(`[getChallenges] Updating cached definitions with ${Object.keys(newDefinitions).length} new entries`);
-            cacheSeasonMeta(
-                currentSeason.seasonHash,
-                currentSeason,
-                challengeHashes,
-                challengesNodeHash,
-                { ...cachedDefinitions, ...newDefinitions }
-            ).catch(err => {
-                console.error("Failed to update cached definitions:", err);
-            });
-        }
-
-        // --- 9. Update Global Stats ---
-        await updateGlobalChallengeStats(userId, challengeStats);
-
-        // Calculate global stats more frequently (every 3rd call instead of 10%)
-        await calculateAndUpdateGlobalStats().catch(err => {
-            console.error("Failed to calculate global stats:", err);
-        });
-
-        // --- 10. Save Updated Challenges to Firestore ---
-        try {
-            if (challengeDocs.length === 0) {
-                success = true;
-                const endTime = Date.now();
-                await trackAPIPerformance(userId, startTime, endTime, success, errorType);
-
-                return res.json({
-                    ok: true,
-                    updated: challengeDocs.length,
-                    unchanged: unchangedChallenges.length,
-                    updatedChallenges,
-                    errorHashes,
-                    updatedAt: Date.now(),
-                    season: {
-                        name: currentSeason.seasonName,
-                        hash: currentSeason.seasonHash,
-                        autoDetected: currentSeason.autoDetected || false,
-                        challengesNodeHash
-                    },
-                    cacheStats: {
-                        definitionsCached: Object.keys(cachedDefinitions).length,
-                        definitionsFetched: Object.keys(newDefinitions).length
-                    },
-                    globalStats: challengeStats,
-                    sample: challengeDocs[0],
-                    performance: {
-                        duration: endTime - startTime
-                    }
-                });
-            }
-
-            const batch = getFirestore().batch();
-            const collRef = getFirestore().collection(`users/${userId}/destiny/challenges/seasonal_challenges`);
-
-            for (const doc of challengeDocs) {
-                batch.set(collRef.doc(doc.hash), doc, { merge: true });
-            }
-
-            await batch.commit();
-            success = true;
-            const endTime = Date.now();
-            await trackAPIPerformance(userId, startTime, endTime, success, errorType);
-
-            return res.json({
-                ok: true,
-                updated: challengeDocs.length,
-                unchanged: unchangedChallenges.length,
-                updatedChallenges,
-                errorHashes,
-                updatedAt: Date.now(),
-                season: {
-                    name: currentSeason.seasonName,
-                    hash: currentSeason.seasonHash,
-                    autoDetected: currentSeason.autoDetected || false,
-                    challengesNodeHash
-                },
-                cacheStats: {
-                    definitionsCached: Object.keys(cachedDefinitions).length,
-                    definitionsFetched: Object.keys(newDefinitions).length
-                },
-                globalStats: challengeStats,
-                sample: challengeDocs[0],
-                performance: {
-                    duration: endTime - startTime
-                }
-            });
-        } catch (err) {
-            const endTime = Date.now();
-            await trackAPIPerformance(userId, startTime, endTime, success, "firestore_write");
-            return fail(500, "Firestore write failed", { errorDetail: err?.message, challengeDocsLength: challengeDocs.length });
-        }
-    }
-);

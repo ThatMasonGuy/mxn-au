@@ -153,7 +153,8 @@
                                     {{ profile.displayName || 'Guardian' }}
                                 </div>
                                 <div class="text-sm text-gray-400">
-                                    {{ getPlatform }} • {{ challengesArray.length }} challenges
+                                    {{ getPlatform }} • Week {{ weeklyInfo.currentWeek }} • {{ challengesArray.length }}
+                                    challenges
                                 </div>
                             </div>
                         </div>
@@ -165,27 +166,66 @@
                         </button>
                     </div>
 
-                    <!-- Stats Overview -->
+                    <!-- Enhanced Stats Overview (Active Challenges Only) -->
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                         <div
                             class="bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-2xl p-4 border border-green-500/30">
-                            <div class="text-2xl font-bold text-green-400">{{ completedCount }}</div>
-                            <div class="text-sm text-gray-400">Completed</div>
+                            <div class="text-2xl font-bold text-green-400">{{ activeCompletedCount }}</div>
+                            <div class="text-sm text-gray-400">Active Completed</div>
+                            <div class="text-xs text-gray-500 mt-1">{{
+                                isNaN(activeCompletionRate) ? '0.0' : activeCompletionRate.toFixed(1)
+                                }}% active rate</div>
                         </div>
                         <div
                             class="bg-gradient-to-br from-yellow-500/20 to-orange-500/20 rounded-2xl p-4 border border-yellow-500/30">
-                            <div class="text-2xl font-bold text-yellow-400">{{ inProgressCount }}</div>
-                            <div class="text-sm text-gray-400">In Progress</div>
+                            <div class="text-2xl font-bold text-yellow-400">{{ activeInProgressCount }}</div>
+                            <div class="text-sm text-gray-400">Active In Progress</div>
+                            <div class="text-xs text-gray-500 mt-1">{{
+                                challengesArray.filter(c => c.active).length
+                                }} available</div>
                         </div>
                         <div
                             class="bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-2xl p-4 border border-purple-500/30">
-                            <div class="text-2xl font-bold text-purple-400">{{ Math.round(avgProgress) }}%</div>
-                            <div class="text-sm text-gray-400">Avg Progress</div>
+                            <div class="text-2xl font-bold text-purple-400">{{
+                                isNaN(activeAvgProgress) ? 0 : Math.round(activeAvgProgress)
+                                }}%</div>
+                            <div class="text-sm text-gray-400">Active Avg Progress</div>
+                            <div class="text-xs text-gray-500 mt-1">{{ inactiveChallenges.length }} locked</div>
                         </div>
                         <div
                             class="bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-2xl p-4 border border-blue-500/30">
-                            <div class="text-2xl font-bold text-blue-400">{{ nearCompletionCount }}</div>
-                            <div class="text-sm text-gray-400">Near Done</div>
+                            <div class="text-2xl font-bold text-blue-400">{{ activeNearCompletionCount }}</div>
+                            <div class="text-sm text-gray-400">Near Done (80%+)</div>
+                            <div class="text-xs text-gray-500 mt-1">Active challenges only</div>
+                        </div>
+                    </div>
+
+                    <!-- Weekly Progress Indicator -->
+                    <div v-if="weeklyInfo.currentWeek > 0"
+                        class="bg-gradient-to-r from-violet-500/10 to-purple-500/10 rounded-2xl p-4 border border-violet-500/20 mb-6">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center gap-2">
+                                <Calendar class="w-5 h-5 text-violet-400" />
+                                <span class="text-violet-300 font-semibold">Season Week {{ weeklyInfo.currentWeek
+                                    }}</span>
+                            </div>
+                            <div class="text-sm text-gray-400">
+                                {{ weeklyInfo.availableChallenges }} of {{ challengesArray.length }} challenges
+                                available
+                            </div>
+                        </div>
+                        <div class="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
+                            <div class="h-full bg-gradient-to-r from-violet-500 to-purple-500 rounded-full transition-all duration-500"
+                                :style="{ width: challengesArray.length > 0 ? `${(weeklyInfo.availableChallenges / challengesArray.length) * 100}%` : '0%' }">
+                            </div>
+                        </div>
+                        <div class="text-xs text-gray-500 mt-2">
+                            <span v-if="weeklyInfo.currentWeekChallenges > 0">{{ weeklyInfo.currentWeekChallenges }} new
+                                challenges
+                                this week • </span>
+                            {{ Math.max(0, challengesArray.length - weeklyInfo.availableChallenges) }} challenges will
+                            unlock in
+                            future weeks
                         </div>
                     </div>
 
@@ -197,6 +237,8 @@
                                 placeholder="Filter challenges..." :max-display="3" />
                             <MultiSelectContent class="bg-gray-800 text-white border-gray-600">
                                 <MultiSelectItem value="All Challenges">All Challenges</MultiSelectItem>
+                                <MultiSelectItem value="Active Only">Active Only</MultiSelectItem>
+                                <MultiSelectItem value="Locked Only">Locked Only</MultiSelectItem>
                                 <MultiSelectItem value="Completed">Completed</MultiSelectItem>
                                 <MultiSelectItem value="Incomplete">Incomplete</MultiSelectItem>
                                 <MultiSelectItem value="Near Complete">Near Complete (80%+)</MultiSelectItem>
@@ -209,6 +251,7 @@
                                 <SelectValue placeholder="Sort by..." />
                             </SelectTrigger>
                             <SelectContent class="bg-gray-800 text-white border-gray-600">
+                                <SelectItem value="availability">Sort by Availability</SelectItem>
                                 <SelectItem value="name">Sort by Name</SelectItem>
                                 <SelectItem value="progress">Sort by Progress</SelectItem>
                                 <SelectItem value="remaining">Sort by Remaining</SelectItem>
@@ -226,7 +269,7 @@
                     </div>
                 </div>
 
-                <!-- AI Recommendation (Main Focus) -->
+                <!-- AI Recommendation (Active Challenges Only) -->
                 <div
                     class="bg-gradient-to-br from-pink-500/10 to-purple-500/10 backdrop-blur-sm rounded-3xl p-8 border border-pink-500/30 shadow-2xl">
                     <div class="flex items-center justify-between mb-6">
@@ -237,14 +280,18 @@
                             </div>
                             <div>
                                 <h2 class="text-2xl font-bold text-pink-300">AI Optimization Plan</h2>
-                                <p class="text-gray-400">Smart recommendations based on your progress</p>
+                                <p class="text-gray-400">Smart recommendations for active challenges (Week {{
+                                    weeklyInfo.currentWeek
+                                }})</p>
                             </div>
                         </div>
-                        <button @click="suggestPlan" :disabled="suggestLoading || loading || !challengesArray.length"
+                        <button @click="suggestPlan"
+                            :disabled="suggestLoading || loading || activeIncompleteChallenges.length === 0"
                             class="bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed px-6 py-3 rounded-xl shadow-lg shadow-pink-500/25 hover:shadow-pink-500/60 hover:shadow-2xl text-white font-semibold transition-all duration-300 flex items-center gap-2">
                             <component :is="suggestLoading ? RotateCw : Lightbulb" class="w-5 h-5"
                                 :class="{ 'animate-spin': suggestLoading }" />
-                            <span>{{ suggestLoading ? 'Analyzing...' : 'Generate Plan' }}</span>
+                            <span v-if="activeIncompleteChallenges.length === 0">No Active Challenges</span>
+                            <span v-else>{{ suggestLoading ? 'Analyzing...' : 'Generate Plan' }}</span>
                         </button>
                     </div>
 
@@ -252,15 +299,37 @@
                         <div v-html="renderedMarkdown"
                             class="prose prose-invert !prose-p:my-1 !prose-li:my-0.5 !prose-h2:mt-4 !prose-h2:mb-2 !prose-h3:mt-3 !prose-h3:mb-1 !prose-ul:mt-1 !prose-ul:mb-1 text-gray-200 leading-relaxed"
                             style="column-count:1;" />
+
+                        <!-- AI Metadata -->
+                        <div v-if="aiMetadata.challengeCount > 0" class="mt-4 pt-4 border-t border-gray-700/50">
+                            <div class="flex flex-wrap items-center gap-4 text-sm text-gray-400">
+                                <div class="flex items-center gap-1">
+                                    <Target class="w-4 h-4" />
+                                    <span>{{ aiMetadata.challengeCount }} active challenges analyzed</span>
+                                </div>
+                                <div v-if="aiMetadata.cached" class="flex items-center gap-1">
+                                    <Database class="w-4 h-4" />
+                                    <span>Cached result</span>
+                                </div>
+                                <div v-if="aiMetadata.responseTime" class="flex items-center gap-1">
+                                    <Clock class="w-4 h-4" />
+                                    <span>{{ aiMetadata.responseTime }}ms</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div v-else class="text-center py-8">
                         <div
                             class="w-16 h-16 bg-gradient-to-br from-pink-500/20 to-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
                             <Zap class="w-8 h-8 text-pink-400" />
                         </div>
-                        <p class="text-gray-400 text-lg">Click "Generate Plan" to get AI-powered optimization
+                        <p v-if="activeIncompleteChallenges.length === 0" class="text-gray-400 text-lg">
+                            {{ activeChallengesLocal.length === 0 ? 'No challenges available yet this week' : 'All active challenges completed!' }}
+                        </p>
+                        <p v-else class="text-gray-400 text-lg">Click "Generate Plan" to get AI-powered optimization
                             suggestions</p>
-                        <p class="text-gray-500 text-sm mt-2">Analyze your progress and get personalized recommendations
+                        <p class="text-gray-500 text-sm mt-2"> {{ activeIncompleteChallenges.length === 0 ? 'Check back next week for new challenges' :
+                            'Analyze your active progress and get personalized recommendations' }}
                         </p>
                     </div>
                 </div>
@@ -273,10 +342,10 @@
                             <span class="text-lg text-gray-400 ml-2">({{ filteredChallenges.length }})</span>
                         </h2>
                         <div class="flex items-center gap-2 text-sm text-gray-400">
-                            <span>{{ completedCount }}/{{ challengesArray.length }} completed</span>
+                            <span>{{ activeCompletedCount }}/{{ activeChallengesLocal.length }} active completed</span>
                             <div class="w-32 h-2 bg-gray-700 rounded-full overflow-hidden">
                                 <div class="h-full bg-gradient-to-r from-green-500 to-emerald-500 rounded-full transition-all duration-500"
-                                    :style="{ width: `${(completedCount / challengesArray.length) * 100}%` }"></div>
+                                    :style="{ width: `${isNaN(activeCompletionRate) ? 0 : activeCompletionRate}%` }"></div>
                             </div>
                         </div>
                     </div>
@@ -291,11 +360,21 @@
 
                     <div v-else-if="displayedChallenges.length" class="space-y-4">
                         <div v-for="challenge in displayedChallenges" :key="challenge.id"
-                            class="group relative bg-gradient-to-r from-gray-800/50 to-gray-700/50 rounded-2xl p-5 border border-gray-600/30 hover:border-purple-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/10">
+                            class="group relative rounded-2xl p-5 border transition-all duration-300 hover:shadow-lg"
+                            :class="{
+                                // Active challenges
+                                'bg-gradient-to-r from-gray-800/50 to-gray-700/50 border-gray-600/30 hover:border-purple-500/50 hover:shadow-purple-500/10': challenge.active,
+                                // Locked challenges
+                                'bg-gradient-to-r from-gray-900/50 to-gray-800/50 border-gray-700/30 hover:border-gray-600/50 opacity-60': !challenge.active
+                            }">
 
                             <!-- Completion Status Indicator -->
                             <div class="absolute top-4 right-4">
-                                <div v-if="challenge.complete"
+                                <div v-if="!challenge.active"
+                                    class="w-6 h-6 bg-gradient-to-br from-gray-600 to-gray-700 rounded-full flex items-center justify-center">
+                                    <Lock class="w-4 h-4 text-gray-400" />
+                                </div>
+                                <div v-else-if="challenge.complete"
                                     class="w-6 h-6 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
                                     <Check class="w-4 h-4 text-white" />
                                 </div>
@@ -312,11 +391,23 @@
                             <div class="pr-10">
                                 <div class="flex items-start justify-between mb-3">
                                     <div class="flex-1">
-                                        <h3
-                                            class="font-bold text-lg text-gray-100 group-hover:text-purple-200 transition-colors">
-                                            {{ challenge.name }}
-                                        </h3>
-                                        <p class="text-sm text-gray-400 mt-1 leading-relaxed">
+                                        <div class="flex items-center gap-2 mb-1">
+                                            <h3 class="font-bold text-lg transition-colors" :class="{
+                                                'text-gray-100 group-hover:text-purple-200': challenge.active,
+                                                'text-gray-400 group-hover:text-gray-300': !challenge.active
+                                            }">
+                                                {{ challenge.name }}
+                                            </h3>
+                                            <div v-if="!challenge.active"
+                                                class="inline-flex items-center gap-1 px-2 py-1 bg-gray-700/50 rounded-full text-xs text-gray-400">
+                                                <Lock class="w-3 h-3" />
+                                                <span>Locked</span>
+                                            </div>
+                                        </div>
+                                        <p class="text-sm leading-relaxed" :class="{
+                                            'text-gray-400': challenge.active,
+                                            'text-gray-500': !challenge.active
+                                        }">
                                             {{ challenge.description }}
                                         </p>
                                     </div>
@@ -325,15 +416,24 @@
                                 <div class="flex items-center justify-between mb-2">
                                     <div class="flex items-center gap-4">
                                         <div class="flex items-center gap-2">
-                                            <div class="text-2xl font-mono font-bold text-purple-300">
+                                            <div class="text-2xl font-mono font-bold" :class="{
+                                                'text-purple-300': challenge.active,
+                                                'text-gray-500': !challenge.active
+                                            }">
                                                 {{ challenge.progress || 0 }}
                                             </div>
                                             <div class="text-gray-400">/</div>
-                                            <div class="text-xl font-mono text-gray-300">
+                                            <div class="text-xl font-mono" :class="{
+                                                'text-gray-300': challenge.active,
+                                                'text-gray-500': !challenge.active
+                                            }">
                                                 {{ challenge.goal || 1 }}
                                             </div>
                                         </div>
-                                        <div class="text-sm text-gray-400">
+                                        <div class="text-sm" :class="{
+                                            'text-gray-400': challenge.active,
+                                            'text-gray-500': !challenge.active
+                                        }">
                                             {{ challenge.progressPercent.toFixed(1) }}% complete
                                         </div>
                                     </div>
@@ -344,14 +444,20 @@
                             <div class="flex items-center gap-3">
                                 <div class="flex-1 h-2 bg-gray-700 rounded-full overflow-hidden">
                                     <div class="h-full transition-all duration-500 rounded-full" :class="{
-                                        'bg-gradient-to-r from-green-500 to-emerald-500': challenge.complete,
-                                        'bg-gradient-to-r from-yellow-500 to-orange-500': !challenge.complete && challenge.progressPercent >= 80,
-                                        'bg-gradient-to-r from-blue-500 to-cyan-500': !challenge.complete && challenge.progressPercent >= 50 && challenge.progressPercent < 80,
-                                        'bg-gradient-to-r from-purple-500 to-pink-500': !challenge.complete && challenge.progressPercent < 50
+                                        // Active challenge colors
+                                        'bg-gradient-to-r from-green-500 to-emerald-500': challenge.active && challenge.complete,
+                                        'bg-gradient-to-r from-yellow-500 to-orange-500': challenge.active && !challenge.complete && challenge.progressPercent >= 80,
+                                        'bg-gradient-to-r from-blue-500 to-cyan-500': challenge.active && !challenge.complete && challenge.progressPercent >= 50 && challenge.progressPercent < 80,
+                                        'bg-gradient-to-r from-purple-500 to-pink-500': challenge.active && !challenge.complete && challenge.progressPercent < 50,
+                                        // Locked challenge colors (muted)
+                                        'bg-gradient-to-r from-gray-500 to-gray-600': !challenge.active
                                     }" :style="{ width: `${challenge.progressPercent}%` }">
                                     </div>
                                 </div>
-                                <div v-if="!challenge.complete" class="text-sm text-gray-400 whitespace-nowrap">
+                                <div v-if="!challenge.complete" class="text-sm whitespace-nowrap" :class="{
+                                    'text-gray-400': challenge.active,
+                                    'text-gray-500': !challenge.active
+                                }">
                                     {{ challenge.remaining }} remaining
                                 </div>
                             </div>
@@ -418,7 +524,11 @@ import {
     Sun,
     Clock,
     FileText,
-    X
+    X,
+    Lock,
+    Calendar,
+    Target,
+    Database
 } from 'lucide-vue-next'
 import {
     Select,
@@ -443,10 +553,13 @@ const {
     error,
     aiSuggestion,
     suggestLoading,
-    initializeDestinyState
+    aiMetadata,
+    weeklyInfo,
+    activeChallenges,
+    completedChallenges,
 } = storeToRefs(destiny)
 
-const sortBy = ref('progress')
+const sortBy = ref('availability')
 const searchTerm = ref('')
 const filterStatus = ref(['All Challenges'])
 const displayCount = ref(10)
@@ -470,27 +583,86 @@ const getPlatform = computed(() => {
     return platformMap[platformId] || 'Destiny 2'
 })
 
-// Convert Bungie milestones object to array with enhanced data
+// Convert Bungie milestones object to array with enhanced data including active status
 const challengesArray = computed(() => {
     if (!challenges.value) return [];
     const list = Array.isArray(challenges.value) ? challenges.value : Object.values(challenges.value);
     return list.map(chal => {
         const obj = Array.isArray(chal.objectives) && chal.objectives.length > 0 ? chal.objectives[0] : {};
-        const progress = obj.progress ?? 0;
-        const goal = obj.completionValue ?? 1;
+        const progress = Number(obj.progress) || 0;
+        const goal = Number(obj.completionValue) || 1;
         const progressPercent = goal > 0 ? (progress / goal) * 100 : 0;
 
         return {
-            id: chal.hash,
+            id: chal.hash || chal.id,
             name: chal.name,
             description: chal.description,
             progress,
             goal,
             complete: chal.completed || progressPercent >= 100,
             progressPercent: Math.min(progressPercent, 100),
-            remaining: Math.max(0, goal - progress)
+            remaining: Math.max(0, goal - progress),
+            active: chal.active === true,
+            objectives: chal.objectives || []
         }
     });
+});
+
+// Computed properties for active vs inactive challenges
+const inactiveChallenges = computed(() => {
+    return challengesArray.value.filter(challenge => !challenge.active)
+})
+
+// Fix active challenges statistics
+const activeCompletedCount = computed(() => {
+    return challengesArray.value.filter(c => c.active && c.complete).length
+});
+
+const activeChallengesLocal = computed(() => {
+    return challengesArray.value.filter(challenge => challenge.active === true)
+})
+
+const activeInProgressCount = computed(() => {
+    return challengesArray.value.filter(c => c.active && !c.complete && c.progress > 0).length
+});
+
+const activeNearCompletionCount = computed(() => {
+    return challengesArray.value.filter(c => c.active && !c.complete && c.progressPercent >= 80).length
+});
+
+const activeAvgProgress = computed(() => {
+    const activeChallengesArray = challengesArray.value.filter(c => c.active);
+    if (activeChallengesArray.length === 0) return 0;
+    const total = activeChallengesArray.reduce((sum, c) => sum + c.progressPercent, 0);
+    return total / activeChallengesArray.length;
+});
+
+const activeCompletionRate = computed(() => {
+    const activeChallengesArray = challengesArray.value.filter(c => c.active);
+    if (activeChallengesArray.length === 0) return 0;
+    const completed = activeChallengesArray.filter(c => c.complete).length;
+    return (completed / activeChallengesArray.length) * 100;
+});
+
+// Update the incomplete challenges logic
+const incompleteChallenges = computed(() => {
+    return challengesArray.value.filter(challenge => {
+        if (challenge.complete) return false;
+
+        if (challenge.objectives && Array.isArray(challenge.objectives)) {
+            return challenge.objectives.some(obj => {
+                const progress = Number(obj.progress) || 0;
+                const completionValue = Number(obj.completionValue) || 1;
+                return progress < completionValue || !obj.complete;
+            })
+        }
+
+        return !challenge.complete;
+    })
+});
+
+const activeIncompleteChallenges = computed(() => {
+    return incompleteChallenges.value.filter(challenge => challenge.active === true)
 });
 
 // Watch for changes and handle "All Challenges" logic
@@ -498,11 +670,9 @@ watch(filterStatus, (newValue, oldValue) => {
     if (newValue.includes('All Challenges') && !oldValue.includes('All Challenges')) {
         filterStatus.value = ['All Challenges']
     }
-
     else if (newValue.length > 1 && newValue.includes('All Challenges')) {
         filterStatus.value = newValue.filter(v => v !== 'All Challenges')
     }
-
     else if (newValue.length === 0) {
         filterStatus.value = ['All Challenges']
     }
@@ -518,9 +688,12 @@ const filteredChallenges = computed(() => {
 
     if (filterStatus.value.length > 0 && !filterStatus.value.includes('All Challenges')) {
         filtered = filtered.filter(c => {
-
             return filterStatus.value.some(status => {
                 switch (status) {
+                    case 'Active Only':
+                        return c.active;
+                    case 'Locked Only':
+                        return !c.active;
                     case 'Completed':
                         return c.complete;
                     case 'Incomplete':
@@ -544,6 +717,11 @@ const filteredChallenges = computed(() => {
 
     filtered.sort((a, b) => {
         switch (sortBy.value) {
+            case 'availability':
+                // Sort by active first, then by progress within each group
+                if (a.active && !b.active) return -1;
+                if (!a.active && b.active) return 1;
+                return b.progressPercent - a.progressPercent;
             case 'name':
                 return a.name.localeCompare(b.name);
             case 'progress':
@@ -565,16 +743,6 @@ const filteredChallenges = computed(() => {
 // Display only a subset of challenges based on displayCount
 const displayedChallenges = computed(() => {
     return filteredChallenges.value.slice(0, displayCount.value);
-});
-
-// Statistics
-const completedCount = computed(() => challengesArray.value.filter(c => c.complete).length);
-const inProgressCount = computed(() => challengesArray.value.filter(c => !c.complete && c.progress > 0).length);
-const nearCompletionCount = computed(() => challengesArray.value.filter(c => !c.complete && c.progressPercent >= 80).length);
-const avgProgress = computed(() => {
-    if (challengesArray.value.length === 0) return 0;
-    const total = challengesArray.value.reduce((sum, c) => sum + c.progressPercent, 0);
-    return total / challengesArray.value.length;
 });
 
 onMounted(() => {

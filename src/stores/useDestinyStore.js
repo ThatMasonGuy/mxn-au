@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore'
 import { firestore } from '@/firebase'
@@ -23,8 +23,14 @@ export const useDestinyStore = defineStore('destiny', () => {
             completion: 0
         },
         challengeCount: 0,
-        cachedAt: null
+        activeChallengeCount: 0,
+        totalChallengeCount: 0,
+        cachedAt: null,
+        responseTime: 0,
+        infrastructureStats: null
     })
+
+    // Enhanced user AI stats with infrastructure tracking
     const userAIStats = ref({
         totalCalls: 0,
         freshCalls: 0,
@@ -49,6 +55,31 @@ export const useDestinyStore = defineStore('destiny', () => {
         createdAt: null,
         updatedAt: null
     })
+
+    // User seasonal summary (new document)
+    const userSeasonalSummary = ref({
+        totalChallenges: 0,
+        completedChallenges: 0,
+        activeChallenges: 0,
+        currentWeekChallenges: 0,
+        seasonHash: null,
+        seasonName: '',
+        currentWeek: 0,
+        completionRate: 0,
+        activeCompletionRate: 0,
+        lastRefreshCost: 0,
+        lastRefreshReads: 0,
+        lastRefreshWrites: 0,
+        lastRefreshDuration: 0,
+        totalRefreshes: 0,
+        totalInfrastructureCost: 0,
+        totalFirestoreReads: 0,
+        totalFirestoreWrites: 0,
+        weeklyProgress: {},
+        lastUpdated: null
+    })
+
+    // Enhanced global stats with all infrastructure tracking
     const globalStats = ref({
         ai_stats: {
             totalCalls: 0,
@@ -62,7 +93,14 @@ export const useDestinyStore = defineStore('destiny', () => {
             totalCostUSD: 0,
             costSavedUSD: 0,
             totalResponseTime: 0,
-            totalChallengesProcessed: 0,
+            totalChallengesAnalyzed: 0,
+            // Infrastructure tracking
+            totalFirestoreReads: 0,
+            totalFirestoreWrites: 0,
+            totalExecutionTimeMs: 0,
+            totalInfrastructureCostUSD: 0,
+            totalFirestoreCostUSD: 0,
+            totalComputeCostUSD: 0,
             lastCallAt: null,
             updatedAt: null
         },
@@ -80,6 +118,13 @@ export const useDestinyStore = defineStore('destiny', () => {
             totalChallengesSeen: 0,
             totalChallengesCompleted: 0,
             totalRefreshCalls: 0,
+            // Infrastructure tracking
+            totalFirestoreReads: 0,
+            totalFirestoreWrites: 0,
+            totalExecutionTimeMs: 0,
+            totalInfrastructureCostUSD: 0,
+            totalFirestoreCostUSD: 0,
+            totalComputeCostUSD: 0,
             lastRefreshAt: null,
             updatedAt: null
         },
@@ -88,9 +133,20 @@ export const useDestinyStore = defineStore('destiny', () => {
             totalConnectedUsers: 0,
             totalAIUsers: 0,
             avgChallengesPerUser: 0,
+            totalChallengesSeen: 0,
             lastCalculated: null
         }
     })
+
+    // Weekly challenge info
+    const weeklyInfo = ref({
+        currentWeek: 0,
+        availableChallenges: 0,
+        currentWeekChallenges: 0,
+        availableByWeek: {},
+        weeklyMap: null
+    })
+
     const statsLoading = ref(false)
 
     // Get current active season
@@ -106,7 +162,7 @@ export const useDestinyStore = defineStore('destiny', () => {
                     id: seasonDoc.id,
                     ...seasonDoc.data()
                 }
-                console.log(`[getCurrentActiveSeason] Found active season: ${currentSeason.value.seasonName || currentSeason.value.seasonName}`)
+                console.log(`[getCurrentActiveSeason] Found active season: ${currentSeason.value.seasonName}`)
                 return currentSeason.value
             }
 
@@ -120,15 +176,17 @@ export const useDestinyStore = defineStore('destiny', () => {
         }
     }
 
-    // Load global stats from Firestore
+    // Load enhanced global stats from Firestore
     async function loadGlobalStats() {
         try {
             const globalRef = doc(firestore, 'destiny', 'global')
             const globalSnap = await getDoc(globalRef)
-
+    
             if (globalSnap.exists()) {
                 const data = globalSnap.data()
-
+                
+                console.log('[loadGlobalStats] Raw data from Firestore:', data)
+    
                 // Handle flattened field names from Firestore
                 globalStats.value = {
                     ai_stats: {
@@ -154,33 +212,43 @@ export const useDestinyStore = defineStore('destiny', () => {
                         lastCallAt: data['ai_stats.lastCallAt'] || null,
                         updatedAt: data['ai_stats.updatedAt'] || null
                     },
-                    ai_calculated_stats: data.ai_calculated_stats || {
-                        successRate: 0,
-                        cacheHitRate: 0,
-                        avgResponseTime: 0,
-                        avgTokensPerCall: 0,
-                        avgCostPerCall: 0,
-                        totalCostSavings: 0,
-                        totalActiveUsers: 0,
-                        lastCalculated: null
+                    ai_calculated_stats: {
+                        successRate: data['ai_calculated_stats.successRate'] || 0,
+                        cacheHitRate: data['ai_calculated_stats.cacheHitRate'] || 0,
+                        avgResponseTime: data['ai_calculated_stats.avgResponseTime'] || 0,
+                        avgTokensPerCall: data['ai_calculated_stats.avgTokensPerCall'] || 0,
+                        avgCostPerCall: data['ai_calculated_stats.avgCostPerCall'] || 0,
+                        totalCostSavings: data['ai_calculated_stats.totalCostSavings'] || 0,
+                        totalActiveUsers: data['ai_calculated_stats.totalActiveUsers'] || 0,
+                        lastCalculated: data['ai_calculated_stats.lastCalculated'] || null
                     },
                     challenge_stats: {
                         totalChallengesSeen: data['challenge_stats.totalChallengesSeen'] || 0,
                         totalChallengesCompleted: data['challenge_stats.totalChallengesCompleted'] || 0,
                         totalRefreshCalls: data['challenge_stats.totalRefreshCalls'] || 0,
+                        // Infrastructure tracking for challenges
+                        totalFirestoreReads: data['challenge_stats.totalFirestoreReads'] || 0,
+                        totalFirestoreWrites: data['challenge_stats.totalFirestoreWrites'] || 0,
+                        totalExecutionTimeMs: data['challenge_stats.totalExecutionTimeMs'] || 0,
+                        totalInfrastructureCostUSD: data['challenge_stats.totalInfrastructureCostUSD'] || 0,
+                        totalFirestoreCostUSD: data['challenge_stats.totalFirestoreCostUSD'] || 0,
+                        totalComputeCostUSD: data['challenge_stats.totalComputeCostUSD'] || 0,
                         lastRefreshAt: data['challenge_stats.lastRefreshAt'] || null,
                         updatedAt: data['challenge_stats.updatedAt'] || null
                     },
-                    calculated_stats: data.calculated_stats || {
-                        avgCompletionRate: 0,
-                        totalConnectedUsers: 0,
-                        totalAIUsers: 0,
-                        avgChallengesPerUser: 0,
-                        lastCalculated: null
+                    calculated_stats: {
+                        avgCompletionRate: data['calculated_stats.avgCompletionRate'] || 0,
+                        totalConnectedUsers: data['calculated_stats.totalConnectedUsers'] || 0,
+                        totalAIUsers: data['calculated_stats.totalAIUsers'] || 0,
+                        avgChallengesPerUser: data['calculated_stats.avgChallengesPerUser'] || 0,
+                        totalChallengesSeen: data['calculated_stats.totalChallengesSeen'] || 0,
+                        lastCalculated: data['calculated_stats.lastCalculated'] || null
                     }
                 }
-
-                console.log('[loadGlobalStats] Loaded global stats:', globalStats.value)
+    
+                console.log('[loadGlobalStats] Loaded enhanced global stats:', globalStats.value)
+            } else {
+                console.log('[loadGlobalStats] No global stats document found')
             }
         } catch (e) {
             console.error('[loadGlobalStats] Error:', e)
@@ -192,14 +260,18 @@ export const useDestinyStore = defineStore('destiny', () => {
         try {
             const mainStore = useMainStore()
             const userId = mainStore.user?.uid
-            if (!userId) return
-
+            if (!userId) {
+                console.log('[loadUserAIStats] No user ID, skipping')
+                return
+            }
+    
+            // This is the main AI suggestions document
             const statsRef = doc(firestore, 'users', userId, 'destiny', 'ai_suggestions')
             const statsSnap = await getDoc(statsRef)
-
+    
             if (statsSnap.exists()) {
                 const data = statsSnap.data()
-
+    
                 // Merge with default values to ensure all fields exist
                 userAIStats.value = {
                     // Basic call tracking
@@ -208,48 +280,154 @@ export const useDestinyStore = defineStore('destiny', () => {
                     cachedCalls: data.cachedCalls || 0,
                     successfulCalls: data.successfulCalls || 0,
                     errorCalls: data.errorCalls || 0,
-
+    
                     // Token tracking
                     totalTokens: data.totalTokens || 0,
                     promptTokens: data.promptTokens || 0,
                     completionTokens: data.completionTokens || 0,
                     tokensSaved: data.tokensSaved || 0,
-
+    
                     // OpenAI cost tracking
                     totalCostUSD: data.totalCostUSD || 0,
                     promptCostUSD: data.promptCostUSD || 0,
                     completionCostUSD: data.completionCostUSD || 0,
-
-                    // Infrastructure tracking (new fields)
+    
+                    // Infrastructure tracking
                     totalFirestoreReads: data.totalFirestoreReads || 0,
                     totalFirestoreWrites: data.totalFirestoreWrites || 0,
                     totalExecutionTimeMs: data.totalExecutionTimeMs || 0,
                     totalInfrastructureCostUSD: data.totalInfrastructureCostUSD || 0,
                     totalFirestoreCostUSD: data.totalFirestoreCostUSD || 0,
                     totalComputeCostUSD: data.totalComputeCostUSD || 0,
-
+    
                     // Timestamps
                     lastCallAt: data.lastCallAt || null,
                     createdAt: data.createdAt || null,
                     updatedAt: data.updatedAt || null
                 }
-
+    
                 console.log('[loadUserAIStats] Loaded comprehensive AI stats:', userAIStats.value)
             } else {
                 console.log('[loadUserAIStats] No AI stats document found, using defaults')
+                // Initialize with empty values
+                userAIStats.value = {
+                    totalCalls: 0,
+                    freshCalls: 0,
+                    cachedCalls: 0,
+                    successfulCalls: 0,
+                    errorCalls: 0,
+                    totalTokens: 0,
+                    promptTokens: 0,
+                    completionTokens: 0,
+                    tokensSaved: 0,
+                    totalCostUSD: 0,
+                    promptCostUSD: 0,
+                    completionCostUSD: 0,
+                    totalFirestoreReads: 0,
+                    totalFirestoreWrites: 0,
+                    totalExecutionTimeMs: 0,
+                    totalInfrastructureCostUSD: 0,
+                    totalFirestoreCostUSD: 0,
+                    totalComputeCostUSD: 0,
+                    lastCallAt: null,
+                    createdAt: null,
+                    updatedAt: null
+                }
             }
         } catch (e) {
             console.error('[loadUserAIStats] Error:', e)
+            // Initialize with empty values on error
+            userAIStats.value = {
+                totalCalls: 0,
+                freshCalls: 0,
+                cachedCalls: 0,
+                successfulCalls: 0,
+                errorCalls: 0,
+                totalTokens: 0,
+                promptTokens: 0,
+                completionTokens: 0,
+                tokensSaved: 0,
+                totalCostUSD: 0,
+                promptCostUSD: 0,
+                completionCostUSD: 0,
+                totalFirestoreReads: 0,
+                totalFirestoreWrites: 0,
+                totalExecutionTimeMs: 0,
+                totalInfrastructureCostUSD: 0,
+                totalFirestoreCostUSD: 0,
+                totalComputeCostUSD: 0,
+                lastCallAt: null,
+                createdAt: null,
+                updatedAt: null
+            }
         }
     }
 
-    // Load all stats (global + user)
+    // Load user's seasonal summary (new document)
+    async function loadUserSeasonalSummary() {
+        try {
+            const mainStore = useMainStore()
+            const userId = mainStore.user?.uid
+            if (!userId) return
+
+            // Fixed path - use even number of components for document path
+            const summaryRef = doc(firestore, 'users', userId, 'destiny', 'seasonal_summary')
+            const summarySnap = await getDoc(summaryRef)
+
+            if (summarySnap.exists()) {
+                const data = summarySnap.data()
+
+                userSeasonalSummary.value = {
+                    // Challenge stats
+                    totalChallenges: data.totalChallenges || 0,
+                    completedChallenges: data.completedChallenges || 0,
+                    activeChallenges: data.activeChallenges || 0,
+                    currentWeekChallenges: data.currentWeekChallenges || 0,
+
+                    // Season info
+                    seasonHash: data.seasonHash || null,
+                    seasonName: data.seasonName || '',
+                    currentWeek: data.currentWeek || 0,
+
+                    // Calculated rates
+                    completionRate: data.completionRate || 0,
+                    activeCompletionRate: data.activeCompletionRate || 0,
+
+                    // Last refresh costs
+                    lastRefreshCost: data.lastRefreshCost || 0,
+                    lastRefreshReads: data.lastRefreshReads || 0,
+                    lastRefreshWrites: data.lastRefreshWrites || 0,
+                    lastRefreshDuration: data.lastRefreshDuration || 0,
+
+                    // Cumulative costs
+                    totalRefreshes: data.totalRefreshes || 0,
+                    totalInfrastructureCost: data.totalInfrastructureCost || 0,
+                    totalFirestoreReads: data.totalFirestoreReads || 0,
+                    totalFirestoreWrites: data.totalFirestoreWrites || 0,
+
+                    // Weekly tracking
+                    weeklyProgress: data.weeklyProgress || {},
+
+                    lastUpdated: data.lastUpdated || null
+                }
+
+                console.log('[loadUserSeasonalSummary] Loaded seasonal summary:', userSeasonalSummary.value)
+            } else {
+                console.log('[loadUserSeasonalSummary] No seasonal summary found, using defaults')
+            }
+        } catch (e) {
+            console.error('[loadUserSeasonalSummary] Error:', e)
+        }
+    }
+
+    // Load all stats (global + user + summaries)
     async function loadAllStats() {
         statsLoading.value = true
         try {
             await Promise.all([
                 loadGlobalStats(),
-                loadUserAIStats()
+                loadUserAIStats(),
+                loadUserSeasonalSummary()
             ])
         } catch (e) {
             console.error('[loadAllStats] Error:', e)
@@ -315,8 +493,42 @@ export const useDestinyStore = defineStore('destiny', () => {
 
             console.log(`[loadDestinyState] Loaded ${challenges.value.length} challenges for current season`)
 
-            // Load AI stats
-            await loadUserAIStats()
+            // Load all user stats including seasonal summary
+            await Promise.all([
+                loadUserAIStats(),
+                loadUserSeasonalSummary()
+            ])
+
+            // Calculate weekly info from challenges AND seasonal summary
+            if (challenges.value.length > 0) {
+                const activeChallenges = challenges.value.filter(c => c.active === true)
+                const completedChallenges = challenges.value.filter(c => c.completed === true)
+
+                // Get current week challenges - count challenges that have weekUnlocked equal to current week
+                const currentWeek = userSeasonalSummary.value.currentWeek || 0
+                const currentWeekChallenges = currentWeek > 0
+                    ? challenges.value.filter(c => c.weekUnlocked === currentWeek).length
+                    : 0
+
+                weeklyInfo.value = {
+                    currentWeek: currentWeek, // Use the week from seasonal summary
+                    availableChallenges: activeChallenges.length,
+                    currentWeekChallenges: currentWeekChallenges,
+                    availableByWeek: {},
+                    weeklyMap: null
+                }
+
+                console.log(`[loadDestinyState] Week ${currentWeek}: Active challenges: ${activeChallenges.length}/${challenges.value.length}, Completed: ${completedChallenges.length}, This week: ${currentWeekChallenges}`)
+            } else {
+                // If no challenges, still set the week from seasonal summary
+                weeklyInfo.value = {
+                    currentWeek: userSeasonalSummary.value.currentWeek || 0,
+                    availableChallenges: 0,
+                    currentWeekChallenges: 0,
+                    availableByWeek: {},
+                    weeklyMap: null
+                }
+            }
         } catch (e) {
             error.value = "Failed to load Destiny data: " + (e.message || e)
         }
@@ -350,6 +562,28 @@ export const useDestinyStore = defineStore('destiny', () => {
                 loading.value = false
                 return
             }
+
+            // Parse the response to get weekly info and other metadata
+            const responseData = await res.json()
+
+            // Log the response to debug
+            console.log('[refreshChallenges] Response data:', {
+                weeklyInfo: responseData.weeklyInfo,
+                debug: responseData.debug
+            })
+
+            if (responseData.weeklyInfo) {
+                weeklyInfo.value = {
+                    currentWeek: responseData.weeklyInfo.currentWeek || 0,
+                    availableChallenges: responseData.weeklyInfo.availableChallenges || 0,
+                    currentWeekChallenges: responseData.weeklyInfo.currentWeekChallenges || 0,
+                    availableByWeek: responseData.weeklyInfo.availableByWeek || {},
+                    weeklyMap: responseData.weeklyInfo.weeklyMap || null
+                }
+                console.log(`[refreshChallenges] Updated weekly info:`, weeklyInfo.value)
+            }
+
+            // Reload state which will now use the updated seasonal summary
             await loadDestinyState()
         } catch (e) {
             error.value = "Failed to refresh: " + (e.message || e)
@@ -464,7 +698,7 @@ export const useDestinyStore = defineStore('destiny', () => {
         }
     }
 
-    // AI Suggestion Function
+    // Enhanced AI Suggestion Function with active challenge filtering
     async function getAISuggestion() {
         suggestLoading.value = true
         aiSuggestion.value = ''
@@ -472,23 +706,32 @@ export const useDestinyStore = defineStore('destiny', () => {
             cached: false,
             tokenUsage: { total: 0, prompt: 0, completion: 0 },
             challengeCount: 0,
-            cachedAt: null
+            activeChallengeCount: 0,
+            totalChallengeCount: 0,
+            cachedAt: null,
+            responseTime: 0,
+            infrastructureStats: null
         }
         error.value = ''
-
+    
         try {
             const auth = getAuth()
             const user = auth.currentUser
             if (!user) throw new Error("Not signed in")
             const token = await user.getIdToken()
-
-            // Filter to only incomplete challenges from current season
-            const incomplete = (challenges.value || []).filter(challenge => {
+    
+            // Filter to only ACTIVE incomplete challenges from current season
+            const activeChallenges = (challenges.value || []).filter(challenge => {
+                // Must be active (available based on current week)
+                if (!challenge.active) {
+                    return false
+                }
+    
                 // Check if challenge is not completed
                 if (challenge.completed) {
                     return false
                 }
-
+    
                 // Double-check by looking at objectives if available
                 if (challenge.objectives && Array.isArray(challenge.objectives)) {
                     // Challenge is incomplete if any objective is not complete
@@ -498,25 +741,36 @@ export const useDestinyStore = defineStore('destiny', () => {
                         return progress < completionValue || !obj.complete
                     })
                 }
-
+    
                 // If no objectives, trust the completed flag
                 return !challenge.completed
             })
-
-            console.log(`[getAISuggestion] Found ${incomplete.length} incomplete challenges out of ${challenges.value.length} total`)
-
-            if (incomplete.length === 0) {
-                aiSuggestion.value = "You've completed all seasonal challenges. Go touch grass!"
+    
+            console.log(`[getAISuggestion] Found ${activeChallenges.length} active incomplete challenges out of ${challenges.value.length} total`)
+    
+            if (activeChallenges.length === 0) {
+                // Check if there are any active challenges at all
+                const totalActive = (challenges.value || []).filter(c => c.active === true).length
+    
+                if (totalActive === 0) {
+                    aiSuggestion.value = "No active seasonal challenges available yet. Check back next week for new challenges!"
+                } else {
+                    aiSuggestion.value = "You've completed all available seasonal challenges. Go touch grass!"
+                }
+    
                 aiMetadata.value = {
                     cached: false,
                     tokenUsage: { total: 0, prompt: 0, completion: 0 },
-                    challengeCount: 0
+                    challengeCount: 0,
+                    activeChallengeCount: totalActive,
+                    totalChallengeCount: challenges.value.length,
+                    responseTime: 0
                 }
                 suggestLoading.value = false
                 return
             }
-
-            const payload = { challenges: incomplete }
+    
+            const payload = { challenges: activeChallenges }
             const res = await fetch('/destiny/ai-suggest', {
                 method: 'POST',
                 headers: {
@@ -525,40 +779,50 @@ export const useDestinyStore = defineStore('destiny', () => {
                 },
                 body: JSON.stringify(payload)
             })
-
+    
             if (!res.ok) {
                 const data = await res.json().catch(() => ({}))
                 throw new Error(data?.error || "Failed to generate AI suggestion")
             }
-
+    
             const data = await res.json()
             aiSuggestion.value = data.plan || "No suggestion generated."
-
-            // Store metadata about the response
+    
+            // Store enhanced metadata about the response
             aiMetadata.value = {
                 cached: data.cached || false,
                 tokenUsage: data.tokenUsage || { total: 0, prompt: 0, completion: 0 },
-                challengeCount: data.challengeCount || incomplete.length,
+                challengeCount: data.challengeCount || activeChallenges.length,
+                activeChallengeCount: data.activeChallengeCount || 0,
+                totalChallengeCount: data.totalChallengeCount || challenges.value.length,
                 cachedAt: data.cachedAt || null,
-                responseTime: data.responseTime || 0
+                responseTime: data.responseTime || 0,
+                infrastructureStats: data.infrastructureStats || null
             }
-
-            // Log if response was cached
+    
+            // Log comprehensive response info
             if (data.cached) {
                 console.log(`[getAISuggestion] Used cached response from ${new Date(data.cachedAt).toLocaleString()} (${data.tokenUsage.total} tokens saved)`)
+                console.log(`[getAISuggestion] Infrastructure cost: $${data.infrastructureStats?.infrastructureCost.toFixed(6) || 0}`)
             } else {
                 console.log(`[getAISuggestion] Generated fresh AI response for ${data.challengeCount} challenges (${data.tokenUsage.total} tokens used: ${data.tokenUsage.prompt} prompt + ${data.tokenUsage.completion} completion)`)
+                console.log(`[getAISuggestion] Total cost: OpenAI $${calculateTokenCost(data.tokenUsage.prompt, data.tokenUsage.completion).totalCost.toFixed(4)} + Infrastructure $${data.infrastructureStats?.infrastructureCost.toFixed(6) || 0}`)
             }
-
+    
             // Reload AI stats to reflect the new usage
-            await loadUserAIStats()
-
+            await Promise.all([
+                loadUserAIStats(),
+            ])
+    
         } catch (e) {
             aiSuggestion.value = ''
             aiMetadata.value = {
                 cached: false,
                 tokenUsage: { total: 0, prompt: 0, completion: 0 },
-                challengeCount: 0
+                challengeCount: 0,
+                activeChallengeCount: 0,
+                totalChallengeCount: challenges.value.length,
+                responseTime: 0
             }
             error.value = "AI Suggestion failed: " + (e.message || e)
         }
@@ -639,6 +903,35 @@ export const useDestinyStore = defineStore('destiny', () => {
         }
     }
 
+    // Computed properties for easy access
+    const activeChallenges = computed(() => {
+        return challenges.value.filter(challenge => challenge.active === true)
+    })
+
+    const completedChallenges = computed(() => {
+        return challenges.value.filter(challenge => challenge.completed === true)
+    })
+
+    const incompleteChallenges = computed(() => {
+        return challenges.value.filter(challenge => {
+            if (challenge.completed) return false
+
+            if (challenge.objectives && Array.isArray(challenge.objectives)) {
+                return challenge.objectives.some(obj => {
+                    const progress = Number(obj.progress) || 0
+                    const completionValue = Number(obj.completionValue) || 1
+                    return progress < completionValue || !obj.complete
+                })
+            }
+
+            return !challenge.completed
+        })
+    })
+
+    const activeIncompleteChallenges = computed(() => {
+        return incompleteChallenges.value.filter(challenge => challenge.active === true)
+    })
+
     return {
         // State
         bungieLinked,
@@ -652,8 +945,16 @@ export const useDestinyStore = defineStore('destiny', () => {
         suggestLoading,
         aiMetadata,
         userAIStats,
+        userSeasonalSummary,
         globalStats,
+        weeklyInfo,
         statsLoading,
+
+        // Computed properties
+        activeChallenges,
+        completedChallenges,
+        incompleteChallenges,
+        activeIncompleteChallenges,
 
         // Methods
         loadDestinyState,
@@ -664,8 +965,10 @@ export const useDestinyStore = defineStore('destiny', () => {
         handleOAuthCallback,
         initializeDestinyState,
         loadUserAIStats,
+        loadUserSeasonalSummary,
         loadGlobalStats,
         loadAllStats,
-        calculateTokenCost
+        calculateTokenCost,
+        calculateFullRequestCost
     }
 })
