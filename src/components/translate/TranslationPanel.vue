@@ -8,7 +8,8 @@
                 <div class="flex items-center justify-between">
                     <!-- Logo and Title -->
                     <div class="flex items-center space-x-3">
-                        <router-link to="/" class="p-2 bg-white/20 rounded-xl backdrop-blur-sm cursor-pointer hover:bg-white/30 transition-all duration-300">
+                        <router-link to="/"
+                            class="p-2 bg-white/20 rounded-xl backdrop-blur-sm cursor-pointer hover:bg-white/30 transition-all duration-300">
                             <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129">
@@ -44,7 +45,7 @@
                             <div class="flex items-center space-x-2">
                                 <span class="text-xs text-white/60 bg-white/5 px-2 py-1 rounded-full">{{
                                     store.leftText.length
-                                    }}
+                                }}
                                     chars</span>
                                 <select v-model="store.fromLanguage"
                                     class="px-3 py-1 bg-white/5 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 backdrop-blur-sm text-xs">
@@ -111,13 +112,13 @@
                             <div class="flex items-center space-x-2">
                                 <span class="text-xs text-white/60 bg-white/5 px-2 py-1 rounded-full">{{
                                     store.rightText.length
-                                    }}
+                                }}
                                     chars</span>
                                 <select v-model="store.selectedLanguage"
                                     class="px-3 py-1 bg-white/5 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 backdrop-blur-sm text-xs">
                                     <option v-for="lang in store.languages" :key="lang.code" :value="lang.code"
                                         class="bg-slate-800 text-white">{{
-                                        lang.name }}</option>
+                                            lang.name }}</option>
                                 </select>
                             </div>
                         </div>
@@ -250,29 +251,65 @@
 </template>
 
 <script setup>
-import { useTranslateStore } from '@/stores/useTranslateStore';
-import { useToast } from '@/components/ui/toast/use-toast';
-import SettingsPopover from '@/components/translate/SettingsPopover.vue';
+import { useTranslateStore } from '@/stores/useTranslateStore'
+import { useToast } from '@/components/ui/toast/use-toast'
+import SettingsPopover from '@/components/translate/SettingsPopover.vue'
 
-const { toast } = useToast();
-const store = useTranslateStore();
+const { toast } = useToast()
+const store = useTranslateStore()
+
+const fmt = (ms) => {
+    if (ms === null || ms === undefined || Number.isNaN(ms)) return '—'
+    const n = Math.round(ms)
+    return n < 1000 ? `${n} ms` : `${(n / 1000).toFixed(2)} s`
+}
 
 const showMessage = (type, text, duration = 3000) => {
-    toast({
-        title: type === 'error' ? 'Error' : 'Success',
-        description: text,
-        variant: type === 'error' ? 'destructive' : 'default',
-        duration: duration,
-    });
-};
+    const meta = type === 'error'
+        ? { title: 'Error', variant: 'destructive' }
+        : type === 'success'
+            ? { title: 'Success', variant: 'default' }
+            : type === 'skipped'
+                ? { title: 'Skipped', variant: 'default' }
+                : { title: 'Notice', variant: 'default' }
 
-const translate = (fromSide = 'left') => {
-    store.translate(fromSide, showMessage);
-};
+    toast({ title: meta.title, description: text, variant: meta.variant, duration })
+}
 
-const copyToClipboard = (text) => {
-    store.copyToClipboard(text, showMessage);
-};
+const translate = async (fromSide = 'left') => {
+    const start = performance.now()
+    const result = await store.translate(fromSide)
+    const totalMs = Math.round(performance.now() - start)
+
+    if (result?.skipped) {
+        showMessage('Skipped', 'Already translating…')
+        return
+    }
+
+    if (!result?.ok) {
+        showMessage('Error', result?.error || 'Translation failed')
+        return
+    }
+
+    const { apiTimeMs, serverTimeMs, openAiTimeMs, cached } = result
+    const uiMs = apiTimeMs ? Math.max(totalMs - apiTimeMs, 0) : null
+    const badge = cached ? ' • cached' : ''
+
+    showMessage(
+        'success',
+        `Done in ${fmt(totalMs)}${badge} • Function: ${fmt(serverTimeMs)} • OpenAI: ${fmt(openAiTimeMs)} • UI: ${fmt(uiMs)}`,
+        6000
+    )
+}
+
+const copyToClipboard = async (text) => {
+    try {
+        await navigator.clipboard.writeText(text)
+        showMessage('success', 'Copied to clipboard!')
+    } catch (e) {
+        showMessage('error', 'Failed to copy to clipboard')
+    }
+}
 </script>
 
 <style scoped>

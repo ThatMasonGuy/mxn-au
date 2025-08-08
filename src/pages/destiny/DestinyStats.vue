@@ -141,7 +141,7 @@
                                         <span class="text-gray-300">OpenAI (GPT-4o)</span>
                                     </div>
                                     <span class="text-blue-400 font-semibold">${{ (userAIStats.totalOpenAICost ||
-                                        0).toFixed(4) }}</span>
+                                        0).toFixed(6) }}</span>
                                 </div>
                                 <div class="flex items-center justify-between">
                                     <div class="flex items-center gap-3">
@@ -203,13 +203,12 @@
                                 </div>
                                 <div class="flex items-center justify-between">
                                     <span class="text-gray-300">Avg Response Time</span>
-                                    <span class="text-purple-400 font-semibold">{{ (userAIStats.avgResponseTime ||
-                                        0).toFixed(0) }}ms</span>
+                                    <span class="text-purple-400 font-semibold">{{ userAvgAiResponseTime.toFixed(0) }}ms</span>
                                 </div>
                                 <div class="flex items-center justify-between">
                                     <span class="text-gray-300">Last Request Cost</span>
                                     <span class="text-yellow-400 font-semibold">${{
-                                        (userAIStats.lastRefreshCost || 0).toFixed(6) }}</span>
+                                        (userAIStats.totalInfrastructureCost || 0).toFixed(6) }}</span>
                                 </div>
                             </div>
                         </div>
@@ -236,15 +235,14 @@
                                         <div class="w-3 h-3 bg-purple-500 rounded-full"></div>
                                         <span class="text-gray-300">Cached Responses</span>
                                     </div>
-                                    <span class="text-purple-400 font-semibold">{{ userAIStats.cachedCalls || 0
-                                    }}</span>
+                                    <span class="text-purple-400 font-semibold">{{ userCachedCalls || 0 }}</span>
                                 </div>
                                 <div class="flex items-center justify-between">
                                     <div class="flex items-center gap-3">
                                         <div class="w-3 h-3 bg-red-500 rounded-full"></div>
                                         <span class="text-gray-300">Failed Requests</span>
                                     </div>
-                                    <span class="text-red-400 font-semibold">{{ userAIStats.errorCalls || 0 }}</span>
+                                    <span class="text-red-400 font-semibold">{{ userFailedCalls || 0 }}</span>
                                 </div>
                             </div>
                         </div>
@@ -381,13 +379,13 @@
                                         || 0).toFixed(6) }}</span>
                                 </div>
                                 <div class="flex items-center justify-between">
-                                    <span class="text-gray-300">Total Refresh Cost</span>
-                                    <span class="text-red-400 font-semibold">${{
-                                        (userSeasonalSummary.totalInfrastructureCost || 0).toFixed(4) }}</span>
-                                </div>
-                                <div class="flex items-center justify-between">
                                     <span class="text-gray-300">Avg Cost per Refresh</span>
                                     <span class="text-yellow-400 font-semibold">${{ avgRefreshCost.toFixed(6) }}</span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-gray-300">Total Refresh Cost</span>
+                                    <span class="text-red-400 font-semibold">${{
+                                        (userSeasonalSummary.totalInfrastructureCost || 0).toFixed(6) }}</span>
                                 </div>
                                 <div class="flex items-center justify-between">
                                     <span class="text-gray-300">Total Firestore Ops</span>
@@ -457,9 +455,9 @@
                                 </div>
                             </div>
                             <div class="text-3xl font-bold text-cyan-300 mb-1">{{
-                                globalStats.ai_calculated_stats.totalActiveUsers || 0 }}</div>
+                                (globalStats.oauth_calculated_stats.totalOAuthUsers || 0) }}</div>
                             <div class="text-sm text-gray-400">Connected Users</div>
-                            <div class="text-xs text-gray-500 mt-1">{{ globalStats.ai_calculated_stats.totalActiveUsers || 0 }}
+                            <div class="text-xs text-gray-500 mt-1">{{ (globalStats.calculated_stats.totalAIUsers || 0) }}
                                 using AI</div>
                         </div>
 
@@ -525,15 +523,15 @@
                                     }}%</span>
                                 </div>
                                 <div class="flex items-center justify-between">
-                                    <span class="text-gray-300">Cache Hit Rate</span>
-                                    <span class="text-purple-400 font-semibold">{{
-                                        (userCacheRate || 0).toFixed(1) }}%</span>
-                                </div>
-                                <div class="flex items-center justify-between">
                                     <span class="text-gray-300">Avg Response Time</span>
                                     <span class="text-blue-400 font-semibold">{{
                                         (globalStats.ai_calculated_stats.avgResponseTime / 1000 || 0).toFixed(1)
                                     }}s</span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-gray-300">Cache Hit Rate</span>
+                                    <span class="text-purple-400 font-semibold">{{
+                                        (globalStats.ai_calculated_stats.cacheHitRate || 0).toFixed(1) }}%</span>
                                 </div>
                                 <div class="flex items-center justify-between">
                                     <span class="text-gray-300">Cost Savings</span>
@@ -551,26 +549,26 @@
                             </h3>
                             <div class="space-y-4">
                                 <div class="flex items-center justify-between">
-                                    <span class="text-gray-300">Completion Rate</span>
-                                    <span class="text-green-400 font-semibold">{{
-                                        (globalStats.calculated_stats.avgCompletionRate || 0).toFixed(1) }}%</span>
+                                    <span class="text-gray-300">Total Challenges</span>
+                                    <span class="text-purple-400 font-semibold">{{
+                                        (globalStats.challenge_stats.totalChallengesSeen || 0).toLocaleString()
+                                        }}</span>
                                 </div>
                                 <div class="flex items-center justify-between">
-                                    <span class="text-gray-300">Completed</span>
+                                    <span class="text-gray-300">Total Completed</span>
                                     <span class="text-emerald-400 font-semibold">{{
                                         (globalStats.challenge_stats.totalChallengesCompleted || 0).toLocaleString()
                                         }}</span>
                                 </div>
                                 <div class="flex items-center justify-between">
-                                    <span class="text-gray-300">Avg per User</span>
+                                    <span class="text-gray-300">Avg Challenges per User</span>
                                     <span class="text-blue-400 font-semibold">{{
                                         (globalStats.calculated_stats.avgChallengesPerUser || 0).toFixed(0) }}</span>
                                 </div>
                                 <div class="flex items-center justify-between">
-                                    <span class="text-gray-300">Refresh Cost</span>
-                                    <span class="text-orange-400 font-semibold">${{
-                                        (globalStats.challenge_stats.totalInfrastructureCostUSD || 0).toFixed(2)
-                                    }}</span>
+                                    <span class="text-gray-300">Completion Rate</span>
+                                    <span class="text-green-400 font-semibold">{{
+                                        (globalStats.calculated_stats.avgCompletionRate || 0).toFixed(1) }}%</span>
                                 </div>
                             </div>
                         </div>
@@ -579,27 +577,22 @@
                         <div class="bg-gray-800/30 rounded-2xl p-6 border border-gray-600/30">
                             <h3 class="text-xl font-bold text-yellow-300 mb-4 flex items-center gap-2">
                                 <Coins class="w-5 h-5" />
-                                Infrastructure Costs (Real)
+                                Infrastructure Costs
                             </h3>
                             <div class="space-y-4">
                                 <div class="flex items-center justify-between">
                                     <span class="text-gray-300">OpenAI Costs</span>
                                     <span class="text-blue-400 font-semibold">${{ (globalStats.ai_stats.totalCostUSD ||
-                                        0).toFixed(2) }}</span>
+                                        0).toFixed(4) }}</span>
                                 </div>
                                 <div class="flex items-center justify-between">
                                     <span class="text-gray-300">Firestore Costs</span>
-                                    <span class="text-orange-400 font-semibold">${{ globalFirestoreCost.toFixed(3)
+                                    <span class="text-orange-400 font-semibold">${{ globalFirestoreCost.toFixed(4)
                                     }}</span>
                                 </div>
                                 <div class="flex items-center justify-between">
                                     <span class="text-gray-300">Function Costs</span>
-                                    <span class="text-green-400 font-semibold">${{ globalComputeCost.toFixed(3)
-                                    }}</span>
-                                </div>
-                                <div class="flex items-center justify-between">
-                                    <span class="text-gray-300">Total Infrastructure</span>
-                                    <span class="text-purple-400 font-semibold">${{ globalInfrastructureCost.toFixed(2)
+                                    <span class="text-green-400 font-semibold">${{ globalComputeCost.toFixed(4)
                                     }}</span>
                                 </div>
                             </div>
@@ -786,13 +779,32 @@ const userSuccessRate = computed(() => {
 })
 
 const userCacheRate = computed(() => {
+    const successful = userAIStats.value.successfulCalls || 0
+    const fresh = userAIStats.value.freshCalls || 0
+    const cachedCalls = (successful - fresh)
+    return cachedCalls > 0 ? (successful / cachedCalls) * 100 : 0
+})
+
+const userCachedCalls = computed(() => {
+    const successful = userAIStats.value.successfulCalls || 0
+    const fresh = userAIStats.value.freshCalls || 0
+    return successful > 0 ? successful - fresh : 0
+})
+
+const userFailedCalls = computed(() => {
     const total = userAIStats.value.totalCalls || 0
-    const cached = userAIStats.value.cachedCalls || 0
-    return total > 0 ? (cached / total) * 100 : 0
+    const successful = userAIStats.value.successfulCalls || 0
+    return total > 0 ? total - successful : 0
 })
 
 const userTotalAICost = computed(() => {
     return (userAIStats.value.totalCostUSD || 0) + (userAIStats.value.totalInfrastructureCostUSD || 0)
+})
+
+const userAvgAiResponseTime = computed(() => {
+    const totalTime = (userAIStats.value.totalResponseTime || 0) + (userAIStats.value.totalExecutionTimeMs || 0)
+    const totalUses = userAIStats.value.totalCalls || 0
+    return totalTime > 0 ? totalTime / totalUses : 0
 })
 
 const avgCostPerRequest = computed(() => {
@@ -849,8 +861,11 @@ const globalComputeCost = computed(() => {
 })
 
 const globalInfrastructureCost = computed(() => {
-    return (globalStats.value.ai_stats.totalInfrastructureCostUSD || 0) +
-           (globalStats.value.challenge_stats.totalInfrastructureCostUSD || 0)
+    const totalCompute = (globalStats.value.ai_stats.totalComputeCostUSD || 0) +
+    (globalStats.value.challenge_stats.totalComputeCostUSD || 0)
+    const totalFirestore = (globalStats.value.ai_stats.totalFirestoreCostUSD || 0) +
+    (globalStats.value.challenge_stats.totalFirestoreCostUSD || 0)
+    return (totalCompute || 0) + (totalFirestore || 0)
 })
 
 const globalTotalCost = computed(() => {

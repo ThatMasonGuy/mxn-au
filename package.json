@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@google-cloud/pubsub": "^5.1.0",
     "@heroicons/vue": "^2.2.0",
     "@radix-icons/vue": "^1.0.0",
     "@vueuse/core": "^10.11.1",

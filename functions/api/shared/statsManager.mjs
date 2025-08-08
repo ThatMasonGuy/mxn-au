@@ -194,7 +194,7 @@ export class StatsManager {
             }, { merge: true });
 
             // 7. User AI summary
-            const summaryRef = this.db.doc(`users/${userId}/destiny/ai_suggestions/summary`);
+            const summaryRef = this.db.doc(`users/${userId}/destiny/ai_suggestions`);
             const summaryData = {
                 lastChallengeCount: challengeCount,
                 lastResponseTime: responseTime,
@@ -412,19 +412,39 @@ export class StatsManager {
                 totalCompleted: data['challenge_stats.totalChallengesCompleted'] || 0
             };
 
+            // OAuth metrics
+            const oauthStats = {
+                totalStartAttempts: data['oauth_stats.totalStartAttempts'] || 0,
+                successfulStarts: data['oauth_stats.successfulStarts'] || 0,
+                totalCallbackAttempts: data['oauth_stats.totalCallbackAttempts'] || 0,
+                successfulCallbacks: data['oauth_stats.successfulCallbacks'] || 0
+            };
+
+            // Calculate OAuth derived metrics
+            const oauthCalculated = {
+                startSuccessRate: oauthStats.totalStartAttempts > 0 ?
+                    (oauthStats.successfulStarts / oauthStats.totalStartAttempts) * 100 : 0,
+                callbackSuccessRate: oauthStats.totalCallbackAttempts > 0 ?
+                    (oauthStats.successfulCallbacks / oauthStats.totalCallbackAttempts) * 100 : 0,
+                overallSuccessRate: oauthStats.totalCallbackAttempts > 0 ?
+                    (oauthStats.successfulCallbacks / oauthStats.totalCallbackAttempts) * 100 : 0
+            };
+
             // Calculate challenge completion rate
             const completionRate = challengeStats.totalSeen > 0 ?
                 (challengeStats.totalCompleted / challengeStats.totalSeen) * 100 : 0;
 
             // Count users
-            const [aiUsersSnapshot, connectedUsersSnapshot] = await Promise.all([
+            const [aiUsersSnapshot, connectedUsersSnapshot, oauthUsersSnapshot] = await Promise.all([
                 this.db.collection('destiny/global/ai_users').count().get(),
-                this.db.collection('destiny/global/connected_users').count().get()
+                this.db.collection('destiny/global/connected_users').count().get(),
+                this.db.collection('destiny/global/oauth_users').count().get()
             ]);
-            this.tracker.trackRead(2, 'user counts');
+            this.tracker.trackRead(3, 'user counts');
 
             const totalAIUsers = aiUsersSnapshot.data().count;
             const totalConnectedUsers = connectedUsersSnapshot.data().count;
+            const totalOAuthUsers = oauthUsersSnapshot.data().count;
 
             // Calculate average challenges per user
             let avgChallengesPerUser = 0;
@@ -464,13 +484,18 @@ export class StatsManager {
                 'calculated_stats.totalAIUsers': totalAIUsers,
                 'calculated_stats.avgChallengesPerUser': avgChallengesPerUser,
                 'calculated_stats.totalChallengesSeen': challengeStats.totalSeen,
-                'calculated_stats.lastCalculated': Date.now()
+                'calculated_stats.lastCalculated': Date.now(),
+                'oauth_calculated_stats.startSuccessRate': oauthCalculated.startSuccessRate,
+                'oauth_calculated_stats.callbackSuccessRate': oauthCalculated.callbackSuccessRate,
+                'oauth_calculated_stats.overallSuccessRate': oauthCalculated.overallSuccessRate,
+                'oauth_calculated_stats.totalOAuthUsers': totalOAuthUsers,
+                'oauth_calculated_stats.lastCalculated': Date.now()
             };
 
             await globalRef.update(updateData);
             this.tracker.trackWrite(1, 'calculated stats update');
 
-            console.log('[StatsManager] Updated calculated performance metrics');
+            console.log('[StatsManager] Updated calculated performance metrics including OAuth');
         } catch (err) {
             console.error('[StatsManager] Error calculating metrics:', err);
         }

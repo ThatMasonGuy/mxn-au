@@ -11,7 +11,7 @@
         <!-- Right-hand column (fixed height, inner scrolls) -->
         <div class="lg:col-span-1 flex flex-col xl:max-h-[83dvh] max-h-[95dvh] space-y-2">
           <UsagePanel />
-          <!-- I need this to only take up the remaining space in the height locked sidepanel -->
+          <!-- This will only take up the remaining space in the height locked sidepanel -->
           <div class="flex-1 overflow-hidden">
             <HistoryPanel />
           </div>
@@ -47,11 +47,13 @@ const showMessage = (type, text, duration = 3000) => {
 
 // --- Lifecycle Hooks ---
 onMounted(() => {
-  store.initializeFirestoreListener(showMessage)
+  // UPDATED: Call the new consolidated listener initialization function
+  store.initializeAllListeners(showMessage)
 })
 
 onUnmounted(() => {
-  store.cleanup()
+  // UPDATED: Call the new consolidated cleanup function
+  store.cleanupAllListeners()
 })
 </script>
 

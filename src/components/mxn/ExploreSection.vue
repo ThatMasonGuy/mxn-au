@@ -10,52 +10,53 @@
         <div
             class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-10 max-w-6xl w-full relative z-10 animate-fade-up animation-delay-200">
 
-            <ToolCard :icon="WrenchIcon" title="DevTools"
-                desc="Development utilities, generators, and personal projects." link="/devtools" :image="DevTools"
-                badge="New!" />
+            <ToolCard :icon="Languages" title="Translate"
+                desc="AI-powered web translator for real-time language conversion. Free & open to all."
+                link="/translate" :image="Translate_image" badge="New!" />
 
-            <ToolCard :icon="PuzzlePieceIcon" title="TopHeroes"
-                desc="Track your Guild Wars, players, stats and event data." link="/topheroes" :image="TopHeroes" />
+            <ToolCard :icon="Crosshair" title="Destiny 2"
+                desc="AI-powered challenge optimiser for Destiny 2. Plan, optimise, and track your progress. 100% free."
+                link="/destiny" :image="Destiny2_image" badge="New!" />
 
-            <ToolCard :icon="CubeIcon" title="Minecraft" desc="Player dashboards, server management, logs and insights."
-                link="/minecraft" :image="Minecraft" />
+            <ToolCard :icon="Puzzle" title="TopHeroes"
+                desc="Track your guild, player stats, and events for TopHeroes. Live data, custom dashboards."
+                link="/topheroes" :image="TopHeroes_image" />
 
-            <ToolCard :icon="ServerStackIcon" title="Server"
-                desc="Control web servers, deployments, files, and plugins." link="/server" :image="Server"
-                badge="Coming Soon" />
+            <ToolCard :icon="User" title="Personal"
+                desc="Login to use the Goblin Tracker, AI journal, and track your growth. Private & secure."
+                link="/personal" :image="Personal_image" />
 
-            <ToolCard :icon="GlobeAltIcon" title="Translate"
-                desc="Real-time Discord translator and project backend APIs." link="/translate" :image="Translate" />
+            <ToolCard :icon="Wrench" title="DevTools"
+                desc="Handy development utilities, generators, and side projects for devs." link="/devtools"
+                :image="DevTools_image" />
 
-            <ToolCard :icon="UserIcon" title="Personal"
-                desc="Login and track your real growth, user the goblin tracker or AI journal." link="/personal" :image="Personal" />
+            <ToolCard :icon="Box" title="Minecraft"
+                desc="Player dashboards, server management, activity logs, and more for Minecraft servers."
+                link="/minecraft" :image="Minecraft_image" badge="Coming Soon" />
+
+            <ToolCard :icon="Server" title="Server"
+                desc="Manage web servers, deploy projects, and control files/plugins. All-in-one admin." link="/server"
+                :image="Server_image" badge="Coming Soon" />
         </div>
     </section>
 </template>
 
 <script setup>
+// Lucide-vue icons
+import { Wrench, Puzzle, Box, Server, Languages, User, Crosshair } from 'lucide-vue-next'
+
 import ToolCard from '@/components/topheroes/ToolCard.vue'
 
-// Import Heroicons
-import {
-    WrenchIcon,
-    PuzzlePieceIcon,
-    CubeIcon,
-    ServerStackIcon,
-    GlobeAltIcon,
-    UserIcon
-} from '@heroicons/vue/24/outline'
-
-import TopHeroes from '@/assets/images/topHeroes/TopHeroes_2.jpg';
-import DevTools from '@/assets/images/mxn/DevTools_Image.jpg';
-import Minecraft from '@/assets/images/mxn/Minecraft_Image.jpg';
-import Server from '@/assets/images/mxn/Server_Image.jpg';
-import Translate from '@/assets/images/mxn/Translate_Image.jpg';
-import Personal from '@/assets/images/mxn/Personal_Image.png'
+import TopHeroes_image from '@/assets/images/topHeroes/TopHeroes_2.jpg';
+import DevTools_image from '@/assets/images/mxn/DevTools_Image.jpg';
+import Minecraft_image from '@/assets/images/mxn/Minecraft_Image.jpg';
+import Server_image from '@/assets/images/mxn/Server_Image.jpg';
+import Translate_image from '@/assets/images/mxn/Translate_Image.jpg';
+import Personal_image from '@/assets/images/mxn/Personal_Image.png';
+import Destiny2_image from '@/assets/images/mxn/Destiny2_Image.jpg';
 </script>
 
 <style scoped>
-/* Fading cards up */
 @keyframes fade-in {
     0% {
         opacity: 0;

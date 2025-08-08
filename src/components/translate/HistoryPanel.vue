@@ -5,7 +5,7 @@
         <!-- Header -->
         <div class="flex items-center justify-between px-1">
             <h3 class="text-sm font-medium text-white/80 uppercase tracking-wide">History</h3>
-            <button v-if="store.history.length" @click="store.clearHistory"
+            <button v-if="store.history.length" @click="clearHistory"
                 class="text-xs text-red-400/70 hover:text-red-400 hover:bg-white/10 px-2 py-1 rounded-lg transition-all">
                 Clear
             </button>
@@ -26,7 +26,7 @@
                 </div>
 
                 <!-- History Items -->
-                <div v-for="item in store.history" :key="item.id"
+                <div v-for="item in store.userHistory" :key="item.id"
                     class="group relative bg-white/5 hover:bg-white/10 border border-transparent hover:border-white/10 transition-all duration-300 rounded-xl p-4 animate-fade-in">
                     <!-- Delete button -->
                     <button @click.stop="deleteHistoryItem(item.id)" aria-label="Delete history item"
@@ -41,16 +41,18 @@
                     <div class="flex justify-between items-center mb-3">
                         <div class="flex items-center space-x-2 text-xs text-white/70">
                             <div class="flex items-center space-x-1">
-                                <i :class="flagClass(item.fromLangName)" class="w-4 h-4 rounded-sm"></i>
-                                <span>{{ item.fromLangName }}</span>
+                                <!-- UPDATED: Get lang name from code -->
+                                <i :class="flagClass(getLangName(item.sourceLang))" class="w-4 h-4 rounded-sm"></i>
+                                <span>{{ getLangName(item.sourceLang) }}</span>
                             </div>
                             <svg class="w-4 h-4 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M9 5l7 7-7 7" />
                             </svg>
                             <div class="flex items-center space-x-1">
-                                <i :class="flagClass(item.toLangName)" class="w-4 h-4 rounded-sm"></i>
-                                <span>{{ item.toLangName }}</span>
+                                <!-- UPDATED: Get lang name from code -->
+                                <i :class="flagClass(getLangName(item.targetLang))" class="w-4 h-4 rounded-sm"></i>
+                                <span>{{ getLangName(item.targetLang) }}</span>
                             </div>
                         </div>
                         <span class="text-white/50 text-xs">{{ store.formatTimeAgo(item.timestamp) }}</span>
@@ -63,13 +65,15 @@
                         <div class="relative group/text">
                             <div class="flex items-start space-x-3">
                                 <div class="flex-shrink-0 mt-1">
-                                    <i :class="flagClass(item.fromLangName)" class="w-5 h-4 rounded shadow-sm"></i>
+                                    <i :class="flagClass(getLangName(item.sourceLang))"
+                                        class="w-5 h-4 rounded shadow-sm"></i>
                                 </div>
                                 <div class="flex-1 relative">
+                                    <!-- UPDATED: Use `inputText` from new schema -->
                                     <p class="text-white/80 text-sm bg-black/20 p-3 rounded-lg pr-10 min-h-[2.5rem]">
-                                        {{ item.originalText }}
+                                        {{ item.inputText }}
                                     </p>
-                                    <button @click="store.copyToClipboard(item.originalText)"
+                                    <button @click="store.copyToClipboard(item.inputText, showMessage)"
                                         aria-label="Copy original text"
                                         class="absolute top-1/2 right-2 -translate-y-1/2 p-1 text-white/40 hover:text-white opacity-0 group-hover/text:opacity-100 transition-all duration-200">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -85,14 +89,16 @@
                         <div class="relative group/text">
                             <div class="flex items-start space-x-3">
                                 <div class="flex-shrink-0 mt-1">
-                                    <i :class="flagClass(item.toLangName)" class="w-5 h-4 rounded shadow-sm"></i>
+                                    <i :class="flagClass(getLangName(item.targetLang))"
+                                        class="w-5 h-4 rounded shadow-sm"></i>
                                 </div>
                                 <div class="flex-1 relative">
+                                    <!-- UPDATED: Use `translated` from new schema -->
                                     <p
                                         class="text-white text-sm bg-black/30 p-3 rounded-lg pr-10 min-h-[2.5rem] font-medium">
-                                        {{ item.translatedText }}
+                                        {{ item.translated }}
                                     </p>
-                                    <button @click="store.copyToClipboard(item.translatedText)"
+                                    <button @click="store.copyToClipboard(item.translated, showMessage)"
                                         aria-label="Copy translated text"
                                         class="absolute top-1/2 right-2 -translate-y-1/2 p-1 text-white/40 hover:text-white opacity-0 group-hover/text:opacity-100 transition-all duration-200">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -108,7 +114,6 @@
                 </div>
             </div>
         </div>
-
     </div>
 </template>
 
@@ -130,6 +135,10 @@ const showMessage = (type, text, duration = 3000) => {
     });
 };
 
+const getLangName = (langCode) => {
+    return store.languages.find(l => l.code === langCode)?.name || langCode;
+}
+
 const flagClass = (langName) => {
     const storeFlag = store.flagClass(langName)
     if (storeFlag) return storeFlag
@@ -139,5 +148,9 @@ const flagClass = (langName) => {
 
 const deleteHistoryItem = (id) => {
     store.deleteHistoryItem(id, showMessage)
+}
+
+const clearHistory = () => {
+    store.clearHistory(showMessage);
 }
 </script>

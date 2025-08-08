@@ -7,6 +7,7 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+functions/mxn-au-0173a0dfc9b9.json
 .env
 node_modules
 dist

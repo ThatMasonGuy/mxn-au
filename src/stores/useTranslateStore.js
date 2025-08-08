@@ -1,20 +1,21 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import {
-    doc, onSnapshot, setDoc, increment, serverTimestamp, collection,
-    query, orderBy, limit, deleteDoc, getDocs, writeBatch
+    doc, onSnapshot, collection, query, orderBy, limit, deleteDoc, getDocs
 } from 'firebase/firestore'
-import { firestore } from '@/firebase'
+import { firestore, auth } from '@/firebase'
 import { useMainStore } from '@/stores/useMainStore'
 
 export const useTranslateStore = defineStore('translate', () => {
     // --- Stores ---
     const mainStore = useMainStore()
 
-    // --- Core State ---
+    // --- Core UI State ---
     const settingsOpen = ref(false)
     const showApiKey = ref(false)
     const isTranslating = ref(false)
+
+    // --- Translation Result State ---
     const accuracy = ref(null)
     const accuracyRating = ref(null)
     const lastOriginalText = ref('')
@@ -22,9 +23,30 @@ export const useTranslateStore = defineStore('translate', () => {
     const leftText = ref('')
     const rightText = ref('')
     const retranslatedText = ref('')
+
+    // --- Global Stats State (from 'translations/meta') ---
     const appStats = ref(null)
-    const unsubscribeStats = ref(null)
-    const unsubscribeUserHistory = ref(null)
+    const languageStats = ref({})
+    const dailyStats = ref({})
+    const hourlyStats = ref({})
+
+    // --- Discord Stats State (from 'translations/discord') ---
+    const discordStats = ref(null) // single doc listener
+    const discordGuilds = ref({})
+    const discordChannels = ref({})
+    const discordUsers = ref({})
+    const discordDailyStats = ref({})
+    const discordHourlyStats = ref({})
+    const discordLanguages = ref({})
+
+    // --- Error Logging State ---
+    const errorLogs = ref({})
+    const connectionRetries = ref(0)
+    const maxRetries = 3
+
+    // --- Firestore Unsubscribe Refs ---
+    const unsubscribers = ref([])
+    const unsubscribeHistory = ref(null)
 
     // --- Persisted Settings ---
     const apiKey = ref('')
@@ -34,11 +56,16 @@ export const useTranslateStore = defineStore('translate', () => {
     const syncHistory = ref(true)
 
     // --- History State ---
-    const recentTranslations = ref([]) // Local storage history for anonymous/offline users
-    const userHistory = ref([]) // Firestore-synced history for authenticated users
+    const recentTranslations = ref([])
+    const userHistory = ref([])
 
     // --- Constants ---
     const MAX_HISTORY_SIZE = 20
+
+    // OpenAI GPT-4o pricing (per 1M tokens) - aligned with backend
+    const GPT4O_INPUT_COST_PER_MILLION = 2.5
+    const GPT4O_OUTPUT_COST_PER_MILLION = 10.0
+
     const languages = [
         { code: 'en', name: 'English' }, { code: 'es', name: 'Spanish' }, { code: 'fr', name: 'French' },
         { code: 'de', name: 'German' }, { code: 'it', name: 'Italian' }, { code: 'pt', name: 'Portuguese' },
@@ -49,12 +76,37 @@ export const useTranslateStore = defineStore('translate', () => {
         { code: 'pl', name: 'Polish' }, { code: 'cs', name: 'Czech' }, { code: 'hu', name: 'Hungarian' },
         { code: 'th', name: 'Thai' }, { code: 'vi', name: 'Vietnamese' }
     ]
+
     const langFlagMap = {
         English: 'gb', Spanish: 'es', French: 'fr', German: 'de', Italian: 'it',
         Portuguese: 'pt', Japanese: 'jp', Korean: 'kr', 'Chinese (Simplified)': 'cn',
         Russian: 'ru', Arabic: 'sa', Hindi: 'in', Turkish: 'tr', Dutch: 'nl',
         Swedish: 'se', Norwegian: 'no', Danish: 'dk', Finnish: 'fi', Polish: 'pl',
         Czech: 'cz', Hungarian: 'hu', Thai: 'th', Vietnamese: 'vn'
+    }
+
+    // --- Token Refresh Helper ---
+    const getValidToken = async () => {
+        if (!mainStore.user) return null
+
+        try {
+            // Force token refresh to ensure it's valid
+            const token = await auth.currentUser?.getIdToken(true)
+            return token
+        } catch (error) {
+            console.error('Failed to refresh token:', error)
+            // Try to re-authenticate
+            if (auth.currentUser) {
+                try {
+                    await auth.currentUser.reload()
+                    return await auth.currentUser.getIdToken(true)
+                } catch (retryError) {
+                    console.error('Token refresh retry failed:', retryError)
+                    mainStore.logout() // Force re-login
+                }
+            }
+            return null
+        }
     }
 
     // --- Computed Properties ---
@@ -68,142 +120,265 @@ export const useTranslateStore = defineStore('translate', () => {
     const retranslationTargetLanguageName = computed(() => lastTranslationDirection.value === 'left' ? leftLanguageName.value : rightLanguageName.value)
     const formattedTranslations = computed(() => appStats.value?.totalTranslations?.toLocaleString() || '0')
     const formattedWords = computed(() => appStats.value?.totalWords?.toLocaleString() || '0')
+
+    // Fixed cost calculation aligned with backend
     const formattedApiCost = computed(() => {
-        if (!appStats.value) return '$0.00'
-        const GPT4O_INPUT_COST_PER_MILLION = 2.5
-        const GPT4O_OUTPUT_COST_PER_MILLION = 10
-        const promptTokens = appStats.value.totalPromptTokens || 0
-        const completionTokens = appStats.value.totalCompletionTokens || 0
+        if (!appStats.value?.tokenUsage) return '$0.00'
+
+        const promptTokens = appStats.value.tokenUsage.prompt || 0
+        const completionTokens = appStats.value.tokenUsage.completion || 0
+
         const inputCost = (promptTokens / 1000000) * GPT4O_INPUT_COST_PER_MILLION
         const outputCost = (completionTokens / 1000000) * GPT4O_OUTPUT_COST_PER_MILLION
-        const totalCost = (inputCost + outputCost)
-        return `$${totalCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 5 })}`
+        const totalCost = inputCost + outputCost
+
+        return `$${totalCost.toLocaleString('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 5
+        })}`
     })
-    const accuracyPercentage = computed(() => accuracy.value !== null ? Math.round(accuracy.value) : null)
+
+    const accuracyPercentage = computed(() => accuracy.value !== null ? Math.round(accuracy.value * 100) : null)
     const accuracyBarClass = computed(() => {
-        if (accuracy.value > 80) return 'bg-green-500'
-        if (accuracy.value > 60) return 'bg-yellow-500'
-        if (accuracy.value > 40) return 'bg-orange-500'
+        const acc = accuracy.value * 100 // Convert to percentage
+        if (acc > 80) return 'bg-green-500'
+        if (acc > 60) return 'bg-yellow-500'
+        if (acc > 40) return 'bg-orange-500'
         return 'bg-red-500'
     })
+
     const retranslationWithDiff = computed(() => highlightDifferences(lastOriginalText.value, retranslatedText.value))
 
-    // --- Methods ---
-    const _saveUserTranslation = async (userId, translationData, docRef) => {
-        if (!userId || !translationData || !docRef) return;
-        try {
-            // We only need to store the codes in the DB, not the full names
-            const { fromLangName, toLangName, ...dataToSave } = translationData;
-            await setDoc(docRef, { ...dataToSave, timestamp: serverTimestamp() });
+    const topLanguages = computed(() => {
+        if (!languageStats.value || Object.keys(languageStats.value).length === 0) return []
+        const total = Object.values(languageStats.value).reduce((sum, lang) => sum + (lang.translations || 0), 0)
+        if (total === 0) return []
+        return Object.entries(languageStats.value)
+            .map(([code, data]) => {
+                const langObj = languages.find(l => l.code === code)
+                return {
+                    code,
+                    name: langObj?.name || code,
+                    flag: `fi fi-${langFlagMap[langObj?.name] || code.toLowerCase()}`,
+                    percentage: Math.round(((data.translations || 0) / total) * 100),
+                    count: (data.translations || 0).toLocaleString(),
+                    translations: data.translations || 0
+                }
+            })
+            .filter(lang => lang.translations > 0)
+            .sort((a, b) => b.translations - a.translations)
+            .slice(0, 5)
+    })
 
-            const metaDocRef = doc(firestore, `users/${userId}/translations`, 'meta');
-            const wordCount = translationData.originalText.trim().split(/\s+/).length;
-            await setDoc(metaDocRef, {
-                totalTranslations: increment(1),
-                totalWords: increment(wordCount),
-                lastTranslated: serverTimestamp()
-            }, { merge: true });
-        } catch (error) {
-            console.error("Failed to save user translation history:", error);
+    const activeToday = computed(() => {
+        const today = new Date().toISOString().split('T')[0]
+        const todayStats = dailyStats.value[today]
+        return todayStats?.uniqueUsers?.length || 0
+    })
+
+    // NEW: counts sourced from the top-level translations/discord document when present
+    const discordCounts = computed(() => {
+        const stats = discordStats.value || {}
+        return {
+            guilds: typeof stats.guildCount === 'number' ? stats.guildCount : Object.keys(discordGuilds.value || {}).length,
+            channels: typeof stats.channelCount === 'number'
+                ? stats.channelCount
+                : Object.values(discordGuilds.value || {}).reduce((sum, guild) => sum + Object.keys(guild.channels || {}).length, 0),
+            users: typeof stats.userCount === 'number' ? stats.userCount : Object.keys(discordUsers.value || {}).length,
         }
-    };
+    })
 
-    const translate = async (fromSide = 'left', showMessage) => {
+    const discordGlobalStats = computed(() => {
+        const stats = discordStats.value || {}
+        const counts = discordCounts.value
+
+        return {
+            totalTranslations: stats.totalTranslations?.toLocaleString() || '0',
+            totalGuilds: counts.guilds,
+            totalChannels: counts.channels,
+            activeDiscordUsers: counts.users,
+        }
+    })
+
+    const topDiscordGuilds = computed(() => {
+        return Object.entries(discordGuilds.value || {})
+            .map(([id, data]) => ({
+                id,
+                name: data.guildName || 'Unknown Server',
+                translations: data.totalTranslations || 0,
+                uniqueUsers: data.uniqueUsers?.length || 0,
+                channels: Object.keys(data.channels || {}).length
+            }))
+            .sort((a, b) => b.translations - a.translations)
+            .slice(0, 3)
+    })
+
+    const topDiscordChannels = computed(() => {
+        const guilds = discordGuilds.value || {}
+        const channels = []
+
+        Object.entries(guilds).forEach(([guildId, guild]) => {
+            Object.entries(guild.channels || {}).forEach(([channelId, channel]) => {
+                channels.push({
+                    id: channelId,
+                    name: channel.channelName || 'Unknown Channel',
+                    guildName: guild.guildName || 'Unknown Server',
+                    translations: channel.totalTranslations || 0,
+                    uniqueUsers: channel.uniqueUsers?.length || 0
+                })
+            })
+        })
+
+        return channels
+            .sort((a, b) => b.translations - a.translations)
+            .slice(0, 3)
+    })
+
+    const topDiscordUsers = computed(() => {
+        const users = discordUsers.value || {}
+        return Object.entries(users)
+            .map(([userId, data]) => ({
+                id: userId,
+                translations: data.totalTranslations || 0,
+                words: data.totalWords || 0,
+                avgResponseTime: data.totalResponseTime
+                    ? Math.round(data.totalResponseTime / data.totalTranslations)
+                    : 0,
+                costSaved: calculateUserSavings(data)
+            }))
+            .sort((a, b) => b.translations - a.translations)
+            .slice(0, 3)
+    })
+
+    const hasDiscordData = computed(() => discordStats.value !== null || Object.keys(discordGuilds.value || {}).length > 0)
+
+    // --- Helper to calculate user savings ---
+    const calculateUserSavings = (userData) => {
+        if (!userData?.savedTokenUsage) return 0
+
+        const promptSaved = (userData.savedTokenUsage.prompt || 0) / 1000000 * GPT4O_INPUT_COST_PER_MILLION
+        const completionSaved = (userData.savedTokenUsage.completion || 0) / 1000000 * GPT4O_OUTPUT_COST_PER_MILLION
+
+        return promptSaved + completionSaved
+    }
+
+    // --- Methods ---
+    const translate = async (fromSide = 'left') => {
         const isLeftToRight = fromSide === 'left'
         const inputText = isLeftToRight ? leftText.value : rightText.value
         const fromLang = isLeftToRight ? fromLanguage.value : selectedLanguage.value
         const toLang = isLeftToRight ? selectedLanguage.value : fromLanguage.value
         const finalKey = apiKey.value?.trim() || import.meta.env.VITE_OPENAI_API_KEY_TRANSLATION_GENERIC
 
-        if (!inputText.trim() || !finalKey) return
+        if (!inputText?.trim() || !finalKey) {
+            return { ok: false, error: 'Missing input text or API key.', apiTimeMs: 0 }
+        }
+
+        if (isTranslating.value) {
+            return { ok: false, skipped: true, apiTimeMs: 0 }
+        }
 
         isTranslating.value = true
         lastOriginalText.value = inputText
         lastTranslationDirection.value = fromSide
 
+        let apiTimeMs = 0
+        let serverTimeMs = null // from response.responseTime (aiTranslate)
+        let openAiTimeMs = null // optional (if backend includes)
+        let retryCount = 0
+
         try {
-            const headers = { 'Content-Type': 'application/json', 'x-openai-key': finalKey };
-            if (mainStore.token) { headers['Authorization'] = `Bearer ${mainStore.token}`; }
+            while (retryCount < maxRetries) {
+                try {
+                    const headers = { 'Content-Type': 'application/json', 'x-openai-key': finalKey }
+                    if (mainStore.user) {
+                        const freshToken = await getValidToken()
+                        if (freshToken) headers['Authorization'] = `Bearer ${freshToken}`
+                    }
 
-            const response = await fetch('/translate/post', {
-                method: 'POST',
-                headers: headers,
-                body: JSON.stringify({ content: inputText, fromLang, targetLang: toLang, retranslate: true })
-            })
+                    const apiStart = performance.now()
+                    const resp = await fetch('/translate/post', {
+                        method: 'POST',
+                        headers,
+                        body: JSON.stringify({ content: inputText, fromLang, targetLang: toLang })
+                    })
+                    apiTimeMs = Math.round(performance.now() - apiStart)
 
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}))
-                throw new Error(errorData?.error || `HTTP error! status: ${response.status}`)
+                    if (!resp.ok) {
+                        const err = await resp.json().catch(() => ({}))
+                        if (resp.status === 401 && mainStore.user) { retryCount++; continue }
+                        throw new Error(err?.error || `HTTP error! status: ${resp.status}`)
+                    }
+
+                    const data = await resp.json()
+                    serverTimeMs = typeof data?.responseTime === 'number' ? data.responseTime : null
+                    openAiTimeMs = data?.metrics?.openAiTimeMs ?? data?.openAiTimeMs ?? null
+                    if (openAiTimeMs === null && data?.cached === true) openAiTimeMs = 0
+
+                    const outputText = data.translated || data.outputText || ''
+                    accuracy.value = typeof data.accuracy === 'number' ? data.accuracy : null
+                    accuracyRating.value = data.accuracyRating || null
+                    if (isLeftToRight) rightText.value = outputText; else leftText.value = outputText
+                    retranslatedText.value = data.retranslated || ''
+
+                    if (!isSyncing.value) {
+                        const translationResult = {
+                            id: crypto.randomUUID(),
+                            inputText,
+                            translated: outputText,
+                            sourceLang: fromLang,
+                            targetLang: toLang,
+                            accuracy: accuracy.value,
+                            accuracyRating: accuracyRating.value,
+                            cached: !!data.cached,
+                            responseTime: apiTimeMs,
+                            tokenUsage: data.tokenUsage || null,
+                            wordCount: data.wordCount || inputText.trim().split(/\s+/).length,
+                            charCount: data.charCount || inputText.length,
+                            timestamp: new Date().toISOString()
+                        }
+                        addTranslationToLocalHistory(translationResult)
+                    }
+
+                    // DO NOT toast here; just return the metrics
+                    connectionRetries.value = 0
+                    return { ok: true, apiTimeMs, serverTimeMs, openAiTimeMs, cached: !!data.cached }
+                } catch (error) {
+                    console.error(`Translation error (attempt ${retryCount + 1}):`, error)
+                    if (retryCount >= maxRetries - 1) {
+                        retranslatedText.value = ''
+                        lastOriginalText.value = ''
+                        accuracy.value = null
+                        accuracyRating.value = null
+                        return { ok: false, apiTimeMs, serverTimeMs, openAiTimeMs, error: error.message }
+                    }
+                    retryCount++
+                    await new Promise(r => setTimeout(r, 1000 * retryCount))
+                }
             }
 
-            const data = await response.json()
-            const outputText = data.outputText || ''
-            accuracy.value = typeof data.accuracy === 'number' ? Math.ceil(data.accuracy * 100) : null
-            accuracyRating.value = data.accuracyRating || null
-
-            if (isLeftToRight) { rightText.value = outputText } else { leftText.value = outputText }
-            retranslatedText.value = data.retranslated || ''
-
-            const translationResult = {
-                fromLangCode: fromLang, toLangCode: toLang, originalText: inputText,
-                translatedText: outputText, accuracy: accuracy.value, accuracyRating: accuracyRating.value,
-            };
-
-            if (isSyncing.value) {
-                const userId = mainStore.user.uid;
-                const translationDocRef = doc(collection(firestore, `users/${userId}/translations`));
-                _saveUserTranslation(userId, translationResult, translationDocRef);
-                addTranslationToHistory(translationResult, translationDocRef.id);
-            } else {
-                addTranslationToHistory(translationResult);
-            }
-
-            if (autoCopy.value && outputText) { await copyToClipboard(outputText, showMessage) }
-            showMessage('success', 'Translation completed successfully!')
-        } catch (error) {
-            console.error('Translation error:', error)
-            showMessage('error', `Translation failed: ${error.message}`)
-            retranslatedText.value = ''; lastOriginalText.value = ''; accuracy.value = null; accuracyRating.value = null;
+            return { ok: false, apiTimeMs, serverTimeMs, openAiTimeMs, error: 'Unknown failure' }
         } finally {
             isTranslating.value = false
         }
     }
 
-    const addTranslationToHistory = (translation, docId = null) => {
-        // Correctly choose which array to update for an immediate UI response
-        const historyArray = isSyncing.value ? userHistory.value : recentTranslations.value;
-
-        const newEntry = {
-            id: docId || crypto.randomUUID(),
-            fromLangCode: translation.fromLangCode,
-            fromLangName: languages.find(l => l.code === translation.fromLangCode)?.name,
-            toLangCode: translation.toLangCode,
-            toLangName: languages.find(l => l.code === translation.toLangCode)?.name,
-            originalText: translation.originalText,
-            translatedText: translation.translatedText,
-            timestamp: new Date().toISOString()
-        };
-
-        // Prevent duplicate optimistic updates from clashing with the listener
-        if (isSyncing.value && historyArray.some(item => item.id === newEntry.id)) {
-            return;
-        }
-
-        historyArray.unshift(newEntry)
-        if (historyArray.length > MAX_HISTORY_SIZE) {
-            historyArray.pop()
+    const addTranslationToLocalHistory = (translation) => {
+        recentTranslations.value.unshift(translation)
+        if (recentTranslations.value.length > MAX_HISTORY_SIZE) {
+            recentTranslations.value.pop()
         }
     }
 
     const deleteHistoryItem = async (id, showMessage) => {
         if (isSyncing.value) {
             try {
-                const docRef = doc(firestore, `users/${mainStore.user.uid}/translations`, id);
-                await deleteDoc(docRef);
-                showMessage('success', 'History item removed from cloud.');
+                const docRef = doc(firestore, `users/${mainStore.user.uid}/translations`, id)
+                await deleteDoc(docRef)
+                showMessage('success', 'History item removed from cloud.')
             } catch (error) {
-                console.error("Failed to delete cloud history item:", error);
-                showMessage('error', 'Could not remove item from cloud.');
+                console.error('Failed to delete cloud history item:', error)
+                showMessage('error', 'Could not remove item from cloud.')
             }
         } else {
             const idx = recentTranslations.value.findIndex((t) => t.id === id)
@@ -216,103 +391,286 @@ export const useTranslateStore = defineStore('translate', () => {
 
     const clearHistory = async (showMessage) => {
         if (isSyncing.value) {
-            showMessage('default', 'Clearing cloud history...', 2000);
-            try {
-                const userId = mainStore.user.uid;
-                const translationsRef = collection(firestore, `users/${userId}/translations`);
-                const q = query(translationsRef);
-                const querySnapshot = await getDocs(q);
-                const batch = writeBatch(firestore);
-                querySnapshot.forEach((doc) => {
-                    if (doc.id !== 'meta') { // Do not delete the meta document
-                        batch.delete(doc.ref);
-                    }
-                });
-                await batch.commit();
-                showMessage('success', 'Cloud history cleared.');
-            } catch (error) {
-                console.error("Failed to clear cloud history:", error);
-                showMessage('error', 'Could not clear cloud history.');
-            }
+            showMessage('error', 'Clearing cloud history is not available from the client.')
         } else {
-            recentTranslations.value = [];
-            showMessage('success', 'Local history cleared.');
+            recentTranslations.value = []
+            showMessage('success', 'Local history cleared.')
         }
     }
 
-    const initializeUserHistoryListener = (userId, showMessage) => {
-        cleanupUserHistoryListener();
-        try {
-            const translationsRef = collection(firestore, `users/${userId}/translations`);
-            const q = query(translationsRef, orderBy('timestamp', 'desc'), limit(MAX_HISTORY_SIZE));
+    // Enhanced listener with reconnection logic
+    const createListener = (path, targetRef, showMessage, isCollection = true) => {
+        let unsubscribe = null
+        let reconnectTimeout = null
 
-            unsubscribeUserHistory.value = onSnapshot(q, (snapshot) => {
-                userHistory.value = snapshot.docs
-                    .filter(doc => doc.id !== 'meta') // Ensure we don't process the meta document
-                    .map(doc => {
-                        const data = doc.data();
-                        // **FIX**: Add language names, as they are not stored in the DB
-                        const fromLangName = languages.find(l => l.code === data.fromLangCode)?.name;
-                        const toLangName = languages.find(l => l.code === data.toLangCode)?.name;
-                        return {
-                            id: doc.id,
-                            ...data,
-                            fromLangName: fromLangName || data.fromLangCode,
-                            toLangName: toLangName || data.toLangCode,
-                            timestamp: data.timestamp?.toDate?.().toISOString() || new Date().toISOString()
-                        };
-                    });
-            }, (error) => {
-                console.error("Error listening to user history:", error);
-                showMessage('error', 'Failed to load cloud history.');
-            });
-        } catch (error) {
-            console.error("User history listener setup failed:", error);
-            showMessage('error', 'Could not connect to your history.');
+        const setupListener = () => {
+            try {
+                const refObj = isCollection ? collection(firestore, path) : doc(firestore, path)
+
+                unsubscribe = onSnapshot(refObj,
+                    (snapshot) => {
+                        connectionRetries.value = 0 // Reset on success
+
+                        if (isCollection) {
+                            const data = {}
+                            snapshot.forEach(doc => {
+                                const docData = doc.data()
+                                data[doc.id] = docData
+                            })
+                            targetRef.value = data
+                        } else {
+                            targetRef.value = snapshot.exists() ? snapshot.data() : null
+                        }
+                    },
+                    (error) => {
+                        console.error(`[LISTENER] Error listening to ${path}:`, error)
+
+                        // Handle permission/auth errors
+                        if (error.code === 'permission-denied' && connectionRetries.value < maxRetries) {
+                            connectionRetries.value++
+                            console.log(`Retrying listener for ${path} (attempt ${connectionRetries.value})...`)
+
+                            // Retry with exponential backoff
+                            reconnectTimeout = setTimeout(() => {
+                                if (unsubscribe) unsubscribe()
+                                setupListener()
+                            }, 1000 * Math.pow(2, connectionRetries.value))
+                        } else if (showMessage && connectionRetries.value >= maxRetries) {
+                            showMessage('error', `Failed to load data from ${path}. Please refresh the page.`)
+                        }
+                    }
+                )
+
+                unsubscribers.value.push(() => {
+                    if (unsubscribe) unsubscribe()
+                    if (reconnectTimeout) clearTimeout(reconnectTimeout)
+                })
+
+            } catch (error) {
+                console.error(`[LISTENER] Failed to set up listener for ${path}:`, error)
+                if (showMessage) showMessage('error', `Could not connect to service at ${path}.`)
+            }
         }
-    };
+
+        setupListener()
+    }
+
+    const initializeAllListeners = (showMessage) => {
+        cleanupAllListeners()
+
+        // --- Global Stats Listeners ---
+        createListener('translations/meta', appStats, showMessage, false)
+        createListener('translations/meta/languages', languageStats, showMessage)
+        createListener('translations/meta/daily_stats', dailyStats, showMessage)
+        createListener('translations/meta/hourly_stats', hourlyStats, showMessage)
+
+        // --- Discord Stats Listeners ---
+        createListener('translations/discord', discordStats, showMessage, false) // doc with counts
+        createListener('translations/discord/guilds', discordGuilds, showMessage)
+        createListener('translations/discord/users', discordUsers, showMessage)
+        createListener('translations/discord/daily_stats', discordDailyStats, showMessage)
+        createListener('translations/discord/hourly_stats', discordHourlyStats, showMessage)
+        createListener('translations/discord/languages', discordLanguages, showMessage)
+    }
+
+    const initializeUserHistoryListener = (userId) => {
+        cleanupUserHistoryListener()
+
+        let reconnectTimeout = null
+
+        const setupHistoryListener = async () => {
+            try {
+                const historyPath = `users/${userId}/translations`
+                const translationsRef = collection(firestore, historyPath)
+                const q = query(translationsRef, orderBy('timestamp', 'desc'), limit(MAX_HISTORY_SIZE))
+
+                unsubscribeHistory.value = onSnapshot(q,
+                    (snapshot) => {
+                        connectionRetries.value = 0 // Reset on success
+
+                        const historyData = snapshot.docs
+                            .filter(doc => doc.id !== 'meta')
+                            .map(doc => ({
+                                id: doc.id,
+                                ...doc.data(),
+                                // Ensure timestamp is in correct format
+                                timestamp: doc.data().timestamp?.toDate?.() || doc.data().timestamp
+                            }))
+
+                        userHistory.value = historyData
+                    },
+                    async (error) => {
+                        console.error('[HISTORY] Error in onSnapshot:', error)
+
+                        // Handle auth errors with retry
+                        if (error.code === 'permission-denied' && connectionRetries.value < maxRetries) {
+                            connectionRetries.value++
+                            console.log(`Retrying history listener (attempt ${connectionRetries.value})...`)
+
+                            // Get fresh token
+                            await getValidToken()
+
+                            // Retry with exponential backoff
+                            reconnectTimeout = setTimeout(() => {
+                                setupHistoryListener()
+                            }, 1000 * Math.pow(2, connectionRetries.value))
+                        }
+                    }
+                )
+            } catch (error) {
+                console.error('[HISTORY] Listener setup failed:', error)
+            }
+        }
+
+        setupHistoryListener()
+
+        // Store cleanup function
+        if (reconnectTimeout) {
+            unsubscribers.value.push(() => clearTimeout(reconnectTimeout))
+        }
+    }
 
     const cleanupUserHistoryListener = () => {
-        if (unsubscribeUserHistory.value) {
-            unsubscribeUserHistory.value();
-            unsubscribeUserHistory.value = null;
+        if (unsubscribeHistory.value) {
+            unsubscribeHistory.value()
+            unsubscribeHistory.value = null
         }
-        userHistory.value = [];
-    };
+        if (userHistory.value.length > 0) {
+            userHistory.value = []
+        }
+    }
 
-    watch(isSyncing, (newIsSyncing) => {
-        if (newIsSyncing) {
-            initializeUserHistoryListener(mainStore.user.uid);
+    const cleanupAllListeners = () => {
+        unsubscribers.value.forEach(unsub => unsub())
+        unsubscribers.value = []
+    }
+
+    // Watch for sync changes with better error handling
+    watch(isSyncing, async (newIsSyncing) => {
+        if (newIsSyncing && mainStore.user?.uid) {
+            // Ensure we have a valid token before setting up listeners
+            const token = await getValidToken()
+            if (token) {
+                initializeUserHistoryListener(mainStore.user.uid)
+            } else {
+                console.error('[WATCHER] Could not get valid token for user history')
+            }
         } else {
-            cleanupUserHistoryListener();
+            console.log('[WATCHER] Cleaning up user history listener.')
+            cleanupUserHistoryListener()
         }
-    }, { immediate: true });
+    }, { immediate: true })
 
-    const initializeFirestoreListener = (showMessage) => {
+    // --- Utility Functions ---
+    const flagClass = (langName) => {
+        if (!langName) return ''
+        const code = langFlagMap[langName]
+        if (code) return `fi fi-${code}`
+        return ''
+    }
+
+    const highlightDifferences = (originalText, modifiedText) => {
+        if (!originalText || !modifiedText) return modifiedText.replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
+        const splitRegex = /(\s+)/
+        const originalWords = originalText.split(splitRegex)
+        const modifiedWords = modifiedText.split(splitRegex)
+        const lcsMatrix = Array(originalWords.length + 1).fill(null).map(() => Array(modifiedWords.length + 1).fill(0))
+
+        for (let i = 1; i <= originalWords.length; i++) {
+            for (let j = 1; j <= modifiedWords.length; j++) {
+                if (originalWords[i - 1] === modifiedWords[j - 1]) {
+                    lcsMatrix[i][j] = 1 + lcsMatrix[i - 1][j - 1]
+                } else {
+                    lcsMatrix[i][j] = Math.max(lcsMatrix[i - 1][j], lcsMatrix[i][j - 1])
+                }
+            }
+        }
+
+        let i = originalWords.length, j = modifiedWords.length
+        const result = []
+
+        while (i > 0 || j > 0) {
+            if (i > 0 && j > 0 && originalWords[i - 1] === modifiedWords[j - 1]) {
+                result.unshift({ text: modifiedWords[j - 1], type: 'common' })
+                i--; j--
+            } else if (j > 0 && (i === 0 || lcsMatrix[i][j - 1] >= lcsMatrix[i - 1][j])) {
+                result.unshift({ text: modifiedWords[j - 1], type: 'added' })
+                j--
+            } else if (i > 0 && (j === 0 || lcsMatrix[i][j - 1] < lcsMatrix[i - 1][j])) {
+                i--
+            } else {
+                break
+            }
+        }
+
+        return result.map(part => {
+            const cleanText = part.text.replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            if (part.type === 'added' && part.text.trim() !== '') {
+                const acc = accuracy.value * 100 // Convert to percentage
+                const underlineColor = acc > 80 ? 'decoration-green-400' : acc > 60 ? 'decoration-yellow-400' : acc > 40 ? 'decoration-orange-400' : 'decoration-red-400'
+                const textColor = acc > 80 ? 'text-green-50' : acc > 60 ? 'text-yellow-50' : acc > 40 ? 'text-orange-50' : 'text-red-50'
+                return `<u class="${underlineColor} decoration-2 underline ${textColor}">${cleanText}</u>`
+            }
+            return cleanText
+        }).join('')
+    }
+
+    const copyToClipboard = async (text, showMessage) => {
+        if (!text) return
         try {
-            const statsDocRef = doc(firestore, 'translations', 'meta')
-            unsubscribeStats.value = onSnapshot(statsDocRef, (doc) => {
-                if (doc.exists()) { appStats.value = doc.data() }
-                else { console.log("No stats document found!"); appStats.value = {} }
-            }, (error) => {
-                console.error("Error fetching stats:", error)
-                showMessage('error', 'Could not load live statistics.')
-            })
+            await navigator.clipboard.writeText(text)
+            showMessage('success', 'Copied to clipboard!')
         } catch (error) {
-            console.error("Firestore listener setup failed:", error)
-            showMessage('error', 'Could not connect to statistics service.')
+            console.error('Copy failed:', error)
+            try {
+                const textArea = document.createElement('textarea')
+                textArea.value = text
+                document.body.appendChild(textArea)
+                textArea.focus()
+                textArea.select()
+                document.execCommand('copy')
+                document.body.removeChild(textArea)
+                showMessage('success', 'Copied to clipboard!')
+            } catch (err) {
+                showMessage('error', 'Failed to copy to clipboard')
+            }
         }
     }
 
-    const cleanup = () => {
-        if (unsubscribeStats.value) { unsubscribeStats.value() }
-        cleanupUserHistoryListener();
+    const formatTimeAgo = (timestamp) => {
+        if (!timestamp) return 'never'
+
+        let past
+        // Firestore Timestamp
+        if (typeof timestamp.toDate === 'function') {
+            past = timestamp.toDate()
+        } else if (typeof timestamp === 'string' || typeof timestamp === 'number') {
+            past = new Date(timestamp)
+        } else if (timestamp instanceof Date) {
+            past = timestamp
+        } else {
+            return 'invalid date'
+        }
+
+        const now = new Date()
+        const seconds = Math.floor((now - past) / 1000)
+
+        if (isNaN(seconds)) return 'invalid date'
+
+        let interval = seconds / 31536000
+        if (interval > 1) return Math.floor(interval) + 'y ago'
+        interval = seconds / 2592000
+        if (interval > 1) return Math.floor(interval) + 'm ago'
+        interval = seconds / 86400
+        if (interval > 1) return Math.floor(interval) + 'd ago'
+        interval = seconds / 3600
+        if (interval > 1) return Math.floor(interval) + 'h ago'
+        interval = seconds / 60
+        if (interval > 1) return Math.floor(interval) + 'm ago'
+        return 'just now'
     }
 
-    const flagClass = (langName) => { if (!langName) return ''; const code = langFlagMap[langName]; if (code) return `fi fi-${code}`; return '' }
-    const highlightDifferences = (originalText, modifiedText) => { if (!originalText || !modifiedText) return modifiedText.replace(/</g, "&lt;").replace(/>/g, "&gt;"); const splitRegex = /(\s+)/; const originalWords = originalText.split(splitRegex); const modifiedWords = modifiedText.split(splitRegex); const lcsMatrix = Array(originalWords.length + 1).fill(null).map(() => Array(modifiedWords.length + 1).fill(0)); for (let i = 1; i <= originalWords.length; i++) { for (let j = 1; j <= modifiedWords.length; j++) { if (originalWords[i - 1] === modifiedWords[j - 1]) { lcsMatrix[i][j] = 1 + lcsMatrix[i - 1][j - 1] } else { lcsMatrix[i][j] = Math.max(lcsMatrix[i - 1][j], lcsMatrix[i][j - 1]) } } } let i = originalWords.length, j = modifiedWords.length; const result = []; while (i > 0 || j > 0) { if (i > 0 && j > 0 && originalWords[i - 1] === modifiedWords[j - 1]) { result.unshift({ text: modifiedWords[j - 1], type: 'common' }); i--; j-- } else if (j > 0 && (i === 0 || lcsMatrix[i][j - 1] >= lcsMatrix[i - 1][j])) { result.unshift({ text: modifiedWords[j - 1], type: 'added' }); j-- } else if (i > 0 && (j === 0 || lcsMatrix[i][j - 1] < lcsMatrix[i - 1][j])) { i-- } else { break } } return result.map(part => { const cleanText = part.text.replace(/</g, "&lt;").replace(/>/g, "&gt;"); if (part.type === 'added' && part.text.trim() !== '') { const underlineColor = accuracy.value > 80 ? 'decoration-green-400' : accuracy.value > 60 ? 'decoration-yellow-400' : accuracy.value > 40 ? 'decoration-orange-400' : 'decoration-red-400'; const textColor = accuracy.value > 80 ? 'text-green-50' : accuracy.value > 60 ? 'text-yellow-50' : accuracy.value > 40 ? 'text-orange-50' : 'text-red-50'; return `<u class="${underlineColor} decoration-2 underline ${textColor}">${cleanText}</u>` } return cleanText }).join('') }
-    const copyToClipboard = async (text, showMessage) => { if (!text) return; try { await navigator.clipboard.writeText(text); showMessage('success', 'Copied to clipboard!') } catch (error) { console.error('Copy failed:', error); try { const textArea = document.createElement('textarea'); textArea.value = text; document.body.appendChild(textArea); textArea.focus(); textArea.select(); document.execCommand('copy'); document.body.removeChild(textArea); showMessage('success', 'Copied to clipboard!') } catch (err) { showMessage('error', 'Failed to copy to clipboard') } } }
-    const formatTimeAgo = (timestamp) => { const now = new Date(), past = new Date(timestamp), seconds = Math.floor((now - past) / 1000); let interval = seconds / 31536000; if (interval > 1) return Math.floor(interval) + "y ago"; interval = seconds / 2592000; if (interval > 1) return Math.floor(interval) + "m ago"; interval = seconds / 86400; if (interval > 1) return Math.floor(interval) + "d ago"; interval = seconds / 3600; if (interval > 1) return Math.floor(interval) + "h ago"; interval = seconds / 60; if (interval > 1) return Math.floor(interval) + "m ago"; return "just now" }
     const toggleSettings = () => { settingsOpen.value = !settingsOpen.value }
     const toggleShowApiKey = () => { showApiKey.value = !showApiKey.value }
 
@@ -320,25 +678,40 @@ export const useTranslateStore = defineStore('translate', () => {
         // State
         settingsOpen, showApiKey, isTranslating, accuracy, accuracyRating,
         lastOriginalText, lastTranslationDirection, leftText, rightText, retranslatedText,
-        appStats, unsubscribeStats, apiKey, selectedLanguage, fromLanguage, autoCopy,
-        recentTranslations, syncHistory, userHistory, history,
+        apiKey, selectedLanguage, fromLanguage, autoCopy, syncHistory,
+        recentTranslations, userHistory, history,
+
+        // Global Stats State
+        appStats, languageStats, dailyStats, hourlyStats,
+
+        // Discord Stats State
+        discordStats, discordGuilds, discordUsers, discordDailyStats, discordHourlyStats, discordLanguages,
+        topDiscordChannels, topDiscordUsers,
+
+        // Expose counts sourced from doc (with fallback)
+        discordCounts,
+
+        // Error State
+        errorLogs, connectionRetries,
 
         // Constants
-        languages, langFlagMap,
+        languages,
 
         // Computed
         hasApiKey, canTranslateLeft, canTranslateRight, leftLanguageName, rightLanguageName,
         retranslationTargetLanguageName, formattedTranslations, formattedWords,
         formattedApiCost, accuracyPercentage, accuracyBarClass, retranslationWithDiff,
+        topLanguages, activeToday,
+        discordGlobalStats, topDiscordGuilds, hasDiscordData,
 
         // Methods
-        flagClass, highlightDifferences, translate, copyToClipboard, addTranslationToHistory,
-        clearHistory, deleteHistoryItem, formatTimeAgo, initializeFirestoreListener,
-        cleanup, toggleSettings, toggleShowApiKey
+        flagClass, highlightDifferences, translate, copyToClipboard,
+        clearHistory, deleteHistoryItem, formatTimeAgo,
+        initializeAllListeners, cleanupAllListeners,
+        toggleSettings, toggleShowApiKey
     }
 }, {
     persist: {
         paths: ['apiKey', 'selectedLanguage', 'fromLanguage', 'autoCopy', 'recentTranslations', 'syncHistory']
     }
 })
-

@@ -28,8 +28,8 @@ service cloud.firestore {
       );
     }
 
-    match /translations/{docId} {
-      allow read: if docId == 'meta';
+    match /translations/{document=**} {
+      allow read: if true;
       allow write: if false;
     }
     

@@ -1,19 +1,23 @@
 // shared/utils.mjs
-import { initializeApp, applicationDefault, cert } from "firebase-admin/app";
-import { getFirestore } from "firebase-admin/firestore";
+import admin from 'firebase-admin';
 
-// Initialize Firebase Admin once
-let app;
+let app = null;
+let db = null;
+
 export function getApp() {
-    if (!app) {
-        app = initializeApp({ credential: applicationDefault() });
-    }
-    return app;
+  if (app) return app;
+  if (admin.apps.length === 0) {
+    app = admin.initializeApp();
+  } else {
+    app = admin.app();
+  }
+  return app;
 }
 
-// Get Firestore instance
 export function getDb() {
-    return getFirestore(getApp());
+  if (db) return db;
+  db = admin.firestore(getApp());
+  return db;
 }
 
 // Shared Infrastructure Tracker

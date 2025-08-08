@@ -5,7 +5,7 @@ import { useMainStore } from '@/stores/useMainStore'
 
 // Deduplication cache to prevent rapid duplicate events
 const eventCache = new Map()
-const CACHE_DURATION = 1000 // 1 second
+const CACHE_DURATION = 4000 // 4 seconds
 
 const getCacheKey = (uid, eventType, data) => {
     return `${uid}-${eventType}-${JSON.stringify(data)}`
@@ -69,7 +69,6 @@ export const logUserEvent = async (eventType, data = {}) => {
 
 // Convenience methods with deduplication
 export const logPageView = (page) => {
-    // For page views, only log if the page is different
     return logUserEvent('page_view', { page })
 }
 

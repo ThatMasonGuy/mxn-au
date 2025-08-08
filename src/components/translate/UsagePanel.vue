@@ -29,7 +29,7 @@
                         <div>
                             <p class="text-xs font-medium text-cyan-300 uppercase tracking-wide">Translations</p>
                             <p class="text-base md:text-lg xl:text-2xl font-bold text-white">{{
-                                store.formattedTranslations }}</p>
+                                store.appStats.totalTranslations.toLocaleString() }}</p>
                         </div>
                     </div>
                     <div class="text-right">
@@ -69,7 +69,8 @@
                         </div>
                         <div>
                             <p class="text-xs font-medium text-emerald-300 uppercase tracking-wide">Words</p>
-                            <p class="text-base md:text-lg xl:text-2xl font-bold text-white">{{ store.formattedWords }}
+                            <p class="text-base md:text-lg xl:text-2xl font-bold text-white">{{
+                                store.appStats.totalWords.toLocaleString() }}
                             </p>
                         </div>
                     </div>
@@ -110,8 +111,8 @@
                         </div>
                         <div>
                             <p class="text-xs font-medium text-purple-300 uppercase tracking-wide">API Cost</p>
-                            <p class="text-base md:text-lg xl:text-2xl font-bold text-white">{{ store.formattedApiCost
-                                }}</p>
+                            <p class="text-base md:text-lg xl:text-2xl font-bold text-white">{{
+                                store.formattedApiCost }}</p>
                         </div>
                     </div>
                     <div class="text-right">
