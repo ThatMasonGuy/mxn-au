@@ -1,10 +1,21 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import {
-    doc, onSnapshot, collection, query, orderBy, limit, deleteDoc, getDocs
+    doc,
+    onSnapshot,
+    collection,
+    query,
+    orderBy,
+    limit,
+    deleteDoc
 } from 'firebase/firestore'
 import { firestore, auth } from '@/firebase'
 import { useMainStore } from '@/stores/useMainStore'
+
+// shadcn/vue toast via vue-sonner
+// Make sure <Toaster /> (or <Sonner />) is mounted once in your app root.
+// npm i vue-sonner
+import { toast as sonner } from 'vue-sonner'
 
 export const useTranslateStore = defineStore('translate', () => {
     // --- Stores ---
@@ -85,6 +96,20 @@ export const useTranslateStore = defineStore('translate', () => {
         Czech: 'cz', Hungarian: 'hu', Thai: 'th', Vietnamese: 'vn'
     }
 
+    // --- Toast helper available to ANY consumer ---
+    // Usage: store.showToast('success'|'error'|'warning'|'info', 'Message', { description?, duration? })
+    const showToast = (type, message, options = {}) => {
+        const opts = { duration: options.duration ?? 2500, description: options.description, ...options }
+        try {
+            const method = typeof sonner[type] === 'function' ? sonner[type] : null
+            if (method) return method(message, opts)
+            return sonner(message, { ...opts, type })
+        } catch (e) {
+            // Fails silently if Toaster isn't mounted — avoid crashing store logic
+            console.warn('[toast] Could not display toast. Is <Toaster /> mounted?', e)
+        }
+    }
+
     // --- Token Refresh Helper ---
     const getValidToken = async () => {
         if (!mainStore.user) return null
@@ -140,7 +165,7 @@ export const useTranslateStore = defineStore('translate', () => {
 
     const accuracyPercentage = computed(() => accuracy.value !== null ? Math.round(accuracy.value * 100) : null)
     const accuracyBarClass = computed(() => {
-        const acc = accuracy.value * 100 // Convert to percentage
+        const acc = accuracy.value != null ? accuracy.value * 100 : 100
         if (acc > 80) return 'bg-green-500'
         if (acc > 60) return 'bg-yellow-500'
         if (acc > 40) return 'bg-orange-500'
@@ -321,6 +346,11 @@ export const useTranslateStore = defineStore('translate', () => {
                     if (isLeftToRight) rightText.value = outputText; else leftText.value = outputText
                     retranslatedText.value = data.retranslated || ''
 
+                    // Auto-copy silently if enabled
+                    if (autoCopy.value) {
+                        try { await copyToClipboard(outputText, { silent: true }) } catch (_) { /* ignore */ }
+                    }
+
                     if (!isSyncing.value) {
                         const translationResult = {
                             id: crypto.randomUUID(),
@@ -370,36 +400,43 @@ export const useTranslateStore = defineStore('translate', () => {
         }
     }
 
-    const deleteHistoryItem = async (id, showMessage) => {
+    const deleteHistoryItem = async (id) => {
         if (isSyncing.value) {
             try {
                 const docRef = doc(firestore, `users/${mainStore.user.uid}/translations`, id)
                 await deleteDoc(docRef)
-                showMessage('success', 'History item removed from cloud.')
+                showToast('success', 'History item removed from cloud.')
+                return { ok: true, scope: 'cloud' }
             } catch (error) {
                 console.error('Failed to delete cloud history item:', error)
-                showMessage('error', 'Could not remove item from cloud.')
+                showToast('error', 'Could not remove item from cloud.')
+                return { ok: false, scope: 'cloud', error }
             }
         } else {
             const idx = recentTranslations.value.findIndex((t) => t.id === id)
             if (idx !== -1) {
                 recentTranslations.value.splice(idx, 1)
-                showMessage('success', 'History item removed.')
+                showToast('success', 'History item removed.')
+                return { ok: true, scope: 'local' }
             }
+            showToast('error', 'Item not found in local history.')
+            return { ok: false, scope: 'local', error: new Error('Item not found') }
         }
     }
 
-    const clearHistory = async (showMessage) => {
+    const clearHistory = async () => {
         if (isSyncing.value) {
-            showMessage('error', 'Clearing cloud history is not available from the client.')
+            showToast('error', 'Clearing cloud history is not available from the client.')
+            return { ok: false, scope: 'cloud', code: 'cloud-clear-blocked' }
         } else {
             recentTranslations.value = []
-            showMessage('success', 'Local history cleared.')
+            showToast('success', 'Local history cleared.')
+            return { ok: true, scope: 'local' }
         }
     }
 
-    // Enhanced listener with reconnection logic
-    const createListener = (path, targetRef, showMessage, isCollection = true) => {
+    // Enhanced listener with reconnection logic (toasts on terminal failure)
+    const createListener = (path, targetRef, isCollection = true) => {
         let unsubscribe = null
         let reconnectTimeout = null
 
@@ -413,10 +450,7 @@ export const useTranslateStore = defineStore('translate', () => {
 
                         if (isCollection) {
                             const data = {}
-                            snapshot.forEach(doc => {
-                                const docData = doc.data()
-                                data[doc.id] = docData
-                            })
+                            snapshot.forEach(doc => { data[doc.id] = doc.data() })
                             targetRef.value = data
                         } else {
                             targetRef.value = snapshot.exists() ? snapshot.data() : null
@@ -435,8 +469,8 @@ export const useTranslateStore = defineStore('translate', () => {
                                 if (unsubscribe) unsubscribe()
                                 setupListener()
                             }, 1000 * Math.pow(2, connectionRetries.value))
-                        } else if (showMessage && connectionRetries.value >= maxRetries) {
-                            showMessage('error', `Failed to load data from ${path}. Please refresh the page.`)
+                        } else if (connectionRetries.value >= maxRetries) {
+                            showToast('error', `Failed to load data from ${path}. Please refresh the page.`)
                         }
                     }
                 )
@@ -448,29 +482,29 @@ export const useTranslateStore = defineStore('translate', () => {
 
             } catch (error) {
                 console.error(`[LISTENER] Failed to set up listener for ${path}:`, error)
-                if (showMessage) showMessage('error', `Could not connect to service at ${path}.`)
+                showToast('error', `Could not connect to service at ${path}.`)
             }
         }
 
         setupListener()
     }
 
-    const initializeAllListeners = (showMessage) => {
+    const initializeAllListeners = () => {
         cleanupAllListeners()
 
         // --- Global Stats Listeners ---
-        createListener('translations/meta', appStats, showMessage, false)
-        createListener('translations/meta/languages', languageStats, showMessage)
-        createListener('translations/meta/daily_stats', dailyStats, showMessage)
-        createListener('translations/meta/hourly_stats', hourlyStats, showMessage)
+        createListener('translations/meta', appStats, false)
+        createListener('translations/meta/languages', languageStats)
+        createListener('translations/meta/daily_stats', dailyStats)
+        createListener('translations/meta/hourly_stats', hourlyStats)
 
         // --- Discord Stats Listeners ---
-        createListener('translations/discord', discordStats, showMessage, false) // doc with counts
-        createListener('translations/discord/guilds', discordGuilds, showMessage)
-        createListener('translations/discord/users', discordUsers, showMessage)
-        createListener('translations/discord/daily_stats', discordDailyStats, showMessage)
-        createListener('translations/discord/hourly_stats', discordHourlyStats, showMessage)
-        createListener('translations/discord/languages', discordLanguages, showMessage)
+        createListener('translations/discord', discordStats, false) // doc with counts
+        createListener('translations/discord/guilds', discordGuilds)
+        createListener('translations/discord/users', discordUsers)
+        createListener('translations/discord/daily_stats', discordDailyStats)
+        createListener('translations/discord/hourly_stats', discordHourlyStats)
+        createListener('translations/discord/languages', discordLanguages)
     }
 
     const initializeUserHistoryListener = (userId) => {
@@ -607,7 +641,7 @@ export const useTranslateStore = defineStore('translate', () => {
         return result.map(part => {
             const cleanText = part.text.replace(/</g, '&lt;').replace(/>/g, '&gt;')
             if (part.type === 'added' && part.text.trim() !== '') {
-                const acc = accuracy.value * 100 // Convert to percentage
+                const acc = accuracy.value != null ? accuracy.value * 100 : 100
                 const underlineColor = acc > 80 ? 'decoration-green-400' : acc > 60 ? 'decoration-yellow-400' : acc > 40 ? 'decoration-orange-400' : 'decoration-red-400'
                 const textColor = acc > 80 ? 'text-green-50' : acc > 60 ? 'text-yellow-50' : acc > 40 ? 'text-orange-50' : 'text-red-50'
                 return `<u class="${underlineColor} decoration-2 underline ${textColor}">${cleanText}</u>`
@@ -616,11 +650,12 @@ export const useTranslateStore = defineStore('translate', () => {
         }).join('')
     }
 
-    const copyToClipboard = async (text, showMessage) => {
-        if (!text) return
+    const copyToClipboard = async (text, opts = { silent: false }) => {
+        if (!text) return { ok: false, error: new Error('No text') }
         try {
             await navigator.clipboard.writeText(text)
-            showMessage('success', 'Copied to clipboard!')
+            if (!opts?.silent) showToast('success', 'Copied to clipboard!')
+            return { ok: true }
         } catch (error) {
             console.error('Copy failed:', error)
             try {
@@ -631,9 +666,11 @@ export const useTranslateStore = defineStore('translate', () => {
                 textArea.select()
                 document.execCommand('copy')
                 document.body.removeChild(textArea)
-                showMessage('success', 'Copied to clipboard!')
+                if (!opts?.silent) showToast('success', 'Copied to clipboard!')
+                return { ok: true, fallback: true }
             } catch (err) {
-                showMessage('error', 'Failed to copy to clipboard')
+                if (!opts?.silent) showToast('error', 'Failed to copy to clipboard')
+                return { ok: false, error: err }
             }
         }
     }
@@ -708,7 +745,10 @@ export const useTranslateStore = defineStore('translate', () => {
         flagClass, highlightDifferences, translate, copyToClipboard,
         clearHistory, deleteHistoryItem, formatTimeAgo,
         initializeAllListeners, cleanupAllListeners,
-        toggleSettings, toggleShowApiKey
+        toggleSettings, toggleShowApiKey,
+
+        // Toast API (callable from anywhere)
+        showToast,
     }
 }, {
     persist: {
