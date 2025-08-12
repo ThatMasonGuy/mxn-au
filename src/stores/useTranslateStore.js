@@ -12,10 +12,8 @@ import {
 import { firestore, auth } from '@/firebase'
 import { useMainStore } from '@/stores/useMainStore'
 
-// shadcn/vue toast via vue-sonner
-// Make sure <Toaster /> (or <Sonner />) is mounted once in your app root.
-// npm i vue-sonner
-import { toast as sonner } from 'vue-sonner'
+// shadcn/vue toast
+import { useToast } from '@/components/ui/toast/use-toast'
 
 export const useTranslateStore = defineStore('translate', () => {
     // --- Stores ---
@@ -98,19 +96,43 @@ export const useTranslateStore = defineStore('translate', () => {
 
     // --- Toast helper available to ANY consumer ---
     // Usage: store.showToast('success'|'error'|'warning'|'info', 'Message', { description?, duration? })
+    const { toast } = useToast()
+
     const showToast = (type, message, options = {}) => {
-        const opts = { duration: options.duration ?? 2500, description: options.description, ...options }
+        const toastConfig = {
+            title: getToastTitle(type),
+            description: message,
+            duration: options.duration ?? 2500,
+            ...options
+        }
+
+        // Set variant based on type
+        if (type === 'error') {
+            toastConfig.variant = 'destructive'
+        } else {
+            toastConfig.variant = 'default'
+        }
+
         try {
-            const method = typeof sonner[type] === 'function' ? sonner[type] : null
-            if (method) return method(message, opts)
-            return sonner(message, { ...opts, type })
+            toast(toastConfig)
         } catch (e) {
-            // Fails silently if Toaster isn't mounted — avoid crashing store logic
-            console.warn('[toast] Could not display toast. Is <Toaster /> mounted?', e)
+            // Fallback if toast system isn't available
+            console.warn('[toast] Could not display toast:', e)
         }
     }
 
-    // --- Token Refresh Helper ---
+    // Helper to get appropriate toast titles
+    const getToastTitle = (type) => {
+        switch (type) {
+            case 'success': return 'Success'
+            case 'error': return 'Error'
+            case 'warning': return 'Warning'
+            case 'info': return 'Info'
+            default: return 'Notification'
+        }
+    }
+
+    // --- Token Refresh Helper (FIXED: Less aggressive, no forced logout) ---
     const getValidToken = async () => {
         if (!mainStore.user) return null
 
@@ -120,14 +142,16 @@ export const useTranslateStore = defineStore('translate', () => {
             return token
         } catch (error) {
             console.error('Failed to refresh token:', error)
-            // Try to re-authenticate
+            // Try to re-authenticate once more
             if (auth.currentUser) {
                 try {
                     await auth.currentUser.reload()
                     return await auth.currentUser.getIdToken(true)
                 } catch (retryError) {
                     console.error('Token refresh retry failed:', retryError)
-                    mainStore.logout() // Force re-login
+                    // FIXED: Don't force logout - just return null and let the app continue without auth
+                    console.warn('Continuing without authentication for this request')
+                    return null
                 }
             }
             return null
@@ -295,8 +319,14 @@ export const useTranslateStore = defineStore('translate', () => {
         const toLang = isLeftToRight ? selectedLanguage.value : fromLanguage.value
         const finalKey = apiKey.value?.trim() || import.meta.env.VITE_OPENAI_API_KEY_TRANSLATION_GENERIC
 
-        if (!inputText?.trim() || !finalKey) {
-            return { ok: false, error: 'Missing input text or API key.', apiTimeMs: 0 }
+        if (!inputText?.trim()) {
+            showToast('error', 'Please enter text to translate')
+            return { ok: false, error: 'Missing input text', apiTimeMs: 0 }
+        }
+
+        if (!finalKey) {
+            showToast('error', 'API key required for translation')
+            return { ok: false, error: 'Missing API key', apiTimeMs: 0 }
         }
 
         if (isTranslating.value) {
@@ -308,88 +338,160 @@ export const useTranslateStore = defineStore('translate', () => {
         lastTranslationDirection.value = fromSide
 
         let apiTimeMs = 0
-        let serverTimeMs = null // from response.responseTime (aiTranslate)
-        let openAiTimeMs = null // optional (if backend includes)
-        let retryCount = 0
+        let serverTimeMs = null
+        let openAiTimeMs = null
+        let triedWithAuth = false
+        let triedWithoutAuth = false
 
         try {
-            while (retryCount < maxRetries) {
+            // Try with auth first if user is logged in
+            if (mainStore.user && !triedWithAuth) {
                 try {
-                    const headers = { 'Content-Type': 'application/json', 'x-openai-key': finalKey }
-                    if (mainStore.user) {
-                        const freshToken = await getValidToken()
-                        if (freshToken) headers['Authorization'] = `Bearer ${freshToken}`
+                    console.log('Attempting translation with authentication...')
+                    const result = await attemptTranslation(inputText, fromLang, toLang, finalKey, true)
+                    if (result.success) {
+                        return handleSuccessfulTranslation(result, isLeftToRight)
                     }
-
-                    const apiStart = performance.now()
-                    const resp = await fetch('/translate/post', {
-                        method: 'POST',
-                        headers,
-                        body: JSON.stringify({ content: inputText, fromLang, targetLang: toLang })
-                    })
-                    apiTimeMs = Math.round(performance.now() - apiStart)
-
-                    if (!resp.ok) {
-                        const err = await resp.json().catch(() => ({}))
-                        if (resp.status === 401 && mainStore.user) { retryCount++; continue }
-                        throw new Error(err?.error || `HTTP error! status: ${resp.status}`)
-                    }
-
-                    const data = await resp.json()
-                    serverTimeMs = typeof data?.responseTime === 'number' ? data.responseTime : null
-                    openAiTimeMs = data?.metrics?.openAiTimeMs ?? data?.openAiTimeMs ?? null
-                    if (openAiTimeMs === null && data?.cached === true) openAiTimeMs = 0
-
-                    const outputText = data.translated || data.outputText || ''
-                    accuracy.value = typeof data.accuracy === 'number' ? data.accuracy : null
-                    accuracyRating.value = data.accuracyRating || null
-                    if (isLeftToRight) rightText.value = outputText; else leftText.value = outputText
-                    retranslatedText.value = data.retranslated || ''
-
-                    // Auto-copy silently if enabled
-                    if (autoCopy.value) {
-                        try { await copyToClipboard(outputText, { silent: true }) } catch (_) { /* ignore */ }
-                    }
-
-                    if (!isSyncing.value) {
-                        const translationResult = {
-                            id: crypto.randomUUID(),
-                            inputText,
-                            translated: outputText,
-                            sourceLang: fromLang,
-                            targetLang: toLang,
-                            accuracy: accuracy.value,
-                            accuracyRating: accuracyRating.value,
-                            cached: !!data.cached,
-                            responseTime: apiTimeMs,
-                            tokenUsage: data.tokenUsage || null,
-                            wordCount: data.wordCount || inputText.trim().split(/\s+/).length,
-                            charCount: data.charCount || inputText.length,
-                            timestamp: new Date().toISOString()
-                        }
-                        addTranslationToLocalHistory(translationResult)
-                    }
-
-                    // DO NOT toast here; just return the metrics
-                    connectionRetries.value = 0
-                    return { ok: true, apiTimeMs, serverTimeMs, openAiTimeMs, cached: !!data.cached }
+                    triedWithAuth = true
+                    console.log('Auth translation failed, trying without auth...')
                 } catch (error) {
-                    console.error(`Translation error (attempt ${retryCount + 1}):`, error)
-                    if (retryCount >= maxRetries - 1) {
-                        retranslatedText.value = ''
-                        lastOriginalText.value = ''
-                        accuracy.value = null
-                        accuracyRating.value = null
-                        return { ok: false, apiTimeMs, serverTimeMs, openAiTimeMs, error: error.message }
-                    }
-                    retryCount++
-                    await new Promise(r => setTimeout(r, 1000 * retryCount))
+                    console.log('Auth translation error:', error.message)
+                    triedWithAuth = true
                 }
             }
 
-            return { ok: false, apiTimeMs, serverTimeMs, openAiTimeMs, error: 'Unknown failure' }
+            // Try without auth
+            if (!triedWithoutAuth) {
+                try {
+                    console.log('Attempting translation without authentication...')
+                    const result = await attemptTranslation(inputText, fromLang, toLang, finalKey, false)
+                    if (result.success) {
+                        return handleSuccessfulTranslation(result, isLeftToRight)
+                    }
+                    triedWithoutAuth = true
+                } catch (error) {
+                    console.log('Non-auth translation error:', error.message)
+                    triedWithoutAuth = true
+                }
+            }
+
+            // If both attempts failed, show user feedback
+            const errorMsg = 'Translation failed. Please check your connection and try again.'
+            showToast('error', errorMsg)
+
+            // Clean up on failure
+            retranslatedText.value = ''
+            lastOriginalText.value = ''
+            accuracy.value = null
+            accuracyRating.value = null
+
+            return { ok: false, apiTimeMs, serverTimeMs, openAiTimeMs, error: errorMsg }
+
         } finally {
             isTranslating.value = false
+        }
+    }
+
+    // Helper function to attempt translation with or without auth
+    const attemptTranslation = async (inputText, fromLang, toLang, apiKey, useAuth = false) => {
+        const headers = {
+            'Content-Type': 'application/json',
+            'x-openai-key': apiKey
+        }
+
+        // Only add auth header if explicitly requested and we can get a valid token
+        if (useAuth && mainStore.user) {
+            const token = await getValidToken()
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`
+            } else {
+                throw new Error('Could not get valid authentication token')
+            }
+        }
+
+        const apiStart = performance.now()
+        const resp = await fetch('/translate/post', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+                content: inputText,
+                fromLang,
+                targetLang: toLang
+            })
+        })
+        const apiTimeMs = Math.round(performance.now() - apiStart)
+
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({}))
+            const errorMessage = err?.error || `HTTP ${resp.status}: ${resp.statusText}`
+            throw new Error(errorMessage)
+        }
+
+        const data = await resp.json()
+        return {
+            success: true,
+            data,
+            apiTimeMs,
+            serverTimeMs: typeof data?.responseTime === 'number' ? data.responseTime : null,
+            openAiTimeMs: data?.metrics?.openAiTimeMs ?? data?.openAiTimeMs ?? (data?.cached ? 0 : null)
+        }
+    }
+
+    // Helper function to handle successful translation
+    const handleSuccessfulTranslation = (result, isLeftToRight) => {
+        const { data, apiTimeMs, serverTimeMs, openAiTimeMs } = result
+
+        const outputText = data.translated || data.outputText || ''
+        accuracy.value = typeof data.accuracy === 'number' ? data.accuracy : null
+        accuracyRating.value = data.accuracyRating || null
+
+        // Set the translated text
+        if (isLeftToRight) {
+            rightText.value = outputText
+        } else {
+            leftText.value = outputText
+        }
+
+        retranslatedText.value = data.retranslated || ''
+
+        // Auto-copy silently if enabled
+        if (autoCopy.value && outputText) {
+            copyToClipboard(outputText, { silent: true }).catch(() => {
+                // Ignore copy failures
+            })
+        }
+
+        // Save to local history if not syncing (authenticated users who sync will have server-side history)
+        if (!isSyncing.value) {
+            const translationResult = {
+                id: crypto.randomUUID(),
+                inputText: lastOriginalText.value,
+                translated: outputText,
+                sourceLang: isLeftToRight ? fromLanguage.value : selectedLanguage.value,
+                targetLang: isLeftToRight ? selectedLanguage.value : fromLanguage.value,
+                accuracy: accuracy.value,
+                accuracyRating: accuracyRating.value,
+                cached: !!data.cached,
+                responseTime: apiTimeMs,
+                tokenUsage: data.tokenUsage || null,
+                wordCount: data.wordCount || lastOriginalText.value.trim().split(/\s+/).length,
+                charCount: data.charCount || lastOriginalText.value.length,
+                timestamp: new Date().toISOString()
+            }
+            addTranslationToLocalHistory(translationResult)
+        }
+
+        connectionRetries.value = 0
+
+        // Show success feedback
+        showToast('success', 'Translation completed!', { duration: 1500 })
+
+        return {
+            ok: true,
+            apiTimeMs,
+            serverTimeMs,
+            openAiTimeMs,
+            cached: !!data.cached
         }
     }
 
@@ -541,13 +643,17 @@ export const useTranslateStore = defineStore('translate', () => {
                             connectionRetries.value++
                             console.log(`Retrying history listener (attempt ${connectionRetries.value})...`)
 
-                            // Get fresh token
+                            // Get fresh token (but don't force logout on failure)
                             await getValidToken()
 
                             // Retry with exponential backoff
                             reconnectTimeout = setTimeout(() => {
                                 setupHistoryListener()
                             }, 1000 * Math.pow(2, connectionRetries.value))
+                        } else if (connectionRetries.value >= maxRetries) {
+                            // FIXED: Don't force auth failure, just fall back to local mode
+                            console.warn('Max retries exceeded for history listener, falling back to local history')
+                            cleanupUserHistoryListener()
                         }
                     }
                 )
@@ -582,13 +688,8 @@ export const useTranslateStore = defineStore('translate', () => {
     // Watch for sync changes with better error handling
     watch(isSyncing, async (newIsSyncing) => {
         if (newIsSyncing && mainStore.user?.uid) {
-            // Ensure we have a valid token before setting up listeners
-            const token = await getValidToken()
-            if (token) {
-                initializeUserHistoryListener(mainStore.user.uid)
-            } else {
-                console.error('[WATCHER] Could not get valid token for user history')
-            }
+            // FIXED: Don't require token validation for setting up listeners
+            initializeUserHistoryListener(mainStore.user.uid)
         } else {
             console.log('[WATCHER] Cleaning up user history listener.')
             cleanupUserHistoryListener()

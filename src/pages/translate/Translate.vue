@@ -70,34 +70,23 @@
 <script setup>
 import { onMounted, onUnmounted, ref } from 'vue'
 import { useTranslateStore } from '@/stores/useTranslateStore'
-import { useToast } from '@/components/ui/toast/use-toast'
 
 import TranslationPanel from '@/components/translate/TranslationPanel.vue'
 import UsagePanel from '@/components/translate/UsagePanel.vue'
 import HistoryPanel from '@/components/translate/HistoryPanel.vue'
 
-const { toast } = useToast()
 const store = useTranslateStore()
-
-const showMessage = (type, text, duration = 3000) => {
-  toast({
-    title: type === 'error' ? 'Error' : 'Success',
-    description: text,
-    variant: type === 'error' ? 'destructive' : 'default',
-    duration: duration,
-  })
-}
 
 const showUsageAnalytics = ref(false)
 const locale = (n) => (typeof n === 'number' ? n.toLocaleString() : (n || 0).toLocaleString?.() || '0')
 
 // --- Lifecycle Hooks ---
 onMounted(() => {
-  store.initializeAllListeners(showMessage)
+  store.initializeAllListeners()
 })
 
 onUnmounted(() => {
-  store.cleanup()
+  store.cleanupAllListeners()
 })
 </script>
 

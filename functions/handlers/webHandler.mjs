@@ -22,21 +22,16 @@ export class WebHandler {
             };
         }
 
-        if (!platformInfo.userId) {
-            return {
-                valid: false,
-                status: 401,
-                error: "User authentication failed",
-            };
-        }
-
+        // FIXED: Authentication is now OPTIONAL for web requests
+        // Users can translate without being logged in (local history only)
+        // If they are logged in, their translations will be saved to cloud
         return {
             valid: true,
             apiKey,
             content,
             fromLang,
             targetLang,
-            userId: platformInfo.userId,
+            userId: platformInfo.userId, // Will be null if not authenticated, and that's OK!
         };
     }
 
@@ -44,7 +39,7 @@ export class WebHandler {
         return {
             ...response,
             platform: "web",
-            userId: platformInfo.userId,
+            userId: platformInfo.userId, // Can be null for unauthenticated users
         };
     }
 }
