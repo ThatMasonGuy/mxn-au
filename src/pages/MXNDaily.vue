@@ -1,260 +1,768 @@
 <template>
-    <div class="min-h-screen w-full bg-zinc-950 text-zinc-100">
-        <!-- Header -->
-        <header class="sticky top-0 z-30 border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur">
-            <div class="mx-auto max-w-5xl px-4 py-3 flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                    <span
-                        class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-violet-600 to-fuchsia-600 font-bold">M</span>
-                    <div>
-                        <h1 class="text-lg font-semibold leading-none">MXN Daily</h1>
-                        <p class="text-xs text-zinc-400">New drops at 00:00 Australia/Brisbane</p>
-                    </div>
-                </div>
-                <div class="flex items-center gap-2 text-xs">
-                    <div class="px-2 py-1 rounded-md bg-zinc-900/70 border border-zinc-800">
-                        <span class="text-zinc-400 mr-1">Next in</span><span :key="countdownKey">{{ countdown }}</span>
-                    </div>
-                </div>
-            </div>
-        </header>
+  <div class="min-h-screen w-full relative overflow-hidden">
+    <!-- Enhanced Background -->
+    <div class="fixed inset-0 bg-gradient-to-br from-slate-950 via-zinc-950 to-slate-900"></div>
+    <div class="fixed inset-0 bg-gradient-to-tr from-violet-950/20 via-transparent to-fuchsia-950/20"></div>
+    <div
+      class="fixed inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-violet-900/10 via-transparent to-transparent">
+    </div>
 
-        <!-- 7-day selector -->
-        <div class="mx-auto max-w-5xl px-4 pt-6">
-            <!-- mobile: horizontal scroll; md+: 7 columns -->
-            <div class="flex gap-2 overflow-x-auto md:grid md:grid-cols-7 md:overflow-visible no-scrollbar">
-                <button v-for="d in days" :key="d.date" :disabled="d.date !== today" @click="activeDate = d.date" class="group relative shrink-0 md:shrink md:w-auto overflow-hidden rounded-xl border px-3 py-2 text-left transition
-             w-[7.5rem]" :class="[
-                activeDate === d.date ? 'border-violet-600/60 bg-violet-600/10' : 'border-zinc-800 bg-zinc-900/40 hover:bg-zinc-900/70',
-                d.date !== today ? 'opacity-60 cursor-not-allowed' : ''
-            ]">
-                    <div class="text-[10px] uppercase tracking-wide text-zinc-400">{{ formatWeekday(d.date) }}</div>
-                    <div class="text-sm font-medium">{{ d.date }}</div>
-                    <div class="mt-1 text-[10px] text-zinc-400">Word</div>
-                    <div
-                        class="absolute inset-0 pointer-events-none bg-gradient-to-br from-violet-500/0 to-fuchsia-500/0 group-hover:from-violet-500/10 group-hover:to-fuchsia-500/10">
-                    </div>
-                </button>
+    <!-- Animated background elements -->
+    <div class="fixed inset-0 overflow-hidden pointer-events-none">
+      <div class="absolute -top-40 -right-40 w-80 h-80 bg-violet-600/5 rounded-full blur-3xl animate-pulse"></div>
+      <div class="absolute -bottom-40 -left-40 w-80 h-80 bg-fuchsia-600/5 rounded-full blur-3xl animate-pulse"
+        style="animation-delay: 2s;"></div>
+      <div
+        class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-violet-600/3 to-fuchsia-600/3 rounded-full blur-3xl animate-pulse"
+        style="animation-delay: 4s;"></div>
+    </div>
+
+    <!-- Noise texture overlay -->
+    <div class="fixed inset-0 opacity-20 mix-blend-overlay pointer-events-none bg-noise"></div>
+
+    <!-- Content -->
+    <div class="relative z-10 text-zinc-100">
+      <!-- Header -->
+      <header
+        class="sticky top-0 z-50 border-b border-zinc-800/50 bg-zinc-950/80 backdrop-blur-xl shadow-xl shadow-black/20">
+        <div class="mx-auto max-w-7xl px-4 py-4 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div
+              class="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-br from-violet-600/30 to-fuchsia-600/30 ring-1 ring-violet-500/40 shadow-lg shadow-violet-500/20">
+              <Trophy class="h-5 w-5 text-violet-200" />
             </div>
+            <div>
+              <h1
+                class="text-xl font-bold leading-none bg-gradient-to-r from-violet-400 via-fuchsia-400 to-violet-400 bg-clip-text text-transparent">
+                MXN Daily
+              </h1>
+              <p class="text-xs text-zinc-400 mt-0.5">New challenges at 00:00 UTC</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <button v-if="openGame" @click="closeGame"
+              class="px-3 py-1.5 text-xs rounded-lg bg-zinc-900/70 border border-zinc-700/50 hover:bg-zinc-800/70 transition-all duration-200 hover:shadow-lg shadow-black/20">
+              ← Back to Games
+            </button>
+
+            <!-- Enhanced countdown pill -->
+            <div
+              class="p-[1px] rounded-xl bg-gradient-to-r from-violet-500/50 via-fuchsia-500/40 to-violet-500/50 shadow-lg shadow-violet-500/20">
+              <div
+                class="px-3 py-1.5 rounded-[11px] bg-zinc-950/90 border border-white/10 flex items-center gap-2 backdrop-blur-sm">
+                <Clock class="w-3.5 h-3.5 text-zinc-400" />
+                <span class="text-zinc-400 text-[11px] leading-none hidden sm:inline">Next in</span>
+                <span class="font-mono text-sm font-semibold tracking-wider tabular-nums text-violet-300"
+                  :key="countdownKey">
+                  {{ countdown }}
+                </span>
+              </div>
+            </div>
+
+            <div v-if="profile?.totalPlays" class="flex items-center gap-2">
+              <div class="w-2 h-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50"></div>
+              <span class="text-xs text-zinc-400">Streak: {{ profile?.currentStreak ?? 0 }}</span>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- Main -->
+      <main class="mx-auto max-w-7xl px-4 py-8">
+        <!-- Game Actions Bar (shows when game is open) -->
+        <div v-if="openGame" class="mb-6 mx-auto max-w-5xl flex items-center justify-between">
+          <div>
+            <h2 class="text-2xl font-bold">{{ currentGameData?.name }}</h2>
+            <p class="text-sm text-zinc-400 mt-1">{{ currentGameData?.description }}</p>
+          </div>
+          <div class="flex items-center gap-3">
+            <!-- Share button for Wordle -->
+            <button v-if="openGame === 'wordle'" type="button"
+              class="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-4 py-2 text-sm font-medium ring-1 ring-violet-500/40 hover:from-violet-500 hover:to-fuchsia-500 transition-all duration-200 shadow-lg shadow-violet-500/20"
+              @click="onShare" :disabled="shareBusy || (wordleStore?.rows?.length === 0)"
+              :aria-disabled="shareBusy || (wordleStore?.rows?.length === 0)">
+              <Share2 class="h-4 w-4" />
+              <span>{{ shareBusy ? 'Copying…' : 'Share' }}</span>
+            </button>
+
+            <!-- Dev reset for Wordle -->
+            <button v-if="showDevReset && openGame === 'wordle'" type="button"
+              class="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-rose-700 to-rose-600 px-4 py-2 text-sm font-semibold ring-1 ring-rose-500/40 hover:from-rose-600 hover:to-rose-500 transition-all duration-200 shadow-lg shadow-rose-500/20"
+              @click="devReset" title="Dev: clear local Wordle state">
+              <Trash2 class="h-4 w-4" />
+              <span>Dev Reset</span>
+            </button>
+
+            <span v-if="copyMsg" class="text-xs text-emerald-400">{{ copyMsg }}</span>
+          </div>
         </div>
 
-        <!-- Content -->
-        <main class="mx-auto max-w-5xl px-4 pt-6
-              pb-[calc(env(safe-area-inset-bottom)+7.5rem)] md:pb-24">
-            <section class="grid lg:grid-cols-3 gap-6">
-                <!-- Game column -->
-                <div class="lg:col-span-2">
-                    <div class="rounded-2xl border border-zinc-800/80 bg-zinc-900/40 backdrop-blur">
-                        <div class="flex items-center justify-between px-4 py-3 border-b border-zinc-800/60">
-                            <div class="flex items-center gap-2">
-                                <div class="h-2 w-2 rounded-full bg-emerald-500"></div>
-                                <h2 class="text-sm font-semibold tracking-wide uppercase">Word — Today’s Challenge</h2>
-                            </div>
-                            <div class="flex items-center gap-2 text-xs text-zinc-400">
-                                <span v-if="wordState.status === 'won'" class="text-emerald-400">Solved</span>
-                                <span v-else-if="wordState.status === 'lost'" class="text-rose-400">Failed</span>
-                                <span v-else>In progress</span>
-                            </div>
-                        </div>
+        <!-- Games grid -->
+        <div v-if="!openGame" class="space-y-8 transition-all duration-300">
+          <div class="text-center space-y-4 py-8">
+            <h2 class="text-4xl md:text-5xl font-bold">
+              <span
+                class="bg-gradient-to-r from-violet-400 via-fuchsia-400 to-violet-400 bg-clip-text text-transparent animate-gradient">
+                Daily Brain Games
+              </span>
+            </h2>
+            <p class="text-zinc-400 text-lg max-w-2xl mx-auto">
+              Challenge yourself with {{ games.length }} unique puzzles every day. Track your streaks, compete with
+              friends, and sharpen your mind.
+            </p>
+          </div>
 
-                        <div class="p-4">
-                            <WordleGame game-id="word" :playable="activeDate === today" @completed="onWordCompleted" />
-                        </div>
-                    </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div v-for="game in games" :key="game.id" @click="selectGame(game.id)" :class="getCardClasses(game)"
+              class="group relative overflow-hidden rounded-2xl border backdrop-blur-sm cursor-pointer transition-all duration-300">
+
+              <!-- Enhanced glass effect -->
+              <div class="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent"></div>
+
+              <!-- status badge -->
+              <div class="absolute top-4 right-4 z-10">
+                <div v-if="getGameStatus(game.id) === 'won'" class="p-[1px] rounded-full inline-flex"
+                  :class="pillGradient('emerald')" @click.stop>
+                  <div
+                    class="px-2 py-1 rounded-full bg-zinc-950/90 border border-white/10 flex items-center gap-1.5 backdrop-blur-sm">
+                    <CheckCircle2 class="w-3.5 h-3.5 text-emerald-300 flex-shrink-0" />
+                    <span class="text-[10px] font-medium text-emerald-300 leading-none">Completed</span>
+                  </div>
                 </div>
-
-                <!-- Stats / Streaks -->
-                <div class="space-y-6">
-                    <div class="rounded-2xl border border-zinc-800/80 bg-zinc-900/40">
-                        <div class="px-4 py-3 border-b border-zinc-800/60 flex items-center justify-between">
-                            <h3 class="text-sm font-semibold uppercase tracking-wide">Word — Your Stats</h3>
-                        </div>
-                        <div class="p-4 grid grid-cols-2 gap-3">
-                            <div class="rounded-xl border border-zinc-800 bg-zinc-900/50 p-3">
-                                <div class="text-[10px] uppercase tracking-wide text-zinc-400">Win Streak</div>
-                                <div class="text-2xl font-semibold mt-1">{{ stats.winStreak || 0 }}</div>
-                            </div>
-                            <div class="rounded-xl border border-zinc-800 bg-zinc-900/50 p-3">
-                                <div class="text-[10px] uppercase tracking-wide text-zinc-400">Max Win Streak</div>
-                                <div class="text-2xl font-semibold mt-1">{{ stats.maxWinStreak || 0 }}</div>
-                            </div>
-                            <div class="rounded-xl border border-zinc-800 bg-zinc-900/50 p-3">
-                                <div class="text-[10px] uppercase tracking-wide text-zinc-400">Days Played</div>
-                                <div class="text-2xl font-semibold mt-1">{{ stats.daysPlayed || 0 }}</div>
-                            </div>
-                            <div class="rounded-xl border border-zinc-800 bg-zinc-900/50 p-3">
-                                <div class="text-[10px] uppercase tracking-wide text-zinc-400">Total Games</div>
-                                <div class="text-2xl font-semibold mt-1">{{ stats.totalGames || 0 }}</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="rounded-2xl border border-zinc-800/80 bg-zinc-900/40">
-                        <div class="px-4 py-3 border-b border-zinc-800/60">
-                            <h3 class="text-sm font-semibold uppercase tracking-wide">How streaks work</h3>
-                        </div>
-                        <div class="p-4 text-sm text-zinc-300 space-y-2">
-                            <p><strong>Win streak</strong> increases only when you solve today’s word. If you miss a day
-                                or fail, it resets.</p>
-                            <p><strong>Days played</strong> counts days you tried the puzzle (win or lose).
-                                <strong>Total games</strong> is the total number of word puzzles you’ve opened.
-                            </p>
-                            <p>Sign in with your <strong class="text-transparent bg-clip-text bg-gradient-to-r from-violet-500 to-fuchsia-500">TempestID</strong> to sync your progress across devices. Or stay logged out to store only on your device.</p>
-                        </div>
-                    </div>
+                <div v-else-if="getGameStatus(game.id) === 'lost'" class="p-[1px] rounded-full inline-flex"
+                  :class="pillGradient('rose')" @click.stop>
+                  <div
+                    class="px-2 py-1 rounded-full bg-zinc-950/90 border border-white/10 flex items-center gap-1.5 backdrop-blur-sm">
+                    <Ban class="w-3.5 h-3.5 text-rose-300 flex-shrink-0" />
+                    <span class="text-[10px] font-medium text-rose-300 leading-none">Attempted</span>
+                  </div>
                 </div>
-            </section>
-        </main>
+                <div v-else-if="getGameStatus(game.id) === 'in-progress'" class="p-[1px] rounded-full inline-flex"
+                  :class="pillGradient('amber')" @click.stop>
+                  <div
+                    class="px-2 py-1 rounded-full bg-zinc-950/90 border border-white/10 flex items-center gap-1.5 backdrop-blur-sm">
+                    <Clock3 class="w-3.5 h-3.5 text-amber-300 flex-shrink-0" />
+                    <span class="text-[10px] font-medium text-amber-300 leading-none">In Progress</span>
+                  </div>
+                </div>
+                <div v-else-if="game.comingSoon" class="p-[1px] rounded-full inline-flex" :class="pillGradient('zinc')"
+                  @click.stop>
+                  <div
+                    class="px-2 py-1 rounded-full bg-zinc-950/90 border border-white/10 flex items-center gap-1.5 backdrop-blur-sm">
+                    <Clock class="w-3.5 h-3.5 text-zinc-300 flex-shrink-0" />
+                    <span class="text-[10px] font-medium text-zinc-300 leading-none">Coming Soon</span>
+                  </div>
+                </div>
+                <div v-else class="p-[1px] rounded-full inline-flex" :class="pillGradient('zinc')" @click.stop>
+                  <div
+                    class="px-2 py-1 rounded-full bg-zinc-950/90 border border-white/10 flex items-center gap-1.5 backdrop-blur-sm">
+                    <Circle class="w-3.5 h-3.5 text-zinc-300 flex-shrink-0" />
+                    <span class="text-[10px] font-medium text-zinc-300 leading-none">Not Started</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- hover gradient -->
+              <div
+                class="absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                :class="game.gradient"></div>
+
+              <div class="relative p-6 space-y-4">
+                <div class="w-14 h-14 rounded-xl flex items-center justify-center shadow-lg" :class="game.iconBg">
+                  <component :is="game.icon" class="w-7 h-7" />
+                </div>
+                <div>
+                  <h3 class="text-xl font-bold text-zinc-100 group-hover:text-white transition-colors">{{ game.name }}
+                  </h3>
+                  <p class="text-sm text-zinc-400 mt-1">{{ game.description }}</p>
+                </div>
+                <div class="flex items-center gap-4 pt-2">
+                  <div class="flex items-center gap-1.5">
+                    <Flame class="w-4 h-4 text-violet-300" />
+                    <span class="text-xs text-zinc-300">{{ getStreak(game.id) }} streak</span>
+                  </div>
+                </div>
+                <div class="pt-2">
+                  <div
+                    class="w-full py-2.5 rounded-xl bg-gradient-to-r text-center font-semibold text-sm transition-all duration-300 group-hover:shadow-lg group-hover:shadow-violet-500/20"
+                    :class="buttonGradient(game.id)">
+                    {{ ctaText(game.id) }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Enhanced daily stats overview -->
+          <div
+            class="mt-12 rounded-2xl border border-zinc-700/80 bg-gradient-to-br from-zinc-800/60 to-zinc-900/40 backdrop-blur-sm p-6 shadow-2xl shadow-black/20">
+            <div class="absolute inset-0 bg-gradient-to-br from-white/6 to-transparent rounded-2xl"></div>
+            <div class="relative">
+              <h3 class="text-lg font-bold mb-4">Today's Progress</h3>
+              <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div
+                  class="rounded-xl bg-gradient-to-br from-slate-800/80 to-slate-900/60 border border-slate-600/50 p-4 backdrop-blur-sm shadow-lg shadow-violet-500/10">
+                  <div class="text-2xl font-bold text-violet-300">{{ completedToday }}/{{ games.length }}</div>
+                  <div class="text-xs text-slate-300/70 mt-1">Games Completed</div>
+                </div>
+                <div
+                  class="rounded-xl bg-gradient-to-br from-slate-800/80 to-slate-900/60 border border-slate-600/50 p-4 backdrop-blur-sm shadow-lg shadow-fuchsia-500/10">
+                  <div class="text-2xl font-bold text-fuchsia-300">{{ totalStreak }}</div>
+                  <div class="text-xs text-slate-300/70 mt-1">Combined Streak</div>
+                </div>
+                <div
+                  class="rounded-xl bg-gradient-to-br from-slate-800/80 to-slate-900/60 border border-slate-600/50 p-4 backdrop-blur-sm shadow-lg shadow-emerald-500/10">
+                  <div class="text-2xl font-bold text-emerald-300">{{ totalDaysPlayed }}</div>
+                  <div class="text-xs text-slate-300/70 mt-1">Total Days Played</div>
+                </div>
+                <div
+                  class="rounded-xl bg-gradient-to-br from-slate-800/80 to-slate-900/60 border border-slate-600/50 p-4 backdrop-blur-sm shadow-lg shadow-amber-500/10">
+                  <div class="text-2xl font-bold text-amber-300">{{ avgWinRate }}%</div>
+                  <div class="text-xs text-slate-300/70 mt-1">Avg. Win Rate</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Game view -->
+        <div v-if="openGame" class="max-w-5xl mx-auto transition-all duration-300">
+          <div
+            class="rounded-2xl border border-zinc-700/80 bg-gradient-to-br from-zinc-800/60 to-zinc-900/40 backdrop-blur-sm p-6 shadow-2xl shadow-black/20">
+            <div class="absolute inset-0 bg-gradient-to-br from-white/6 to-transparent rounded-2xl"></div>
+            <div class="relative">
+              <!-- Wordle specific content -->
+              <div v-if="openGame === 'wordle' && !loadingGame">
+                <div v-if="wordleStore.loading" class="text-center py-12 text-zinc-400">
+                  <div class="animate-pulse">Loading Wordle...</div>
+                </div>
+                <div v-else>
+                  <WordleBoard />
+                  <!-- Footer stats for Wordle -->
+                  <div class="mt-6 grid grid-cols-3 gap-4 text-center">
+                    <div
+                      class="rounded-xl bg-gradient-to-br from-emerald-950/60 to-emerald-900/40 border border-emerald-700/50 p-4 backdrop-blur-sm shadow-lg shadow-emerald-500/10">
+                      <div class="text-xs text-emerald-200/70 uppercase tracking-wide">Plays</div>
+                      <div class="mt-1 text-lg font-semibold tabular-nums text-emerald-300">{{ profile?.totalPlays ??
+                        0 }}</div>
+                    </div>
+                    <div
+                      class="rounded-xl bg-gradient-to-br from-emerald-950/60 to-emerald-900/40 border border-emerald-700/50 p-4 backdrop-blur-sm shadow-lg shadow-emerald-500/10">
+                      <div class="text-xs text-emerald-200/70 uppercase tracking-wide">Wins</div>
+                      <div class="mt-1 text-lg font-semibold tabular-nums text-emerald-300">{{ profile?.wins ?? 0 }}
+                      </div>
+                    </div>
+                    <div
+                      class="rounded-xl bg-gradient-to-br from-emerald-950/60 to-emerald-900/40 border border-emerald-700/50 p-4 backdrop-blur-sm shadow-lg shadow-emerald-500/10">
+                      <div class="text-xs text-emerald-200/70 uppercase tracking-wide">Losses</div>
+                      <div class="mt-1 text-lg font-semibold tabular-nums text-emerald-300">{{ profile?.losses ?? 0 }}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Other games -->
+              <component v-else-if="currentGameComponent && !loadingGame" :is="currentGameComponent" :game-id="openGame"
+                :playable="true" @completed="onGameCompleted" />
+
+              <div v-else class="text-center py-12 text-zinc-400">
+                <div class="animate-pulse">Loading game...</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Per-game stats (for non-wordle games) -->
+          <div v-if="openGame !== 'wordle' && statsFor(openGame)" class="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div
+              :class="[getGameStatsClasses(openGame).bg, getGameStatsClasses(openGame).border, getGameStatsClasses(openGame).shadow]"
+              class="rounded-xl backdrop-blur-sm p-4 shadow-lg">
+              <div :class="getGameStatsClasses(openGame).label" class="text-xs uppercase tracking-wide">Current Streak
+              </div>
+              <div :class="getGameStatsClasses(openGame).text" class="text-2xl font-bold mt-1">{{
+                statsFor(openGame).currentStreak }}</div>
+            </div>
+            <div
+              :class="[getGameStatsClasses(openGame).bg, getGameStatsClasses(openGame).border, getGameStatsClasses(openGame).shadow]"
+              class="rounded-xl backdrop-blur-sm p-4 shadow-lg">
+              <div :class="getGameStatsClasses(openGame).label" class="text-xs uppercase tracking-wide">Best Streak
+              </div>
+              <div :class="getGameStatsClasses(openGame).text" class="text-2xl font-bold mt-1">{{
+                statsFor(openGame).maxStreak }}</div>
+            </div>
+            <div
+              :class="[getGameStatsClasses(openGame).bg, getGameStatsClasses(openGame).border, getGameStatsClasses(openGame).shadow]"
+              class="rounded-xl backdrop-blur-sm p-4 shadow-lg">
+              <div :class="getGameStatsClasses(openGame).label" class="text-xs uppercase tracking-wide">Times Played
+              </div>
+              <div :class="getGameStatsClasses(openGame).text" class="text-2xl font-bold mt-1">{{
+                statsFor(openGame).gamesPlayed }}</div>
+            </div>
+            <div
+              :class="[getGameStatsClasses(openGame).bg, getGameStatsClasses(openGame).border, getGameStatsClasses(openGame).shadow]"
+              class="rounded-xl backdrop-blur-sm p-4 shadow-lg">
+              <div :class="getGameStatsClasses(openGame).label" class="text-xs uppercase tracking-wide">Win Rate</div>
+              <div :class="getGameStatsClasses(openGame).text" class="text-2xl font-bold mt-1">{{
+                statsFor(openGame).winPercentage }}%</div>
+            </div>
+          </div>
+        </div>
+      </main>
     </div>
+  </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
-import WordleGame from '@/components/mxn/dailyGames/WordleGame.vue'
+import { ref, computed, onMounted, onUnmounted, defineAsyncComponent, shallowRef } from 'vue'
+import { useWordleStore } from '@/stores/dailyGames/useWordleStore'
+import { useDailyStore } from '@/stores/useDailyStore'
+import WordleBoard from '@/components/mxn/dailyGames/WordleBoard.vue'
+import {
+  Trophy, User, Clock, Share2, Trash2, CheckCircle2, Ban, Clock3, Circle, Flame,
+  Type, Link as LinkIcon, Flag, HelpCircle, ListOrdered, Brain
+} from 'lucide-vue-next'
 
-/* ---------- Time helpers (AEST) ---------- */
-const AEST_TZ = 'Australia/Brisbane'
-function fmtAEST(d) {
-    const y = new Intl.DateTimeFormat('en-CA', { timeZone: AEST_TZ, year: 'numeric' }).format(d)
-    const m = new Intl.DateTimeFormat('en-CA', { timeZone: AEST_TZ, month: '2-digit' }).format(d)
-    const day = new Intl.DateTimeFormat('en-CA', { timeZone: AEST_TZ, day: '2-digit' }).format(d)
-    return `${y}-${m}-${day}`
-}
-function addDaysAEST(dateStr, n) {
-    const baseUTC = new Date(`${dateStr}T00:00:00+10:00`)
-    baseUTC.setUTCDate(baseUTC.getUTCDate() + n)
-    return fmtAEST(baseUTC)
-}
-function diffDays(a, b) {
-    const A = new Date(`${a}T00:00:00+10:00`).getTime()
-    const B = new Date(`${b}T00:00:00+10:00`).getTime()
-    return Math.round((B - A) / 86400000)
+/* stores */
+const wordleStore = useWordleStore()
+const dailyStore = useDailyStore()
+
+/* Wordle specific state */
+const shareBusy = ref(false)
+const copyMsg = ref('')
+const profile = computed(() => dailyStore.wordleStats)
+
+// show the Dev Reset only in dev OR with ?dev
+const showDevReset = computed(() => {
+  try { if (import.meta.env.DEV) return true; } catch { }
+  return new URLSearchParams(location.search).has('dev');
+})
+
+// DEV reset (local only)
+async function devReset() {
+  try {
+    localStorage.removeItem('mxn:daily:wordle')
+    wordleStore.hardResetLocal?.()
+    copyMsg.value = 'Local state cleared'
+    setTimeout(() => location.reload(), 350)
+  } catch { /* ignore */ }
 }
 
-const now = ref(new Date())
-const today = computed(() => fmtAEST(now.value))
-let timer = null
-onMounted(() => { timer = window.setInterval(() => now.value = new Date(), 1000) })
-onBeforeUnmount(() => { if (timer) window.clearInterval(timer) })
+// Countdown (UTC)
+const countdown = ref('00:00:00')
 const countdownKey = ref(0)
-const countdown = computed(() => {
-    const nextMid = new Date(`${today.value}T00:00:00+10:00`)
-    nextMid.setUTCDate(nextMid.getUTCDate() + 1)
-    const ms = nextMid.getTime() - now.value.getTime()
-    if (ms <= 0) { countdownKey.value++; return '00:00:00' }
-    const h = String(Math.floor(ms / 3600000)).padStart(2, '0')
-    const m = String(Math.floor((ms % 3600000) / 60000)).padStart(2, '0')
-    const s = String(Math.floor((ms % 60000) / 1000)).padStart(2, '0')
-    return `${h}:${m}:${s}`
-})
-
-/* ---------- Seeds and dictionary (MVP) ---------- */
-const WORD_BANK = ['CHAOS', 'TEMPO', 'PIXEL', 'NEXUS', 'BRAVE', 'STORM', 'ROGUE']
-const DICTIONARY = [
-    // minimal MVP dictionary; replace with a proper word list or Firestore pull
-    'ABOUT', 'ABOVE', 'ACUTE', 'AGENT', 'ANGER', 'APPLE', 'BASIC', 'BRAVE', 'BRING', 'CHAOS', 'CIVIC', 'CLOUD', 'CRASH', 'DAILY', 'DELTA',
-    'EARTH', 'EAGER', 'FJORD', 'GIANT', 'GRACE', 'HAPPY', 'HEART', 'INDEX', 'JOLLY', 'KNACK', 'LEVEL', 'LEMON', 'MIGHT', 'NEXUS', 'OPERA',
-    'PIXEL', 'QUICK', 'ROGUE', 'SOLVE', 'STORM', 'TEMPO', 'UNION', 'VIVID', 'WATER', 'YIELD', 'ZESTY'
-].map(w => w.toUpperCase())
-
-const days = computed(() => {
-    const list = []
-    for (let i = 0; i < 7; i++) list.push({ date: addDaysAEST(today.value, i) })
-    return list
-})
-const activeDate = ref('')
-const todaySolution = computed(() => WORD_BANK[0]) // swap with Firestore later
-
-/* ---------- Stats (success-only) ---------- */
-const LS_KEY = 'mxnDaily:word:stats'
-const stats = ref(loadStats())
-function loadStats() {
-    try { return JSON.parse(localStorage.getItem(LS_KEY) || '') || {} } catch { return {} }
-}
-function saveStats() {
-    localStorage.setItem(LS_KEY, JSON.stringify({
-        winStreak: stats.value.winStreak || 0,
-        maxWinStreak: stats.value.maxWinStreak || 0,
-        daysPlayed: stats.value.daysPlayed || 0,
-        totalGames: stats.value.totalGames || 0,
-        lastPlayedDate: stats.value.lastPlayedDate,
-        lastWinDate: stats.value.lastWinDate,
-    }))
-}
-function ensureDefaults() {
-    stats.value.winStreak ??= 0
-    stats.value.maxWinStreak ??= 0
-    stats.value.daysPlayed ??= 0
-    stats.value.totalGames ??= 0
-}
-ensureDefaults()
-
-function ensureOpenCountedForToday() {
-    const t = today.value
-    if (stats.value.lastPlayedDate !== t) {
-        stats.value.daysPlayed += 1
-        stats.value.totalGames += 1
-        stats.value.lastPlayedDate = t
-        saveStats()
+let timer = null
+function tick() {
+  try {
+    const iso = dailyStore.rolloverAt || wordleStore.rolloverAt
+    if (!iso) { countdown.value = '—'; return; }
+    const ms = Date.parse(iso) - Date.now()
+    if (isNaN(ms) || ms <= 0) {
+      countdown.value = '00:00:00'
+      dailyStore.checkRollover()
+      wordleStore.refreshIfRolledOver?.()
+      return
     }
+    const total = Math.floor(ms / 1000)
+    const h = String(Math.floor(total / 3600)).padStart(2, '0')
+    const m = String(Math.floor((total % 3600) / 60)).padStart(2, '0')
+    const s = String(total % 60).padStart(2, '0')
+    countdown.value = `${h}:${m}:${s}`
+    countdownKey.value++
+  } catch (error) {
+    console.warn('Error in countdown tick:', error)
+    countdown.value = '—'
+  }
 }
-function applyResult(success) {
-    const t = today.value
-    const lastWin = stats.value.lastWinDate
-    const gap = lastWin ? diffDays(lastWin, t) : null
-    if (success) {
-        const newStreak = (gap === 1) ? (stats.value.winStreak + 1) : 1
-        stats.value.winStreak = newStreak
-        stats.value.maxWinStreak = Math.max(stats.value.maxWinStreak, newStreak)
-        stats.value.lastWinDate = t
+
+// Share
+async function onShare() {
+  try {
+    shareBusy.value = true; copyMsg.value = ''
+    const text = wordleStore.shareText?.() || 'Wordle completed!'
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text)
+      copyMsg.value = 'Copied!'
     } else {
-        stats.value.winStreak = 0
+      const textArea = document.createElement('textarea')
+      textArea.value = text
+      document.body.appendChild(textArea)
+      textArea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textArea)
+      copyMsg.value = 'Copied!'
     }
-    saveStats()
+  } catch (error) {
+    console.warn('Error sharing:', error)
+    copyMsg.value = 'Share failed'
+  } finally {
+    shareBusy.value = false
+    setTimeout(() => (copyMsg.value = ''), 1800)
+  }
 }
 
-/* ---------- Wordle completion + reset ---------- */
-const wordRef = ref(null)
-const wordState = ref({ status: 'idle', attempts: 0 })
-function onWordCompleted(payload) {
-    if (wordState.value.status !== 'idle') return
-    wordState.value.attempts = payload.attempts
-    wordState.value.status = payload.success ? 'won' : 'lost'
-    applyResult(payload.success)
-    if (payload.success) {
-        const shareText = `MXN Daily — Word ${today.value}\n${payload.grid}\nhttps://mxn.au/daily`
-        navigator.clipboard?.writeText(shareText).catch(() => { })
+/* Components by id */
+const gameComponents = {
+  connections: defineAsyncComponent(() => import('@/components/mxn/dailyGames/ConnectionsGame.vue')),
+  flag: defineAsyncComponent(() => import('@/components/mxn/dailyGames/FlagGame.vue')),
+  trivia: defineAsyncComponent(() => import('@/components/mxn/dailyGames/TriviaGame.vue')),
+  sequence: defineAsyncComponent(() => import('@/components/mxn/dailyGames/SequenceGame.vue')),
+  memory: defineAsyncComponent(() => import('@/components/mxn/dailyGames/MemoryGame.vue')),
+}
+
+/* Game list */
+const games = ref([
+  {
+    id: 'wordle', name: 'Wordle', description: 'Guess the 5-letter word in 6 tries', icon: Type,
+    iconBg: 'bg-gradient-to-br from-emerald-600/20 to-emerald-500/20 ring-1 ring-emerald-500/30',
+    gradient: 'from-emerald-600/10 to-transparent'
+  },
+  {
+    id: 'connections', name: 'Connections', description: 'Find groups of 4 related words', icon: LinkIcon,
+    iconBg: 'bg-gradient-to-br from-violet-600/20 to-violet-500/20 ring-1 ring-violet-500/30',
+    gradient: 'from-violet-600/10 to-transparent',
+    comingSoon: true
+  },
+  {
+    id: 'flag', name: 'Flag Quest', description: 'Identify countries by their flags', icon: Flag,
+    iconBg: 'bg-gradient-to-br from-blue-600/20 to-blue-500/20 ring-1 ring-blue-500/30',
+    gradient: 'from-blue-600/10 to-transparent',
+    comingSoon: true
+  },
+  {
+    id: 'trivia', name: 'Quick Quiz', description: 'Test your general knowledge', icon: HelpCircle,
+    iconBg: 'bg-gradient-to-br from-fuchsia-600/20 to-fuchsia-500/20 ring-1 ring-fuchsia-500/30',
+    gradient: 'from-fuchsia-600/10 to-transparent',
+    comingSoon: true
+  },
+  {
+    id: 'sequence', name: 'Pattern Pro', description: 'Complete the sequence', icon: ListOrdered,
+    iconBg: 'bg-gradient-to-br from-amber-600/20 to-amber-500/20 ring-1 ring-amber-500/30',
+    gradient: 'from-amber-600/10 to-transparent',
+    comingSoon: true
+  },
+  {
+    id: 'memory', name: 'Memory Match', description: 'Remember and match pairs', icon: Brain,
+    iconBg: 'bg-gradient-to-br from-rose-600/20 to-rose-500/20 ring-1 ring-rose-500/30',
+    gradient: 'from-rose-600/10 to-transparent',
+    comingSoon: true
+  },
+])
+
+const openGame = ref(null)
+const currentGameComponent = shallowRef(null)
+const currentGameData = computed(() => games.value.find(g => g.id === openGame.value))
+const loadingGame = ref(false)
+
+async function selectGame(gameId) {
+  const game = games.value.find(g => g.id === gameId)
+  if (game?.comingSoon) return
+
+  const url = new URL(window.location)
+  url.searchParams.set('game', gameId)
+  window.history.replaceState({}, '', url)
+
+  loadingGame.value = true
+  openGame.value = gameId
+
+  try {
+    if (gameId === 'wordle') {
+      if (!wordleStore.puzzleId) {
+        await wordleStore.loadDaily(true)
+      }
+    } else {
+      currentGameComponent.value = gameComponents[gameId] || null
     }
-}
-function resetTodayProgress() {
-    localStorage.removeItem(`mxnDaily:word:state:${today.value}`)
-    wordState.value = { status: 'idle', attempts: 0 }
-    wordRef.value?.resetBoard?.()
-}
-function resetAll() {
-    // nukes stats + today board
-    localStorage.removeItem(LS_KEY)
-    stats.value = { winStreak: 0, maxWinStreak: 0, daysPlayed: 0, totalGames: 0 }
-    resetTodayProgress()
+  } catch (error) {
+    console.error('Error loading game:', error)
+  } finally {
+    loadingGame.value = false
+  }
 }
 
-/* ---------- UI helpers ---------- */
-function formatWeekday(d) {
-    const date = new Date(`${d}T00:00:00+10:00`)
-    return new Intl.DateTimeFormat('en-AU', { weekday: 'short', timeZone: AEST_TZ }).format(date)
+function closeGame() {
+  const url = new URL(window.location)
+  url.searchParams.delete('game')
+  window.history.replaceState({}, '', url)
+
+  openGame.value = null
+  currentGameComponent.value = null
 }
 
-/* ---------- Lifecycle ---------- */
-onMounted(() => {
-    activeDate.value = today.value
-    ensureOpenCountedForToday()
+/* Game status helpers */
+function getGameStatus(gameId) {
+  if (gameId === 'wordle') {
+    return wordleStore.status || dailyStore.getGameStatus(gameId)
+  }
+  return dailyStore.getGameStatus(gameId)
+}
+
+function getStreak(gameId) {
+  const stats = dailyStore.getStatsFor(gameId)
+  return stats?.currentStreak ?? 0
+}
+
+function ctaText(gameId) {
+  const game = games.value.find(g => g.id === gameId)
+  if (game?.comingSoon) return 'Coming Soon'
+
+  const status = getGameStatus(gameId)
+  switch (status) {
+    case 'won': return 'Completed ✓'
+    case 'lost': return 'Try Again Tomorrow'
+    case 'in-progress': return 'Continue Playing'
+    default: return 'Play Now'
+  }
+}
+
+function buttonGradient(gameId) {
+  const game = games.value.find(g => g.id === gameId)
+  if (game?.comingSoon) return 'from-zinc-700 to-zinc-800 text-zinc-400'
+
+  const status = getGameStatus(gameId)
+  switch (status) {
+    case 'won': return 'from-emerald-600 to-emerald-700 text-white shadow-emerald-500/20'
+    case 'lost': return 'from-rose-600 to-rose-700 text-white shadow-rose-500/20'
+    default: return 'from-violet-600 to-fuchsia-600 text-white shadow-violet-500/20'
+  }
+}
+
+function statsFor(gameId) {
+  return dailyStore.getStatsFor(gameId)
+}
+
+/* Computed stats */
+const completedToday = computed(() => dailyStore.totalCompletedToday)
+const totalStreak = computed(() => dailyStore.totalStreakSum)
+const totalDaysPlayed = computed(() => dailyStore.totalDaysPlayed)
+const avgWinRate = computed(() => dailyStore.averageWinRate)
+
+/* pill gradient helper */
+function pillGradient(kind) {
+  switch (kind) {
+    case 'emerald': return 'bg-gradient-to-r from-emerald-500/50 via-emerald-400/40 to-emerald-500/50 shadow-lg shadow-emerald-500/25'
+    case 'rose': return 'bg-gradient-to-r from-rose-500/50 via-rose-400/40 to-rose-500/50 shadow-lg shadow-rose-500/25'
+    case 'amber': return 'bg-gradient-to-r from-amber-500/50 via-amber-400/40 to-amber-500/50 shadow-lg shadow-amber-500/25'
+    case 'zinc': return 'bg-gradient-to-r from-zinc-600/40 via-zinc-500/30 to-zinc-600/40'
+    default: return 'bg-gradient-to-r from-violet-500/50 via-fuchsia-500/40 to-violet-500/50 shadow-lg shadow-violet-500/25'
+  }
+}
+
+function onGameCompleted(result) {
+  console.log('Game completed:', result)
+}
+
+function getGameStatsClasses(gameId) {
+  switch (gameId) {
+    case 'wordle':
+      return {
+        bg: 'bg-gradient-to-br from-emerald-950/60 to-emerald-900/40',
+        border: 'border-emerald-700/50',
+        shadow: 'shadow-emerald-500/10',
+        text: 'text-emerald-300',
+        label: 'text-emerald-200/70'
+      }
+    case 'connections':
+      return {
+        bg: 'bg-gradient-to-br from-slate-800/80 to-slate-900/60',
+        border: 'border-slate-600/50',
+        shadow: 'shadow-violet-500/10',
+        text: 'text-violet-300',
+        label: 'text-slate-300/70'
+      }
+    case 'flag':
+      return {
+        bg: 'bg-gradient-to-br from-slate-800/80 to-slate-900/60',
+        border: 'border-slate-600/50',
+        shadow: 'shadow-blue-500/10',
+        text: 'text-blue-300',
+        label: 'text-slate-300/70'
+      }
+    case 'trivia':
+      return {
+        bg: 'bg-gradient-to-br from-slate-800/80 to-slate-900/60',
+        border: 'border-slate-600/50',
+        shadow: 'shadow-fuchsia-500/10',
+        text: 'text-fuchsia-300',
+        label: 'text-slate-300/70'
+      }
+    case 'sequence':
+      return {
+        bg: 'bg-gradient-to-br from-slate-800/80 to-slate-900/60',
+        border: 'border-slate-600/50',
+        shadow: 'shadow-amber-500/10',
+        text: 'text-amber-300',
+        label: 'text-slate-300/70'
+      }
+    case 'memory':
+      return {
+        bg: 'bg-gradient-to-br from-slate-800/80 to-slate-900/60',
+        border: 'border-slate-600/50',
+        shadow: 'shadow-rose-500/10',
+        text: 'text-rose-300',
+        label: 'text-slate-300/70'
+      }
+    default:
+      return {
+        bg: 'bg-gradient-to-br from-slate-800/80 to-slate-900/60',
+        border: 'border-slate-600/50',
+        shadow: 'shadow-black/10',
+        text: 'text-slate-300',
+        label: 'text-slate-400'
+      }
+  }
+}
+
+function getCardClasses(game) {
+  const baseClasses = [
+    'border-zinc-700/80',
+    'hover:translate-y-[-4px]',
+    'hover:shadow-2xl'
+  ]
+
+  if (game.comingSoon) {
+    baseClasses.push('opacity-50', 'cursor-not-allowed')
+  }
+
+  // Game-specific styling
+  switch (game.id) {
+    case 'wordle':
+      baseClasses.push(
+        'bg-gradient-to-br', 'from-emerald-950/40', 'to-emerald-900/20',
+        'hover:from-emerald-900/60', 'hover:to-emerald-800/40',
+        'hover:border-emerald-500/70', 'hover:shadow-emerald-500/25'
+      )
+      break
+    case 'connections':
+      baseClasses.push(
+        'bg-gradient-to-br', 'from-violet-950/40', 'to-violet-900/20',
+        'hover:from-violet-900/60', 'hover:to-violet-800/40',
+        'hover:border-violet-500/70', 'hover:shadow-violet-500/25'
+      )
+      break
+    case 'flag':
+      baseClasses.push(
+        'bg-gradient-to-br', 'from-blue-950/40', 'to-blue-900/20',
+        'hover:from-blue-900/60', 'hover:to-blue-800/40',
+        'hover:border-blue-500/70', 'hover:shadow-blue-500/25'
+      )
+      break
+    case 'trivia':
+      baseClasses.push(
+        'bg-gradient-to-br', 'from-fuchsia-950/40', 'to-fuchsia-900/20',
+        'hover:from-fuchsia-900/60', 'hover:to-fuchsia-800/40',
+        'hover:border-fuchsia-500/70', 'hover:shadow-fuchsia-500/25'
+      )
+      break
+    case 'sequence':
+      baseClasses.push(
+        'bg-gradient-to-br', 'from-amber-950/40', 'to-amber-900/20',
+        'hover:from-amber-900/60', 'hover:to-amber-800/40',
+        'hover:border-amber-500/70', 'hover:shadow-amber-500/25'
+      )
+      break
+    case 'memory':
+      baseClasses.push(
+        'bg-gradient-to-br', 'from-rose-950/40', 'to-rose-900/20',
+        'hover:from-rose-900/60', 'hover:to-rose-800/40',
+        'hover:border-rose-500/70', 'hover:shadow-rose-500/25'
+      )
+      break
+  }
+
+  return baseClasses
+}
+
+// Handle browser back/forward buttons
+function handlePopState() {
+  const params = new URLSearchParams(window.location.search)
+  const gameParam = params.get('game')
+  if (gameParam && games.value.some(g => g.id === gameParam)) {
+    openGame.value = gameParam
+    if (gameParam !== 'wordle') {
+      loadingGame.value = true
+      try {
+        currentGameComponent.value = gameComponents[gameParam] || null
+      } finally {
+        loadingGame.value = false
+      }
+    }
+  } else {
+    openGame.value = null
+    currentGameComponent.value = null
+  }
+}
+
+/* Lifecycle */
+onMounted(async () => {
+  tick()
+  timer = setInterval(tick, 1000)
+
+  try {
+    wordleStore.initAuthListener()
+    await wordleStore.loadDaily(true)
+    
+    await dailyStore.initializeGames()
+  } catch (error) {
+    console.warn('Error initializing stores:', error)
+  }
+
+  window.addEventListener('popstate', handlePopState)
+
+  const params = new URLSearchParams(window.location.search)
+  const gameParam = params.get('game')
+  if (gameParam && games.value.some(g => g.id === gameParam)) {
+    openGame.value = gameParam
+    if (gameParam !== 'wordle') {
+      loadingGame.value = true
+      try {
+        currentGameComponent.value = gameComponents[gameParam] || null
+      } finally {
+        loadingGame.value = false
+      }
+    }
+  }
+})
+
+onUnmounted(() => {
+  if (timer) clearInterval(timer)
+  window.removeEventListener('popstate', handlePopState)
 })
 </script>
 
 <style scoped>
-.key {
-    user-select: none;
+@keyframes gradient-move {
+  0% {
+    background-position: 0% 50%
+  }
+
+  50% {
+    background-position: 100% 50%
+  }
+
+  100% {
+    background-position: 0% 50%
+  }
 }
-.no-scrollbar::-webkit-scrollbar { display: none; }
-.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient-move 8s ease infinite;
+}
+
+.bg-noise {
+  background-image:
+    radial-gradient(circle at 25% 25%, #ffffff03 1px, transparent 1px),
+    radial-gradient(circle at 75% 75%, #ffffff03 1px, transparent 1px);
+  background-size: 24px 24px;
+  background-position: 0 0, 12px 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .animate-gradient,
+  .animate-pulse {
+    animation: none;
+  }
+}
 </style>
