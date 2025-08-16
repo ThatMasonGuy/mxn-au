@@ -65,19 +65,26 @@
                 </div>
             </div>
         </div>
+
+        <!-- Completion Overlay -->
+        <WordleCompletionOverlay :show="showCompletionOverlay" :is-win="status === 'won'" :attempts="rows.length"
+            :streak="store.profile?.currentStreak || 0" :answer="store.answer" :emoji-grid="emojiGrid"
+            :rollover-at="store.rolloverAt" @close="showCompletionOverlay = false" @share="onShare" />
     </div>
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, ref, computed, watch } from 'vue';
+import { onMounted, onUnmounted, ref, computed, watch, nextTick } from 'vue';
 import { useWordleStore } from '@/stores/dailyGames/useWordleStore';
 import KeyButton from './components/KeyButton.vue';
+import WordleCompletionOverlay from './components/WordleCompletionOverlay.vue';
 import { CornerDownLeft, Delete } from 'lucide-vue-next';
 
 const store = useWordleStore();
 
 const flashMsg = ref('');
 const flashType = ref('info');
+const showCompletionOverlay = ref(false);
 
 const row1 = 'QWERTYUIOP'.split('');
 const row2 = 'ASDFGHJKL'.split('');
@@ -99,21 +106,62 @@ async function loadAllowedWords() {
 onMounted(() => {
     loadAllowedWords();
     window.addEventListener('keydown', onKeydown);
+
+    // Check if game is already complete on mount
+    if (status.value === 'won' || status.value === 'lost') {
+        // Show overlay after a brief delay if game is already complete
+        setTimeout(() => {
+            showCompletionOverlay.value = true;
+        }, 500);
+    }
 });
+
 onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 
 const rows = computed(() => store.rows);
 const status = computed(() => store.status);
+
+// Generate emoji grid for sharing
+const emojiGrid = computed(() => {
+    if (rows.value.length === 0) return '';
+    return rows.value.map(row => store.maskToEmoji(row.mask)).join('\n');
+});
 
 // ---- reveal control ----
 const revealingRow = ref(-1);
 const STAGGER = 120;
 const FLIP_MS = 600;
 
-watch(() => rows.value.length, (n, o) => {
+// Watch for new rows being added
+watch(() => rows.value.length, async (n, o) => {
     if (typeof o === 'number' && n === o + 1) {
         revealingRow.value = n - 1;
-        setTimeout(() => { revealingRow.value = -1; }, 5 * STAGGER + FLIP_MS + 50);
+
+        // Wait for reveal animation to complete
+        setTimeout(async () => {
+            revealingRow.value = -1;
+
+            // Check if game just ended
+            await nextTick();
+            if (status.value === 'won' || status.value === 'lost') {
+                // Show completion overlay after tiles finish flipping
+                setTimeout(() => {
+                    showCompletionOverlay.value = true;
+                }, 200);
+            }
+        }, 5 * STAGGER + FLIP_MS + 50);
+    }
+});
+
+// Watch for status changes (in case game ends another way)
+watch(status, (newStatus, oldStatus) => {
+    if (oldStatus === 'idle' && (newStatus === 'won' || newStatus === 'lost')) {
+        // If we didn't already show it from the row watcher
+        if (!showCompletionOverlay.value) {
+            setTimeout(() => {
+                showCompletionOverlay.value = true;
+            }, 5 * STAGGER + FLIP_MS + 250);
+        }
     }
 });
 
@@ -201,6 +249,31 @@ function keyState(letter) {
         if (best === 'hit') break;
     }
     return best;
+}
+
+// Share functionality
+async function onShare() {
+    try {
+        const text = store.shareText?.() || 'Wordle completed!';
+
+        if (navigator.share) {
+            await navigator.share({ text });
+        } else if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(text);
+            blip('Copied to clipboard!', 'info');
+        } else {
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            blip('Copied to clipboard!', 'info');
+        }
+    } catch (error) {
+        console.warn('Error sharing:', error);
+        blip('Share failed', 'error');
+    }
 }
 </script>
 

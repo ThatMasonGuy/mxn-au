@@ -69,22 +69,6 @@ export default [
         },
     },
     {
-        path: '/daily/v2',
-        name: 'MXNDailyV2',
-        component: () => import('@/pages/dailyChallenges/Daily.vue'),
-        meta: {
-            requiresAuth: false,
-            role: null,
-            title: 'MXN Daily',
-            drawerRanking: null,
-            drawerVisible: false,
-            layout: 'default',
-            description: 'Page under construction.',
-            badge: '',
-            requiresOverlay: false,
-        },
-    },
-    {
         path: '/daily/admin',
         name: 'MXNDailyAdmin',
         component: () => import('@/pages/MXNDailyAdmin.vue'),

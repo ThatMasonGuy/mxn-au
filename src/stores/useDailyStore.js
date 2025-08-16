@@ -1,17 +1,27 @@
-// src/stores/useDailyStore.js - Improved version
+// src/stores/useDailyStore.js - Fixed version with Firebase listeners
 import { defineStore } from 'pinia'
 import { getFunctions, httpsCallable } from 'firebase/functions'
 import { getAuth, onAuthStateChanged } from 'firebase/auth'
+import { firestore } from '@/firebase'
+import { doc, onSnapshot, collection } from 'firebase/firestore'
 import { useWordleStore } from './dailyGames/useWordleStore'
 
 const REGION = 'australia-southeast1'
 const functions = () => getFunctions(undefined, REGION)
+
+function dateStrUTC(d = new Date()) {
+    const y = d.getUTCFullYear();
+    const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(d.getUTCDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+}
 
 export const useDailyStore = defineStore('daily', {
     state: () => ({
         loading: false,
         initialized: false,
         user: null,
+        _unsubscribers: [], // Store all listener unsubscribers
 
         // Combined game stats
         gameStats: {
@@ -132,70 +142,114 @@ export const useDailyStore = defineStore('daily', {
     },
 
     actions: {
+        // Clean up all listeners
+        _cleanupListeners() {
+            this._unsubscribers.forEach(unsub => {
+                if (typeof unsub === 'function') unsub()
+            })
+            this._unsubscribers = []
+        },
+
+        // Set up Firebase listeners for a specific game
+        _setupGameListener(userId, gameId) {
+            // Listen to the game's profile/stats document
+            const profileRef = doc(firestore, 'users', userId, 'dailyChallenges', gameId)
+            const unsubProfile = onSnapshot(profileRef, (snapshot) => {
+                if (snapshot.exists()) {
+                    const data = snapshot.data()
+
+                    // Update game stats
+                    this.gameStats[gameId] = {
+                        currentStreak: data.currentStreak || 0,
+                        maxStreak: data.maxStreak || 0,
+                        wins: data.wins || 0,
+                        losses: data.losses || 0,
+                        totalPlays: data.totalPlays || 0,
+                        winPercentage: data.totalPlays ? Math.round((data.wins / data.totalPlays) * 100) : 0,
+                        gamesPlayed: data.totalPlays || 0,
+                        lastPlayedUTC: data.lastPlayedUTC || null,
+                        histogram: gameId === 'wordle' && data.attemptsHistogram ?
+                            [1, 2, 3, 4, 5, 6].map(i => data.attemptsHistogram[String(i)] || 0) :
+                            (this.gameStats[gameId].histogram || undefined)
+                    }
+
+                    // Update today's status based on last played date
+                    const today = dateStrUTC()
+                    if (data.lastPlayedUTC === today) {
+                        // Check today's game document for actual status
+                        const todayRef = doc(firestore, 'users', userId, 'dailyChallenges', gameId, 'days', today)
+                        const unsubToday = onSnapshot(todayRef, (todaySnap) => {
+                            if (todaySnap.exists()) {
+                                const todayData = todaySnap.data()
+                                if (todayData.outcome === 'win') {
+                                    this.dailyStatus[gameId] = 'won'
+                                } else if (todayData.outcome === 'loss') {
+                                    this.dailyStatus[gameId] = 'lost'
+                                } else if (todayData.outcome === 'in_progress') {
+                                    this.dailyStatus[gameId] = 'in-progress'
+                                }
+                            }
+                        })
+                        this._unsubscribers.push(unsubToday)
+                    } else {
+                        this.dailyStatus[gameId] = 'not-started'
+                    }
+
+                    this.lastUpdated = Date.now()
+                }
+            })
+
+            this._unsubscribers.push(unsubProfile)
+        },
+
         // Initialize auth listener and load all stats
         async initializeGames() {
             if (this.initialized) return
 
             this.loading = true
 
+            // Clean up any existing listeners
+            this._cleanupListeners()
+
             // Set up auth listener
             const auth = getAuth()
             onAuthStateChanged(auth, async (user) => {
                 this.user = user
+
+                // Clean up old listeners when auth changes
+                this._cleanupListeners()
+
                 if (user) {
-                    await this.loadAllStats()
+                    // Set up listeners for each game
+                    const gameIds = ['wordle', 'connections', 'flag', 'trivia', 'sequence', 'memory']
+                    gameIds.forEach(gameId => {
+                        this._setupGameListener(user.uid, gameId)
+                    })
+
+                    // Initial load from server to get rollover time
+                    try {
+                        const call = httpsCallable(functions(), 'getAllDailyStats')
+                        const { data } = await call()
+                        if (data.rolloverAt) {
+                            this.rolloverAt = data.rolloverAt
+                        }
+                    } catch (error) {
+                        console.warn('Error loading initial daily stats:', error)
+                    }
+                } else {
+                    // Guest user - load from local stores
+                    await this.loadGuestStats()
                 }
             })
 
-            // Load stats for current user
-            await this.loadAllStats()
+            // Set up rollover time
+            const tomorrow = new Date()
+            tomorrow.setUTCDate(tomorrow.getUTCDate() + 1)
+            tomorrow.setUTCHours(0, 0, 0, 0)
+            this.rolloverAt = tomorrow.toISOString()
 
             this.initialized = true
             this.loading = false
-        },
-
-        // Load all game statistics from server
-        async loadAllStats() {
-            try {
-                const auth = getAuth()
-                if (!auth.currentUser) {
-                    await this.loadGuestStats()
-                    return
-                }
-
-                // Call server function to get all daily game stats
-                const call = httpsCallable(functions(), 'getAllDailyStats')
-                const { data } = await call()
-
-                // Update game stats
-                if (data.gameStats) {
-                    Object.keys(data.gameStats).forEach(gameId => {
-                        if (this.gameStats[gameId]) {
-                            this.gameStats[gameId] = { ...this.gameStats[gameId], ...data.gameStats[gameId] }
-                        }
-                    })
-                }
-
-                // Update daily status
-                if (data.dailyStatus) {
-                    this.dailyStatus = { ...this.dailyStatus, ...data.dailyStatus }
-                }
-
-                // Update rollover time
-                if (data.rolloverAt) {
-                    this.rolloverAt = data.rolloverAt
-                }
-
-                // Sync Wordle store with loaded stats
-                const wordleStore = useWordleStore()
-                wordleStore.profile = this.gameStats.wordle
-
-                this.lastUpdated = Date.now()
-
-            } catch (error) {
-                console.warn('Error loading daily stats:', error)
-                await this.loadGuestStats()
-            }
         },
 
         // Load stats for guest users from individual stores
@@ -219,15 +273,11 @@ export const useDailyStore = defineStore('daily', {
             // Get Wordle stats from its store if available
             if (wordleStore.profile) {
                 this.gameStats.wordle = { ...this.gameStats.wordle, ...wordleStore.profile }
-            } else {
-
             }
 
             // Get Wordle status from its store
             if (wordleStore.status) {
                 this.dailyStatus.wordle = wordleStore.status
-            } else {
-
             }
 
             // Set rollover time from Wordle store
@@ -254,12 +304,6 @@ export const useDailyStore = defineStore('daily', {
             this.dailyStatus[gameId] = status
         },
 
-        // Refresh all stats (called after rollover or manual refresh)
-        async refreshAllStats() {
-            this.lastUpdated = null
-            await this.loadAllStats()
-        },
-
         // Get stats for a specific game
         getStatsFor(gameId) {
             return this.gameStats[gameId] || null
@@ -278,12 +322,21 @@ export const useDailyStore = defineStore('daily', {
                     this.dailyStatus[gameId] = 'not-started'
                 })
 
-                // Refresh stats from server
-                await this.refreshAllStats()
+                // Update rollover time to next midnight
+                const tomorrow = new Date()
+                tomorrow.setUTCDate(tomorrow.getUTCDate() + 1)
+                tomorrow.setUTCHours(0, 0, 0, 0)
+                this.rolloverAt = tomorrow.toISOString()
+
                 return true
             }
 
             return false
+        },
+
+        // Clean up when store is destroyed
+        $dispose() {
+            this._cleanupListeners()
         }
     },
 

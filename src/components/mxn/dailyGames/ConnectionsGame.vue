@@ -1,213 +1,372 @@
 <template>
-    <div class="flex flex-col items-center gap-4">
-        <!-- Top row: instructions -->
-        <div class="w-full max-w-md flex items-center justify-between">
-            <div v-if="!isComplete && status === 'idle' && !hasError" class="text-xs text-zinc-400">
-                Find groups of 4 words that share something in common.
-            </div>
+    <div class="connections-game w-full max-w-4xl mx-auto">
+        <!-- Loading state -->
+        <div v-if="store.loading" class="text-center py-12">
+            <div class="animate-pulse text-zinc-400">Loading Connections...</div>
         </div>
 
-        <!-- Error Banner (centered line height) -->
-        <div v-if="hasError" class="w-full max-w-md rounded-lg border border-rose-600/40 bg-rose-600/10 p-3">
-            <div class="flex items-center justify-between gap-3">
-                <span class="leading-none text-sm text-rose-300">{{ errorMessage }}</span>
-                <Button size="sm" variant="outline"
-                    class="border-rose-600/40 bg-transparent hover:bg-rose-600/20 text-rose-300"
-                    @click="retry">Retry</Button>
-            </div>
-        </div>
-
-        <!-- Grid Wrapper (always present; no background card) -->
-        <div class="w-full max-w-md">
-            <div class="relative no-animate" :class="{ 'shake-animation': isShaking }">
-                <!-- Base skeleton grid (kept in DOM; shown/hidden to avoid blinking) -->
-                <div class="grid grid-cols-4 gap-2">
-                    <div v-for="i in 16" :key="'s-' + i" class="aspect-square">
-                        <Skeleton class="w-full h-full rounded-md" />
+        <!-- Game content -->
+        <div v-else class="space-y-6">
+            <!-- Lives indicator -->
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span class="text-sm text-zinc-400">Mistakes remaining:</span>
+                    <div class="flex gap-1">
+                        <div v-for="i in store.MAX_MISTAKES" :key="i"
+                            class="w-2 h-2 rounded-full transition-all duration-300" :class="i <= store.remainingLives
+                                ? 'bg-violet-500 shadow-sm shadow-violet-500/50'
+                                : 'bg-zinc-700'">
+                        </div>
                     </div>
                 </div>
+                <div v-if="store.foundGroups.length > 0" class="text-sm text-zinc-400">
+                    {{ store.foundGroups.length }}/4 groups found
+                </div>
+            </div>
 
-                <!-- Words overlay -->
-                <div class="absolute inset-0 grid grid-cols-4 gap-2" v-show="isReady">
-                    <button v-for="(w, i) in cells" :key="'cell-' + i" :disabled="!playable || loading || isComplete"
-                        @click="toggleWord(w)"
-                        class="aspect-square flex items-center justify-center rounded-md text-center leading-tight text-sm md:text-base border transition-all duration-200 p-2"
-                        :class="getWordClass(w)">
-                        {{ w }}
+            <!-- Found groups -->
+            <TransitionGroup name="found-group" tag="div" class="space-y-2">
+                <div v-for="group in store.foundGroups" :key="group.difficulty"
+                    class="found-group rounded-xl p-4 border backdrop-blur-sm" :class="[
+                        store.DIFFICULTY_COLORS[group.difficulty].bg,
+                        store.DIFFICULTY_COLORS[group.difficulty].border
+                    ]">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="text-xs uppercase tracking-wider opacity-75"
+                                :class="store.DIFFICULTY_COLORS[group.difficulty].text">
+                                {{ group.difficulty }}
+                            </div>
+                            <div class="flex gap-2 font-semibold"
+                                :class="store.DIFFICULTY_COLORS[group.difficulty].text">
+                                <span v-for="word in group.words" :key="word">{{ word }}</span>
+                            </div>
+                        </div>
+                        <CheckCircle2 class="w-5 h-5 opacity-50" />
+                    </div>
+                </div>
+            </TransitionGroup>
+
+            <!-- Game board -->
+            <div class="grid grid-cols-4 gap-2" :class="{ 'shake-grid': shakeGrid }">
+                <TransitionGroup name="word-tile" tag="div" class="contents">
+                    <button v-for="word in store.availableWords" :key="word" @click="toggleWord(word)"
+                        :disabled="store.isComplete"
+                        class="word-tile relative h-20 rounded-xl font-semibold text-sm transition-all duration-200 transform hover:scale-105"
+                        :class="getWordClasses(word)">
+                        <span class="relative z-10">{{ word }}</span>
+
+                        <!-- Selection glow -->
+                        <div v-if="store.selected.includes(word)"
+                            class="absolute inset-0 rounded-xl bg-gradient-to-br from-violet-500/30 to-fuchsia-500/30 animate-pulse" />
                     </button>
+                </TransitionGroup>
+            </div><!-- Game board -->
+<div class="grid grid-cols-4 gap-2" :class="{ 'shake-grid': shakeGrid }">
+  <TransitionGroup name="word-tile" tag="div" class="contents">
+    <button
+      v-for="word in store.availableWords"
+      :key="word"
+      @click="toggleWord(word)"
+      :disabled="store.isComplete"
+      class="word-tile relative h-20 rounded-xl font-semibold text-sm transition-all duration-200 transform hover:scale-105"
+      :class="getWordClasses(word)"
+    >
+      <span class="relative z-10">{{ word }}</span>
+
+      <!-- Selection glow -->
+      <div
+        v-if="store.selected.includes(word)"
+        class="absolute inset-0 rounded-xl bg-gradient-to-br from-violet-500/30 to-fuchsia-500/30 animate-pulse"
+      />
+    </button>
+  </TransitionGroup>
+</div>
+
+
+            <!-- Controls -->
+            <div class="flex gap-3">
+                <button @click="store.deselectAll()" :disabled="store.selected.length === 0 || store.isComplete"
+                    class="flex-1 px-4 py-3 rounded-xl bg-zinc-800/50 hover:bg-zinc-700/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-semibold text-sm">
+                    Clear Selection
+                </button>
+                <button @click="submitGuess" :disabled="!store.canSubmit"
+                    class="flex-1 px-4 py-3 rounded-xl font-semibold text-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    :class="store.canSubmit
+                        ? 'bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white shadow-lg shadow-violet-500/20'
+                        : 'bg-zinc-800/50 text-zinc-400'">
+                    {{ submitText }}
+                </button>
+            </div>
+
+            <!-- Feedback messages -->
+            <Transition name="fade">
+                <div v-if="feedbackMsg" class="text-center py-2 px-4 rounded-xl text-sm font-medium"
+                    :class="feedbackClasses">
+                    {{ feedbackMsg }}
+                </div>
+            </Transition>
+
+            <!-- Debug info (dev mode) -->
+            <div v-if="showDebug" class="mt-8 p-4 bg-zinc-900/50 rounded-xl text-xs font-mono">
+                <div class="text-zinc-500 mb-2">Debug (dev mode):</div>
+                <div v-for="(words, difficulty) in store.groups" :key="difficulty" class="mb-1">
+                    <span :class="store.DIFFICULTY_COLORS[difficulty].text">{{ difficulty }}:</span>
+                    <span class="text-zinc-400 ml-2">{{ words.join(', ') }}</span>
                 </div>
             </div>
         </div>
 
-        <!-- Controls: pill ABOVE, wider buttons -->
-        <div v-if="!isComplete" class="w-full max-w-md">
-            <div class="flex justify-center mb-2">
-                <div :class="['px-2.5 py-1 rounded-full border text-xs font-medium', mistakesPillClass]">
-                    Mistakes left: <span class="ml-1 font-bold">{{ mistakesLeft }}</span>
-                </div>
-            </div>
-            <div class="grid grid-cols-2 gap-3">
-                <Button size="sm" variant="ghost"
-                    class="border border-zinc-800/80 bg-transparent px-5 md:px-6 min-w-[7.5rem] justify-center"
-                    :disabled="loading" @click="shuffle">
-                    Shuffle
-                </Button>
-                <Button size="sm" class="bg-violet-600 hover:bg-violet-700 px-5 md:px-6 min-w-[7.5rem] justify-center"
-                    :disabled="loading || selectedCount < 4" @click="submit">
-                    Submit ({{ selectedCount }}/4)
-                </Button>
-            </div>
-            <div v-if="loading" class="text-xs text-zinc-400 text-center mt-2">Checking…</div>
-        </div>
-
-        <!-- Completion -->
-        <div v-if="isComplete" class="text-center text-sm text-emerald-300">Nicely done. Come back tomorrow for a new
-            puzzle.</div>
+        <!-- Completion overlay -->
+        <ConnectionsCompletionOverlay :show="showCompletionOverlay" :is-win="store.status === 'won'"
+            :found-groups="store.foundGroups" :mistakes="store.mistakes" :all-groups="store.groups"
+            :rollover-at="store.rolloverAt" @close="showCompletionOverlay = false" @share="onShare" />
     </div>
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
-import { useDailyStore } from '@/stores/useDailyStore'
-import { Button } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { useConnectionsStore } from '@/stores/dailyGames/useConnectionsStore'
+import ConnectionsCompletionOverlay from './components/ConnectionsCompletionOverlay.vue'
+import { CheckCircle2 } from 'lucide-vue-next'
 
-const props = defineProps({
-    gameId: { type: String, default: 'connections' },
-    playable: { type: Boolean, default: false },
-})
-const emit = defineEmits(['completed'])
+const store = useConnectionsStore()
 
-const store = useDailyStore()
+const shakeGrid = ref(false)
+const feedbackMsg = ref('')
+const feedbackType = ref('info')
+const showCompletionOverlay = ref(false)
 
-// ---- derived store state ----
-const status = computed(() => store?.connections?.status ?? 'idle')
-const loading = computed(() => !!store?.connections?.loading)
-const isComplete = computed(() => !!store?.connections?.isComplete || status.value === 'won')
-
-// prefer remainingWords -> words -> pool; fallback empty array
-const words = computed(() => {
-    const c = store?.connections || {}
-    if (Array.isArray(c.remainingWords) && c.remainingWords.length === 16) return c.remainingWords
-    if (Array.isArray(c.words) && c.words.length === 16) return c.words
-    if (Array.isArray(c.pool) && c.pool.length === 16) return c.pool
-    return []
+// Show debug in dev mode or with ?dev param
+const showDebug = computed(() => {
+    try { if (import.meta.env.DEV) return true } catch { }
+    return new URLSearchParams(location.search).has('dev')
 })
 
-// always produce 16 cells for stable layout/keys
-const cells = computed(() => {
-    const arr = words.value
-    if (arr.length === 16) return arr
-    return Array.from({ length: 16 }, () => '')
+const submitText = computed(() => {
+    if (!store.canSubmit) return 'Select 4 words'
+    return 'Submit'
 })
 
-const isReady = computed(() => !loading.value && !hasError.value && words.value.length === 16)
+const feedbackClasses = computed(() => {
+    switch (feedbackType.value) {
+        case 'correct':
+            return 'bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-400/30'
+        case 'one-away':
+            return 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-400/30'
+        case 'incorrect':
+            return 'bg-rose-500/20 text-rose-300 ring-1 ring-rose-400/30'
+        default:
+            return 'bg-zinc-500/20 text-zinc-300 ring-1 ring-zinc-400/30'
+    }
+})
 
-// selection is local; store only receives final guesses
-const selected = ref(new Set())
-const selectedCount = computed(() => selected.value.size)
+function getWordClasses(word) {
+    const isSelected = store.selected.includes(word)
+    const baseClasses = [
+        'border',
+        'backdrop-blur-sm',
+        'relative',
+        'overflow-hidden'
+    ]
 
-function toggleWord(w) {
-    if (!props.playable || loading.value || isComplete.value || !w) return
-    const s = new Set(selected.value)
-    if (s.has(w)) s.delete(w)
-    else if (s.size < 4) s.add(w)
-    selected.value = s
+    if (store.isComplete) {
+        baseClasses.push('opacity-50', 'cursor-not-allowed', 'bg-zinc-800/50', 'border-zinc-700/50')
+    } else if (isSelected) {
+        baseClasses.push(
+            'bg-gradient-to-br', 'from-violet-800/50', 'to-fuchsia-800/50',
+            'border-violet-500/70', 'text-white', 'shadow-lg', 'shadow-violet-500/20',
+            'scale-105'
+        )
+    } else {
+        baseClasses.push(
+            'bg-zinc-800/50', 'border-zinc-700/50', 'text-zinc-200',
+            'hover:bg-zinc-700/50', 'hover:border-zinc-600/70'
+        )
+    }
+
+    return baseClasses
 }
 
-async function submit() {
-    if (selected.value.size !== 4) return
-    try {
-        await store.submitConnectionsGuess(Array.from(selected.value))
-        selected.value.clear()
-        if (!isComplete.value) {
-            isShaking.value = true
-            setTimeout(() => (isShaking.value = false), 450)
-        }
-    } catch (e) {
-        localError.value = e?.message || 'Something went wrong while submitting your guess.'
+function toggleWord(word) {
+    store.toggleWord(word)
+}
+
+async function submitGuess() {
+    if (!store.canSubmit) return
+
+    feedbackMsg.value = ''
+    const result = await store.submitGuess()
+
+    switch (result.result) {
+        case 'correct':
+            feedbackMsg.value = `Found ${result.difficulty} group!`
+            feedbackType.value = 'correct'
+            setTimeout(() => { feedbackMsg.value = '' }, 2000)
+
+            if (store.status === 'won') {
+                setTimeout(() => {
+                    showCompletionOverlay.value = true
+                }, 500)
+            }
+            break
+
+        case 'one-away':
+            feedbackMsg.value = result.message
+            feedbackType.value = 'one-away'
+            shakeGrid.value = true
+            setTimeout(() => {
+                shakeGrid.value = false
+                feedbackMsg.value = ''
+            }, 1500)
+            break
+
+        case 'incorrect':
+            feedbackMsg.value = 'Not quite right'
+            feedbackType.value = 'incorrect'
+            shakeGrid.value = true
+            setTimeout(() => {
+                shakeGrid.value = false
+                feedbackMsg.value = ''
+            }, 1500)
+            break
+
+        case 'duplicate':
+            feedbackMsg.value = result.message
+            feedbackType.value = 'info'
+            setTimeout(() => { feedbackMsg.value = '' }, 1500)
+            break
+
+        case 'lost':
+            feedbackMsg.value = 'Out of guesses!'
+            feedbackType.value = 'incorrect'
+            setTimeout(() => {
+                showCompletionOverlay.value = true
+                feedbackMsg.value = ''
+            }, 500)
+            break
     }
 }
 
-function shuffle() { try { store.shuffleConnections?.() } catch { } }
+async function onShare() {
+    try {
+        const text = store.shareText()
 
-// ---- mistakes pill ----
-const mistakesLeft = computed(() => {
-    const c = store?.connections || {}
-    if (Number.isFinite(c.mistakesLeft)) return c.mistakesLeft
-    if (Number.isFinite(c.livesLeft)) return c.livesLeft
-    if (Number.isFinite(c.remainingMistakes)) return c.remainingMistakes
-    if (Number.isFinite(c.strikesLeft)) return c.strikesLeft
-    const used = c.mistakesUsed ?? c.incorrectGuesses ?? c.strikes ?? 0
-    const allowed = c.mistakesAllowed ?? c.maxMistakes ?? 4
-    return Math.max(allowed - used, 0)
-})
-
-const mistakesPillClass = computed(() => {
-    const m = Number(mistakesLeft.value)
-    if (m >= 3) return 'border-emerald-500/30 text-emerald-300 bg-emerald-500/10'
-    if (m === 2) return 'border-amber-500/30 text-amber-300 bg-amber-500/10'
-    return 'border-rose-500/30 text-rose-300 bg-rose-500/10'
-})
-
-// ---- loading / error handling ----
-const localError = ref('')
-const hasError = computed(() => !!(store?.connections?.error || localError.value))
-const errorMessage = computed(() => store?.connections?.error || localError.value)
-
-async function retry() {
-    localError.value = ''
-    try { await store.initializeGames?.() } catch (e) { localError.value = e?.message || 'Retry failed.' }
+        if (navigator.share) {
+            await navigator.share({ text })
+        } else if (navigator.clipboard) {
+            await navigator.clipboard.writeText(text)
+            feedbackMsg.value = 'Copied to clipboard!'
+            feedbackType.value = 'info'
+            setTimeout(() => { feedbackMsg.value = '' }, 1500)
+        }
+    } catch (error) {
+        console.warn('Share failed:', error)
+    }
 }
 
-// complete signal for parent
-watch(isComplete, (v) => { if (v) emit('completed') })
+// Initialize
+onMounted(async () => {
+    store.initAuthListener()
+    await store.loadDaily()
 
-// ensure words present on mount in case parent didn’t init (harmless double-call)
-onMounted(() => { store.initializeGames?.() })
+    // Show completion overlay if game is already complete
+    if (store.isComplete) {
+        setTimeout(() => {
+            showCompletionOverlay.value = true
+        }, 500)
+    }
+})
 
-// ---- styling helpers ----
-function getWordClass(w) {
-    const base = 'bg-zinc-900/60 border-zinc-800 hover:border-zinc-700 text-zinc-200'
-    if (!w) return 'opacity-70 ' + base
-    if (selected.value.has(w)) return 'bg-violet-600/20 border-violet-500 text-violet-200'
-    return base
-}
-
-const isShaking = ref(false)
+// Watch for status changes
+watch(() => store.status, (newStatus, oldStatus) => {
+    if (oldStatus === 'idle' && (newStatus === 'won' || newStatus === 'lost')) {
+        if (!showCompletionOverlay.value) {
+            setTimeout(() => {
+                showCompletionOverlay.value = true
+            }, 500)
+        }
+    }
+})
 </script>
 
 <style scoped>
-/* Keep skeletons from pulsing (blink) */
-:deep(.no-animate .animate-pulse) {
-    animation: none !important;
+/* Found group animations */
+.found-group-enter-active,
+.found-group-leave-active {
+    transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }
 
+.found-group-enter-from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.8);
+}
+
+.found-group-leave-to {
+    opacity: 0;
+    transform: translateY(20px) scale(0.8);
+}
+
+.found-group-move {
+    transition: transform 0.5s ease;
+}
+
+/* Word tile animations */
+.word-tile-enter-active,
+.word-tile-leave-active {
+    transition: all 0.3s ease;
+}
+
+.word-tile-enter-from {
+    opacity: 0;
+    transform: scale(0);
+}
+
+.word-tile-leave-to {
+    opacity: 0;
+    transform: scale(0) rotate(180deg);
+}
+
+.word-tile-move {
+    transition: transform 0.3s ease;
+}
+
+/* Shake animation */
 @keyframes shake {
 
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
     10%,
+    30%,
+    50%,
+    70%,
     90% {
-        transform: translateX(-1px)
+        transform: translateX(-4px);
     }
 
     20%,
-    80% {
-        transform: translateX(2px)
-    }
-
-    30%,
-    50%,
-    70% {
-        transform: translateX(-4px)
-    }
-
     40%,
-    60% {
-        transform: translateX(4px)
+    60%,
+    80% {
+        transform: translateX(4px);
     }
 }
 
-.shake-animation {
-    animation: shake 0.4s both
+.shake-grid {
+    animation: shake 0.5s ease-in-out;
+}
+
+/* Fade animation */
+.fade-enter-active,
+.fade-leave-active {
+    transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+    opacity: 0;
 }
 </style>

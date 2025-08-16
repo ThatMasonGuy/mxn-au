@@ -21,3 +21,5 @@ export { aiSuggest } from './api/aiSuggest.mjs';
 export { getAllDailyStats } from './dailyGames/getAllDailyStats.mjs'
 export { getDailyWordle, saveWordleProgress, submitWordleOutcome } from './dailyGames/wordle.mjs'
 export { wordleGenerateCron, wordleGenerateNow } from './dailyGames/wordleGenerate.mjs'
+export { getDailyConnections, saveConnectionsProgress, submitConnectionsOutcome } from './dailyGames/connections.mjs'
+export { connectionsGenerateCron, connectionsGenerateNow } from './dailyGames/connectionsGenerate.mjs'

@@ -420,8 +420,7 @@ const games = ref([
   {
     id: 'connections', name: 'Connections', description: 'Find groups of 4 related words', icon: LinkIcon,
     iconBg: 'bg-gradient-to-br from-violet-600/20 to-violet-500/20 ring-1 ring-violet-500/30',
-    gradient: 'from-violet-600/10 to-transparent',
-    comingSoon: true
+    gradient: 'from-violet-600/10 to-transparent'
   },
   {
     id: 'flag', name: 'Flag Quest', description: 'Identify countries by their flags', icon: Flag,
@@ -699,28 +698,22 @@ onMounted(async () => {
   timer = setInterval(tick, 1000)
 
   try {
+    // Initialize stores FIRST and wait for completion
     wordleStore.initAuthListener()
     await wordleStore.loadDaily(true)
-    
     await dailyStore.initializeGames()
+    
+    // THEN handle URL params after stores are ready
+    window.addEventListener('popstate', handlePopState)
+    
+    const params = new URLSearchParams(window.location.search)
+    const gameParam = params.get('game')
+    if (gameParam && games.value.some(g => g.id === gameParam && !g.comingSoon)) {
+      // Use selectGame instead of manually setting values
+      await selectGame(gameParam)
+    }
   } catch (error) {
     console.warn('Error initializing stores:', error)
-  }
-
-  window.addEventListener('popstate', handlePopState)
-
-  const params = new URLSearchParams(window.location.search)
-  const gameParam = params.get('game')
-  if (gameParam && games.value.some(g => g.id === gameParam)) {
-    openGame.value = gameParam
-    if (gameParam !== 'wordle') {
-      loadingGame.value = true
-      try {
-        currentGameComponent.value = gameComponents[gameParam] || null
-      } finally {
-        loadingGame.value = false
-      }
-    }
   }
 })
 
