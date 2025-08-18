@@ -1,37 +1,21 @@
-// fix-firestore.js - Run this with Node.js and Firebase Admin SDK
-// This script fixes the Firestore configuration and ensures correct game IDs
-
-// Initialize Firebase Admin
-// Option 1: Use service account key file
-// const serviceAccount = require('./path-to-service-account-key.json');
-// admin.initializeApp({
-//   credential: admin.credential.cert(serviceAccount)
-// });
-
-// Option 2: Use default credentials (if running in Firebase environment)
 import { db } from '../config/firebase.mjs'
 
 async function fixFirestoreConfig() {
     console.log('🔧 Fixing Firestore Configuration...\n');
 
     try {
-        // 1. Check and fix the dailyChallenges collection
         console.log('Step 1: Checking dailyChallenges collection...');
         const dailyChallengesRef = db.collection('dailyChallenges');
 
-        // Check for incorrect "word" document
         const wordDoc = await dailyChallengesRef.doc('word').get();
         if (wordDoc.exists) {
             console.log('❌ Found incorrect "word" document');
 
-            // Get the data
             const wordData = wordDoc.data();
 
-            // Delete the incorrect document
             await dailyChallengesRef.doc('word').delete();
             console.log('✅ Deleted incorrect "word" document');
 
-            // Create correct "wordle" document if it doesn't exist
             const wordleDoc = await dailyChallengesRef.doc('wordle').get();
             if (!wordleDoc.exists) {
                 await dailyChallengesRef.doc('wordle').set({

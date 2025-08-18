@@ -185,7 +185,8 @@ async function initializeUserOAuthStats(db, userId, tracker) {
 export const startBungieOAuth = onRequest(
     {
         region: 'australia-southeast1',
-        secrets: [bungieClientId, bungieRedirectUri]
+        secrets: [bungieClientId, bungieRedirectUri],
+        maxInstances: 1,
     },
     async (req, res) => {
         const startTime = Date.now();
@@ -306,7 +307,8 @@ export const startBungieOAuth = onRequest(
 export const bungieOAuthCallback = onRequest(
     {
         region: 'australia-southeast1',
-        secrets: [bungieClientId, bungieApiKey, bungieRedirectUri]
+        secrets: [bungieClientId, bungieApiKey, bungieRedirectUri],
+        maxInstances: 1,
     },
     async (req, res) => {
         const startTime = Date.now();

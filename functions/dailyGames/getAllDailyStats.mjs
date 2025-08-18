@@ -2,15 +2,17 @@
 import { onCall } from 'firebase-functions/v2/https'
 import { db } from '../config/firebase.mjs'
 
-const REGION = 'australia-southeast1';
+const REGION = 'australia-southeast2';
 
 export const getAllDailyStats = onCall(
-    { region: REGION },
+    {
+        region: REGION,
+        maxInstances: 1
+    },
     async (request) => {
         const { auth } = request
 
         if (!auth) {
-            // Return default structure for guests
             return {
                 gameStats: {
                     wordle: {
@@ -90,11 +92,9 @@ export const getAllDailyStats = onCall(
         const userId = auth.uid
 
         try {
-            // Get user's daily challenges subcollection
             const dailyChallengesRef = db.collection('users').doc(userId).collection('dailyChallenges')
             const dailyChallengesSnapshot = await dailyChallengesRef.get()
 
-            // Convert subcollection docs to game stats
             const gameStats = {
                 wordle: getDefaultGameStats(),
                 connections: getDefaultGameStats(),
@@ -113,7 +113,6 @@ export const getAllDailyStats = onCall(
                 memory: 'not-started'
             }
 
-            // Process each game's stats doc
             dailyChallengesSnapshot.forEach(doc => {
                 const gameId = doc.id
                 const data = doc.data()
@@ -131,12 +130,10 @@ export const getAllDailyStats = onCall(
                         histogram: data.histogram || (gameId === 'wordle' ? [0, 0, 0, 0, 0, 0] : undefined)
                     }
 
-                    // Determine today's status based on last played and game state
                     const today = getTodayDateString()
                     const lastPlayed = data.lastPlayed ? new Date(data.lastPlayed).toISOString().split('T')[0] : null
 
                     if (lastPlayed === today) {
-                        // Player played today - check if they won or lost
                         if (data.lastGameWon === true) {
                             dailyStatus[gameId] = 'won'
                         } else if (data.lastGameWon === false) {
@@ -182,7 +179,7 @@ function calculateWinPercentage(stats) {
 
 function getTodayDateString() {
     const now = new Date()
-    return now.toISOString().split('T')[0] // YYYY-MM-DD
+    return now.toISOString().split('T')[0]
 }
 
 function getNextRolloverTime() {

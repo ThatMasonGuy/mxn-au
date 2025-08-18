@@ -5,7 +5,6 @@ export class PlatformDetector {
         const body = req.body;
         const headers = req.headers;
 
-        // Check if this is a Discord request
         const isDiscord =
             headers["x-discord-bot"] === "true" || body.platform === "discord";
 

@@ -12,10 +12,10 @@ const WRITE_BATCH_SIZE = 400; // Firestore batch write limit is 500, leave margi
 export const rebuildTranslationStats = onRequest(
     {
         region: "australia-southeast1",
-        timeoutSeconds: 540, // 9 minutes max
+        timeoutSeconds: 540,
         memory: "2GiB",
-        maxInstances: 1, // Only one instance should run this
-        cors: true, // Enable CORS for web access
+        maxInstances: 1,
+        cors: true,
     },
     async (req, res) => {
         // Set CORS headers

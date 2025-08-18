@@ -1,5 +1,4 @@
 // handlers/wordleHandler.mjs
-
 export class WordleHandler {
     static processGuess(guess, answer, currentState) {
         // Normalize inputs

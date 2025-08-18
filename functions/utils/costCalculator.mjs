@@ -1,8 +1,7 @@
 export class CostCalculator {
-    // OpenAI GPT-4o pricing (per 1K tokens)
     static PRICING = {
-        PROMPT: 0.0025, // $2.50 per 1M tokens
-        COMPLETION: 0.01, // $10.00 per 1M tokens
+        PROMPT: 0.0025,
+        COMPLETION: 0.01,
     };
 
     static calculateCost(tokenUsage) {

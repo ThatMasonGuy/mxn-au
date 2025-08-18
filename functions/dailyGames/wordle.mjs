@@ -2,7 +2,7 @@
 import { onCall } from 'firebase-functions/v2/https';
 import { db } from '../config/firebase.mjs'
 
-const REGION = 'australia-southeast1';
+const REGION = 'australia-southeast2';
 
 // ---------- Time (UTC midnight rollover) ----------
 function dateStrUTC(d = new Date()) {
@@ -44,14 +44,14 @@ function gradeGuess(guess, solution) {
 const solDoc = (date) => `dailyChallenges/wordle/solutions/${date}`;
 const dailyStats = (date) => `dailyChallenges/wordle/stats/${date}`;
 const allTime = `dailyChallenges/wordle`;
-const userWordleDoc = (uid) => `users/${uid}/dailyChallenges/wordle`;               // profile/all-time (document)
-const userWordleDay = (uid, date) => `users/${uid}/dailyChallenges/wordle/days/${date}`; // per-day doc
+const userWordleDoc = (uid) => `users/${uid}/dailyChallenges/wordle`;
+const userWordleDay = (uid, date) => `users/${uid}/dailyChallenges/wordle/days/${date}`;
 
 // ---------- Safe create helper (idempotent) ----------
 async function createIfMissing(refPath, seed) {
     const ref = db.doc(refPath);
     try {
-        await ref.create(seed); // throws if exists
+        await ref.create(seed);
     } catch (e) {
         if (!(e && (e.code === 6 || e.message?.includes('ALREADY_EXISTS')))) throw e;
     }
@@ -87,14 +87,7 @@ async function ensureSolutionFor(date) {
 }
 
 // ---------- Bootstrap on first launch ----------
-// Creates (if missing):
-// - /dailyChallenges/wordle                 (all-time stats)
-// - /dailyChallenges/wordle/stats/{date}    (today’s daily stats)
-// - /dailyChallenges/wordle/solutions/{date} (today’s solution; seeds CHAOS if missing/invalid)
-// - /users/{uid}/dailyChallenges/wordle               (profile/all-time)
-// - /users/{uid}/dailyChallenges/wordle/days/{date}  (today’s blank day)
 async function bootstrapToday(date, uid = null) {
-    // Global all-time
     await createIfMissing(allTime, {
         totalPlays: 0,
         wins: 0,
@@ -102,7 +95,6 @@ async function bootstrapToday(date, uid = null) {
         attemptsHistogram: {}
     });
 
-    // Today’s daily stats
     await createIfMissing(dailyStats(date), {
         totalPlays: 0,
         wins: 0,
@@ -110,10 +102,8 @@ async function bootstrapToday(date, uid = null) {
         attemptsHistogram: {}
     });
 
-    // Ensure solution exists (or seed fallback)
     await ensureSolutionFor(date);
 
-    // Per-user docs
     if (uid) {
         await createIfMissing(userWordleDoc(uid), {
             currentStreak: 0,
@@ -133,18 +123,17 @@ async function bootstrapToday(date, uid = null) {
 
 // ---------- 1) Load today + bootstrap (with fallback) ----------
 export const getDailyWordle = onCall(
-    { region: REGION },
+    { 
+        region: REGION,
+        maxInstances: 1
+    },
     async (req) => {
         const uid = req.auth?.uid || null;
         const date = dateStrUTC();
 
-        // Build skeleton + seed fallback if needed
         await bootstrapToday(date, uid);
-
-        // Guaranteed to exist after bootstrap (or fallback)
         const answer = await ensureSolutionFor(date);
 
-        // hydrate user day state if logged in
         let userState = null;
         if (uid) {
             const daySnap = await db.doc(userWordleDay(uid, date)).get();
@@ -162,10 +151,13 @@ export const getDailyWordle = onCall(
 
 // ---------- 2) Save progress (idempotent by rowIndex) ----------
 export const saveWordleProgress = onCall(
-    { region: REGION },
+    { 
+        region: REGION,
+        maxInstances: 1
+    },
     async (req) => {
         const uid = req.auth?.uid || null;
-        if (!uid) return { ok: true }; // guest: local-only
+        if (!uid) return { ok: true };
 
         const { puzzleId, guess, rowIndex } = req.data || {};
         if (!puzzleId || !/^[A-Za-z]{5}$/.test(guess || '') || typeof rowIndex !== 'number') {
@@ -173,8 +165,8 @@ export const saveWordleProgress = onCall(
         }
         const date = puzzleId.replace('wordle-', '');
 
-        await bootstrapToday(date, uid);               // ensures docs + fallback solution
-        const answer = await ensureSolutionFor(date);  // read validated (or fallback) answer
+        await bootstrapToday(date, uid);
+        const answer = await ensureSolutionFor(date);
 
         const serverMask = gradeGuess(guess, answer).join('');
 
@@ -184,7 +176,7 @@ export const saveWordleProgress = onCall(
             const cur = snap.exists ? snap.data() : { guesses: [], outcome: 'in_progress' };
             if (cur.outcome && cur.outcome !== 'in_progress') return;
             const next = (cur.guesses || []).slice();
-            if (next.length > rowIndex) return; // ignore out-of-order/dupes
+            if (next.length > rowIndex) return;
             next[rowIndex] = guess.toUpperCase();
             tx.set(dayRef, { guesses: next, outcome: 'in_progress' }, { merge: true });
         });
@@ -195,7 +187,10 @@ export const saveWordleProgress = onCall(
 
 // ---------- 3) Finalize (validate + idempotent stats/profile) ----------
 export const submitWordleOutcome = onCall(
-    { region: REGION /* enforceAppCheck optional while you're testing */ },
+    { 
+        region: REGION,
+        maxInstances: 1
+    },
     async (req) => {
         const uid = req.auth?.uid || null;
         const { puzzleId, guesses } = req.data || {};
@@ -203,11 +198,9 @@ export const submitWordleOutcome = onCall(
 
         const date = puzzleId.replace('wordle-', '');
 
-        // Ensure scaffolding & solution exist (will seed CHAOS if missing)
         await bootstrapToday(date, uid);
         const answer = await ensureSolutionFor(date);
 
-        // Validate sequence server-side (don’t trust client masks)
         let solvedAt = -1;
         for (let i = 0; i < Math.min(6, guesses.length); i++) {
             const g = (guesses[i] || '').toUpperCase();
@@ -249,7 +242,6 @@ export const submitWordleOutcome = onCall(
         let streakOut = null;
 
         await db.runTransaction(async (tx) => {
-            // 🔎 ALL READS FIRST
             const [daySnap, profSnap, dSnap, aSnap] = await Promise.all([
                 tx.get(dayRef),
                 tx.get(profRef),
@@ -260,7 +252,6 @@ export const submitWordleOutcome = onCall(
             const dayCur = daySnap.exists ? daySnap.data() : { guesses: [], outcome: 'in_progress' };
             const alreadyDone = dayCur.outcome && dayCur.outcome !== 'in_progress';
 
-            // Prepare current aggregates
             const d = dSnap.exists ? dSnap.data() : { totalPlays: 0, wins: 0, losses: 0, attemptsHistogram: {} };
             const a = aSnap.exists ? aSnap.data() : { totalPlays: 0, wins: 0, losses: 0, attemptsHistogram: {} };
 
@@ -269,8 +260,6 @@ export const submitWordleOutcome = onCall(
                 totalPlays: 0, wins: 0, losses: 0, attemptsHistogram: {}
             };
 
-            // 🖊️ NOW WRITE (after all reads)
-            // Canonical per-day record
             tx.set(dayRef, {
                 guesses: guesses.map(g => (g || '').toUpperCase()).slice(0, 6),
                 outcome: serverOutcome,
@@ -278,7 +267,6 @@ export const submitWordleOutcome = onCall(
             }, { merge: true });
 
             if (!alreadyDone) {
-                // Global daily + all-time (increment once per user/day)
                 d.totalPlays++; a.totalPlays++;
                 if (serverOutcome === 'win') {
                     d.wins++; a.wins++;
@@ -310,7 +298,6 @@ export const submitWordleOutcome = onCall(
 
                 tx.set(profRef, { ...streakOut, attemptsHistogram }, { merge: true });
             } else {
-                // Already finalized earlier — return the stored profile snapshot
                 streakOut = {
                     currentStreak: baseProf.currentStreak || 0,
                     maxStreak: baseProf.maxStreak || 0,

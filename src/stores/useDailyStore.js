@@ -6,7 +6,7 @@ import { firestore } from '@/firebase'
 import { doc, onSnapshot, collection } from 'firebase/firestore'
 import { useWordleStore } from './dailyGames/useWordleStore'
 
-const REGION = 'australia-southeast1'
+const REGION = 'australia-southeast2'
 const functions = () => getFunctions(undefined, REGION)
 
 function dateStrUTC(d = new Date()) {

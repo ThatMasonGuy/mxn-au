@@ -3,22 +3,6 @@ import { db } from "../config/firebase.mjs";
 import { FieldValue } from "firebase-admin/firestore";
 
 export class DiscordStatsProcessor {
-    /**
-     * Process one translation event and update Discord stats
-     * Adds/maintains top-level counters on translations/discord:
-     *   - guildCount (distinct guild docs under translations/discord/guilds)
-     *   - channelCount (distinct channel docs under any guild's channels subcollection)
-     *   - userCount (distinct user docs under translations/discord/users)
-     *
-     * NOTE: This implementation does a pre-read to determine whether
-     * the guild/channel/user docs exist and conditionally increments
-     * the counters. In high-concurrency scenarios, two concurrent
-     * first-writes for the same entity could both increment once.
-     * For bulletproof accuracy, prefer Cloud Functions onCreate
-     * triggers for users/guilds/channels that increment counters
-     * transactionally. This version is practical and fast enough for
-     * most usages.
-     */
     async process(data) {
         const batch = db.batch();
         const now = new Date();
@@ -175,10 +159,6 @@ export class DiscordStatsProcessor {
         return `${translationData.sourceLang}-${translationData.targetLang}-${hash}`;
     }
 
-    /**
-     * @param data
-     * @param opts { incrementGuild?: boolean, incrementChannel?: boolean, incrementUser?: boolean }
-     */
     buildGlobalUpdate(data, opts = {}) {
         const update = {
             totalTranslations: FieldValue.increment(1),

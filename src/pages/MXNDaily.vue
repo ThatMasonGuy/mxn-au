@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen w-full relative overflow-hidden">
+  <div class="w-full relative overflow-hidden flex flex-col flex-1 min-h-0">
     <!-- Enhanced Background -->
     <div class="fixed inset-0 bg-gradient-to-br from-slate-950 via-zinc-950 to-slate-900"></div>
     <div class="fixed inset-0 bg-gradient-to-tr from-violet-950/20 via-transparent to-fuchsia-950/20"></div>
@@ -21,7 +21,7 @@
     <div class="fixed inset-0 opacity-20 mix-blend-overlay pointer-events-none bg-noise"></div>
 
     <!-- Content -->
-    <div class="relative z-10 text-zinc-100">
+    <div class="relative z-10 text-zinc-100 flex-grow flex-col min-h-screen">
       <!-- Header -->
       <header
         class="sticky top-0 z-50 border-b border-zinc-800/50 bg-zinc-950/80 backdrop-blur-xl shadow-xl shadow-black/20">
@@ -40,14 +40,21 @@
             </div>
           </div>
           <div class="flex items-center gap-3">
+            <!-- Share button (only on game select screen) -->
+            <button v-if="!openGame" @click="shareDaily"
+              class="px-3 py-1.5 text-xs rounded-lg bg-violet-900/30 border border-violet-700/50 hover:bg-violet-800/40 transition-all duration-200 hover:shadow-lg shadow-violet-500/20 flex items-center gap-1.5">
+              <Share2 class="w-3.5 h-3.5" />
+              <span class="hidden sm:inline">Share</span>
+            </button>
+
             <button v-if="openGame" @click="closeGame"
               class="px-3 py-1.5 text-xs rounded-lg bg-zinc-900/70 border border-zinc-700/50 hover:bg-zinc-800/70 transition-all duration-200 hover:shadow-lg shadow-black/20">
               ← Back to Games
             </button>
 
             <!-- Enhanced countdown pill -->
-            <div
-              class="p-[1px] rounded-xl bg-gradient-to-r from-violet-500/50 via-fuchsia-500/40 to-violet-500/50 shadow-lg shadow-violet-500/20">
+            <div v-if="openGame !== 'wordle-unlimited'"
+              class="p-[1px] sm:flex sm:visible rounded-xl bg-gradient-to-r from-violet-500/50 via-fuchsia-500/40 to-violet-500/50 shadow-lg shadow-violet-500/20">
               <div
                 class="px-3 py-1.5 rounded-[11px] bg-zinc-950/90 border border-white/10 flex items-center gap-2 backdrop-blur-sm">
                 <Clock class="w-3.5 h-3.5 text-zinc-400" />
@@ -59,7 +66,7 @@
               </div>
             </div>
 
-            <div v-if="profile?.totalPlays" class="flex items-center gap-2">
+            <div v-if="profile?.totalPlays" class="sm:flex items-center gap-2 hidden sm:visible">
               <div class="w-2 h-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50"></div>
               <span class="text-xs text-zinc-400">Streak: {{ profile?.currentStreak ?? 0 }}</span>
             </div>
@@ -68,19 +75,35 @@
       </header>
 
       <!-- Main -->
-      <main class="mx-auto max-w-7xl px-4 py-8">
+      <main class="max-w-7xl mx-auto px-4 py-8 flex flex-col flex-1">
+        <!-- Loading Overlay for URL param games -->
+        <div v-if="initialLoading"
+          class="fixed inset-0 z-[90] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div
+            class="rounded-2xl border border-zinc-700/80 bg-gradient-to-br from-zinc-800/95 to-zinc-900/95 p-8 shadow-2xl">
+            <div class="flex flex-col items-center gap-4">
+              <div class="flex gap-1">
+                <div class="w-3 h-3 bg-violet-400 rounded-full animate-bounce" style="animation-delay: 0ms"></div>
+                <div class="w-3 h-3 bg-violet-400 rounded-full animate-bounce" style="animation-delay: 150ms"></div>
+                <div class="w-3 h-3 bg-violet-400 rounded-full animate-bounce" style="animation-delay: 300ms"></div>
+              </div>
+              <div class="text-white font-semibold">Loading game...</div>
+            </div>
+          </div>
+        </div>
+
         <!-- Game Actions Bar (shows when game is open) -->
-        <div v-if="openGame" class="mb-6 mx-auto max-w-5xl flex items-center justify-between">
+        <div v-if="openGame"
+          class="mb-6 w-full max-w-5xl mx-auto flex items-center justify-between space-x-6 sm:space-x-16 lg:space-x-24">
           <div>
             <h2 class="text-2xl font-bold">{{ currentGameData?.name }}</h2>
             <p class="text-sm text-zinc-400 mt-1">{{ currentGameData?.description }}</p>
           </div>
           <div class="flex items-center gap-3">
-            <!-- Share button for Wordle -->
-            <button v-if="openGame === 'wordle'" type="button"
+            <!-- Share button for Wordle games -->
+            <button v-if="openGame === 'wordle' || openGame === 'wordle-unlimited'" type="button"
               class="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-4 py-2 text-sm font-medium ring-1 ring-violet-500/40 hover:from-violet-500 hover:to-fuchsia-500 transition-all duration-200 shadow-lg shadow-violet-500/20"
-              @click="onShare" :disabled="shareBusy || (wordleStore?.rows?.length === 0)"
-              :aria-disabled="shareBusy || (wordleStore?.rows?.length === 0)">
+              @click="onShare" :disabled="shareBusy || !canShare" :aria-disabled="shareBusy || !canShare">
               <Share2 class="h-4 w-4" />
               <span>{{ shareBusy ? 'Copying…' : 'Share' }}</span>
             </button>
@@ -98,7 +121,7 @@
         </div>
 
         <!-- Games grid -->
-        <div v-if="!openGame" class="space-y-8 transition-all duration-300">
+        <div v-if="!openGame" class="space-y-8 h-full transition-all duration-300 max-w-7xl">
           <div class="text-center space-y-4 py-8">
             <h2 class="text-4xl md:text-5xl font-bold">
               <span
@@ -107,13 +130,14 @@
               </span>
             </h2>
             <p class="text-zinc-400 text-lg max-w-2xl mx-auto">
-              Challenge yourself with {{ games.length }} unique puzzles every day. Track your streaks, compete with
-              friends, and sharpen your mind.
+              Challenge yourself with {{ availableGames.length }} unique puzzles every day. Track your streaks, compete
+              with friends, and sharpen your mind.
             </p>
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div v-for="game in games" :key="game.id" @click="selectGame(game.id)" :class="getCardClasses(game)"
+            <div v-for="game in availableGames" :key="game.id" @click="handleGameClick(game)"
+              :class="getCardClasses(game)"
               class="group relative overflow-hidden rounded-2xl border backdrop-blur-sm cursor-pointer transition-all duration-300">
 
               <!-- Enhanced glass effect -->
@@ -143,6 +167,14 @@
                     class="px-2 py-1 rounded-full bg-zinc-950/90 border border-white/10 flex items-center gap-1.5 backdrop-blur-sm">
                     <Clock3 class="w-3.5 h-3.5 text-amber-300 flex-shrink-0" />
                     <span class="text-[10px] font-medium text-amber-300 leading-none">In Progress</span>
+                  </div>
+                </div>
+                <div v-else-if="game.locked" class="p-[1px] rounded-full inline-flex" :class="pillGradient('zinc')"
+                  @click.stop>
+                  <div
+                    class="px-2 py-1 rounded-full bg-zinc-950/90 border border-white/10 flex items-center gap-1.5 backdrop-blur-sm">
+                    <Lock class="w-3.5 h-3.5 text-zinc-300 flex-shrink-0" />
+                    <span class="text-[10px] font-medium text-zinc-300 leading-none">{{ game.lockReason }}</span>
                   </div>
                 </div>
                 <div v-else-if="game.comingSoon" class="p-[1px] rounded-full inline-flex" :class="pillGradient('zinc')"
@@ -202,13 +234,13 @@
               <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div
                   class="rounded-xl bg-gradient-to-br from-slate-800/80 to-slate-900/60 border border-slate-600/50 p-4 backdrop-blur-sm shadow-lg shadow-violet-500/10">
-                  <div class="text-2xl font-bold text-violet-300">{{ completedToday }}/{{ games.length }}</div>
-                  <div class="text-xs text-slate-300/70 mt-1">Games Completed</div>
+                  <div class="text-2xl font-bold text-violet-300">{{ completedToday }}/{{ dailyGames.length }}</div>
+                  <div class="text-xs text-slate-300/70 mt-1">Daily Games</div>
                 </div>
                 <div
                   class="rounded-xl bg-gradient-to-br from-slate-800/80 to-slate-900/60 border border-slate-600/50 p-4 backdrop-blur-sm shadow-lg shadow-fuchsia-500/10">
-                  <div class="text-2xl font-bold text-fuchsia-300">{{ totalStreak }}</div>
-                  <div class="text-xs text-slate-300/70 mt-1">Combined Streak</div>
+                  <div class="text-2xl font-bold text-fuchsia-300">{{ totalGamesPlayed }}</div>
+                  <div class="text-xs text-slate-300/70 mt-1">Total Games</div>
                 </div>
                 <div
                   class="rounded-xl bg-gradient-to-br from-slate-800/80 to-slate-900/60 border border-slate-600/50 p-4 backdrop-blur-sm shadow-lg shadow-emerald-500/10">
@@ -226,9 +258,45 @@
         </div>
 
         <!-- Game view -->
-        <div v-if="openGame" class="max-w-5xl mx-auto transition-all duration-300">
-          <div
+        <div v-if="openGame"
+          class="w-full max-w-5xl mx-auto transition-all duration-300">
+          <!-- Unauthorized state for Wordle Unlimited -->
+          <div v-if="openGame === 'wordle-unlimited' && !canPlayWordleUnlimited"
             class="rounded-2xl border border-zinc-700/80 bg-gradient-to-br from-zinc-800/60 to-zinc-900/40 backdrop-blur-sm p-6 shadow-2xl shadow-black/20">
+            <div class="relative text-center py-12">
+              <div class="mb-6 flex justify-center">
+                <div
+                  class="h-20 w-20 rounded-2xl bg-gradient-to-br from-violet-600/20 to-fuchsia-600/20 ring-1 ring-violet-500/30 flex items-center justify-center">
+                  <Lock class="h-10 w-10 text-violet-300" />
+                </div>
+              </div>
+              <h2 class="text-2xl font-bold text-white mb-4">Wordle Unlimited Locked</h2>
+              <p class="text-zinc-300 mb-6 max-w-md mx-auto">
+                {{ !isAuthenticated
+                  ? 'You need to be signed in with your TempestID to play Wordle Unlimited.'
+                  : 'Complete today\'s daily Wordle puzzle first to unlock unlimited play!'
+                }}
+              </p>
+              <div class="flex flex-col sm:flex-row gap-4 justify-center max-w-sm mx-auto">
+                <button v-if="!isAuthenticated" @click="goToLogin"
+                  class="flex-1 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-500/20 hover:from-violet-500 hover:to-fuchsia-500 transition-all">
+                  Sign In / Create Account
+                </button>
+                <button v-else @click="selectGame('wordle')"
+                  class="flex-1 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-700 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-500/20 hover:from-emerald-500 hover:to-emerald-600 transition-all">
+                  Play Daily Wordle
+                </button>
+                <button @click="closeGame"
+                  class="flex-1 rounded-xl bg-white/10 backdrop-blur px-6 py-3 text-sm font-semibold text-white hover:bg-white/20 transition-all">
+                  Back to Games
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Normal game content -->
+          <div v-else
+            class="rounded-2xl border border-zinc-700/80 bg-gradient-to-br from-zinc-800/60 to-zinc-900/40 backdrop-blur-sm p-6 shadow-2xl shadow-black/20 max-w-[min(98vw,80rem)]">
             <div class="absolute inset-0 bg-gradient-to-br from-white/6 to-transparent rounded-2xl"></div>
             <div class="relative">
               <!-- Wordle specific content -->
@@ -238,6 +306,16 @@
                 </div>
                 <div v-else>
                   <WordleBoard />
+
+                  <!-- Play Unlimited button after completion -->
+                  <div v-if="wordleStore.isComplete" class="mt-6 flex justify-center">
+                    <button @click="goToWordleUnlimited"
+                      class="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-cyan-600 to-cyan-700 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-cyan-500/20 hover:from-cyan-500 hover:to-cyan-600 transition-all">
+                      <Infinity class="h-5 w-5" />
+                      Play Wordle Unlimited
+                    </button>
+                  </div>
+
                   <!-- Footer stats for Wordle -->
                   <div class="mt-6 grid grid-cols-3 gap-4 text-center">
                     <div
@@ -262,6 +340,11 @@
                 </div>
               </div>
 
+              <!-- Wordle Unlimited specific content -->
+              <div v-else-if="openGame === 'wordle-unlimited' && !loadingGame">
+                <WordleUnlimitedBoard />
+              </div>
+
               <!-- Other games -->
               <component v-else-if="currentGameComponent && !loadingGame" :is="currentGameComponent" :game-id="openGame"
                 :playable="true" @completed="onGameCompleted" />
@@ -273,7 +356,8 @@
           </div>
 
           <!-- Per-game stats (for non-wordle games) -->
-          <div v-if="openGame !== 'wordle' && statsFor(openGame)" class="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div v-if="!['wordle', 'wordle-unlimited'].includes(openGame) && statsFor(openGame)"
+            class="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
             <div
               :class="[getGameStatsClasses(openGame).bg, getGameStatsClasses(openGame).border, getGameStatsClasses(openGame).shadow]"
               class="rounded-xl backdrop-blur-sm p-4 shadow-lg">
@@ -308,23 +392,74 @@
           </div>
         </div>
       </main>
+
+      <!-- Footer -->
+      <footer class="relative z-10 mt-auto border-t border-zinc-800/50 bg-zinc-950/80 backdrop-blur-xl">
+        <div class="mx-auto max-w-7xl px-4 py-4">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-4">
+              <button @click="goHome"
+                class="text-xs text-zinc-400 hover:text-white transition-colors flex items-center gap-1.5">
+                <Home class="w-3.5 h-3.5" />
+                MXN Home
+              </button>
+              <div class="text-xs text-zinc-500">|</div>
+              <div class="text-xs text-zinc-400">
+                {{ isAuthenticated ? `Signed in as ${userEmail}` : 'Playing as Guest' }}
+              </div>
+            </div>
+            <div class="flex items-center gap-4">
+              <button v-if="!isAuthenticated" @click="goToLogin"
+                class="text-xs px-3 py-1.5 rounded-lg bg-violet-900/30 border border-violet-700/50 hover:bg-violet-800/40 text-violet-300 hover:text-violet-200 transition-all">
+                Sign In
+              </button>
+              <button v-else @click="signOut" class="text-xs text-zinc-400 hover:text-white transition-colors">
+                Sign Out
+              </button>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
+
+    <!-- Auth Required Modal -->
+    <AuthRequiredModal :show="showAuthModal" :type="authModalType" @close="showAuthModal = false" @sign-in="goToLogin"
+      @play-daily="() => { showAuthModal = false; selectGame('wordle') }" />
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, defineAsyncComponent, shallowRef } from 'vue'
+import { useRouter } from 'vue-router'
 import { useWordleStore } from '@/stores/dailyGames/useWordleStore'
+import { useWordleUnlimitedStore } from '@/stores/dailyGames/useWordleUnlimitedStore'
 import { useDailyStore } from '@/stores/useDailyStore'
+import { useMainStore } from '@/stores/useMainStore'
 import WordleBoard from '@/components/mxn/dailyGames/WordleBoard.vue'
+import WordleUnlimitedBoard from '@/components/mxn/dailyGames/WordleUnlimitedBoard.vue'
+import AuthRequiredModal from '@/components/mxn/dailyGames/components/AuthRequiredModal.vue'
 import {
   Trophy, User, Clock, Share2, Trash2, CheckCircle2, Ban, Clock3, Circle, Flame,
-  Type, Link as LinkIcon, Flag, HelpCircle, ListOrdered, Brain
+  Type, Link as LinkIcon, Flag, HelpCircle, ListOrdered, Brain, Lock, Infinity, Home
 } from 'lucide-vue-next'
 
 /* stores */
+const router = useRouter()
 const wordleStore = useWordleStore()
+const wordleUnlimitedStore = useWordleUnlimitedStore()
 const dailyStore = useDailyStore()
+const mainStore = useMainStore()
+
+/* Auth state */
+const isAuthenticated = computed(() => mainStore.isAuthenticated)
+const userEmail = computed(() => mainStore.user?.email || 'Guest')
+
+/* Modal state */
+const showAuthModal = ref(false)
+const authModalType = ref('auth-required')
+
+/* Initial loading state */
+const initialLoading = ref(false)
 
 /* Wordle specific state */
 const shareBusy = ref(false)
@@ -337,6 +472,11 @@ const showDevReset = computed(() => {
   return new URLSearchParams(location.search).has('dev');
 })
 
+// Can play Wordle Unlimited checks
+const canPlayWordleUnlimited = computed(() => {
+  return isAuthenticated.value && isWordleUnlimitedUnlocked.value
+})
+
 // DEV reset (local only)
 async function devReset() {
   try {
@@ -345,6 +485,35 @@ async function devReset() {
     copyMsg.value = 'Local state cleared'
     setTimeout(() => location.reload(), 350)
   } catch { /* ignore */ }
+}
+
+// Share daily page
+async function shareDaily() {
+  try {
+    const text = 'Check out MXN Daily Games - Challenge yourself with unique puzzles every day!\nhttps://mxn.au/daily'
+    if (navigator.share) {
+      await navigator.share({ text })
+    } else if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text)
+      // You could add a toast notification here
+    }
+  } catch (error) {
+    console.warn('Share failed:', error)
+  }
+}
+
+// Navigation
+function goHome() {
+  router.push('/')
+}
+
+function goToLogin() {
+  router.push('/login?redirect=/daily')
+}
+
+async function signOut() {
+  mainStore.clearAuth()
+  location.reload()
 }
 
 // Countdown (UTC)
@@ -375,10 +544,25 @@ function tick() {
 }
 
 // Share
+const canShare = computed(() => {
+  if (openGame.value === 'wordle') {
+    return wordleStore?.rows?.length > 0
+  } else if (openGame.value === 'wordle-unlimited') {
+    return wordleUnlimitedStore?.isComplete
+  }
+  return false
+})
+
 async function onShare() {
   try {
     shareBusy.value = true; copyMsg.value = ''
-    const text = wordleStore.shareText?.() || 'Wordle completed!'
+
+    let text = ''
+    if (openGame.value === 'wordle') {
+      text = wordleStore.shareText?.() || 'Wordle completed!'
+    } else if (openGame.value === 'wordle-unlimited') {
+      text = wordleUnlimitedStore.shareText?.() || 'Wordle Unlimited completed!'
+    }
 
     if (navigator.clipboard && navigator.clipboard.writeText) {
       await navigator.clipboard.writeText(text)
@@ -411,16 +595,27 @@ const gameComponents = {
 }
 
 /* Game list */
-const games = ref([
+const dailyGames = ref([
   {
     id: 'wordle', name: 'Wordle', description: 'Guess the 5-letter word in 6 tries', icon: Type,
     iconBg: 'bg-gradient-to-br from-emerald-600/20 to-emerald-500/20 ring-1 ring-emerald-500/30',
     gradient: 'from-emerald-600/10 to-transparent'
   },
   {
+    id: 'wordle-unlimited',
+    name: 'Wordle Unlimited',
+    description: 'Endless word puzzles to solve',
+    icon: Infinity,
+    iconBg: 'bg-gradient-to-br from-cyan-600/20 to-cyan-500/20 ring-1 ring-cyan-500/30',
+    gradient: 'from-cyan-600/10 to-transparent',
+    requiresAuth: true,
+    unlockCondition: () => wordleStore.status === 'won' || wordleStore.status === 'lost'
+  },
+  {
     id: 'connections', name: 'Connections', description: 'Find groups of 4 related words', icon: LinkIcon,
     iconBg: 'bg-gradient-to-br from-violet-600/20 to-violet-500/20 ring-1 ring-violet-500/30',
-    gradient: 'from-violet-600/10 to-transparent'
+    gradient: 'from-violet-600/10 to-transparent',
+    comingSoon: true
   },
   {
     id: 'flag', name: 'Flag Quest', description: 'Identify countries by their flags', icon: Flag,
@@ -448,13 +643,76 @@ const games = ref([
   },
 ])
 
+// Check if Wordle Unlimited should be available
+const isWordleUnlimitedUnlocked = computed(() => {
+  const game = dailyGames.value.find(g => g.id === 'wordle-unlimited')
+  return game?.unlockCondition() || false
+})
+
+// Combine games based on availability
+const availableGames = computed(() => {
+  const games = []
+
+  // Add daily games first (except unlimited)
+  dailyGames.value.forEach(game => {
+    if (game.id === 'wordle-unlimited') {
+      // Handle Wordle Unlimited with lock status
+      if (isWordleUnlimitedUnlocked.value && isAuthenticated.value) {
+        games.push(game)
+      } else {
+        const lockReason = !isAuthenticated.value
+          ? 'Sign In Required'
+          : 'Complete Daily'
+        games.push({
+          ...game,
+          locked: true,
+          lockReason
+        })
+      }
+    } else {
+      games.push(game)
+    }
+  })
+
+  return games
+})
+
 const openGame = ref(null)
 const currentGameComponent = shallowRef(null)
-const currentGameData = computed(() => games.value.find(g => g.id === openGame.value))
+const currentGameData = computed(() => availableGames.value.find(g => g.id === openGame.value))
 const loadingGame = ref(false)
 
+// Handle game card clicks with modal checks
+function handleGameClick(game) {
+  if (game.comingSoon) return
+
+  if (game.id === 'wordle-unlimited') {
+    if (!isAuthenticated.value) {
+      authModalType.value = 'auth-required'
+      showAuthModal.value = true
+      return
+    } else if (!isWordleUnlimitedUnlocked.value) {
+      authModalType.value = 'daily-required'
+      showAuthModal.value = true
+      return
+    }
+  }
+
+  selectGame(game.id)
+}
+
+// Go to Wordle Unlimited (from daily completion)
+function goToWordleUnlimited() {
+  if (!isAuthenticated.value) {
+    authModalType.value = 'auth-required'
+    showAuthModal.value = true
+  } else {
+    selectGame('wordle-unlimited')
+  }
+}
+
 async function selectGame(gameId) {
-  const game = games.value.find(g => g.id === gameId)
+  const game = availableGames.value.find(g => g.id === gameId)
   if (game?.comingSoon) return
 
   const url = new URL(window.location)
@@ -468,6 +726,10 @@ async function selectGame(gameId) {
     if (gameId === 'wordle') {
       if (!wordleStore.puzzleId) {
         await wordleStore.loadDaily(true)
+      }
+    } else if (gameId === 'wordle-unlimited') {
+      if (!wordleUnlimitedStore.initialized) {
+        await wordleUnlimitedStore.initialize()
       }
     } else {
       currentGameComponent.value = gameComponents[gameId] || null
@@ -492,47 +754,60 @@ function closeGame() {
 function getGameStatus(gameId) {
   if (gameId === 'wordle') {
     return wordleStore.status || dailyStore.getGameStatus(gameId)
+  } else if (gameId === 'wordle-unlimited') {
+    return wordleUnlimitedStore.status || 'not-started'
   }
   return dailyStore.getGameStatus(gameId)
 }
 
 function getStreak(gameId) {
+  if (gameId === 'wordle-unlimited') {
+    return wordleUnlimitedStore.currentStreak || 0
+  }
   const stats = dailyStore.getStatsFor(gameId)
   return stats?.currentStreak ?? 0
 }
 
 function ctaText(gameId) {
-  const game = games.value.find(g => g.id === gameId)
+  const game = availableGames.value.find(g => g.id === gameId)
   if (game?.comingSoon) return 'Coming Soon'
+  if (game?.locked) return game.lockReason
 
   const status = getGameStatus(gameId)
   switch (status) {
     case 'won': return 'Completed ✓'
-    case 'lost': return 'Try Again Tomorrow'
+    case 'lost': return gameId === 'wordle-unlimited' ? 'Play Again' : 'Try Again Tomorrow'
     case 'in-progress': return 'Continue Playing'
     default: return 'Play Now'
   }
 }
 
 function buttonGradient(gameId) {
-  const game = games.value.find(g => g.id === gameId)
-  if (game?.comingSoon) return 'from-zinc-700 to-zinc-800 text-zinc-400'
+  const game = availableGames.value.find(g => g.id === gameId)
+  if (game?.comingSoon || game?.locked) return 'from-zinc-700 to-zinc-800 text-zinc-400'
 
   const status = getGameStatus(gameId)
   switch (status) {
     case 'won': return 'from-emerald-600 to-emerald-700 text-white shadow-emerald-500/20'
-    case 'lost': return 'from-rose-600 to-rose-700 text-white shadow-rose-500/20'
+    case 'lost': return gameId === 'wordle-unlimited' ? 'from-violet-600 to-fuchsia-600 text-white shadow-violet-500/20' : 'from-rose-600 to-rose-700 text-white shadow-rose-500/20'
     default: return 'from-violet-600 to-fuchsia-600 text-white shadow-violet-500/20'
   }
 }
 
 function statsFor(gameId) {
+  if (gameId === 'wordle-unlimited') {
+    return wordleUnlimitedStore.profile
+  }
   return dailyStore.getStatsFor(gameId)
 }
 
 /* Computed stats */
 const completedToday = computed(() => dailyStore.totalCompletedToday)
-const totalStreak = computed(() => dailyStore.totalStreakSum)
+const totalGamesPlayed = computed(() => {
+  const dailyTotal = dailyStore.totalDaysPlayed
+  const unlimitedTotal = wordleUnlimitedStore.totalWordsPlayed || 0
+  return dailyTotal + unlimitedTotal
+})
 const totalDaysPlayed = computed(() => dailyStore.totalDaysPlayed)
 const avgWinRate = computed(() => dailyStore.averageWinRate)
 
@@ -561,44 +836,20 @@ function getGameStatsClasses(gameId) {
         text: 'text-emerald-300',
         label: 'text-emerald-200/70'
       }
+    case 'wordle-unlimited':
+      return {
+        bg: 'bg-gradient-to-br from-cyan-950/60 to-cyan-900/40',
+        border: 'border-cyan-700/50',
+        shadow: 'shadow-cyan-500/10',
+        text: 'text-cyan-300',
+        label: 'text-cyan-200/70'
+      }
     case 'connections':
       return {
         bg: 'bg-gradient-to-br from-slate-800/80 to-slate-900/60',
         border: 'border-slate-600/50',
         shadow: 'shadow-violet-500/10',
         text: 'text-violet-300',
-        label: 'text-slate-300/70'
-      }
-    case 'flag':
-      return {
-        bg: 'bg-gradient-to-br from-slate-800/80 to-slate-900/60',
-        border: 'border-slate-600/50',
-        shadow: 'shadow-blue-500/10',
-        text: 'text-blue-300',
-        label: 'text-slate-300/70'
-      }
-    case 'trivia':
-      return {
-        bg: 'bg-gradient-to-br from-slate-800/80 to-slate-900/60',
-        border: 'border-slate-600/50',
-        shadow: 'shadow-fuchsia-500/10',
-        text: 'text-fuchsia-300',
-        label: 'text-slate-300/70'
-      }
-    case 'sequence':
-      return {
-        bg: 'bg-gradient-to-br from-slate-800/80 to-slate-900/60',
-        border: 'border-slate-600/50',
-        shadow: 'shadow-amber-500/10',
-        text: 'text-amber-300',
-        label: 'text-slate-300/70'
-      }
-    case 'memory':
-      return {
-        bg: 'bg-gradient-to-br from-slate-800/80 to-slate-900/60',
-        border: 'border-slate-600/50',
-        shadow: 'shadow-rose-500/10',
-        text: 'text-rose-300',
         label: 'text-slate-300/70'
       }
     default:
@@ -619,7 +870,7 @@ function getCardClasses(game) {
     'hover:shadow-2xl'
   ]
 
-  if (game.comingSoon) {
+  if (game.comingSoon || game.locked) {
     baseClasses.push('opacity-50', 'cursor-not-allowed')
   }
 
@@ -632,6 +883,13 @@ function getCardClasses(game) {
         'hover:border-emerald-500/70', 'hover:shadow-emerald-500/25'
       )
       break
+    case 'wordle-unlimited':
+      baseClasses.push(
+        'bg-gradient-to-br', 'from-cyan-950/40', 'to-cyan-900/20',
+        'hover:from-cyan-900/60', 'hover:to-cyan-800/40',
+        'hover:border-cyan-500/70', 'hover:shadow-cyan-500/25'
+      )
+      break
     case 'connections':
       baseClasses.push(
         'bg-gradient-to-br', 'from-violet-950/40', 'to-violet-900/20',
@@ -639,34 +897,7 @@ function getCardClasses(game) {
         'hover:border-violet-500/70', 'hover:shadow-violet-500/25'
       )
       break
-    case 'flag':
-      baseClasses.push(
-        'bg-gradient-to-br', 'from-blue-950/40', 'to-blue-900/20',
-        'hover:from-blue-900/60', 'hover:to-blue-800/40',
-        'hover:border-blue-500/70', 'hover:shadow-blue-500/25'
-      )
-      break
-    case 'trivia':
-      baseClasses.push(
-        'bg-gradient-to-br', 'from-fuchsia-950/40', 'to-fuchsia-900/20',
-        'hover:from-fuchsia-900/60', 'hover:to-fuchsia-800/40',
-        'hover:border-fuchsia-500/70', 'hover:shadow-fuchsia-500/25'
-      )
-      break
-    case 'sequence':
-      baseClasses.push(
-        'bg-gradient-to-br', 'from-amber-950/40', 'to-amber-900/20',
-        'hover:from-amber-900/60', 'hover:to-amber-800/40',
-        'hover:border-amber-500/70', 'hover:shadow-amber-500/25'
-      )
-      break
-    case 'memory':
-      baseClasses.push(
-        'bg-gradient-to-br', 'from-rose-950/40', 'to-rose-900/20',
-        'hover:from-rose-900/60', 'hover:to-rose-800/40',
-        'hover:border-rose-500/70', 'hover:shadow-rose-500/25'
-      )
-      break
+    // Add other game styles...
   }
 
   return baseClasses
@@ -676,9 +907,9 @@ function getCardClasses(game) {
 function handlePopState() {
   const params = new URLSearchParams(window.location.search)
   const gameParam = params.get('game')
-  if (gameParam && games.value.some(g => g.id === gameParam)) {
+  if (gameParam && availableGames.value.some(g => g.id === gameParam)) {
     openGame.value = gameParam
-    if (gameParam !== 'wordle') {
+    if (!['wordle', 'wordle-unlimited'].includes(gameParam)) {
       loadingGame.value = true
       try {
         currentGameComponent.value = gameComponents[gameParam] || null
@@ -698,22 +929,37 @@ onMounted(async () => {
   timer = setInterval(tick, 1000)
 
   try {
+    // Set initial loading state
+    const params = new URLSearchParams(window.location.search)
+    const gameParam = params.get('game')
+    if (gameParam) {
+      initialLoading.value = true
+    }
+
     // Initialize stores FIRST and wait for completion
     wordleStore.initAuthListener()
     await wordleStore.loadDaily(true)
     await dailyStore.initializeGames()
-    
+
     // THEN handle URL params after stores are ready
     window.addEventListener('popstate', handlePopState)
-    
-    const params = new URLSearchParams(window.location.search)
-    const gameParam = params.get('game')
-    if (gameParam && games.value.some(g => g.id === gameParam && !g.comingSoon)) {
-      // Use selectGame instead of manually setting values
-      await selectGame(gameParam)
+
+    if (gameParam && availableGames.value.some(g => g.id === gameParam && !g.comingSoon)) {
+      // Check if it's wordle unlimited and user can't play it
+      if (gameParam === 'wordle-unlimited' && !canPlayWordleUnlimited.value) {
+        openGame.value = gameParam
+        initialLoading.value = false
+      } else {
+        // Use selectGame instead of manually setting values
+        await selectGame(gameParam)
+        initialLoading.value = false
+      }
+    } else {
+      initialLoading.value = false
     }
   } catch (error) {
     console.warn('Error initializing stores:', error)
+    initialLoading.value = false
   }
 })
 

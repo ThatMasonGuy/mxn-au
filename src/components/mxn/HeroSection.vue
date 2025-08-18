@@ -1,6 +1,6 @@
 <template>
     <section
-        class="relative min-h-screen flex flex-col justify-center items-center text-center overflow-hidden text-white px-6 sm:pt-12">
+        class="relative min-h-screen flex flex-col justify-center items-center text-center overflow-hidden text-white px-6 sm:px-12 pt-14">
 
         <!-- Main Content -->
         <div class="relative z-10 space-y-8 animate-fade-up">

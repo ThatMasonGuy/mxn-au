@@ -2,7 +2,7 @@
 import { onCall } from 'firebase-functions/v2/https';
 import { db } from '../config/firebase.mjs';
 
-const REGION = 'australia-southeast1';
+const REGION = 'australia-southeast2';
 
 // ---------- Time helpers ----------
 function dateStrUTC(d = new Date()) {
@@ -64,7 +64,6 @@ async function ensureSolutionFor(date) {
     const raw = snap.data();
     const answer = raw?.answer;
 
-    // Validate structure
     if (!answer || !answer.easy || !answer.medium || !answer.hard || !answer.expert) {
         await ref.set({
             answer: FALLBACK,
@@ -80,7 +79,6 @@ async function ensureSolutionFor(date) {
 
 // ---------- Bootstrap ----------
 async function bootstrapToday(date, uid = null) {
-    // Global all-time stats
     await createIfMissing(allTime, {
         totalPlays: 0,
         wins: 0,
@@ -89,7 +87,6 @@ async function bootstrapToday(date, uid = null) {
         averageMistakes: 0
     });
 
-    // Today's daily stats
     await createIfMissing(dailyStats(date), {
         totalPlays: 0,
         wins: 0,
@@ -97,10 +94,8 @@ async function bootstrapToday(date, uid = null) {
         perfectGames: 0
     });
 
-    // Ensure solution exists
     await ensureSolutionFor(date);
 
-    // Per-user docs
     if (uid) {
         await createIfMissing(userConnectionsDoc(uid), {
             currentStreak: 0,
@@ -131,7 +126,6 @@ export const getDailyConnections = onCall(
         await bootstrapToday(date, uid);
         const answer = await ensureSolutionFor(date);
 
-        // Get user state if logged in
         let userState = null;
         if (uid) {
             const daySnap = await db.doc(userConnectionsDay(uid, date)).get();
@@ -149,7 +143,10 @@ export const getDailyConnections = onCall(
 
 // ---------- 2) Save progress ----------
 export const saveConnectionsProgress = onCall(
-    { region: REGION },
+    {
+        region: REGION,
+        maxInstances: 1
+    },
     async (req) => {
         const uid = req.auth?.uid || null;
         if (!uid) return { ok: true };
@@ -188,7 +185,10 @@ export const saveConnectionsProgress = onCall(
 
 // ---------- 3) Submit final outcome ----------
 export const submitConnectionsOutcome = onCall(
-    { region: REGION },
+    {
+        region: REGION,
+        maxInstances: 1
+    },
     async (req) => {
         const uid = req.auth?.uid || null;
         const { puzzleId, foundGroups, mistakes, attempts } = req.data || {};
@@ -197,14 +197,12 @@ export const submitConnectionsOutcome = onCall(
         const date = puzzleId.replace('connections-', '');
         await bootstrapToday(date, uid);
 
-        // Determine outcome
         const serverOutcome = foundGroups?.length === 4 ? 'win' : 'loss';
         const isPerfect = serverOutcome === 'win' && mistakes === 0;
 
         const dailyStatsRef = db.doc(dailyStats(date));
         const allTimeRef = db.doc(allTime);
 
-        // Guest users - just update global stats
         if (!uid) {
             await db.runTransaction(async (tx) => {
                 const dSnap = await tx.get(dailyStatsRef);
@@ -239,13 +237,11 @@ export const submitConnectionsOutcome = onCall(
             return { outcome: serverOutcome, mistakes };
         }
 
-        // Logged-in users
         const dayRef = db.doc(userConnectionsDay(uid, date));
         const profRef = db.doc(userConnectionsDoc(uid));
         let streakOut = null;
 
         await db.runTransaction(async (tx) => {
-            // Read all docs first
             const [daySnap, profSnap, dSnap, aSnap] = await Promise.all([
                 tx.get(dayRef),
                 tx.get(profRef),
@@ -270,7 +266,6 @@ export const submitConnectionsOutcome = onCall(
                 totalPlays: 0, wins: 0, losses: 0, perfectGames: 0, averageMistakes: 0
             };
 
-            // Write game state
             tx.set(dayRef, {
                 foundGroups: foundGroups || [],
                 mistakes: mistakes || 0,
@@ -280,7 +275,6 @@ export const submitConnectionsOutcome = onCall(
             }, { merge: true });
 
             if (!alreadyDone) {
-                // Update global stats
                 d.totalPlays++;
                 a.totalPlays++;
 
@@ -299,7 +293,6 @@ export const submitConnectionsOutcome = onCall(
                 tx.set(dailyStatsRef, d, { merge: true });
                 tx.set(allTimeRef, a, { merge: true });
 
-                // Update user profile
                 const continued = baseProf.lastPlayedUTC === yesterdayUTCStr(date);
                 const currentStreak = (serverOutcome === 'win')
                     ? (continued ? (baseProf.currentStreak || 0) + 1 : 1)
@@ -310,7 +303,6 @@ export const submitConnectionsOutcome = onCall(
                 const totalPlays = (baseProf.totalPlays || 0) + 1;
                 const perfectGames = (baseProf.perfectGames || 0) + (isPerfect ? 1 : 0);
 
-                // Calculate running average of mistakes
                 const prevTotal = (baseProf.averageMistakes || 0) * (baseProf.totalPlays || 0);
                 const averageMistakes = (prevTotal + mistakes) / totalPlays;
 
@@ -321,7 +313,6 @@ export const submitConnectionsOutcome = onCall(
 
                 tx.set(profRef, streakOut, { merge: true });
             } else {
-                // Already finalized
                 streakOut = {
                     currentStreak: baseProf.currentStreak || 0,
                     maxStreak: baseProf.maxStreak || 0,

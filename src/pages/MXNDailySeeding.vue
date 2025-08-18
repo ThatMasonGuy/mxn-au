@@ -424,8 +424,8 @@ const { toast } = useToast()
 // Defaults
 // ──────────────────────────────────────────────────────────────────────────────
 const DEFAULTS = {
-    wordle: 'https://australia-southeast1-mxn-au.cloudfunctions.net/wordleGenerateNow',
-    connections: 'https://australia-southeast1-mxn-au.cloudfunctions.net/connectionsGenerateNow',
+    wordle: 'https://australia-southeast2-mxn-au.cloudfunctions.net/wordleGenerateNow',
+    connections: 'https://australia-southeast2-mxn-au.cloudfunctions.net/connectionsGenerateNow',
 }
 
 // Game Type

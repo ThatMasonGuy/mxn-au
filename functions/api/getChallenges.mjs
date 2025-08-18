@@ -236,6 +236,7 @@ export const getChallenges = onRequest(
         region: 'australia-southeast1',
         secrets: [bungieApiKey],
         memory: '512MiB',
+        maxInstances: 1,
         timeoutSeconds: 120
     },
     async (req, res) => {

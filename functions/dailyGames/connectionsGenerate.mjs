@@ -21,9 +21,8 @@ function openai() {
 // ──────────────────────────────────────────────────────────────────────────────
 // Constants & helpers
 // ──────────────────────────────────────────────────────────────────────────────
-const REGION = 'australia-southeast1'
+const REGION = 'australia-southeast2'
 
-// Firestore paths
 const SOLS_COL = () => db.collection('dailyChallenges').doc('connections').collection('solutions')
 
 const toDateId = (d) => d.toISOString().slice(0, 10) // UTC YYYY-MM-DD
@@ -44,8 +43,8 @@ async function fetchExistingGroups(todayId) {
     const ban = new Set()
 
     const today = parseDateIdUTC(todayId)
-    const startPast = toDateId(addDaysUTC(today, -30)) // Last 30 days
-    const endFuture = toDateId(addDaysUTC(today, +365)) // Next year
+    const startPast = toDateId(addDaysUTC(today, -30))
+    const endFuture = toDateId(addDaysUTC(today, +365))
 
     // Get past 30 days
     const pastSnap = await SOLS_COL()
@@ -56,7 +55,6 @@ async function fetchExistingGroups(todayId) {
     pastSnap.forEach((doc) => {
         const answer = doc.data()?.answer
         if (answer) {
-            // Collect all words from all groups
             ['easy', 'medium', 'hard', 'expert'].forEach(level => {
                 if (answer[level]) {
                     answer[level].forEach(word => ban.add(word.toUpperCase()))
@@ -65,7 +63,6 @@ async function fetchExistingGroups(todayId) {
         }
     })
 
-    // Get future puzzles
     const futureSnap = await SOLS_COL()
         .where('__name__', '>=', todayId)
         .where('__name__', '<=', endFuture)
@@ -172,26 +169,22 @@ Create a clever, challenging puzzle that will make players think!`
         return null
     }
 
-    // Validate structure
     if (!parsed.answer ||
         !parsed.answer.easy || !parsed.answer.medium ||
         !parsed.answer.hard || !parsed.answer.expert) {
         return null
     }
 
-    // Validate each group has 4 words
     for (const level of ['easy', 'medium', 'hard', 'expert']) {
         if (!Array.isArray(parsed.answer[level]) || parsed.answer[level].length !== 4) {
             return null
         }
-        // Ensure uppercase and no banned words
         parsed.answer[level] = parsed.answer[level].map(w => w.toUpperCase().trim())
         if (parsed.answer[level].some(w => ban.has(w))) {
             return null
         }
     }
 
-    // Check for duplicates across groups
     const allWords = [
         ...parsed.answer.easy,
         ...parsed.answer.medium,
@@ -199,7 +192,7 @@ Create a clever, challenging puzzle that will make players think!`
         ...parsed.answer.expert
     ]
     if (new Set(allWords).size !== 16) {
-        return null // Has duplicates
+        return null
     }
 
     return {
@@ -220,7 +213,7 @@ async function upsertSolutions(dateIds, puzzles) {
         const ref = SOLS_COL().doc(id)
         const snap = await ref.get()
 
-        if (snap.exists) continue // Don't overwrite
+        if (snap.exists) continue
 
         batch.set(
             ref,
@@ -255,7 +248,6 @@ async function runGenerationFor(todayId) {
         let puzzle = null
         let attempts = 0
 
-        // Try up to 3 times per puzzle
         while (!puzzle && attempts < 3) {
             puzzle = await generatePuzzle(ban)
             attempts++
@@ -263,7 +255,6 @@ async function runGenerationFor(todayId) {
 
         if (puzzle) {
             puzzles.push(puzzle)
-            // Add new words to ban list
             Object.values(puzzle.answer).flat().forEach(word => ban.add(word))
         }
     }
@@ -282,11 +273,12 @@ async function runGenerationFor(todayId) {
 // ──────────────────────────────────────────────────────────────────────────────
 export const connectionsGenerateCron = onSchedule(
     {
-        schedule: '5 0 * * *', // 5 minutes after midnight UTC
+        schedule: '5 0 * * *',
         timeZone: 'Etc/UTC',
-        region: REGION,
+        region: 'australia-southeast1',
         secrets: [OPENAI_API_KEY],
         retryCount: 3,
+        maxInstances: 1
     },
     async () => {
         const todayId = toDateId(new Date())
@@ -300,7 +292,12 @@ export const connectionsGenerateCron = onSchedule(
 // Admin HTTP trigger for manual generation
 // ──────────────────────────────────────────────────────────────────────────────
 export const connectionsGenerateNow = onRequest(
-    { region: REGION, secrets: [OPENAI_API_KEY, ADMIN_API_KEY], cors: true },
+    { 
+        region: REGION,
+        secrets: [OPENAI_API_KEY, ADMIN_API_KEY],
+        cors: true,
+        maxInstances: 1
+    },
     async (req, res) => {
         try {
             const key = req.header('x-admin-key') || req.header('X-Admin-Key') || req.query.key
@@ -314,7 +311,6 @@ export const connectionsGenerateNow = onRequest(
             const daysParam = parseInt(req.query.days, 10) || null
             const today = new Date()
 
-            // Figure out date range
             const startDate = startParam ? parseDateIdUTC(startParam) : today
             let endDate = endParam ? parseDateIdUTC(endParam) : null
             if (!endDate && daysParam) {
@@ -322,13 +318,11 @@ export const connectionsGenerateNow = onRequest(
             }
             if (!endDate) endDate = addDaysUTC(startDate, 1)
 
-            // Collect dateIds
             const dateIds = []
             for (let d = startDate; d <= endDate; d = addDaysUTC(d, 1)) {
                 dateIds.push(toDateId(d))
             }
 
-            // Generate puzzles
             const ban = await fetchExistingGroups(toDateId(today))
             const puzzles = []
 
@@ -347,7 +341,6 @@ export const connectionsGenerateNow = onRequest(
                 }
             }
 
-            // Save to Firestore
             const batch = db.batch()
             for (let i = 0; i < dateIds.length && i < puzzles.length; i++) {
                 const ref = SOLS_COL().doc(dateIds[i])

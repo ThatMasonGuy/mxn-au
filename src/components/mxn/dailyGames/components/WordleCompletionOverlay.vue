@@ -2,7 +2,7 @@
     <Teleport to="body">
         <!-- Overlay -->
         <Transition name="overlay">
-            <div v-if="show" class="fixed inset-0 z-[100] flex items-center justify-center p-4"
+            <div v-if="show" class="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4"
                 @click.self="$emit('close')">
                 <!-- Dark backdrop -->
                 <div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
@@ -12,9 +12,8 @@
 
                 <!-- Content Card -->
                 <Transition name="card" @enter="onCardEnter">
-                    <div v-if="showCard" class="relative max-w-md w-full rounded-2xl overflow-hidden shadow-2xl border"
-                        :class="cardClasses">
-
+                    <div v-if="showCard" class="relative w-full max-w-md rounded-2xl overflow-hidden shadow-2xl border flex flex-col
+                     max-h-[calc(100svh-1.5rem)] sm:max-h-[calc(100svh-2rem)]" :class="cardClasses">
                         <!-- Animated background gradient -->
                         <div class="absolute inset-0" :class="bgGradientClasses"></div>
 
@@ -25,79 +24,100 @@
                             </div>
                         </div>
 
-                        <!-- Content -->
-                        <div class="relative p-8 text-center text-white">
+                        <!-- Scrollable content -->
+                        <div class="relative p-5 sm:p-8 text-center text-white overflow-y-auto overscroll-contain
+                       pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]">
                             <!-- Icon/Trophy -->
-                            <div class="mb-6 flex justify-center">
+                            <div class="mb-4 sm:mb-6 flex justify-center">
                                 <div class="relative">
-                                    <div v-if="isWin"
-                                        class="w-24 h-24 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-xl animate-bounce-slow">
-                                        <Trophy class="w-12 h-12 text-white" />
+                                    <div v-if="isWin" class="w-16 h-16 sm:w-24 sm:h-24 rounded-full bg-gradient-to-br from-amber-400 to-amber-600
+                             flex items-center justify-center shadow-xl animate-bounce-slow">
+                                        <Trophy class="w-8 h-8 sm:w-12 sm:h-12 text-white" />
                                     </div>
-                                    <div v-else
-                                        class="w-24 h-24 rounded-full bg-gradient-to-br from-slate-600 to-slate-700 flex items-center justify-center shadow-xl">
-                                        <Target class="w-12 h-12 text-slate-300" />
+                                    <div v-else class="w-16 h-16 sm:w-24 sm:h-24 rounded-full bg-gradient-to-br from-slate-600 to-slate-700
+                             flex items-center justify-center shadow-xl">
+                                        <Target class="w-8 h-8 sm:w-12 sm:h-12 text-slate-300" />
                                     </div>
-
                                     <!-- Sparkles for win -->
                                     <div v-if="isWin" class="absolute -top-2 -right-2 animate-spin-slow">
-                                        <Sparkles class="w-8 h-8 text-yellow-300" />
+                                        <Sparkles class="w-6 h-6 sm:w-8 sm:h-8 text-yellow-300" />
                                     </div>
                                 </div>
                             </div>
 
                             <!-- Main message -->
-                            <h2 class="text-3xl font-bold mb-2" :class="titleClasses">
+                            <h2 class="text-xl sm:text-2xl font-bold mb-1 sm:mb-2" :class="titleClasses">
                                 {{ title }}
+                                <span v-if="wordNumber >= 0"
+                                    class="ml-1 sm:ml-2 text-base sm:text-lg font-normal text-white/70">#{{ wordNumber +
+                                    1 }}</span>
                             </h2>
 
                             <!-- Sub message -->
-                            <p class="text-lg mb-6 opacity-90">
+                            <p class="text-sm sm:text-base mb-4 sm:mb-6 opacity-90">
                                 {{ subtitle }}
                             </p>
 
                             <!-- Stats display -->
-                            <div v-if="isWin" class="mb-6 flex justify-center gap-4">
-                                <div class="bg-white/10 backdrop-blur rounded-xl px-4 py-2">
-                                    <div class="text-2xl font-bold">{{ attempts }}/6</div>
-                                    <div class="text-xs opacity-75">Attempts</div>
+                            <div class="mb-4 sm:mb-6 flex flex-wrap justify-center gap-2 sm:gap-4">
+                                <div class="bg-white/10 backdrop-blur rounded-xl px-3 py-2 sm:px-4 sm:py-2">
+                                    <div class="text-lg sm:text-xl font-bold">{{ attempts }}/6</div>
+                                    <div class="text-[10px] sm:text-xs opacity-75">Attempts</div>
                                 </div>
-                                <div class="bg-white/10 backdrop-blur rounded-xl px-4 py-2">
-                                    <div class="text-2xl font-bold">{{ streak }}</div>
-                                    <div class="text-xs opacity-75">Streak</div>
+                                <div class="bg-white/10 backdrop-blur rounded-xl px-3 py-2 sm:px-4 sm:py-2">
+                                    <div class="text-lg sm:text-xl font-bold">{{ streak }}</div>
+                                    <div class="text-[10px] sm:text-xs opacity-75">Streak</div>
+                                </div>
+                                <div v-if="winPercentage !== null"
+                                    class="bg-white/10 backdrop-blur rounded-xl px-3 py-2 sm:px-4 sm:py-2">
+                                    <div class="text-lg sm:text-xl font-bold">{{ winPercentage }}%</div>
+                                    <div class="text-[10px] sm:text-xs opacity-75">Win Rate</div>
                                 </div>
                             </div>
 
                             <!-- Answer reveal for losses -->
-                            <div v-else class="mb-6">
-                                <div class="text-sm opacity-75 mb-2">The word was:</div>
+                            <div v-if="!isWin" class="mb-4 sm:mb-6">
+                                <div class="text-xs sm:text-sm opacity-75 mb-2">The word was:</div>
                                 <div
-                                    class="text-4xl font-bold tracking-wider bg-white/10 backdrop-blur rounded-xl px-6 py-3">
+                                    class="text-xl sm:text-2xl font-bold tracking-wider bg-white/10 backdrop-blur rounded-xl px-4 sm:px-6 py-2">
                                     {{ answer }}
                                 </div>
                             </div>
 
-                            <!-- Emoji grid -->
-                            <div v-if="emojiGrid" class="mb-6 p-4 bg-black/20 rounded-xl backdrop-blur">
-                                <div class="font-mono text-lg leading-tight whitespace-pre">{{ emojiGrid }}</div>
+                            <!-- Visual grid with colored squares -->
+                            <div v-if="emojiGrid" class="mb-4 sm:mb-6 p-3 sm:p-4 bg-black/20 rounded-xl backdrop-blur">
+                                <div class="flex flex-col gap-1 items-center">
+                                    <div v-for="(row, rowIndex) in gridRows" :key="rowIndex" class="flex gap-1">
+                                        <div v-for="(cell, cellIndex) in row" :key="cellIndex"
+                                            class="w-6 h-6 sm:w-8 sm:h-8 rounded flex items-center justify-center"
+                                            :class="getSquareClass(cell)">
+                                            <Square class="w-4 h-4 sm:w-6 sm:h-6" />
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
                             <!-- Action buttons -->
-                            <div class="flex gap-3 justify-center">
+                            <div class="flex flex-col sm:flex-row gap-2 sm:gap-3 justify-center">
                                 <button @click="onShare"
-                                    class="flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all"
+                                    class="w-full sm:flex-1 flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-semibold transition-all relative"
                                     :class="shareButtonClasses">
                                     <Share2 class="w-4 h-4" />
-                                    Share
+                                    <span>{{ shareCopied ? 'Copied!' : 'Share' }}</span>
+                                </button>
+                                <button v-if="showNewGame" @click="$emit('new-game')"
+                                    class="w-full sm:flex-1 flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-violet-600 backdrop-blur font-semibold hover:bg-violet-500 transition-all">
+                                    <ArrowRightCircle class="w-4 h-4" />
+                                    Next Puzzle
                                 </button>
                                 <button @click="$emit('close')"
-                                    class="flex-1 px-6 py-3 rounded-xl bg-white/10 backdrop-blur font-semibold hover:bg-white/20 transition-all">
+                                    class="w-full sm:flex-1 px-5 py-3 rounded-xl bg-white/10 backdrop-blur font-semibold hover:bg-white/20 transition-all">
                                     Continue
                                 </button>
                             </div>
 
-                            <!-- Next game timer -->
-                            <div class="mt-6 text-sm opacity-75">
+                            <!-- Next game timer (only if provided) -->
+                            <div v-if="rolloverAt" class="mt-4 sm:mt-6 text-xs sm:text-sm opacity-75">
                                 Next puzzle in {{ timeUntilNext }}
                             </div>
                         </div>
@@ -110,7 +130,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
-import { Trophy, Target, Share2, Sparkles } from 'lucide-vue-next'
+import { Trophy, Target, Share2, Sparkles, Square, ArrowRightCircle } from 'lucide-vue-next'
 
 const props = defineProps({
     show: Boolean,
@@ -119,57 +139,79 @@ const props = defineProps({
     streak: Number,
     answer: String,
     emojiGrid: String,
-    rolloverAt: String
+    rolloverAt: String,
+    wordNumber: { type: Number, default: -1 },
+    winPercentage: { type: Number, default: null }
 })
 
-const emit = defineEmits(['close', 'share'])
+const emit = defineEmits(['close', 'share', 'new-game'])
 
 const showCard = ref(false)
 const confettiCanvas = ref(null)
 const timeUntilNext = ref('00:00:00')
+const shareCopied = ref(false)
 let timer = null
 let confettiAnimation = null
 
-// Computed styles
-const cardClasses = computed(() => {
-    return props.isWin
+const showNewGame = computed(() => props.wordNumber >= 0)
+
+const gridRows = computed(() => {
+    if (!props.emojiGrid) return []
+    return props.emojiGrid
+        .split('\n')
+        .map(row =>
+            row
+                .replace(/🟩/g, 'G')
+                .replace(/🟨/g, 'Y')
+                .replace(/⬛/g, 'B')
+                .split('')
+                .filter(c => ['G', 'Y', 'B'].includes(c))
+        )
+})
+
+function getSquareClass(cell) {
+    switch (cell) {
+        case 'G':
+            return 'bg-emerald-500 text-emerald-500'
+        case 'Y':
+            return 'bg-amber-500 text-amber-500'
+        case 'B':
+            return 'bg-zinc-700 text-zinc-700'
+        default:
+            return 'bg-zinc-800 text-zinc-800'
+    }
+}
+
+const cardClasses = computed(() =>
+    props.isWin
         ? 'bg-gradient-to-br from-emerald-800/95 to-emerald-900/95 border-emerald-600/50'
         : 'bg-gradient-to-br from-slate-800/95 to-slate-900/95 border-slate-600/50'
-})
-
-const bgGradientClasses = computed(() => {
-    return props.isWin
+)
+const bgGradientClasses = computed(() =>
+    props.isWin
         ? 'bg-gradient-to-br from-emerald-600/20 via-emerald-700/10 to-transparent'
         : 'bg-gradient-to-br from-rose-600/20 via-slate-700/10 to-transparent'
-})
-
-const titleClasses = computed(() => {
-    return props.isWin
+)
+const titleClasses = computed(() =>
+    props.isWin
         ? 'bg-gradient-to-r from-yellow-300 to-amber-300 bg-clip-text text-transparent'
         : 'text-slate-100'
-})
-
-const shareButtonClasses = computed(() => {
-    return props.isWin
-        ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white'
-        : 'bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-500 hover:to-slate-600 text-white'
-})
+)
+const shareButtonClasses = computed(() =>
+    shareCopied.value
+        ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white'
+        : props.isWin
+            ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white'
+            : 'bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-500 hover:to-slate-600 text-white'
+)
 
 const title = computed(() => {
     if (props.isWin) {
-        const messages = [
-            'Brilliant!',
-            'Fantastic!',
-            'Excellent!',
-            'Outstanding!',
-            'Magnificent!',
-            'Superb!'
-        ]
+        const messages = ['Brilliant!', 'Fantastic!', 'Excellent!', 'Outstanding!', 'Magnificent!', 'Superb!']
         return messages[props.attempts - 1] || 'Well Done!'
     }
     return 'So Close!'
 })
-
 const subtitle = computed(() => {
     if (props.isWin) {
         if (props.attempts === 1) return 'Incredible! First try!'
@@ -179,13 +221,11 @@ const subtitle = computed(() => {
         if (props.attempts === 5) return 'Good thinking!'
         return 'Phew! Just made it!'
     }
-    return "Don't worry, you'll get it tomorrow!"
+    return "Don't worry, you'll get it next time!"
 })
 
-// Confetti animation
 function createConfetti() {
     if (!confettiCanvas.value || !props.isWin) return
-
     const canvas = confettiCanvas.value
     const ctx = canvas.getContext('2d')
     canvas.width = window.innerWidth
@@ -193,8 +233,6 @@ function createConfetti() {
 
     const particles = []
     const colors = ['#10b981', '#34d399', '#6ee7b7', '#fbbf24', '#fde047', '#a78bfa', '#c084fc']
-
-    // Create particles
     for (let i = 0; i < 150; i++) {
         particles.push({
             x: Math.random() * canvas.width,
@@ -210,66 +248,75 @@ function createConfetti() {
 
     function animate() {
         ctx.clearRect(0, 0, canvas.width, canvas.height)
-
-        particles.forEach((p, index) => {
+        for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i]
             p.x += p.vx
             p.y += p.vy
             p.rotation += p.rotationSpeed
-            p.vy += 0.1 // gravity
-
-            // Remove particles that fall off screen
+            p.vy += 0.1
             if (p.y > canvas.height) {
-                particles.splice(index, 1)
-                return
+                particles.splice(i, 1)
+                continue
             }
-
             ctx.save()
             ctx.translate(p.x, p.y)
-            ctx.rotate(p.rotation * Math.PI / 180)
+            ctx.rotate((p.rotation * Math.PI) / 180)
             ctx.fillStyle = p.color
             ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size)
             ctx.restore()
-        })
-
-        if (particles.length > 0) {
-            confettiAnimation = requestAnimationFrame(animate)
         }
+        if (particles.length > 0) confettiAnimation = requestAnimationFrame(animate)
     }
-
     animate()
 }
 
-// Share functionality
+function generateVisualShareText() {
+    const isUnlimited = props.wordNumber >= 0
+    const gameName = isUnlimited ? 'Wordle Unlimited' : 'MXN Daily — Wordle'
+    const gameNumber = isUnlimited ? ` #${props.wordNumber + 1}` : ` ${new Date().toISOString().split('T')[0]}`
+    const result = props.isWin ? `${props.attempts}/6` : 'X/6'
+
+    const visualGrid =
+        props.emojiGrid
+            ?.replace(/🟩/g, '🟩')
+            ?.replace(/🟨/g, '🟨')
+            ?.replace(/⬛/g, '⬛') || ''
+
+    const url = isUnlimited ? 'https://mxn.au/daily?game=wordle-unlimited' : 'https://mxn.au/daily?game=wordle'
+
+    return `${gameName}${gameNumber}\n${result}\n\n${visualGrid}\n\nPlay at ${url}`
+}
+
 async function onShare() {
     emit('share')
     try {
-        const text = props.emojiGrid
-            ? `Wordle ${new Date().toISOString().split('T')[0]}\n${props.attempts}/6\n\n${props.emojiGrid}\n\nPlay at https://mxn.au/daily?game=wordle`
-            : 'Check out MXN Daily Games!'
-
+        const text = generateVisualShareText()
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(text)
+            shareCopied.value = true
+            setTimeout(() => (shareCopied.value = false), 2000)
+        } else {
+            const textArea = document.createElement('textarea')
+            textArea.value = text
+            document.body.appendChild(textArea)
+            textArea.select()
+            document.execCommand('copy')
+            document.body.removeChild(textArea)
+            shareCopied.value = true
+            setTimeout(() => (shareCopied.value = false), 2000)
+        }
         if (navigator.share) {
             await navigator.share({ text })
-        } else if (navigator.clipboard) {
-            await navigator.clipboard.writeText(text)
         }
-    } catch (error) {
-        console.warn('Share failed:', error)
+    } catch (e) {
+        console.warn('Share failed:', e)
     }
 }
 
-// Update countdown
 function updateCountdown() {
-    if (!props.rolloverAt) {
-        timeUntilNext.value = '00:00:00'
-        return
-    }
-
+    if (!props.rolloverAt) return (timeUntilNext.value = '00:00:00')
     const ms = Date.parse(props.rolloverAt) - Date.now()
-    if (ms <= 0) {
-        timeUntilNext.value = '00:00:00'
-        return
-    }
-
+    if (ms <= 0) return (timeUntilNext.value = '00:00:00')
     const total = Math.floor(ms / 1000)
     const h = String(Math.floor(total / 3600)).padStart(2, '0')
     const m = String(Math.floor((total % 3600) / 60)).padStart(2, '0')
@@ -278,26 +325,25 @@ function updateCountdown() {
 }
 
 function onCardEnter() {
-    if (props.isWin) {
-        setTimeout(createConfetti, 300)
-    }
+    if (props.isWin) setTimeout(createConfetti, 300)
 }
 
-// Lifecycle
-watch(() => props.show, async (newVal) => {
-    if (newVal) {
-        await nextTick()
-        setTimeout(() => {
-            showCard.value = true
-        }, 50)
-    } else {
-        showCard.value = false
-        if (confettiAnimation) {
-            cancelAnimationFrame(confettiAnimation)
-            confettiAnimation = null
+watch(
+    () => props.show,
+    async (v) => {
+        if (v) {
+            await nextTick()
+            setTimeout(() => (showCard.value = true), 50)
+        } else {
+            showCard.value = false
+            shareCopied.value = false
+            if (confettiAnimation) {
+                cancelAnimationFrame(confettiAnimation)
+                confettiAnimation = null
+            }
         }
     }
-})
+)
 
 onMounted(() => {
     updateCountdown()
@@ -346,11 +392,11 @@ onUnmounted(() => {
 
     0%,
     100% {
-        transform: translateY(0);
+        transform: translateY(0)
     }
 
     50% {
-        transform: translateY(-10px);
+        transform: translateY(-10px)
     }
 }
 
@@ -360,11 +406,11 @@ onUnmounted(() => {
 
 @keyframes spin-slow {
     from {
-        transform: rotate(0deg);
+        transform: rotate(0)
     }
 
     to {
-        transform: rotate(360deg);
+        transform: rotate(360deg)
     }
 }
 

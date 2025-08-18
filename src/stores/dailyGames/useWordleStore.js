@@ -7,7 +7,7 @@ import { doc, onSnapshot, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { useDailyStore } from '../useDailyStore'
 
 // ===== Helpers =====
-const REGION = 'australia-southeast1';
+const REGION = 'australia-southeast2';
 const functions = () => getFunctions(undefined, REGION);
 
 function gradeGuess(guess, solution) {

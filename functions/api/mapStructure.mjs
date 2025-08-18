@@ -5,7 +5,10 @@ import { getFirestore, FieldPath } from "firebase-admin/firestore";
  * Analyzes Firestore schema by sampling documents intelligently
  */
 export const analyzeFirestoreSchema = onRequest(
-    { region: 'australia-southeast1' },
+    { 
+        region: 'australia-southeast1',
+        maxInstances: 1,
+    },
     async (req, res) => {
         try {
             console.log('[Schema Analyzer] Starting Firestore schema analysis...');

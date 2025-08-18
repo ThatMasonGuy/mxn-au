@@ -65,7 +65,8 @@ async function ensureAISuggestionsDoc(db, userId, tracker) {
 
 export const aiSuggest = onRequest({
     region: "australia-southeast1",
-    secrets: [openaiKey]
+    secrets: [openaiKey],
+    maxInstances: 1,
 }, async (req, res) => {
     const tracker = new InfrastructureTracker();
     const db = getDb();

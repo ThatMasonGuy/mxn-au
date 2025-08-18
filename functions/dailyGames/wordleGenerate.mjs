@@ -21,7 +21,7 @@ function openai() {
 // ──────────────────────────────────────────────────────────────────────────────
 // Constants & helpers
 // ──────────────────────────────────────────────────────────────────────────────
-const REGION = 'australia-southeast1'
+const REGION = 'australia-southeast2'
 
 // Firestore paths
 const SOLS_COL = () => db.collection('dailyChallenges').doc('wordle').collection('solutions')
@@ -196,9 +196,10 @@ export const wordleGenerateCron = onSchedule(
     {
         schedule: '0 0 * * *', // midnight UTC daily
         timeZone: 'Etc/UTC',
-        region: REGION,
+        region: 'australia-southeast1',
         secrets: [OPENAI_API_KEY],
         retryCount: 3,
+        maxInstances: 1
     },
     async () => {
         const todayId = toDateId(new Date()) // already UTC in ISO
@@ -213,7 +214,12 @@ export const wordleGenerateCron = onSchedule(
 // Header: x-admin-key: <ADMIN_API_KEY>
 // ──────────────────────────────────────────────────────────────────────────────
 export const wordleGenerateNow = onRequest(
-    { region: REGION, secrets: [OPENAI_API_KEY, ADMIN_API_KEY], cors: true },
+    { 
+        region: REGION, 
+        secrets: [OPENAI_API_KEY, ADMIN_API_KEY], 
+        cors: true,
+        maxInstances: 1
+    },
     async (req, res) => {
         try {
             const key = req.header('x-admin-key') || req.header('X-Admin-Key') || req.query.key

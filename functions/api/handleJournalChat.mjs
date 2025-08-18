@@ -6,7 +6,11 @@ import { defineSecret } from 'firebase-functions/params'
 const openaiKey = defineSecret('OPENAI_API_KEY')
 
 export const handleJournalChat = onCall(
-    { region: 'australia-southeast1', secrets: [openaiKey] },
+    { 
+        region: 'australia-southeast1',
+        secrets: [openaiKey],
+        maxInstances: 1,
+    },
     async (request) => {
         if (!request.auth) {
             console.warn('🔒 [Auth] Authentication context is missing from request.auth.');

@@ -16,7 +16,7 @@ export const aiTranslate = onRequest(
     region: "australia-southeast1",
     timeoutSeconds: 60,
     memory: "1GiB",
-    maxInstances: 5,
+    maxInstances: 1,
     cors: true,
   },
   async (req, res) => {

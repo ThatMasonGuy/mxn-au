@@ -1,12 +1,12 @@
 <template>
-    <div class="flex flex-col items-center gap-6">
+    <div class="flex flex-col items-center gap-6 prevent-zoom">
         <!-- GRID -->
-        <div class="w-full mx-auto max-w-[min(92vw,22rem)]">
+        <div class="w-full mx-auto max-w-[min(92vw,24rem)] md:max-w-[30rem] lg:max-w-[36rem] xl:max-w-[40rem]">
             <div class="flex flex-col items-center gap-1">
                 <div v-for="r in 6" :key="'r-' + r" class="grid grid-cols-5 gap-1 justify-center"
                     :class="{ 'row-shake': shakingRow === r - 1 }">
                     <div v-for="c in 5" :key="'c-' + r + '-' + c"
-                        class="tile w-10 h-10 sm:w-11 sm:h-11 md:w-12 md:h-12">
+                        class="tile w-11 h-11 sm:w-12 sm:h-12 lg:w-14 lg:h-14">
                         <div class="flip-inner" :class="flipClasses(r - 1, c - 1)" :style="flipStyle(r - 1, c - 1)">
                             <!-- FRONT: neutral with letters (input row + revealing row) -->
                             <div class="face front grid place-items-center rounded-md border font-semibold select-none"
@@ -33,7 +33,7 @@
         </transition>
 
         <!-- KEYBOARD -->
-        <div class="w-full max-w-[min(96vw,28rem)]" :class="{ 'opacity-70 pointer-events-none': !store.canType }">
+        <div class="w-full max-w-[min(96vw,30rem)] md:max-w-[38rem] lg:max-w-[42rem]" :class="{ 'opacity-70 pointer-events-none': !store.canType }">
             <div class="flex flex-col gap-1">
                 <div class="flex gap-1">
                     <KeyButton v-for="k in row1" :key="k" :k="k" :state="keyState(k)" :disabled="!store.canType"
@@ -278,6 +278,8 @@ async function onShare() {
 </script>
 
 <style scoped>
+.prevent-zoom :is(button, [role="button"]) { touch-action: manipulation; }
+
 /* 3D flip scaffolding */
 .tile {
     perspective: 800px;

@@ -42,7 +42,7 @@ export default [
         component: () => import('@/pages/MXNSVGDraw.vue'),
         meta: {
             requiresAuth: false,
-            role: null,
+            role: ROLES.SITE_ADMIN,
             title: 'MXN SVG Draw',
             drawerRanking: null,
             drawerVisible: false,
@@ -74,8 +74,24 @@ export default [
         component: () => import('@/pages/MXNDailyAdmin.vue'),
         meta: {
             requiresAuth: true,
-            role: null,
+            role: ROLES.SITE_ADMIN,
             title: 'MXN Daily Admin',
+            drawerRanking: null,
+            drawerVisible: false,
+            layout: 'default',
+            description: 'Page under construction.',
+            badge: '',
+            requiresOverlay: false,
+        },
+    },
+    {
+        path: '/daily/admin/wordle-unlimited',
+        name: 'MXNDailyAdmin',
+        component: () => import('@/pages/WordleUnlimitedAdmin.vue'),
+        meta: {
+            requiresAuth: true,
+            role: ROLES.SITE_ADMIN,
+            title: 'Wordle Unlimited Admin',
             drawerRanking: null,
             drawerVisible: false,
             layout: 'default',
@@ -90,7 +106,7 @@ export default [
         component: () => import('@/pages/MXNDailySeeding.vue'),
         meta: {
             requiresAuth: true,
-            role: null,
+            role: ROLES.SITE_ADMIN,
             title: 'MXN Daily Admin Seeding',
             drawerRanking: null,
             drawerVisible: false,

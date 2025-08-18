@@ -15,11 +15,10 @@ export { startBungieOAuth, bungieOAuthCallback } from './api/oauth.mjs';
 export { getChallenges } from './api/getChallenges.mjs';
 export { aiSuggest } from './api/aiSuggest.mjs';
 // export { rebuildTranslationStats } from './api/rebuildTranslationStats.mjs';
-// export { getConnectionsWords, dailyGames } from './api/dailyGames.mjs';
-// export { scheduledDailyGeneration, manualDailyGeneration } from './api/generatePuzzle.mjs';
 
 export { getAllDailyStats } from './dailyGames/getAllDailyStats.mjs'
 export { getDailyWordle, saveWordleProgress, submitWordleOutcome } from './dailyGames/wordle.mjs'
 export { wordleGenerateCron, wordleGenerateNow } from './dailyGames/wordleGenerate.mjs'
+export { getWordleUnlimitedWords, submitWordleUnlimitedGame, adminGenerateWordleWords } from './dailyGames/wordleUnlimited.mjs'
 export { getDailyConnections, saveConnectionsProgress, submitConnectionsOutcome } from './dailyGames/connections.mjs'
 export { connectionsGenerateCron, connectionsGenerateNow } from './dailyGames/connectionsGenerate.mjs'

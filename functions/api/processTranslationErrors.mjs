@@ -8,6 +8,7 @@ export const processTranslationErrors = onMessagePublished(
     region: "australia-southeast1",
     timeoutSeconds: 30,
     memory: "256MiB",
+    maxInstances: 1,
     retry: true,
   },
   async (event) => {
