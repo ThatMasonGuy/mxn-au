@@ -1,68 +1,91 @@
 <template>
-    <div class="bg-gray-900 min-h-screen">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900/20 to-slate-900">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
             <!-- Header Section -->
             <div class="mb-8">
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
-                    <div>
-                        <h1 class="text-4xl font-bold text-white mb-2">Event Management</h1>
-                        <p class="text-gray-300 text-lg">Manage your game events and tournaments</p>
+                <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+                    <div class="space-y-2">
+                        <h1
+                            class="text-3xl lg:text-4xl font-bold bg-gradient-to-r from-white to-cyan-200 bg-clip-text text-transparent">
+                            Event Management
+                        </h1>
+                        <p class="text-slate-400 text-sm lg:text-base">Manage your game events and tournaments</p>
                     </div>
-                    <div class="flex gap-3 w-full sm:w-auto">
-                        <button @click="toggleView"
-                            class="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 hover:text-white border border-gray-600 hover:border-gray-500 rounded-lg transition-all duration-200 flex-1 sm:flex-none justify-center">
-                            <TableCellsIcon v-if="viewMode === 'card'" class="w-5 h-5" />
-                            <RectangleStackIcon v-else class="w-5 h-5" />
+                    <div class="flex gap-3 w-full lg:w-auto">
+                        <Button @click="toggleView" variant="outline"
+                            class="bg-transparent border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white hover:border-slate-500 transition-all duration-200 flex-1 lg:flex-none">
+                            <Table v-if="viewMode === 'card'" class="w-4 h-4 mr-2" />
+                            <LayoutGrid v-else class="w-4 h-4 mr-2" />
                             {{ viewMode === 'card' ? 'Table View' : 'Card View' }}
-                        </button>
-                        <button @click="showAddEvent = true"
-                            class="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-lg transition-all duration-200 shadow-lg hover:shadow-indigo-500/25 flex-1 sm:flex-none justify-center">
-                            <PlusIcon class="w-5 h-5" />
+                        </Button>
+                        <Button @click="showAddEvent = true"
+                            class="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200 flex-1 lg:flex-none">
+                            <Plus class="w-4 h-4 mr-2" />
                             New Event
-                        </button>
+                        </Button>
                     </div>
                 </div>
             </div>
 
             <!-- Search and Filter Section -->
             <div class="mb-8">
-                <div class="flex flex-col lg:flex-row gap-4">
-                    <SmartSearch :data="events" :queries="['name', 'description', 'eventId']" :sorted-by="'startDate'"
-                        :secondary-sort="'status'" :preserve-case="false" @update:results="filteredEvents = $event"
-                        :filter-key="'status'" :filter-value="filterStatus" placeholder="Search events by name or description..." />
+                <div
+                    class="bg-gradient-to-r from-slate-800/50 to-slate-900/50 backdrop-blur-sm border border-slate-700/50 rounded-xl p-4 lg:p-6">
+                    <div class="flex flex-col lg:flex-row gap-4">
+                        <div class="flex-1">
+                            <SmartSearch :data="events" :queries="['name', 'description', 'eventId']"
+                                :sorted-by="'startDate'" :secondary-sort="'status'" :preserve-case="false"
+                                @update:results="filteredEvents = $event" :filter-key="'status'"
+                                :filter-value="filterStatus" placeholder="Search events by name or description..." />
+                        </div>
 
-                    <div class="flex gap-3">
-                        <SmartInput v-model="filterStatus" type="select" class="min-w-36" :options="[
-                            { label: 'All', value: 'all' },
-                            { label: 'Active', value: 'active' },
-                            { label: 'Upcoming', value: 'upcoming' },
-                            { label: 'Completed', value: 'completed' }
-                        ]" placeholder="Filter status" />
+                        <div class="flex gap-3">
+                            <SmartInput v-model="filterStatus" type="select" class="min-w-36" :options="[
+                                { label: 'All', value: 'all' },
+                                { label: 'Active', value: 'active' },
+                                { label: 'Upcoming', value: 'upcoming' },
+                                { label: 'Completed', value: 'completed' }
+                            ]" placeholder="Filter status" />
+                        </div>
                     </div>
                 </div>
             </div>
 
             <!-- Content Section -->
-            <div v-if="loading" class="flex justify-center items-center py-20">
-                <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+            <div v-if="loading"
+                class="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm border border-slate-700/50 rounded-xl p-12 text-center">
+                <div class="max-w-md mx-auto">
+                    <div
+                        class="w-16 h-16 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-full mx-auto mb-4 flex items-center justify-center">
+                        <div class="animate-spin w-8 h-8 border-3 border-white border-t-transparent rounded-full"></div>
+                    </div>
+                    <h3 class="text-xl font-semibold text-white mb-2">Loading Events</h3>
+                    <p class="text-slate-400">Fetching your event data...</p>
+                </div>
             </div>
 
-            <div v-else-if="filteredEvents.length === 0" class="bg-gray-800 rounded-lg p-12 text-center">
-                <CalendarDaysIcon class="h-12 w-12 mx-auto text-gray-500 block mb-4" />
-                <h3 class="text-xl text-white font-medium mb-2">No events found</h3>
-                <p class="text-gray-400 mb-6">
-                    {{ searchQuery || filterStatus !== 'all'
-                        ? 'Try adjusting your search or filters.'
-                        : 'Get started by creating your first event.'
-                    }}
-                </p>
-                <Button @click="showAddEvent = true" class="bg-indigo-600 hover:bg-indigo-700 text-white">
-                    <span class="i-lucide-plus-circle mr-2"></span>
-                    Create New Event
-                </Button>
+            <div v-else-if="filteredEvents.length === 0"
+                class="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm border border-slate-700/50 rounded-xl p-12 text-center">
+                <div class="max-w-md mx-auto">
+                    <div class="w-16 h-16 bg-slate-700/50 rounded-full mx-auto mb-4 flex items-center justify-center">
+                        <Calendar class="w-8 h-8 text-slate-500" />
+                    </div>
+                    <h3 class="text-xl font-semibold text-white mb-2">No events found</h3>
+                    <p class="text-slate-400 mb-6">
+                        {{ searchQuery || filterStatus !== 'all'
+                            ? 'Try adjusting your search or filters.'
+                            : 'Get started by creating your first event.'
+                        }}
+                    </p>
+                    <Button @click="showAddEvent = true"
+                        class="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200">
+                        <Plus class="w-4 h-4 mr-2" />
+                        Create New Event
+                    </Button>
+                </div>
             </div>
 
-            <div v-else>
+            <div v-else class="space-y-6">
                 <!-- Card View -->
                 <div v-if="viewMode === 'card'" class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     <TransitionGroup name="card-fade">
@@ -72,18 +95,20 @@
                 </div>
 
                 <!-- Table View -->
-                <div v-else class="bg-gray-800 rounded-lg overflow-hidden border border-gray-700">
+                <div v-else
+                    class="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm border border-slate-700/50 rounded-xl overflow-hidden shadow-2xl">
                     <EventTable :events="filteredEvents" @edit="editEvent" @delete="confirmDelete" />
                 </div>
 
                 <!-- Results Summary -->
-                <div class="mt-6 flex justify-between items-center text-sm text-gray-400">
-                    <div>
-                        Showing {{ filteredEvents.length }} of {{ events.length }} events
+                <div
+                    class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-sm text-slate-400 bg-slate-800/30 backdrop-blur-sm border border-slate-700/30 rounded-xl p-4">
+                    <div class="flex items-center space-x-2">
+                        <span>Showing {{ filteredEvents.length }} of {{ events.length }} events</span>
                     </div>
-                    <div v-if="searchQuery || filterStatus !== 'all'" class="text-indigo-400">
-                        <span class="i-lucide-filter mr-1"></span>
-                        Filtered results
+                    <div v-if="searchQuery || filterStatus !== 'all'" class="flex items-center space-x-2 text-cyan-400">
+                        <Filter class="w-4 h-4" />
+                        <span>Filtered results</span>
                     </div>
                 </div>
             </div>
@@ -100,7 +125,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import { CalendarDaysIcon, PlusIcon, TableCellsIcon, RectangleStackIcon } from '@heroicons/vue/24/outline'
+import { Calendar, Plus, Table, LayoutGrid, Filter } from 'lucide-vue-next'
 import { useEventCollection } from '@/composables/topheroes/admin/useEventCollection'
 import EventCard from '@/components/velaris/EventCard.vue'
 import EventTable from '@/components/velaris/EventTable.vue'
@@ -202,5 +227,15 @@ watch(events, () => {
 
 .card-fade-move {
     transition: transform 0.3s ease;
+}
+
+/* Glass morphism effect */
+.backdrop-blur-sm {
+    backdrop-filter: blur(4px);
+}
+
+/* Consistent border width for loading spinners */
+.border-3 {
+    border-width: 3px;
 }
 </style>

@@ -11,7 +11,7 @@
             <Tooltip v-if="hint">
                 <TooltipTrigger as-child>
                     <div class="absolute top-1/2 right-2 -translate-y-1/2">
-                        <InfoIcon class="w-4 h-4 text-gray-400 hover:text-teal-500 transition" />
+                        <Info class="w-4 h-4 text-gray-400 hover:text-teal-500 transition" />
                     </div>
                 </TooltipTrigger>
                 <TooltipContent>{{ hint }}</TooltipContent>
@@ -50,7 +50,7 @@
                             {{ selectedLabels.length > 0 ? selectedLabels.join(', ') : (placeholder || 'Select options')
                             }}
                         </span>
-                        <ChevronDownIcon class="w-4 h-4 ml-2" />
+                        <ChevronDown class="w-4 h-4 ml-2" />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
                         <DropdownMenuCheckboxItem v-for="opt in options" :key="opt.value"
@@ -69,7 +69,7 @@
 
                 <button v-if="clearable && modelValueLocal && !disabled && type !== 'select'"
                     class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500" @click="clear">
-                    &times;
+                    <X class="w-4 h-4" />
                 </button>
             </div>
 
@@ -91,7 +91,7 @@ import {
 import {
     Tooltip, TooltipTrigger, TooltipContent
 } from '@/components/ui/tooltip'
-import { InfoIcon, ChevronDownIcon } from 'lucide-vue-next'
+import { Info, ChevronDown, X } from 'lucide-vue-next'
 
 const props = defineProps({
     modelValue: [String, Number, Date, Array],

@@ -22,3 +22,5 @@ export { wordleGenerateCron, wordleGenerateNow } from './dailyGames/wordleGenera
 export { getWordleUnlimitedWords, submitWordleUnlimitedGame, adminGenerateWordleWords } from './dailyGames/wordleUnlimited.mjs'
 export { getDailyConnections, saveConnectionsProgress, submitConnectionsOutcome } from './dailyGames/connections.mjs'
 export { connectionsGenerateCron, connectionsGenerateNow } from './dailyGames/connectionsGenerate.mjs'
+export { getDailyFlagle, saveFlagleProgress, submitFlagleOutcome } from './dailyGames/flagle.mjs'
+export { flagleGenerateCron, flagleGenerateNow } from './dailyGames/flagleGenerate.mjs'

@@ -258,8 +258,7 @@
         </div>
 
         <!-- Game view -->
-        <div v-if="openGame"
-          class="w-full max-w-5xl mx-auto transition-all duration-300">
+        <div v-if="openGame" class="w-full max-w-5xl mx-auto transition-all duration-300">
           <!-- Unauthorized state for Wordle Unlimited -->
           <div v-if="openGame === 'wordle-unlimited' && !canPlayWordleUnlimited"
             class="rounded-2xl border border-zinc-700/80 bg-gradient-to-br from-zinc-800/60 to-zinc-900/40 backdrop-blur-sm p-6 shadow-2xl shadow-black/20">
@@ -585,13 +584,54 @@ async function onShare() {
   }
 }
 
-/* Components by id */
 const gameComponents = {
   connections: defineAsyncComponent(() => import('@/components/mxn/dailyGames/ConnectionsGame.vue')),
-  flag: defineAsyncComponent(() => import('@/components/mxn/dailyGames/FlagGame.vue')),
+  flag: defineAsyncComponent(() => import('@/components/mxn/dailyGames/FlagGame.vue')), // Add this line
   trivia: defineAsyncComponent(() => import('@/components/mxn/dailyGames/TriviaGame.vue')),
   sequence: defineAsyncComponent(() => import('@/components/mxn/dailyGames/SequenceGame.vue')),
   memory: defineAsyncComponent(() => import('@/components/mxn/dailyGames/MemoryGame.vue')),
+}
+
+// Also import the FlagleStore at the top of the script:
+import { useFlagleStore } from '@/stores/dailyGames/useFlagleStore'
+
+// And create a store instance:
+const flagleStore = useFlagleStore()
+
+// In the selectGame function, add initialization for flag game:
+async function selectGame(gameId) {
+  const game = availableGames.value.find(g => g.id === gameId)
+  if (game?.comingSoon) return
+
+  const url = new URL(window.location)
+  url.searchParams.set('game', gameId)
+  window.history.replaceState({}, '', url)
+
+  loadingGame.value = true
+  openGame.value = gameId
+
+  try {
+    if (gameId === 'wordle') {
+      if (!wordleStore.puzzleId) {
+        await wordleStore.loadDaily(true)
+      }
+    } else if (gameId === 'wordle-unlimited') {
+      if (!wordleUnlimitedStore.initialized) {
+        await wordleUnlimitedStore.initialize()
+      }
+    } else if (gameId === 'flag') {  // Add this block
+      if (!flagleStore.puzzleId) {
+        await flagleStore.loadDaily(true)
+      }
+      currentGameComponent.value = gameComponents.flag
+    } else {
+      currentGameComponent.value = gameComponents[gameId] || null
+    }
+  } catch (error) {
+    console.error('Error loading game:', error)
+  } finally {
+    loadingGame.value = false
+  }
 }
 
 /* Game list */
@@ -612,15 +652,14 @@ const dailyGames = ref([
     unlockCondition: () => wordleStore.status === 'won' || wordleStore.status === 'lost'
   },
   {
+    id: 'flag', name: 'Flagle', description: 'Identify countries by their flags', icon: Flag,
+    iconBg: 'bg-gradient-to-br from-amber-600/20 to-amber-500/20 ring-1 ring-amber-500/30',
+    gradient: 'from-amber-600/10 to-transparent'
+  },
+  {
     id: 'connections', name: 'Connections', description: 'Find groups of 4 related words', icon: LinkIcon,
     iconBg: 'bg-gradient-to-br from-violet-600/20 to-violet-500/20 ring-1 ring-violet-500/30',
     gradient: 'from-violet-600/10 to-transparent',
-    comingSoon: true
-  },
-  {
-    id: 'flag', name: 'Flag Quest', description: 'Identify countries by their flags', icon: Flag,
-    iconBg: 'bg-gradient-to-br from-blue-600/20 to-blue-500/20 ring-1 ring-blue-500/30',
-    gradient: 'from-blue-600/10 to-transparent',
     comingSoon: true
   },
   {
@@ -711,36 +750,6 @@ function goToWordleUnlimited() {
   }
 }
 
-async function selectGame(gameId) {
-  const game = availableGames.value.find(g => g.id === gameId)
-  if (game?.comingSoon) return
-
-  const url = new URL(window.location)
-  url.searchParams.set('game', gameId)
-  window.history.replaceState({}, '', url)
-
-  loadingGame.value = true
-  openGame.value = gameId
-
-  try {
-    if (gameId === 'wordle') {
-      if (!wordleStore.puzzleId) {
-        await wordleStore.loadDaily(true)
-      }
-    } else if (gameId === 'wordle-unlimited') {
-      if (!wordleUnlimitedStore.initialized) {
-        await wordleUnlimitedStore.initialize()
-      }
-    } else {
-      currentGameComponent.value = gameComponents[gameId] || null
-    }
-  } catch (error) {
-    console.error('Error loading game:', error)
-  } finally {
-    loadingGame.value = false
-  }
-}
-
 function closeGame() {
   const url = new URL(window.location)
   url.searchParams.delete('game')
@@ -756,6 +765,8 @@ function getGameStatus(gameId) {
     return wordleStore.status || dailyStore.getGameStatus(gameId)
   } else if (gameId === 'wordle-unlimited') {
     return wordleUnlimitedStore.status || 'not-started'
+  } else if (gameId === 'flag') {  // Add this
+    return flagleStore.status || dailyStore.getGameStatus(gameId)
   }
   return dailyStore.getGameStatus(gameId)
 }
@@ -844,6 +855,14 @@ function getGameStatsClasses(gameId) {
         text: 'text-cyan-300',
         label: 'text-cyan-200/70'
       }
+    case 'flag':
+      return {
+        bg: 'bg-gradient-to-br from-amber-950/60 to-amber-900/40',
+        border: 'border-amber-700/50',
+        shadow: 'shadow-amber-500/10',
+        text: 'text-amber-300',
+        label: 'text-amber-200/70'
+      }
     case 'connections':
       return {
         bg: 'bg-gradient-to-br from-slate-800/80 to-slate-900/60',
@@ -867,14 +886,14 @@ function getCardClasses(game) {
   const baseClasses = [
     'border-zinc-700/80',
     'hover:translate-y-[-4px]',
-    'hover:shadow-2xl'
+    'hover:shadow-2xl',
+    'transition-all', 'duration-300',
   ]
 
   if (game.comingSoon || game.locked) {
     baseClasses.push('opacity-50', 'cursor-not-allowed')
   }
 
-  // Game-specific styling
   switch (game.id) {
     case 'wordle':
       baseClasses.push(
@@ -890,6 +909,13 @@ function getCardClasses(game) {
         'hover:border-cyan-500/70', 'hover:shadow-cyan-500/25'
       )
       break
+    case 'flag':
+      baseClasses.push(
+        'bg-gradient-to-br', 'from-amber-950/40', 'to-amber-900/20',
+        'hover:from-amber-900/60', 'hover:to-amber-800/40',
+        'hover:border-amber-500/70', 'hover:shadow-amber-500/25'
+      )
+      break
     case 'connections':
       baseClasses.push(
         'bg-gradient-to-br', 'from-violet-950/40', 'to-violet-900/20',
@@ -897,7 +923,6 @@ function getCardClasses(game) {
         'hover:border-violet-500/70', 'hover:shadow-violet-500/25'
       )
       break
-    // Add other game styles...
   }
 
   return baseClasses
@@ -939,6 +964,9 @@ onMounted(async () => {
     // Initialize stores FIRST and wait for completion
     wordleStore.initAuthListener()
     await wordleStore.loadDaily(true)
+
+    flagleStore.initAuthListener()  // Add this
+
     await dailyStore.initializeGames()
 
     // THEN handle URL params after stores are ready
