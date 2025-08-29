@@ -1,9 +1,9 @@
-// src/stores/dailyGames/useConnectionsStore.js
+// src/stores/dailyGames/useConnectionsStore.js - Refactored with separate animation methods
 import { defineStore } from 'pinia';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import { firestore } from '@/firebase';
-import { doc, onSnapshot, getDoc } from 'firebase/firestore';
+import { doc, onSnapshot, getDoc, setDoc } from 'firebase/firestore';
 import { useDailyStore } from '../useDailyStore';
 
 const REGION = 'australia-southeast2';
@@ -35,9 +35,10 @@ export const useConnectionsStore = defineStore('connections', {
         _lastLoadTime: null,
         _profileUnsubscribe: null,
 
-        // Puzzle data
+        // Cached puzzle data (persisted until rollover)
         puzzleId: null,
         groups: null, // Will contain easy, medium, hard, expert arrays
+        categories: null, // Will contain the actual group titles
         rolloverAt: null,
 
         // Game state per day
@@ -138,26 +139,118 @@ export const useConnectionsStore = defineStore('connections', {
                                 totalPlays: data.totalPlays || 0,
                                 winPercentage: data.totalPlays ? Math.round((data.wins / data.totalPlays) * 100) : 0,
                                 gamesPlayed: data.totalPlays || 0,
-                                lastPlayedUTC: data.lastPlayedUTC || null
+                                lastPlayedUTC: data.lastPlayedUTC || null,
+                                perfectGames: data.perfectGames || 0,
+                                averageMistakes: data.averageMistakes || 0
                             };
                             this._syncWithDailyStore();
                         }
                     });
 
-                    // Load today's game state if we have a puzzle
-                    if (this.puzzleId) {
-                        const date = this.puzzleId.replace('connections-', '');
-                        const dayRef = doc(firestore, 'users', user.uid, 'dailyChallenges', 'connections', 'days', date);
-                        const daySnap = await getDoc(dayRef);
-                        if (daySnap.exists()) {
-                            const userState = daySnap.data();
-                            this._restoreUserState(date, userState);
-                        }
+                    // Reconcile state with cloud if we have today's groups
+                    if (this.puzzleId && this.groups) {
+                        await this._reconcileCloudState(user.uid);
                     }
                 } else {
                     this.profile = null;
                 }
             });
+        },
+
+        async _reconcileCloudState(uid) {
+            if (!this.puzzleId || !this.groups) return;
+
+            const date = this.puzzleId.replace('connections-', '');
+            const dayRef = doc(firestore, 'users', uid, 'dailyChallenges', 'connections', 'days', date);
+            const daySnap = await getDoc(dayRef);
+
+            if (daySnap.exists()) {
+                const cloudState = daySnap.data();
+
+                this._ensureDay(date);
+                const localState = this.days[date];
+                const localProgress = localState.foundGroups?.length || 0;
+                const cloudProgress = cloudState.foundGroups?.length || 0;
+
+                // Take whichever has more progress
+                if (cloudProgress > localProgress) {
+                    // Convert attempts map back to array format
+                    let attemptsArray = [];
+                    if (cloudState.attempts && typeof cloudState.attempts === 'object') {
+                        // Sort by attempt number and convert to array
+                        const attemptKeys = Object.keys(cloudState.attempts).sort((a, b) => {
+                            const numA = parseInt(a.replace('attempt_', ''));
+                            const numB = parseInt(b.replace('attempt_', ''));
+                            return numA - numB;
+                        });
+                        attemptsArray = attemptKeys.map(key => cloudState.attempts[key]);
+                    }
+
+                    // Ensure found groups have titles (add fallback if missing)
+                    const foundGroupsWithTitles = (cloudState.foundGroups || []).map(group => ({
+                        difficulty: group.difficulty,
+                        words: group.words,
+                        title: group.title || this._getDefaultTitle(group.difficulty),
+                        foundAt: group.foundAt || Date.now()
+                    }));
+
+                    this.days[date] = {
+                        selected: [],
+                        foundGroups: foundGroupsWithTitles,
+                        mistakes: cloudState.mistakes || 0,
+                        attempts: attemptsArray,
+                        status: cloudState.outcome === 'win' ? 'won' :
+                            cloudState.outcome === 'loss' ? 'lost' : 'idle',
+                        boardWords: localState.boardWords || [] // Keep existing board
+                    };
+                } else if (localProgress > cloudProgress) {
+                    // Local is ahead - sync to cloud in background
+                    this._saveStateToCloud(uid, date, true);
+                }
+            }
+        },
+
+        async _saveStateToCloud(uid, date, isBackground = false) {
+            if (!uid) return;
+
+            try {
+                const dayState = this.days[date];
+                if (!dayState) return;
+
+                const dayRef = doc(firestore, 'users', uid, 'dailyChallenges', 'connections', 'days', date);
+                const outcome = dayState.status === 'won' ? 'win' :
+                    dayState.status === 'lost' ? 'loss' : 'in_progress';
+
+                // Clean the data for Firestore - only serialize safe properties
+                const foundGroupsClean = (dayState.foundGroups || []).map(group => ({
+                    difficulty: group.difficulty,
+                    words: group.words,
+                    title: group.title || this._getDefaultTitle(group.difficulty),
+                    foundAt: group.foundAt || Date.now()
+                }));
+
+                // Convert attempts array-of-arrays to map-of-arrays for Firestore
+                const attemptsMap = {};
+                if (Array.isArray(dayState.attempts)) {
+                    dayState.attempts.forEach((attempt, index) => {
+                        if (Array.isArray(attempt)) {
+                            attemptsMap[`attempt_${index + 1}`] = attempt;
+                        }
+                    });
+                }
+
+                await setDoc(dayRef, {
+                    foundGroups: foundGroupsClean,
+                    mistakes: dayState.mistakes || 0,
+                    attempts: attemptsMap,
+                    outcome,
+                    updatedAt: new Date().toISOString()
+                }, { merge: true });
+
+            } catch (error) {
+                if (!isBackground) throw error;
+                console.warn('Background save failed:', error);
+            }
         },
 
         _syncWithDailyStore() {
@@ -171,25 +264,6 @@ export const useConnectionsStore = defineStore('connections', {
             }
         },
 
-        _restoreUserState(date, userState) {
-            this._ensureDay(date);
-
-            if (userState.foundGroups) {
-                this.days[date].foundGroups = userState.foundGroups;
-            }
-            if (typeof userState.mistakes === 'number') {
-                this.days[date].mistakes = userState.mistakes;
-            }
-            if (userState.attempts) {
-                this.days[date].attempts = userState.attempts;
-            }
-            if (userState.outcome === 'win') {
-                this.days[date].status = 'won';
-            } else if (userState.outcome === 'loss') {
-                this.days[date].status = 'lost';
-            }
-        },
-
         async loadDaily(preferServer = false) {
             const now = Date.now();
 
@@ -199,7 +273,7 @@ export const useConnectionsStore = defineStore('connections', {
                 this.rolloverAt &&
                 now < Date.parse(this.rolloverAt) &&
                 this._lastLoadTime &&
-                (now - this._lastLoadTime) < 60000 && // 1 minute cache
+                (now - this._lastLoadTime) < 300000 && // 5 minute cache
                 !preferServer;
 
             if (cacheValid) {
@@ -226,18 +300,18 @@ export const useConnectionsStore = defineStore('connections', {
             try {
                 const call = httpsCallable(functions(), 'getDailyConnections');
                 const { data } = await call({});
-                const { puzzleId, packet, userState, rolloverAt } = data;
 
-                this.puzzleId = puzzleId;
-                this.groups = packet?.answer || null;
-                this.rolloverAt = rolloverAt;
-                this.isLocked = rolloverAt ? (Date.now() >= Date.parse(rolloverAt)) : false;
+                this.puzzleId = data.puzzleId;
+                this.groups = data.answer || null;
+                this.categories = data.categories || null;
+                this.rolloverAt = data.rolloverAt;
+                this.isLocked = data.rolloverAt ? (Date.now() >= Date.parse(data.rolloverAt)) : false;
                 this._lastLoadTime = Date.now();
 
-                const date = puzzleId.replace('connections-', '');
+                const date = this.puzzleId.replace('connections-', '');
                 this._ensureDay(date);
 
-                // Create shuffled board of all words
+                // Create shuffled board of all words if not exists
                 if (this.groups && (!this.days[date].boardWords || this.days[date].boardWords.length === 0)) {
                     const allWords = [
                         ...this.groups.easy,
@@ -248,20 +322,10 @@ export const useConnectionsStore = defineStore('connections', {
                     this.days[date].boardWords = shuffleArray(allWords);
                 }
 
+                // If user is logged in, reconcile state
                 const auth = getAuth();
-                const loggedIn = !!auth.currentUser;
-
-                if (loggedIn && userState) {
-                    // Merge server state with local state
-                    const serverFoundCount = userState.foundGroups?.length || 0;
-                    const localFoundCount = this.days[date].foundGroups?.length || 0;
-
-                    if (serverFoundCount > localFoundCount || preferServer) {
-                        this._restoreUserState(date, userState);
-                    } else if (localFoundCount > serverFoundCount) {
-                        // Save local progress to server
-                        await this._saveProgress();
-                    }
+                if (auth.currentUser) {
+                    await this._reconcileCloudState(auth.currentUser.uid);
                 }
 
                 this._syncWithDailyStore();
@@ -303,11 +367,13 @@ export const useConnectionsStore = defineStore('connections', {
             this.days[date].selected = [];
         },
 
-        async submitGuess() {
-            if (!this.canSubmit) return;
+        // Check a guess without updating the store state
+        async checkGuess(selectedWords) {
+            if (selectedWords.length !== 4) {
+                return { result: 'invalid', message: 'Must select exactly 4 words' };
+            }
 
-            const date = this.puzzleId.replace('connections-', '');
-            const guess = [...this.selected].sort(); // Sort for consistent comparison
+            const guess = [...selectedWords].sort();
 
             // Check if already attempted
             const previousAttempts = this.attempts.map(a => [...a].sort().join(','));
@@ -315,102 +381,144 @@ export const useConnectionsStore = defineStore('connections', {
                 return { result: 'duplicate', message: 'Already tried this combination' };
             }
 
-            // Record attempt
-            this.days[date].attempts = [...this.attempts, guess];
-
             // Check each difficulty group
             for (const difficulty of this.DIFFICULTY_ORDER) {
                 const group = [...this.groups[difficulty]].sort();
                 if (guess.join(',') === group.join(',')) {
-                    // Correct!
-                    const foundGroup = {
-                        difficulty,
-                        words: this.groups[difficulty],
-                        foundAt: Date.now()
+                    // Correct! Get the actual category title
+                    const actualTitle = this.categories?.[difficulty] || this._getDefaultTitle(difficulty);
+
+                    return {
+                        result: 'correct',
+                        group: {
+                            difficulty,
+                            words: this.groups[difficulty],
+                            title: actualTitle,
+                            foundAt: Date.now()
+                        }
                     };
-
-                    this.days[date].foundGroups = [...this.foundGroups, foundGroup];
-                    this.days[date].selected = [];
-
-                    // Check if game is won
-                    if (this.days[date].foundGroups.length === 4) {
-                        this.days[date].status = 'won';
-                        await this._finalize();
-                    } else {
-                        await this._saveProgress();
-                    }
-
-                    return { result: 'correct', difficulty, group: foundGroup };
                 }
             }
 
             // Check for "one away" (3 out of 4 correct)
-            let oneAwayDifficulty = null;
             for (const difficulty of this.DIFFICULTY_ORDER) {
                 const group = this.groups[difficulty];
                 const intersection = guess.filter(word => group.includes(word));
                 if (intersection.length === 3) {
-                    oneAwayDifficulty = difficulty;
-                    break;
+                    return { result: 'one-away', message: 'One away!' };
                 }
-            }
-
-            // Incorrect
-            this.days[date].mistakes++;
-            this.days[date].selected = [];
-
-            if (this.days[date].mistakes >= this.MAX_MISTAKES) {
-                this.days[date].status = 'lost';
-                await this._finalize();
-                return { result: 'lost' };
-            }
-
-            await this._saveProgress();
-
-            if (oneAwayDifficulty) {
-                return { result: 'one-away', message: 'One away!' };
             }
 
             return { result: 'incorrect' };
         },
 
-        async _saveProgress() {
-            const auth = getAuth();
-            if (!auth.currentUser) return;
+        // Apply a correct guess to the store state
+        async applyCorrectGuess(group) {
+            const date = this.puzzleId.replace('connections-', '');
+            this._ensureDay(date);
 
+            // Add to found groups
+            this.days[date].foundGroups = [...this.foundGroups, group];
+
+            // Clear selection
+            this.days[date].selected = [];
+
+            // Record the attempt
+            const guess = [...group.words].sort();
+            this.days[date].attempts = [...this.attempts, guess];
+
+            // Update status
+            if (this.days[date].foundGroups.length === 4) {
+                this.days[date].status = 'won';
+                await this._submitCompletion();
+            }
+
+            // Save to cloud in background
+            const auth = getAuth();
+            if (auth.currentUser) {
+                this._saveStateToCloud(auth.currentUser.uid, date, true);
+            }
+        },
+
+        // Apply an incorrect guess to the store state
+        async applyIncorrectGuess(selectedWords) {
+            const date = this.puzzleId.replace('connections-', '');
+            const guess = [...selectedWords].sort();
+
+            // Record attempt
+            this.days[date].attempts = [...this.attempts, guess];
+
+            // Increment mistakes
+            this.days[date].mistakes++;
+
+            // Clear selection
+            this.days[date].selected = [];
+
+            // Check if game is lost
+            if (this.days[date].mistakes >= this.MAX_MISTAKES) {
+                this.days[date].status = 'lost';
+                await this._submitCompletion();
+                return { result: 'lost' };
+            }
+
+            // Save to cloud in background
+            const auth = getAuth();
+            if (auth.currentUser) {
+                this._saveStateToCloud(auth.currentUser.uid, date, true);
+            }
+
+            return { result: 'incorrect' };
+        },
+
+        // Legacy method for non-animated guesses
+        async submitGuess() {
+            if (!this.canSubmit) return;
+
+            const selectedWords = [...this.selected];
+            const result = await this.checkGuess(selectedWords);
+
+            switch (result.result) {
+                case 'correct':
+                    await this.applyCorrectGuess(result.group);
+                    return result;
+
+                case 'one-away':
+                    await this.applyIncorrectGuess(selectedWords);
+                    return result;
+
+                case 'incorrect':
+                    return await this.applyIncorrectGuess(selectedWords);
+
+                case 'duplicate':
+                    return result;
+
+                default:
+                    return result;
+            }
+        },
+
+        _getDefaultTitle(difficulty) {
+            const titles = {
+                easy: 'STRAIGHTFORWARD',
+                medium: 'CATEGORIES',
+                hard: 'WORDPLAY',
+                expert: 'TRICKY'
+            };
+            return titles[difficulty] || difficulty.toUpperCase();
+        },
+
+        async _submitCompletion() {
             try {
-                const call = httpsCallable(functions(), 'saveConnectionsProgress');
+                const call = httpsCallable(functions(), 'submitConnectionsCompletion');
                 await call({
                     puzzleId: this.puzzleId,
                     foundGroups: this.foundGroups,
                     mistakes: this.mistakes,
-                    attempts: this.attempts
+                    attempts: this.attempts,
+                    outcome: this.status === 'won' ? 'win' : 'loss'
                 });
             } catch (error) {
-                console.error('Error saving progress:', error);
-            }
-        },
-
-        async _finalize() {
-            try {
-                const call = httpsCallable(functions(), 'submitConnectionsOutcome');
-                const { data } = await call({
-                    puzzleId: this.puzzleId,
-                    foundGroups: this.foundGroups,
-                    mistakes: this.mistakes,
-                    attempts: this.attempts
-                });
-
-                if (data?.outcome) {
-                    const date = this.puzzleId.replace('connections-', '');
-                    this.days[date].status = data.outcome === 'win' ? 'won' : 'lost';
-                    this.days[date].completedAt = Date.now();
-                }
-
-                // Profile will update via listener
-
-            } catch (error) {
-                console.error('Error finalizing game:', error);
+                console.error('Error submitting completion:', error);
             }
         },
 
@@ -471,7 +579,7 @@ export const useConnectionsStore = defineStore('connections', {
 
     persist: {
         key: 'mxn:daily:connections',
-        paths: ['days', 'lastSeenDate', 'profile'],
+        paths: ['days', 'lastSeenDate', 'profile', 'puzzleId', 'groups', 'categories', 'rolloverAt'],
         storage: localStorage
     }
 });

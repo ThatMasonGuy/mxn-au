@@ -660,7 +660,6 @@ const dailyGames = ref([
     id: 'connections', name: 'Connections', description: 'Find groups of 4 related words', icon: LinkIcon,
     iconBg: 'bg-gradient-to-br from-violet-600/20 to-violet-500/20 ring-1 ring-violet-500/30',
     gradient: 'from-violet-600/10 to-transparent',
-    comingSoon: true
   },
   {
     id: 'trivia', name: 'Quick Quiz', description: 'Test your general knowledge', icon: HelpCircle,
@@ -773,7 +772,7 @@ function getGameStatus(gameId) {
 
 function getStreak(gameId) {
   if (gameId === 'wordle-unlimited') {
-    return wordleUnlimitedStore.currentStreak || 0
+    return dailyStore.wordleUnlimitedStats?.currentStreak || 0
   }
   const stats = dailyStore.getStatsFor(gameId)
   return stats?.currentStreak ?? 0

@@ -84,6 +84,38 @@ export default [
         },
     },
     {
+        path: '/personal/kanban',
+        name: 'PersonalKanban',
+        component: () => import('@/pages/personal/Kanban.vue'),
+        meta: {
+            requiresAuth: true,
+            role: null,
+            title: 'Kanban Boards',
+            drawerRanking: 5,
+            drawerVisible: true,
+            layout: 'default',
+            description: 'Organize tasks with kanban boards.',
+            badge: '',
+            requiresOverlay: false,
+        },
+    },
+    {
+        path: '/personal/kanban/board/:boardId',
+        name: 'PersonalKanbanBoard',
+        component: () => import('@/components/personal/kanban/Board.vue'),
+        meta: {
+            requiresAuth: true,
+            role: null,
+            title: 'Kanban Board',
+            drawerRanking: -1, // Hide from drawer
+            drawerVisible: false,
+            layout: 'default',
+            description: 'View and manage kanban board.',
+            badge: '',
+            requiresOverlay: false,
+        },
+    },
+    {
         path: '/personal/usage',
         name: 'PersonalUsage',
         component: () => import('@/pages/personal/Usage.vue'),

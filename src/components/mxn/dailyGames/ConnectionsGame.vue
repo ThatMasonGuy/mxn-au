@@ -27,72 +27,56 @@
             <!-- Found groups -->
             <TransitionGroup name="found-group" tag="div" class="space-y-2">
                 <div v-for="group in store.foundGroups" :key="group.difficulty"
-                    class="found-group rounded-xl p-4 border backdrop-blur-sm" :class="[
+                    class="found-group rounded-lg p-4 border backdrop-blur-sm" :class="[
                         store.DIFFICULTY_COLORS[group.difficulty].bg,
                         store.DIFFICULTY_COLORS[group.difficulty].border
                     ]">
                     <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-3">
-                            <div class="text-xs uppercase tracking-wider opacity-75"
+                        <div>
+                            <div class="text-xs uppercase tracking-wider font-semibold mb-1"
                                 :class="store.DIFFICULTY_COLORS[group.difficulty].text">
-                                {{ group.difficulty }}
+                                {{ group.title }}
                             </div>
-                            <div class="flex gap-2 font-semibold"
+                            <div class="flex gap-2 text-sm font-medium"
                                 :class="store.DIFFICULTY_COLORS[group.difficulty].text">
                                 <span v-for="word in group.words" :key="word">{{ word }}</span>
                             </div>
                         </div>
-                        <CheckCircle2 class="w-5 h-5 opacity-50" />
+                        <CheckCircle2 class="w-5 h-5 opacity-60" />
                     </div>
                 </div>
             </TransitionGroup>
 
             <!-- Game board -->
-            <div class="grid grid-cols-4 gap-2" :class="{ 'shake-grid': shakeGrid }">
+            <div class="grid grid-cols-4 gap-3" :class="{ 'shake-grid': shakeGrid }">
                 <TransitionGroup name="word-tile" tag="div" class="contents">
                     <button v-for="word in store.availableWords" :key="word" @click="toggleWord(word)"
-                        :disabled="store.isComplete"
-                        class="word-tile relative h-20 rounded-xl font-semibold text-sm transition-all duration-200 transform hover:scale-105"
-                        :class="getWordClasses(word)">
+                        :disabled="store.isComplete || animatingCorrect"
+                        class="word-tile relative h-20 rounded-lg font-semibold text-sm transition-all duration-200 border flex items-center justify-center text-center overflow-hidden"
+                        :class="getWordClasses(word)" :data-word="word">
                         <span class="relative z-10">{{ word }}</span>
 
-                        <!-- Selection glow -->
+                        <!-- Selection glow effect -->
                         <div v-if="store.selected.includes(word)"
-                            class="absolute inset-0 rounded-xl bg-gradient-to-br from-violet-500/30 to-fuchsia-500/30 animate-pulse" />
+                            class="absolute inset-0 rounded-lg bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 border border-violet-400/50" />
                     </button>
                 </TransitionGroup>
-            </div><!-- Game board -->
-<div class="grid grid-cols-4 gap-2" :class="{ 'shake-grid': shakeGrid }">
-  <TransitionGroup name="word-tile" tag="div" class="contents">
-    <button
-      v-for="word in store.availableWords"
-      :key="word"
-      @click="toggleWord(word)"
-      :disabled="store.isComplete"
-      class="word-tile relative h-20 rounded-xl font-semibold text-sm transition-all duration-200 transform hover:scale-105"
-      :class="getWordClasses(word)"
-    >
-      <span class="relative z-10">{{ word }}</span>
-
-      <!-- Selection glow -->
-      <div
-        v-if="store.selected.includes(word)"
-        class="absolute inset-0 rounded-xl bg-gradient-to-br from-violet-500/30 to-fuchsia-500/30 animate-pulse"
-      />
-    </button>
-  </TransitionGroup>
-</div>
-
+            </div>
 
             <!-- Controls -->
             <div class="flex gap-3">
-                <button @click="store.deselectAll()" :disabled="store.selected.length === 0 || store.isComplete"
-                    class="flex-1 px-4 py-3 rounded-xl bg-zinc-800/50 hover:bg-zinc-700/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-semibold text-sm">
+                <button @click="shuffleBoard" :disabled="store.isComplete || animatingCorrect"
+                    class="px-4 py-3 rounded-lg bg-zinc-800/50 hover:bg-zinc-700/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-semibold text-sm">
+                    Shuffle
+                </button>
+                <button @click="store.deselectAll()"
+                    :disabled="store.selected.length === 0 || store.isComplete || animatingCorrect"
+                    class="flex-1 px-4 py-3 rounded-lg bg-zinc-800/50 hover:bg-zinc-700/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-semibold text-sm">
                     Clear Selection
                 </button>
-                <button @click="submitGuess" :disabled="!store.canSubmit"
-                    class="flex-1 px-4 py-3 rounded-xl font-semibold text-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                    :class="store.canSubmit
+                <button @click="submitGuess" :disabled="!store.canSubmit || animatingCorrect"
+                    class="flex-1 px-4 py-3 rounded-lg font-semibold text-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    :class="store.canSubmit && !animatingCorrect
                         ? 'bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white shadow-lg shadow-violet-500/20'
                         : 'bg-zinc-800/50 text-zinc-400'">
                     {{ submitText }}
@@ -101,18 +85,21 @@
 
             <!-- Feedback messages -->
             <Transition name="fade">
-                <div v-if="feedbackMsg" class="text-center py-2 px-4 rounded-xl text-sm font-medium"
+                <div v-if="feedbackMsg" class="text-center py-2 px-4 rounded-lg text-sm font-medium"
                     :class="feedbackClasses">
                     {{ feedbackMsg }}
                 </div>
             </Transition>
 
             <!-- Debug info (dev mode) -->
-            <div v-if="showDebug" class="mt-8 p-4 bg-zinc-900/50 rounded-xl text-xs font-mono">
+            <div v-if="showDebug" class="mt-8 p-4 bg-zinc-900/50 rounded-lg text-xs font-mono">
                 <div class="text-zinc-500 mb-2">Debug (dev mode):</div>
                 <div v-for="(words, difficulty) in store.groups" :key="difficulty" class="mb-1">
                     <span :class="store.DIFFICULTY_COLORS[difficulty].text">{{ difficulty }}:</span>
                     <span class="text-zinc-400 ml-2">{{ words.join(', ') }}</span>
+                </div>
+                <div class="mt-2 text-zinc-500">
+                    Board: {{ store.boardWords.length }} words, Available: {{ store.availableWords.length }} words
                 </div>
             </div>
         </div>
@@ -125,7 +112,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useConnectionsStore } from '@/stores/dailyGames/useConnectionsStore'
 import ConnectionsCompletionOverlay from './components/ConnectionsCompletionOverlay.vue'
 import { CheckCircle2 } from 'lucide-vue-next'
@@ -136,6 +123,7 @@ const shakeGrid = ref(false)
 const feedbackMsg = ref('')
 const feedbackType = ref('info')
 const showCompletionOverlay = ref(false)
+const animatingCorrect = ref(false)
 
 // Show debug in dev mode or with ?dev param
 const showDebug = computed(() => {
@@ -163,25 +151,26 @@ const feedbackClasses = computed(() => {
 
 function getWordClasses(word) {
     const isSelected = store.selected.includes(word)
-    const baseClasses = [
-        'border',
-        'backdrop-blur-sm',
-        'relative',
-        'overflow-hidden'
-    ]
+    const baseClasses = []
 
     if (store.isComplete) {
-        baseClasses.push('opacity-50', 'cursor-not-allowed', 'bg-zinc-800/50', 'border-zinc-700/50')
+        baseClasses.push('opacity-50', 'cursor-not-allowed', 'bg-zinc-800/30', 'border-zinc-700/30', 'text-zinc-500')
     } else if (isSelected) {
+        // Subtle selection styling - no scaling
         baseClasses.push(
-            'bg-gradient-to-br', 'from-violet-800/50', 'to-fuchsia-800/50',
-            'border-violet-500/70', 'text-white', 'shadow-lg', 'shadow-violet-500/20',
-            'scale-105'
+            'bg-violet-600/15',
+            'border-violet-400/70',
+            'text-violet-100',
+            'shadow-lg',
+            'shadow-violet-500/20'
         )
     } else {
         baseClasses.push(
-            'bg-zinc-800/50', 'border-zinc-700/50', 'text-zinc-200',
-            'hover:bg-zinc-700/50', 'hover:border-zinc-600/70'
+            'bg-zinc-800/40',
+            'border-zinc-600/50',
+            'text-zinc-200',
+            'hover:bg-zinc-700/50',
+            'hover:border-zinc-500/70'
         )
     }
 
@@ -189,18 +178,89 @@ function getWordClasses(word) {
 }
 
 function toggleWord(word) {
-    store.toggleWord(word)
+    if (!store.isComplete && !animatingCorrect.value) {
+        store.toggleWord(word)
+    }
+}
+
+function shuffleBoard() {
+    if (store.isComplete || !store.groups || animatingCorrect.value) return
+
+    const availableWords = store.availableWords
+    const shuffled = [...availableWords]
+
+    // Fisher-Yates shuffle
+    for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+    }
+
+    const date = store.puzzleId?.replace('connections-', '') || store.todayDate
+    store._ensureDay(date)
+
+    const foundWords = store.foundGroups.flatMap(g => g.words)
+    store.days[date].boardWords = [...foundWords, ...shuffled]
+}
+
+async function animateCorrectGuess(selectedWords) {
+    animatingCorrect.value = true
+
+    try {
+        const date = store.puzzleId?.replace('connections-', '') || store.todayDate
+        store._ensureDay(date)
+
+        // Step 2: Reorder board to move selected words to top positions (like shuffle)
+        const availableWords = store.availableWords.filter(word => !selectedWords.includes(word))
+        const foundWords = store.foundGroups.flatMap(g => g.words)
+
+        // Put selected words at the beginning of available positions, others follow
+        store.days[date].boardWords = [...foundWords, ...selectedWords, ...availableWords]
+
+        await new Promise(resolve => setTimeout(resolve, 500))
+
+        // Step 3: Fade out the selected words
+        selectedWords.forEach(word => {
+            const element = document.querySelector(`[data-word="${word}"]`)
+            if (element) {
+                element.classList.add('fade-out')
+            }
+        })
+
+        await new Promise(resolve => setTimeout(resolve, 300))
+
+        // Cleanup - remove highlight classes
+        selectedWords.forEach(word => {
+            const element = document.querySelector(`[data-word="${word}"]`)
+            if (element) {
+                element.classList.remove('correct-highlight', 'fade-out')
+            }
+        })
+
+    } catch (error) {
+        console.warn('Animation error:', error)
+    } finally {
+        animatingCorrect.value = false
+    }
 }
 
 async function submitGuess() {
-    if (!store.canSubmit) return
+    if (!store.canSubmit || animatingCorrect.value) return
 
     feedbackMsg.value = ''
-    const result = await store.submitGuess()
+    const selectedWords = [...store.selected]
+
+    // Check the guess without applying the result yet
+    const result = await store.checkGuess(selectedWords)
 
     switch (result.result) {
         case 'correct':
-            feedbackMsg.value = `Found ${result.difficulty} group!`
+            // Animate first, then apply the store update
+            await animateCorrectGuess(selectedWords)
+
+            // Now apply the store update
+            await store.applyCorrectGuess(result.group)
+
+            feedbackMsg.value = `Found ${result.group.title}!`
             feedbackType.value = 'correct'
             setTimeout(() => { feedbackMsg.value = '' }, 2000)
 
@@ -212,6 +272,8 @@ async function submitGuess() {
             break
 
         case 'one-away':
+            // Apply the incorrect guess
+            await store.applyIncorrectGuess(selectedWords)
             feedbackMsg.value = result.message
             feedbackType.value = 'one-away'
             shakeGrid.value = true
@@ -222,28 +284,29 @@ async function submitGuess() {
             break
 
         case 'incorrect':
-            feedbackMsg.value = 'Not quite right'
-            feedbackType.value = 'incorrect'
-            shakeGrid.value = true
-            setTimeout(() => {
-                shakeGrid.value = false
-                feedbackMsg.value = ''
-            }, 1500)
+            const incorrectResult = await store.applyIncorrectGuess(selectedWords)
+            if (incorrectResult.result === 'lost') {
+                feedbackMsg.value = 'Out of guesses!'
+                feedbackType.value = 'incorrect'
+                setTimeout(() => {
+                    showCompletionOverlay.value = true
+                    feedbackMsg.value = ''
+                }, 500)
+            } else {
+                feedbackMsg.value = 'Not quite right'
+                feedbackType.value = 'incorrect'
+                shakeGrid.value = true
+                setTimeout(() => {
+                    shakeGrid.value = false
+                    feedbackMsg.value = ''
+                }, 1500)
+            }
             break
 
         case 'duplicate':
             feedbackMsg.value = result.message
             feedbackType.value = 'info'
             setTimeout(() => { feedbackMsg.value = '' }, 1500)
-            break
-
-        case 'lost':
-            feedbackMsg.value = 'Out of guesses!'
-            feedbackType.value = 'incorrect'
-            setTimeout(() => {
-                showCompletionOverlay.value = true
-                feedbackMsg.value = ''
-            }, 500)
             break
     }
 }
@@ -270,7 +333,6 @@ onMounted(async () => {
     store.initAuthListener()
     await store.loadDaily()
 
-    // Show completion overlay if game is already complete
     if (store.isComplete) {
         setTimeout(() => {
             showCompletionOverlay.value = true
@@ -291,47 +353,47 @@ watch(() => store.status, (newStatus, oldStatus) => {
 </script>
 
 <style scoped>
-/* Found group animations */
+/* Found group animations - simple sliding */
 .found-group-enter-active,
 .found-group-leave-active {
-    transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    transition: all 0.4s ease;
 }
 
 .found-group-enter-from {
     opacity: 0;
-    transform: translateY(-20px) scale(0.8);
+    transform: translateY(-20px);
 }
 
 .found-group-leave-to {
     opacity: 0;
-    transform: translateY(20px) scale(0.8);
+    transform: translateY(20px);
 }
 
 .found-group-move {
-    transition: transform 0.5s ease;
+    transition: transform 0.4s ease;
 }
 
-/* Word tile animations */
+/* Word tile animations - simple sliding */
 .word-tile-enter-active,
 .word-tile-leave-active {
-    transition: all 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .word-tile-enter-from {
     opacity: 0;
-    transform: scale(0);
+    transform: translateY(10px);
 }
 
 .word-tile-leave-to {
     opacity: 0;
-    transform: scale(0) rotate(180deg);
+    transform: translateY(-10px);
 }
 
 .word-tile-move {
-    transition: transform 0.3s ease;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Shake animation */
+/* Enhanced shake animation with less aggressive movement */
 @keyframes shake {
 
     0%,
@@ -344,19 +406,19 @@ watch(() => store.status, (newStatus, oldStatus) => {
     50%,
     70%,
     90% {
-        transform: translateX(-4px);
+        transform: translateX(-2px);
     }
 
     20%,
     40%,
     60%,
     80% {
-        transform: translateX(4px);
+        transform: translateX(2px);
     }
 }
 
 .shake-grid {
-    animation: shake 0.5s ease-in-out;
+    animation: shake 0.4s ease-in-out;
 }
 
 /* Fade animation */
@@ -368,5 +430,48 @@ watch(() => store.status, (newStatus, oldStatus) => {
 .fade-enter-from,
 .fade-leave-to {
     opacity: 0;
+}
+
+/* Word tile improvements */
+.word-tile {
+    min-height: 5rem;
+    word-break: break-word;
+    hyphens: auto;
+    /* Add hardware acceleration for smoother animations */
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    will-change: transform, opacity, background-color, border-color;
+}
+
+/* Prevent layout shifts during animations */
+.grid-cols-4 {
+    /* Ensure grid maintains its structure during animations */
+    align-content: start;
+}
+
+/* Smooth transitions for found groups */
+.found-group {
+    /* Ensure found groups don't cause layout shifts */
+    transform: translateZ(0);
+    backface-visibility: hidden;
+}
+
+/* Prevent pointer events during animations */
+.word-tile:disabled {
+    pointer-events: none;
+}
+
+/* Mobile optimizations */
+@media (max-width: 640px) {
+    .word-tile {
+        min-height: 4rem;
+        font-size: 0.75rem;
+        /* Reduce animation complexity on mobile */
+        will-change: transform, opacity;
+    }
+
+    .grid-cols-4 {
+        gap: 0.5rem;
+    }
 }
 </style>

@@ -136,30 +136,30 @@ async function generatePuzzle(ban) {
             {
                 role: 'user',
                 content: `Create a Connections puzzle with these requirements:
-                
-DIFFICULTY LEVELS:
-- EASY: Obvious connections (colors, animals, common categories)
-- MEDIUM: Clear but requires some thought (movie genres, cooking methods)
-- HARD: Subtle connections or wordplay (words that can follow "fire", homophones)
-- EXPERT: Very tricky, often misleading (words that are also last names, red herrings)
-
-RULES:
-1. Each group must have EXACTLY 4 words
-2. All words must be UPPERCASE, single words (no phrases)
-3. Words should be 3-10 letters long typically
-4. NO word can appear in multiple groups
-5. Include red herrings - words that seem like they could fit in multiple groups
-6. Make expert group especially tricky with words that seem to belong elsewhere
-7. Categories should be interesting and varied
-
-EXCLUDE these already-used words:
-${banList}
-
-Create a clever, challenging puzzle that will make players think!`
+    
+    DIFFICULTY LEVELS:
+    - EASY: Approachable but not trivial. Avoid childish sets like colors, animals, days, chess pieces. Choose categories that are familiar yet not obvious.
+    - MEDIUM: Require reasoning or conceptual links (e.g., cooking techniques, word roots, things tied to classical elements).
+    - HARD: Ambiguous with heavy overlap. Use homonyms, multiple-meaning words, or subtle linguistic patterns. At least half the words here should look like they belong elsewhere.
+    - EXPERT: Devious and abstract. Categories should be indirect (suffix patterns, words with shifting meanings, thematic or hidden connections). Solvable only after identifying easier groups.
+    
+    RULES:
+    1. Each group must have EXACTLY 4 words
+    2. All words must be UPPERCASE, single words (no phrases)
+    3. Words should be 3–10 letters long
+    4. NO word can appear in multiple groups
+    5. At least 10 of the 16 words must feel like they could fit in more than one group (red herrings)
+    6. Make the EXPERT group especially subtle, requiring other groups to fall into place first
+    7. Categories should be clever, elegant, and not just trivia lists
+    
+    EXCLUDE these already-used words:
+    ${banList}
+    
+    Create a clever, challenging puzzle that will truly test experienced players!`
             }
         ],
         temperature: 0.8,
-    })
+    })    
 
     let parsed = {}
     try {

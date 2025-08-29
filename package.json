@@ -53,6 +53,7 @@
     "vue-sonner": "^1.1.2",
     "vue3-grid-layout": "^1.0.0",
     "word-list-json": "^0.2.0",
+    "world-countries": "^5.1.0",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

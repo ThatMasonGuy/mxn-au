@@ -16,11 +16,10 @@ export { getChallenges } from './api/getChallenges.mjs';
 export { aiSuggest } from './api/aiSuggest.mjs';
 // export { rebuildTranslationStats } from './api/rebuildTranslationStats.mjs';
 
-export { getAllDailyStats } from './dailyGames/getAllDailyStats.mjs'
-export { getDailyWordle, saveWordleProgress, submitWordleOutcome } from './dailyGames/wordle.mjs'
+export { getDailyWordle, submitWordleCompletion } from './dailyGames/wordle.mjs'
 export { wordleGenerateCron, wordleGenerateNow } from './dailyGames/wordleGenerate.mjs'
-export { getWordleUnlimitedWords, submitWordleUnlimitedGame, adminGenerateWordleWords } from './dailyGames/wordleUnlimited.mjs'
-export { getDailyConnections, saveConnectionsProgress, submitConnectionsOutcome } from './dailyGames/connections.mjs'
+export { getWordleUnlimitedWords, submitWordleUnlimitedCompletion } from './dailyGames/wordleUnlimited.mjs'
+export { getDailyConnections, submitConnectionsCompletion } from './dailyGames/connections.mjs'
 export { connectionsGenerateCron, connectionsGenerateNow } from './dailyGames/connectionsGenerate.mjs'
-export { getDailyFlagle, saveFlagleProgress, submitFlagleOutcome } from './dailyGames/flagle.mjs'
+export { getDailyFlagle, submitFlagleCompletion } from './dailyGames/flagle.mjs'
 export { flagleGenerateCron, flagleGenerateNow } from './dailyGames/flagleGenerate.mjs'

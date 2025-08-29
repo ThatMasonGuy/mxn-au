@@ -10,7 +10,8 @@
         </div>
 
         <!-- Loading State -->
-        <div v-if="store.loading" class="w-full mx-auto max-w-[min(92vw,24rem)] md:max-w-[30rem] lg:max-w-[36rem] xl:max-w-[40rem]">
+        <div v-if="store.loading"
+            class="w-full mx-auto max-w-[min(92vw,24rem)] md:max-w-[30rem] lg:max-w-[36rem] xl:max-w-[40rem]">
             <FancyLoader :message="store.loadingMessage" variant="amber" shape="flags" icon="flag" />
         </div>
 
@@ -95,8 +96,8 @@
                         <button ref="submitBtnRef" @click="submitGuess"
                             :disabled="!store.canType || !store.currentInput.trim() || showingResult"
                             class="flex-1 px-6 py-3 rounded-xl font-semibold transition-all" :class="store.canType && store.currentInput.trim() && !showingResult
-                                    ? 'bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white hover:from-violet-500 hover:to-fuchsia-500 shadow-lg shadow-violet-500/20'
-                                    : 'bg-zinc-800 text-zinc-400 cursor-not-allowed'
+                                ? 'bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white hover:from-violet-500 hover:to-fuchsia-500 shadow-lg shadow-violet-500/20'
+                                : 'bg-zinc-800 text-zinc-400 cursor-not-allowed'
                                 ">
                             Submit
                         </button>
@@ -107,8 +108,8 @@
                 <transition name="result">
                     <div v-if="showingResult" class="text-center py-4">
                         <div class="inline-block px-6 py-2.5 rounded-xl font-semibold text-base" :class="lastResult.correct
-                                ? 'bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-500/40'
-                                : 'bg-rose-500/20 text-rose-300 ring-1 ring-rose-500/40'
+                            ? 'bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-500/40'
+                            : 'bg-rose-500/20 text-rose-300 ring-1 ring-rose-500/40'
                             ">
                             <span v-if="lastResult.correct">✓ Correct!</span>
                             <span v-else>✗ Wrong! Try again.</span>
@@ -127,7 +128,13 @@
                         <span :class="getFlagIcon(g.country)" class="text-2xl"></span>
                         <div class="flex-1">
                             <div v-if="g.correct" class="text-sm font-bold text-zinc-300">{{ g.country }}</div>
-                            <div v-else class="text-sm text-zinc-400">You guessed: {{ g.guess }}
+                            <div v-else>
+                                <div class="text-sm text-zinc-400">You guessed: {{ g.guess }}</div>
+                                <div v-if="g.hint" class="flex items-center gap-2 mt-1">
+                                    <component :is="getDirectionIcon(g.hint.direction.iconName)"
+                                        class="w-4 h-4 text-violet-400" />
+                                    <span class="text-xs text-zinc-500">{{ g.hint.distanceText }}</span>
+                                </div>
                             </div>
                         </div>
                         <CheckCircle2 v-if="g.correct" class="w-5 h-5 text-emerald-400" />
@@ -143,13 +150,43 @@
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useFlagleStore } from '@/stores/dailyGames/useFlagleStore'
 import { useFlagIcon } from '@/utils/useFlagIcon'
-import { Heart, CheckCircle2, XCircle } from 'lucide-vue-next'
+import {
+    Heart,
+    CheckCircle2,
+    XCircle,
+    ArrowUp,
+    ArrowUpRight,
+    ArrowRight,
+    ArrowDownRight,
+    ArrowDown,
+    ArrowDownLeft,
+    ArrowLeft,
+    ArrowUpLeft,
+    Target
+} from 'lucide-vue-next'
 import { getAuth } from 'firebase/auth'
 import { firestore } from '@/firebase'
 import { doc, deleteDoc } from 'firebase/firestore'
 import FancyLoader from './components/Loader.vue'
 
 const store = useFlagleStore()
+
+// Icon mapping for direction hints
+const directionIcons = {
+    'ArrowUp': ArrowUp,
+    'ArrowUpRight': ArrowUpRight,
+    'ArrowRight': ArrowRight,
+    'ArrowDownRight': ArrowDownRight,
+    'ArrowDown': ArrowDown,
+    'ArrowDownLeft': ArrowDownLeft,
+    'ArrowLeft': ArrowLeft,
+    'ArrowUpLeft': ArrowUpLeft,
+    'Target': Target
+}
+
+function getDirectionIcon(iconName) {
+    return directionIcons[iconName] || Target
+}
 
 // Dev mode
 const isDevMode = computed(() => import.meta.env.DEV || new URLSearchParams(location.search).get('dev') === 'true')
@@ -203,7 +240,7 @@ watch(
 
 // Local guess history (includes wrong + right). Most recent first.
 // We snapshot the country at time of guess so we can render the flag icon for wrong guesses without name.
-const guessHistory = ref([]) // { guess: string, correct: boolean, country: string }
+const guessHistory = ref([]) // { guess: string, correct: boolean, country: string, hint?: object }
 
 const currentFlag = computed(() => store.currentFlagIndex + 1)
 const flagIconClass = computed(() => (store.currentCountry ? useFlagIcon(store.currentCountry) : ''))
@@ -314,12 +351,10 @@ async function submitGuess() {
     const result = await store.submitGuess()
     if (!result) return
 
-    // Update local history (most recent first). Always include the flag; show name only when correct.
+    // Show visual feedback
     if (result.correct) {
-        guessHistory.value.unshift({ guess: guessText, correct: true, country: currentCountry })
         flashCorrect(); showFeedback(true)
     } else {
-        guessHistory.value.unshift({ guess: guessText, correct: false, country: currentCountry })
         flashWrong(); showFeedback(false)
     }
 }
@@ -333,11 +368,43 @@ function showFeedback(correct) {
 function flashWrong() { justWrong.value = true; setTimeout(() => { justWrong.value = false }, 350) }
 function flashCorrect() { justCorrect.value = true; setTimeout(() => { justCorrect.value = false }, 450) }
 
+function syncGuessHistoryFromStore() {
+    // Rebuild guessHistory from store's allAttempts
+    guessHistory.value = []
+
+    // Go through all attempts and rebuild the history
+    // Most recent first (reverse chronological)
+    const attempts = [...(store.allAttempts || [])].reverse()
+
+    for (const attempt of attempts) {
+        guessHistory.value.push({
+            guess: attempt.guess,
+            correct: attempt.correct,
+            country: attempt.country,
+            hint: attempt.hint || null
+        })
+    }
+
+    console.log('Synced guess history from store:', guessHistory.value.length, 'guesses')
+}
+
+// Add this watcher to sync when store data changes
+watch(() => store.allAttempts, () => {
+    if (store.allAttempts && store.allAttempts.length > 0) {
+        syncGuessHistoryFromStore()
+    }
+}, { deep: true, immediate: true })
+
 onMounted(async () => {
     document.addEventListener('mousedown', onDocClick)
     store.initAuthListener()
+    await store.refreshIfRolledOver()
     await store.loadDaily()
-    if (store.isComplete) hasCompleted.value = true
+
+    // Sync guess history after loading
+    syncGuessHistoryFromStore()
+
+    if (store.isComplete) hasCompleted.value = true;
 })
 
 onUnmounted(() => { document.removeEventListener('mousedown', onDocClick) })

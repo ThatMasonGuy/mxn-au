@@ -1,9 +1,10 @@
-// src/stores/dailyGames/useWordleUnlimitedStore.js
+// src/stores/dailyGames/useWordleUnlimitedStore.js - Refactored with direct Firestore writes
 import { defineStore } from 'pinia';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import { firestore } from '@/firebase';
 import { doc, onSnapshot, setDoc, collection, getDocs } from 'firebase/firestore';
+import { useDailyStore } from '../useDailyStore';
 
 const REGION = 'australia-southeast2';
 const functions = () => getFunctions(undefined, REGION);
@@ -31,7 +32,7 @@ function clamp5(s) {
 }
 
 const PERSIST_KEY = 'mxn:wordle-unlimited'
-const PERSIST_VERSION = 2
+const PERSIST_VERSION = 3
 
 function isValidGame(g) {
     return !!g && typeof g.word === 'string'
@@ -49,6 +50,7 @@ function sanitizePersisted(parsed) {
     return safe
 }
 
+// Auto-repair corrupted localStorage
 (function repairPersistedIfBroken() {
     try {
         const raw = localStorage.getItem(PERSIST_KEY)
@@ -63,7 +65,6 @@ function sanitizePersisted(parsed) {
             localStorage.setItem(PERSIST_KEY, JSON.stringify(fixed))
         }
     } catch {
-        // If it's corrupt, just nuke it so users aren’t stuck
         localStorage.removeItem(PERSIST_KEY)
     }
 })();
@@ -84,7 +85,7 @@ export const useWordleUnlimitedStore = defineStore('wordleUnlimited', {
         currentAnswer: null,
         currentInput: '',
 
-        // Available words pool
+        // Available words pool (cached locally)
         availableWords: [],
         playedWords: new Set(),
 
@@ -149,7 +150,26 @@ export const useWordleUnlimitedStore = defineStore('wordleUnlimited', {
             return this._allowedWords.has(word.toLowerCase());
         },
 
-        // ——— Helpers to keep playedWords a Set ———
+        _syncWithDailyStore() {
+            try {
+                const dailyStore = useDailyStore()
+                if (this.profile) {
+                    dailyStore.wordleUnlimitedStats = {
+                        currentStreak: this.profile.currentStreak || 0,
+                        maxStreak: this.profile.maxStreak || 0,
+                        wins: this.profile.wins || 0,
+                        losses: this.profile.losses || 0,
+                        totalPlayed: this.profile.totalPlayed || 0,
+                        winPercentage: this.profile.winPercentage || 0,
+                        lastPlayedAt: this.profile.lastPlayedAt || null,
+                        attemptsHistogram: this.profile.attemptsHistogram || [0, 0, 0, 0, 0, 0]
+                    }
+                }
+            } catch (error) {
+                console.warn('Error syncing with daily store:', error)
+            }
+        },
+
         _ensurePlayedWordsSet() {
             if (this.playedWords instanceof Set) return;
             if (Array.isArray(this.playedWords)) {
@@ -231,18 +251,104 @@ export const useWordleUnlimitedStore = defineStore('wordleUnlimited', {
                 this.currentAnswer = selectedWord.toUpperCase();
                 this.currentInput = '';
                 this.loadingMessage = '';
+
+                // Save new game state to cloud in background
+                if (this.user) {
+                    this._saveGameToCloud(true);
+                }
+
             } catch (e) {
                 console.error('Error starting new game:', e);
                 this.loadingMessage = 'Failed to start next game';
                 throw e;
             } finally {
-                // If this was called while already loading from elsewhere, restore that state
                 this.loading = prevLoading ? prevLoading : false;
             }
         },
 
+        async _saveGameToCloud(isBackground = false) {
+            if (!this.user || !this.currentGame) return;
+
+            try {
+                const gameRef = doc(
+                    firestore,
+                    'users', this.user.uid,
+                    'dailyChallenges', 'wordle-unlimited',
+                    'games', this.currentGame.word
+                );
+
+                const guesses = this.currentGame.rows.map(r => r.guess);
+                const masks = this.currentGame.rows.map(r => r.mask.join(''));
+                const outcome = this.currentGame.status === 'won' ? 'win' :
+                    this.currentGame.status === 'lost' ? 'loss' : 'in_progress';
+
+                await setDoc(gameRef, {
+                    word: this.currentGame.word,
+                    guesses,
+                    masks,
+                    outcome,
+                    attempts: this.currentGame.attempts || this.currentGame.rows.length,
+                    updatedAt: new Date()
+                }, { merge: true });
+
+            } catch (error) {
+                if (!isBackground) throw error;
+                console.warn('Background save failed:', error);
+            }
+        },
+
+        async _reconcileCurrentGame(uid) {
+            if (!uid) return false;
+
+            try {
+                // Look for the most recent in-progress game
+                const gamesRef = collection(firestore, 'users', uid, 'dailyChallenges', 'wordle-unlimited', 'games');
+                const recentGames = await getDocs(gamesRef);
+
+                let mostRecentInProgress = null;
+                let mostRecentTime = 0;
+
+                recentGames.forEach(doc => {
+                    const data = doc.data();
+                    if (data.outcome === 'in_progress' && data.updatedAt) {
+                        const time = data.updatedAt.toMillis ? data.updatedAt.toMillis() : data.updatedAt.seconds * 1000;
+                        if (time > mostRecentTime) {
+                            mostRecentTime = time;
+                            mostRecentInProgress = { id: doc.id, ...data };
+                        }
+                    }
+                });
+
+                if (mostRecentInProgress) {
+                    // Rebuild the game state from Firestore
+                    const rows = mostRecentInProgress.guesses.map((guess, i) => ({
+                        guess: guess.toUpperCase(),
+                        mask: mostRecentInProgress.masks[i] ? mostRecentInProgress.masks[i].split('') : ['B', 'B', 'B', 'B', 'B']
+                    }));
+
+                    this.currentGame = {
+                        word: mostRecentInProgress.word,
+                        status: 'idle', // Always idle since it's in progress
+                        rows: rows,
+                        attempts: mostRecentInProgress.attempts || rows.length,
+                        currentInput: ''
+                    };
+                    this.currentAnswer = mostRecentInProgress.word.toUpperCase();
+                    this.currentInput = '';
+
+                    // Add to played words
+                    this._ensurePlayedWordsSet();
+                    this.playedWords.add(mostRecentInProgress.word);
+
+                    return true;
+                }
+            } catch (error) {
+                console.warn('Error reconciling current game:', error);
+            }
+            return false;
+        },
+
         async initialize() {
-            // Don’t trust persisted "initialized"; always ensure a usable game.
             if (this.loading) return
             this.loading = true
             this.loadingMessage = 'Initializing...'
@@ -258,13 +364,16 @@ export const useWordleUnlimitedStore = defineStore('wordleUnlimited', {
                         await this._setupUserListener(user.uid)
                         await this._loadPlayedWords(user.uid)
 
+                        // Check for in-progress game in cloud first
+                        const hasCloudGame = await this._reconcileCurrentGame(user.uid);
+
                         // Ensure words exist
                         if (!Array.isArray(this.availableWords) || this.availableWords.length < 5) {
                             await this._refreshWordPool()
                         }
 
-                        // Ensure an active game exists (don’t let loading block it)
-                        if (!isValidGame(this.currentGame)) {
+                        // Only start new game if no cloud game and no valid local game
+                        if (!hasCloudGame && !isValidGame(this.currentGame)) {
                             await this.startNewGame({ force: true })
                         }
 
@@ -301,7 +410,10 @@ export const useWordleUnlimitedStore = defineStore('wordleUnlimited', {
                             [0, 0, 0, 0, 0, 0],
                         lastPlayedAt: data.lastPlayedAt
                     };
+                    // Sync with daily store when profile updates
+                    this._syncWithDailyStore();
                 } else {
+                    // Create profile document
                     setDoc(profileRef, {
                         totalPlayed: 0,
                         wins: 0,
@@ -315,7 +427,7 @@ export const useWordleUnlimitedStore = defineStore('wordleUnlimited', {
             });
         },
 
-        // —— Input handlers ——
+        // Input handlers
         typeLetter(ch) {
             if (!this.canType) return;
             const s = clamp5(this.currentInput + ch);
@@ -343,50 +455,50 @@ export const useWordleUnlimitedStore = defineStore('wordleUnlimited', {
             if (!this._isValidWord(guess)) {
                 throw new Error('invalid_word');
             }
+
             const mask = gradeGuess(guess, this.currentAnswer);
             const row = { guess, mask };
             this.currentGame.rows.push(row);
-            // IMPORTANT: guard attempts to stay a finite integer
-            const prev = Number(this.currentGame.attempts ?? this.currentGame.rows.length - 1);
-            this.currentGame.attempts = Number.isFinite(prev) ? prev + 1 : this.currentGame.rows.length;
+            this.currentGame.attempts = this.currentGame.rows.length;
             this.currentInput = '';
             this.currentGame.currentInput = '';
-            if (mask.join('') === 'GGGGG') {
+
+            // Save progress to cloud in background
+            if (this.user) {
+                this._saveGameToCloud(true);
+            }
+
+            // Check for completion
+            const isWin = mask.join('') === 'GGGGG';
+            const isLoss = this.currentGame.rows.length >= 6 && !isWin;
+
+            if (isWin) {
                 this.currentGame.status = 'won';
-                await this._submitGame('win');
-            } else if (this.currentGame.rows.length >= 6) {
+                await this._submitCompletion('win');
+            } else if (isLoss) {
                 this.currentGame.status = 'lost';
-                await this._submitGame('loss');
+                await this._submitCompletion('loss');
             }
         },
 
-        async _submitGame(outcome) {
+        async _submitCompletion(outcome) {
             if (!this.user || !this.currentGame) return;
-            this.loading = true;
-            this.loadingMessage = 'Saving game...';
+
             try {
-                // FINAL GUARD: ensure JSON-safe primitives (no NaN/Infinity)
-                const safeAttempts = Number.isFinite(this.currentGame.attempts)
-                    ? this.currentGame.attempts
-                    : this.currentGame.rows.length;
-                const payload = {
-                    word: String(this.currentGame.word || ''),
-                    outcome: outcome === 'win' ? 'win' : 'loss',
-                    attempts: safeAttempts | 0,
-                    guesses: this.currentGame.rows.map(r => String(r.guess || '')),
-                    masks: this.currentGame.rows.map(r => (Array.isArray(r.mask) ? r.mask.join('') : ''))
-                };
-                const call = httpsCallable(functions(), 'submitWordleUnlimitedGame');
-                await call(payload);
-                console.log('Game submitted successfully');
+                const call = httpsCallable(functions(), 'submitWordleUnlimitedCompletion');
+                await call({
+                    word: this.currentGame.word,
+                    outcome,
+                    attempts: this.currentGame.attempts,
+                    guesses: this.currentGame.rows.map(r => r.guess),
+                    masks: this.currentGame.rows.map(r => r.mask.join(''))
+                });
             } catch (error) {
-                console.error('Error submitting game:', error);
-            } finally {
-                this.loading = false;
+                console.error('Error submitting completion:', error);
             }
         },
 
-        // —— Utilities ——
+        // Utilities
         maskToEmoji(maskArr) {
             const map = { G: '🟩', Y: '🟨', B: '⬛' };
             return maskArr.map(c => map[c] || '⬛').join('');

@@ -1,4 +1,4 @@
-// functions/src/wordleUnlimited.mjs
+// functions/src/wordleUnlimited.mjs - Simplified to 2 functions only
 import { onCall } from 'firebase-functions/v2/https';
 import { FieldValue } from 'firebase-admin/firestore';
 import { defineSecret } from 'firebase-functions/params';
@@ -7,7 +7,6 @@ import { db } from '../config/firebase.mjs';
 
 const REGION = 'australia-southeast2';
 const OPENAI_API_KEY = defineSecret('OPENAI_API_KEY');
-const ADMIN_API_KEY = defineSecret('ADMIN_API_KEY');
 
 let _openai = null;
 function openai() {
@@ -15,9 +14,6 @@ function openai() {
     return _openai;
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
-// LLM generation helper
-// ──────────────────────────────────────────────────────────────────────────────
 async function generateWords(need, existingWords) {
     const target = Math.min(need + 10, 50);
     const client = openai();
@@ -73,9 +69,7 @@ ${banSlice}`
     return approved;
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
-// 1) Get available words (generates more if needed)
-// ──────────────────────────────────────────────────────────────────────────────
+// ---------- 1) GET AVAILABLE WORDS (generates more if needed) ----------
 export const getWordleUnlimitedWords = onCall(
     {
         region: REGION,
@@ -153,10 +147,8 @@ export const getWordleUnlimitedWords = onCall(
     }
 );
 
-// ──────────────────────────────────────────────────────────────────────────────
-// 2) Submit completed game and update all stats
-// ──────────────────────────────────────────────────────────────────────────────
-export const submitWordleUnlimitedGame = onCall(
+// ---------- 2) SUBMIT COMPLETION (STATS ONLY) ----------
+export const submitWordleUnlimitedCompletion = onCall(
     {
         region: REGION,
         maxInstances: 1,
@@ -177,7 +169,6 @@ export const submitWordleUnlimitedGame = onCall(
         if (!Array.isArray(guesses) || !Array.isArray(masks)) {
             throw new Error('Invalid game data');
         }
-        // attempts must be a sane integer (Wordle rules)
         if (!Number.isInteger(attempts) || attempts < 1 || attempts > 6) {
             throw new Error('Invalid attempts');
         }
@@ -185,18 +176,17 @@ export const submitWordleUnlimitedGame = onCall(
         const wordUpper = word.toUpperCase();
         const timestamp = FieldValue.serverTimestamp();
 
-        // helper to coerce maybe-undefined values to finite numbers
+        // Helper to coerce maybe-undefined values to finite numbers
         const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
 
         await db.runTransaction(async (tx) => {
-            // ALL READS FIRST (Firestore requirement)
             const profileRef = db.doc(`users/${uid}/dailyChallenges/wordle-unlimited`);
             const profileSnap = await tx.get(profileRef);
 
             const globalStatsRef = db.doc(`dailyChallenges/wordle-unlimited/stats/${wordUpper}`);
             const globalSnap = await tx.get(globalStatsRef);
 
-            // profile stats (defensive defaults)
+            // Profile stats (defensive defaults)
             const profileData = profileSnap.exists ? profileSnap.data() : {};
             profileData.totalPlayed = num(profileData.totalPlayed) + 1;
 
@@ -217,7 +207,7 @@ export const submitWordleUnlimitedGame = onCall(
             profileData.lastPlayedAt = timestamp;
             profileData.updatedAt = timestamp;
 
-            // per-word global stats (defensive defaults)
+            // Per-word global stats (defensive defaults)
             const globalData = globalSnap.exists ? globalSnap.data() : { word: wordUpper };
             globalData.totalPlayers = num(globalData.totalPlayers) + 1;
 
@@ -236,6 +226,7 @@ export const submitWordleUnlimitedGame = onCall(
             // WRITES
             tx.set(profileRef, profileData, { merge: true });
 
+            // Final game record (this gets created by the store, but ensure it's marked complete)
             const playRef = db.doc(`users/${uid}/dailyChallenges/wordle-unlimited/games/${wordUpper}`);
             tx.set(playRef, {
                 word: wordUpper,
@@ -248,7 +239,7 @@ export const submitWordleUnlimitedGame = onCall(
 
             tx.set(globalStatsRef, globalData, { merge: true });
 
-            // global aggregate (safe increments only)
+            // Global aggregate (safe increments only)
             const globalAggRef = db.doc('dailyChallenges/wordle-unlimited');
             tx.set(
                 globalAggRef,
@@ -263,82 +254,5 @@ export const submitWordleUnlimitedGame = onCall(
         });
 
         return { success: true, outcome, attempts };
-    }
-);
-
-// ──────────────────────────────────────────────────────────────────────────────
-// 3) Admin bulk generation
-// ──────────────────────────────────────────────────────────────────────────────
-export const adminGenerateWordleWords = onCall(
-    {
-        region: REGION,
-        secrets: [OPENAI_API_KEY, ADMIN_API_KEY],
-        maxInstances: 1
-    },
-    async (req) => {
-        // Verify admin key
-        const key = req.data?.adminKey;
-        if (!key || String(key) !== ADMIN_API_KEY.value()) {
-            throw new Error('Unauthorized');
-        }
-
-        const { count = 100, force = false } = req.data || {};
-
-        // Get existing words count
-        const existingSnap = await db.collection('dailyChallenges/wordle-unlimited/solutions').get();
-        const existingWords = [];
-        existingSnap.forEach(doc => existingWords.push(doc.id));
-
-        if (!force && existingWords.length > 1000) {
-            return {
-                success: false,
-                error: 'Word pool is already large. Use force=true to override.',
-                existingCount: existingWords.length
-            };
-        }
-
-        // Generate in batches
-        const batchSize = 25;
-        let totalGenerated = 0;
-        const timestamp = FieldValue.serverTimestamp();
-
-        for (let i = 0; i < count; i += batchSize) {
-            const batchCount = Math.min(batchSize, count - i);
-            const words = await generateWords(batchCount, existingWords);
-
-            if (words.length > 0) {
-                const batch = db.batch();
-
-                for (const word of words) {
-                    const docRef = db.doc(`dailyChallenges/wordle-unlimited/solutions/${word}`);
-                    batch.set(docRef, {
-                        word: word,
-                        source: 'ai',
-                        model: 'gpt-4o',
-                        difficulty: 'medium',
-                        createdAt: timestamp
-                    });
-                    existingWords.push(word);
-                }
-
-                await batch.commit();
-                totalGenerated += words.length;
-                console.log(`Batch ${Math.floor(i / batchSize) + 1}: Generated ${words.length} words`);
-            }
-        }
-
-        // Update global stats
-        await db.doc('dailyChallenges/wordle-unlimited').set({
-            totalWords: FieldValue.increment(totalGenerated),
-            lastAdminGeneration: timestamp,
-            lastAdminGenerationCount: totalGenerated
-        }, { merge: true });
-
-        return {
-            success: true,
-            generated: totalGenerated,
-            requested: count,
-            totalWords: existingWords.length
-        };
     }
 );

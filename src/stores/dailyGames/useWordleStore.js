@@ -1,12 +1,11 @@
-// src/stores/dailyGames/useWordleStore.js - Fixed version with proper caching
+// src/stores/dailyGames/useWordleStore.js - Refactored with direct Firestore writes
 import { defineStore } from 'pinia';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import { firestore } from '@/firebase';
 import { doc, onSnapshot, getDoc, setDoc, updateDoc } from 'firebase/firestore';
-import { useDailyStore } from '../useDailyStore'
+import { useDailyStore } from '../useDailyStore';
 
-// ===== Helpers =====
 const REGION = 'australia-southeast2';
 const functions = () => getFunctions(undefined, REGION);
 
@@ -44,12 +43,11 @@ export const useWordleStore = defineStore('wordle', {
     // Ephemeral
     loading: true,
     isLocked: false,
-    lastFinalizeError: null,
-    _loadPromise: null, // Track ongoing load to prevent duplicate calls
-    _lastLoadTime: null, // Track when we last loaded
-    _profileUnsubscribe: null, // Store unsubscribe function for profile listener
+    _loadPromise: null,
+    _lastLoadTime: null,
+    _profileUnsubscribe: null,
 
-    // Persisted per-day puzzle
+    // Cached puzzle data (persisted until rollover)
     puzzleId: null,
     answer: null,
     rolloverAt: null,
@@ -96,22 +94,19 @@ export const useWordleStore = defineStore('wordle', {
 
     initAuthListener() {
       const auth = getAuth()
-
-      // Clean up old listener if it exists
       if (this._profileUnsubscribe) {
         this._profileUnsubscribe()
         this._profileUnsubscribe = null
       }
 
       onAuthStateChanged(auth, async (user) => {
-        // Clean up old listener when auth changes
         if (this._profileUnsubscribe) {
           this._profileUnsubscribe()
           this._profileUnsubscribe = null
         }
 
         if (user) {
-          // Set up real-time listener for user's Wordle profile
+          // Set up real-time listener for profile
           const profileRef = doc(firestore, 'users', user.uid, 'dailyChallenges', 'wordle')
           this._profileUnsubscribe = onSnapshot(profileRef, (snapshot) => {
             if (snapshot.exists()) {
@@ -133,32 +128,69 @@ export const useWordleStore = defineStore('wordle', {
             }
           })
 
-          // Load today's game state
-          if (this.puzzleId) {
-            const date = this.puzzleId.replace('wordle-', '')
-            const dayRef = doc(firestore, 'users', user.uid, 'dailyChallenges', 'wordle', 'days', date)
-            const daySnap = await getDoc(dayRef)
-            if (daySnap.exists()) {
-              const userState = daySnap.data()
-              const remoteRows = Array.isArray(userState?.guesses)
-                ? userState.guesses.map(g => ({
-                  guess: g.toUpperCase(),
-                  mask: gradeGuess(g, this.answer)
-                }))
-                : []
-
-              if (remoteRows.length > 0) {
-                this.days[date].rows = remoteRows
-                if (userState?.outcome === 'win') this.days[date].status = 'won'
-                else if (userState?.outcome === 'loss') this.days[date].status = 'lost'
-              }
-            }
+          // Reconcile state with cloud if we have today's answer
+          if (this.puzzleId && this.answer) {
+            await this._reconcileCloudState(user.uid)
           }
         } else {
-          // Guest user - clear profile
           this.profile = null
         }
       })
+    },
+
+    async _reconcileCloudState(uid) {
+      if (!this.puzzleId || !this.answer) return
+
+      const date = this.puzzleId.replace('wordle-', '')
+      const dayRef = doc(firestore, 'users', uid, 'dailyChallenges', 'wordle', 'days', date)
+      const daySnap = await getDoc(dayRef)
+
+      if (daySnap.exists()) {
+        const cloudState = daySnap.data()
+        const cloudRows = Array.isArray(cloudState?.guesses)
+          ? cloudState.guesses.map(g => ({
+            guess: g.toUpperCase(),
+            mask: gradeGuess(g, this.answer)
+          }))
+          : []
+
+        this._ensureDay(date)
+        const localRows = this.days[date].rows || []
+
+        // Take whichever has more progress
+        if (cloudRows.length > localRows.length) {
+          this.days[date].rows = cloudRows
+          if (cloudState?.outcome === 'win') this.days[date].status = 'won'
+          else if (cloudState?.outcome === 'loss') this.days[date].status = 'lost'
+        } else if (localRows.length > cloudRows.length) {
+          // Local is ahead - sync to cloud in background
+          this._saveStateToCloud(uid, date, true)
+        }
+      }
+    },
+
+    async _saveStateToCloud(uid, date, isBackground = false) {
+      if (!uid) return
+
+      try {
+        const dayState = this.days[date]
+        if (!dayState) return
+
+        const dayRef = doc(firestore, 'users', uid, 'dailyChallenges', 'wordle', 'days', date)
+        const guesses = dayState.rows.map(r => r.guess)
+        const outcome = dayState.status === 'won' ? 'win' :
+          dayState.status === 'lost' ? 'loss' : 'in_progress'
+
+        await setDoc(dayRef, {
+          guesses,
+          outcome,
+          updatedAt: new Date()
+        }, { merge: true })
+
+      } catch (error) {
+        if (!isBackground) throw error
+        console.warn('Background save failed:', error)
+      }
     },
 
     _syncWithDailyStore() {
@@ -172,35 +204,16 @@ export const useWordleStore = defineStore('wordle', {
       }
     },
 
-    async _finalize() {
-      const call = httpsCallable(functions(), 'submitWordleOutcome')
-      const guesses = this.rows.map(r => r.guess)
-      try {
-        const { data } = await call({ puzzleId: this.puzzleId, guesses })
-
-        if (data?.outcome) {
-          const date = this.puzzleId.replace('wordle-', '')
-          this.days[date].status = data.outcome === 'win' ? 'won' : 'lost'
-          this.days[date].completedAt = Date.now()
-        }
-
-        // Profile will update via the real-time listener
-        this.lastFinalizeError = null
-      } catch (e) {
-        this.lastFinalizeError = e?.message || String(e)
-      }
-    },
-
     async loadDaily(preferServer = false) {
       const now = Date.now()
 
-      // Check if we have a valid cache and it's not expired
+      // Check if we have valid cached data
       const cacheValid = this.puzzleId &&
         this.answer &&
         this.rolloverAt &&
         now < Date.parse(this.rolloverAt) &&
         this._lastLoadTime &&
-        (now - this._lastLoadTime) < 60000 && // Cache for 1 minute
+        (now - this._lastLoadTime) < 300000 && // 5 minute cache
         !preferServer
 
       if (cacheValid) {
@@ -208,14 +221,11 @@ export const useWordleStore = defineStore('wordle', {
         return
       }
 
-      // If we're already loading, return the existing promise
       if (this._loadPromise && !preferServer) {
         return this._loadPromise
       }
 
-      // Create new load promise
       this._loadPromise = this._doLoad(preferServer)
-
       try {
         await this._loadPromise
       } finally {
@@ -227,46 +237,23 @@ export const useWordleStore = defineStore('wordle', {
       this.loading = true
 
       try {
+        // Only call cloud function to get puzzle data
         const call = httpsCallable(functions(), 'getDailyWordle')
         const { data } = await call({})
-        const { puzzleId, packet, userState, rolloverAt } = data
 
-        this.puzzleId = puzzleId
-        this.answer = (packet?.answer || '').toUpperCase()
-        this.rolloverAt = rolloverAt
-        this.isLocked = rolloverAt ? (Date.now() >= Date.parse(rolloverAt)) : false
+        this.puzzleId = data.puzzleId
+        this.answer = (data.answer || '').toUpperCase()
+        this.rolloverAt = data.rolloverAt
+        this.isLocked = data.rolloverAt ? (Date.now() >= Date.parse(data.rolloverAt)) : false
         this._lastLoadTime = Date.now()
 
-        const date = puzzleId.replace('wordle-', '')
+        const date = this.puzzleId.replace('wordle-', '')
         this._ensureDay(date)
 
+        // If user is logged in, reconcile state
         const auth = getAuth()
-        const loggedIn = !!auth.currentUser
-
-        const remoteRows = Array.isArray(userState?.guesses)
-          ? userState.guesses.map(g => ({
-            guess: g.toUpperCase(),
-            mask: gradeGuess(g, this.answer)
-          }))
-          : []
-        const localRows = this.days[date].rows || []
-
-        if (loggedIn) {
-          if (remoteRows.length > localRows.length || preferServer) {
-            this.days[date].rows = remoteRows
-            if (userState?.outcome === 'win') this.days[date].status = 'won'
-            else if (userState?.outcome === 'loss') this.days[date].status = 'lost'
-          } else if (localRows.length > remoteRows.length) {
-            // Save any local progress that's ahead of server
-            for (let i = remoteRows.length; i < localRows.length; i++) {
-              const r = localRows[i]
-              httpsCallable(functions(), 'saveWordleProgress')({
-                puzzleId: this.puzzleId,
-                guess: r.guess,
-                rowIndex: i
-              }).catch(() => { })
-            }
-          }
+        if (auth.currentUser) {
+          await this._reconcileCloudState(auth.currentUser.uid)
         }
 
         this.days[date].currentInput = clamp5(this.days[date].currentInput)
@@ -281,7 +268,7 @@ export const useWordleStore = defineStore('wordle', {
       }
     },
 
-    // --- Input handlers (UI can call these directly) ---
+    // Input handlers
     typeLetter(ch) {
       if (!this.canType) return;
       const date = this.puzzleId?.replace('wordle-', '') || dateStrUTC();
@@ -301,53 +288,67 @@ export const useWordleStore = defineStore('wordle', {
       if (!this.canType) return;
       const guess = clamp5(this.currentInput);
       if (guess.length !== 5) return;
-
+    
       if (this.rows.some(r => r.guess === guess)) {
         throw new Error('duplicate_guess');
       }
-
+    
       if (!this._isValidWord(guess)) {
         throw new Error('invalid_word');
       }
-
+    
       const mask = gradeGuess(guess, this.answer);
       const date = this.puzzleId.replace('wordle-', '');
-      const rowIndex = this.rows.length;
       const nextRows = [...this.rows, { guess, mask }];
       this.days[date].rows = nextRows;
       this.days[date].currentInput = '';
-
-      // Save progress to server
-      httpsCallable(functions(), 'saveWordleProgress')({
-        puzzleId: this.puzzleId,
-        guess,
-        rowIndex
-      }).catch(() => { });
-
-      if (mask.join('') === 'GGGGG') {
+    
+      // Check for completion FIRST
+      const isWin = mask.join('') === 'GGGGG'
+      const isLoss = nextRows.length >= 6 && !isWin
+    
+      if (isWin) {
         this.days[date].status = 'won';
         this.days[date].currentInput = '';
-        await this._finalize();
-      } else if (nextRows.length >= 6) {
+        await this._submitCompletion();
+      } else if (isLoss) {
         this.days[date].status = 'lost';
         this.days[date].currentInput = '';
-        await this._finalize();
+        await this._submitCompletion();
+      }
+    
+      // Save to cloud AFTER status is updated
+      const auth = getAuth()
+      if (auth.currentUser) {
+        this._saveStateToCloud(auth.currentUser.uid, date, true)
+      }
+    },
+    
+    async _submitCompletion() {
+      try {
+        const call = httpsCallable(functions(), 'submitWordleCompletion')
+        const guesses = this.rows.map(r => r.guess)
+        await call({
+          puzzleId: this.puzzleId,
+          guesses,
+          outcome: this.status === 'won' ? 'win' : 'loss'
+        })
+      } catch (error) {
+        console.error('Error submitting completion:', error)
       }
     },
 
-    // --- Force refresh when rollover hits or user taps "New puzzle" ---
     async refreshIfRolledOver() {
       if (!this.rolloverAt) return;
       const rolled = Date.now() >= Date.parse(this.rolloverAt);
       if (rolled) {
         this.isLocked = true;
         this.answer = null;
-        this._lastLoadTime = null; // Clear cache
+        this._lastLoadTime = null;
         await this.loadDaily(true);
       }
     },
 
-    // --- Utilities for UI ---
     maskToEmoji(maskArr) {
       const map = { G: '🟩', Y: '🟨', B: '⬛' };
       return maskArr.map(c => map[c] || '⬛').join('');
@@ -361,7 +362,6 @@ export const useWordleStore = defineStore('wordle', {
       return `${header}\n${result}\n\n${lines.join('\n')}\n\nPlay at https://mxn.au/daily?game=wordle`;
     },
 
-    // --- Hard reset for debugging (kept explicit) ---
     hardResetLocal() {
       if (this._profileUnsubscribe) {
         this._profileUnsubscribe()
@@ -378,7 +378,6 @@ export const useWordleStore = defineStore('wordle', {
       this._loadPromise = null;
     },
 
-    // Clean up listeners when store is destroyed
     $dispose() {
       if (this._profileUnsubscribe) {
         this._profileUnsubscribe()
@@ -387,10 +386,9 @@ export const useWordleStore = defineStore('wordle', {
     }
   },
 
-  // Persist only the per-day UI state + profile snapshot, not the answer
   persist: {
     key: 'mxn:daily:wordle',
-    paths: ['days', 'lastSeenDate', 'profile'],
+    paths: ['days', 'lastSeenDate', 'profile', 'puzzleId', 'answer', 'rolloverAt'],
     storage: localStorage,
   },
 });

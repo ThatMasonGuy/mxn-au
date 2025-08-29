@@ -1,13 +1,8 @@
-// src/stores/useDailyStore.js - Fixed version with Firebase listeners
+// src/stores/useDailyStore.js - Refactored without getAllDailyStats
 import { defineStore } from 'pinia'
-import { getFunctions, httpsCallable } from 'firebase/functions'
 import { getAuth, onAuthStateChanged } from 'firebase/auth'
 import { firestore } from '@/firebase'
-import { doc, onSnapshot, collection } from 'firebase/firestore'
-import { useWordleStore } from './dailyGames/useWordleStore'
-
-const REGION = 'australia-southeast2'
-const functions = () => getFunctions(undefined, REGION)
+import { doc, onSnapshot, getDoc } from 'firebase/firestore'
 
 function dateStrUTC(d = new Date()) {
     const y = d.getUTCFullYear();
@@ -23,7 +18,7 @@ export const useDailyStore = defineStore('daily', {
         user: null,
         _unsubscribers: [], // Store all listener unsubscribers
 
-        // Combined game stats
+        // Combined game stats (populated by individual game stores)
         gameStats: {
             wordle: {
                 currentStreak: 0,
@@ -44,7 +39,9 @@ export const useDailyStore = defineStore('daily', {
                 totalPlays: 0,
                 winPercentage: 0,
                 gamesPlayed: 0,
-                lastPlayedUTC: null
+                lastPlayedUTC: null,
+                perfectGames: 0,
+                averageMistakes: 0
             },
             flag: {
                 currentStreak: 0,
@@ -54,7 +51,9 @@ export const useDailyStore = defineStore('daily', {
                 totalPlays: 0,
                 winPercentage: 0,
                 gamesPlayed: 0,
-                lastPlayedUTC: null
+                lastPlayedUTC: null,
+                totalScore: 0,
+                averageScore: 0
             },
             trivia: {
                 currentStreak: 0,
@@ -88,7 +87,19 @@ export const useDailyStore = defineStore('daily', {
             }
         },
 
-        // Today's completion status
+        // Wordle Unlimited stats (separate from daily games)
+        wordleUnlimitedStats: {
+            currentStreak: 0,
+            maxStreak: 0,
+            wins: 0,
+            losses: 0,
+            totalPlayed: 0,
+            winPercentage: 0,
+            lastPlayedAt: null,
+            attemptsHistogram: [0, 0, 0, 0, 0, 0]
+        },
+
+        // Today's completion status (set by individual game stores)
         dailyStatus: {
             wordle: 'not-started',
             connections: 'not-started',
@@ -152,13 +163,12 @@ export const useDailyStore = defineStore('daily', {
 
         // Set up Firebase listeners for a specific game
         _setupGameListener(userId, gameId) {
-            // Listen to the game's profile/stats document
             const profileRef = doc(firestore, 'users', userId, 'dailyChallenges', gameId)
             const unsubProfile = onSnapshot(profileRef, (snapshot) => {
                 if (snapshot.exists()) {
                     const data = snapshot.data()
 
-                    // Update game stats
+                    // Update game stats with proper mapping
                     this.gameStats[gameId] = {
                         currentStreak: data.currentStreak || 0,
                         maxStreak: data.maxStreak || 0,
@@ -167,10 +177,20 @@ export const useDailyStore = defineStore('daily', {
                         totalPlays: data.totalPlays || 0,
                         winPercentage: data.totalPlays ? Math.round((data.wins / data.totalPlays) * 100) : 0,
                         gamesPlayed: data.totalPlays || 0,
-                        lastPlayedUTC: data.lastPlayedUTC || null,
-                        histogram: gameId === 'wordle' && data.attemptsHistogram ?
-                            [1, 2, 3, 4, 5, 6].map(i => data.attemptsHistogram[String(i)] || 0) :
-                            (this.gameStats[gameId].histogram || undefined)
+                        lastPlayedUTC: data.lastPlayedUTC || null
+                    }
+
+                    // Add game-specific stats
+                    if (gameId === 'wordle' && data.attemptsHistogram) {
+                        this.gameStats[gameId].histogram = [1, 2, 3, 4, 5, 6].map(i => data.attemptsHistogram[String(i)] || 0)
+                    }
+                    if (gameId === 'connections') {
+                        this.gameStats[gameId].perfectGames = data.perfectGames || 0
+                        this.gameStats[gameId].averageMistakes = data.averageMistakes || 0
+                    }
+                    if (gameId === 'flag') {
+                        this.gameStats[gameId].totalScore = data.totalScore || 0
+                        this.gameStats[gameId].averageScore = data.averageScore || 0
                     }
 
                     // Update today's status based on last played date
@@ -202,6 +222,39 @@ export const useDailyStore = defineStore('daily', {
             this._unsubscribers.push(unsubProfile)
         },
 
+        // Set up listener for Wordle Unlimited (different structure)
+        _setupWordleUnlimitedListener(userId) {
+            const profileRef = doc(firestore, 'users', userId, 'dailyChallenges', 'wordle-unlimited')
+            const unsubProfile = onSnapshot(profileRef, (snapshot) => {
+                if (snapshot.exists()) {
+                    const data = snapshot.data()
+
+                    this.wordleUnlimitedStats = {
+                        currentStreak: data.currentStreak || 0,
+                        maxStreak: data.maxStreak || 0,
+                        wins: data.wins || 0,
+                        losses: data.losses || 0,
+                        totalPlayed: data.totalPlayed || 0,
+                        winPercentage: data.totalPlayed ? Math.round((data.wins / data.totalPlayed) * 100) : 0,
+                        lastPlayedAt: data.lastPlayedAt || null,
+                        attemptsHistogram: data.attemptsHistogram ?
+                            [1, 2, 3, 4, 5, 6].map(i => data.attemptsHistogram[String(i)] || 0) :
+                            [0, 0, 0, 0, 0, 0]
+                    }
+
+                    this.lastUpdated = Date.now()
+                }
+            })
+
+            this._unsubscribers.push(unsubProfile)
+        },
+
+        // Force re-initialization (useful for development/testing)
+        async forceRefresh() {
+            this.initialized = false
+            await this.initializeGames()
+        },
+
         // Initialize auth listener and load all stats
         async initializeGames() {
             if (this.initialized) return
@@ -220,29 +273,22 @@ export const useDailyStore = defineStore('daily', {
                 this._cleanupListeners()
 
                 if (user) {
-                    // Set up listeners for each game
+                    // Read all game stats directly from Firestore
+                    await this.loadAllGameStats(user.uid)
+
+                    // Set up real-time listeners for updates (optional - for live updates)
                     const gameIds = ['wordle', 'connections', 'flag', 'trivia', 'sequence', 'memory']
                     gameIds.forEach(gameId => {
                         this._setupGameListener(user.uid, gameId)
                     })
-
-                    // Initial load from server to get rollover time
-                    try {
-                        const call = httpsCallable(functions(), 'getAllDailyStats')
-                        const { data } = await call()
-                        if (data.rolloverAt) {
-                            this.rolloverAt = data.rolloverAt
-                        }
-                    } catch (error) {
-                        console.warn('Error loading initial daily stats:', error)
-                    }
+                    this._setupWordleUnlimitedListener(user.uid)
                 } else {
-                    // Guest user - load from local stores
+                    // Guest user - no Firestore access
                     await this.loadGuestStats()
                 }
             })
 
-            // Set up rollover time
+            // Set up rollover time to next midnight
             const tomorrow = new Date()
             tomorrow.setUTCDate(tomorrow.getUTCDate() + 1)
             tomorrow.setUTCHours(0, 0, 0, 0)
@@ -254,54 +300,230 @@ export const useDailyStore = defineStore('daily', {
 
         // Load stats for guest users from individual stores
         async loadGuestStats() {
-            const wordleStore = useWordleStore()
+            try {
+                // Read persisted data directly from localStorage for each game
+                const gameStoreKeys = {
+                    'wordle': 'mxn:daily:wordle',
+                    'connections': 'mxn:daily:connections',
+                    'flag': 'mxn:daily:flagle'
+                }
 
-            // Wait a bit if Wordle store is still loading
-            if (wordleStore.loading) {
-                await new Promise(resolve => {
-                    const checkLoaded = () => {
-                        if (!wordleStore.loading) {
-                            resolve()
-                        } else {
-                            setTimeout(checkLoaded, 100)
+                Object.entries(gameStoreKeys).forEach(([gameId, storageKey]) => {
+                    try {
+                        const stored = localStorage.getItem(storageKey)
+                        if (stored) {
+                            const data = JSON.parse(stored)
+                            const profile = data.profile
+
+                            if (profile) {
+                                this.gameStats[gameId] = {
+                                    currentStreak: profile.currentStreak || 0,
+                                    maxStreak: profile.maxStreak || 0,
+                                    wins: profile.wins || 0,
+                                    losses: profile.losses || 0,
+                                    totalPlays: profile.totalPlays || profile.gamesPlayed || 0,
+                                    winPercentage: profile.winPercentage || 0,
+                                    gamesPlayed: profile.gamesPlayed || profile.totalPlays || 0,
+                                    lastPlayedUTC: profile.lastPlayedUTC || null
+                                }
+
+                                // Add game-specific stats
+                                if (gameId === 'wordle' && profile.histogram) {
+                                    this.gameStats[gameId].histogram = profile.histogram
+                                }
+                                if (gameId === 'connections') {
+                                    this.gameStats[gameId].perfectGames = profile.perfectGames || 0
+                                    this.gameStats[gameId].averageMistakes = profile.averageMistakes || 0
+                                }
+                                if (gameId === 'flag') {
+                                    this.gameStats[gameId].totalScore = profile.totalScore || 0
+                                    this.gameStats[gameId].averageScore = profile.averageScore || 0
+                                }
+                            }
+                        }
+                    } catch (error) {
+                        console.warn(`Error reading ${gameId} guest stats:`, error)
+                    }
+                })
+
+                // Read Wordle Unlimited stats
+                try {
+                    const stored = localStorage.getItem('mxn:wordle-unlimited')
+                    if (stored) {
+                        const data = JSON.parse(stored)
+                        const profile = data.profile
+
+                        if (profile) {
+                            this.wordleUnlimitedStats = {
+                                currentStreak: profile.currentStreak || 0,
+                                maxStreak: profile.maxStreak || 0,
+                                wins: profile.wins || 0,
+                                losses: profile.losses || 0,
+                                totalPlayed: profile.totalPlayed || 0,
+                                winPercentage: profile.winPercentage || 0,
+                                lastPlayedAt: profile.lastPlayedAt || null,
+                                attemptsHistogram: profile.attemptsHistogram || [0, 0, 0, 0, 0, 0]
+                            }
                         }
                     }
-                    checkLoaded()
-                })
-            }
+                } catch (error) {
+                    console.warn('Error reading Wordle Unlimited guest stats:', error)
+                }
 
-            // Get Wordle stats from its store if available
-            if (wordleStore.profile) {
-                this.gameStats.wordle = { ...this.gameStats.wordle, ...wordleStore.profile }
-            }
-
-            // Get Wordle status from its store
-            if (wordleStore.status) {
-                this.dailyStatus.wordle = wordleStore.status
-            }
-
-            // Set rollover time from Wordle store
-            if (wordleStore.rolloverAt) {
-                this.rolloverAt = wordleStore.rolloverAt
+            } catch (error) {
+                console.warn('Error loading guest stats:', error)
             }
         },
 
-        // Method to force refresh guest stats (call this after Wordle store updates)
+        // Method to force refresh guest stats (called by game stores)
         async refreshGuestStats() {
             if (this.user) return // Only for guests
             await this.loadGuestStats()
         },
 
-        // Update individual game stats (called by game stores when games complete)
-        updateGameStats(gameId, newStats) {
-            if (this.gameStats[gameId]) {
-                this.gameStats[gameId] = { ...this.gameStats[gameId], ...newStats }
+        // Load all game stats directly from Firestore
+        async loadAllGameStats(userId) {
+            if (!userId) return
+
+            try {
+                const gameIds = ['wordle', 'connections', 'flag', 'trivia', 'sequence', 'memory']
+
+                // Read all game profiles in parallel
+                const profilePromises = gameIds.map(async (gameId) => {
+                    const profileRef = doc(firestore, 'users', userId, 'dailyChallenges', gameId)
+                    const profileSnap = await getDoc(profileRef)
+                    return { gameId, data: profileSnap.exists() ? profileSnap.data() : null }
+                })
+
+                // Also get Wordle Unlimited
+                const wordleUnlimitedPromise = (async () => {
+                    const profileRef = doc(firestore, 'users', userId, 'dailyChallenges', 'wordle-unlimited')
+                    const profileSnap = await getDoc(profileRef)
+                    return { gameId: 'wordle-unlimited', data: profileSnap.exists() ? profileSnap.data() : null }
+                })()
+
+                const results = await Promise.all([...profilePromises, wordleUnlimitedPromise])
+
+                // Process results
+                results.forEach(({ gameId, data }) => {
+                    if (!data) return
+
+                    if (gameId === 'wordle-unlimited') {
+                        this.wordleUnlimitedStats = {
+                            currentStreak: data.currentStreak || 0,
+                            maxStreak: data.maxStreak || 0,
+                            wins: data.wins || 0,
+                            losses: data.losses || 0,
+                            totalPlayed: data.totalPlayed || 0,
+                            winPercentage: data.totalPlayed ? Math.round((data.wins / data.totalPlayed) * 100) : 0,
+                            lastPlayedAt: data.lastPlayedAt || null,
+                            attemptsHistogram: data.attemptsHistogram ?
+                                [1, 2, 3, 4, 5, 6].map(i => data.attemptsHistogram[String(i)] || 0) :
+                                [0, 0, 0, 0, 0, 0]
+                        }
+                    } else {
+                        // Regular daily games
+                        this.gameStats[gameId] = {
+                            currentStreak: data.currentStreak || 0,
+                            maxStreak: data.maxStreak || 0,
+                            wins: data.wins || 0,
+                            losses: data.losses || 0,
+                            totalPlays: data.totalPlays || 0,
+                            winPercentage: data.totalPlays ? Math.round((data.wins / data.totalPlays) * 100) : 0,
+                            gamesPlayed: data.totalPlays || 0,
+                            lastPlayedUTC: data.lastPlayedUTC || null
+                        }
+
+                        // Add game-specific stats
+                        if (gameId === 'wordle' && data.attemptsHistogram) {
+                            this.gameStats[gameId].histogram = [1, 2, 3, 4, 5, 6].map(i => data.attemptsHistogram[String(i)] || 0)
+                        }
+                        if (gameId === 'connections') {
+                            this.gameStats[gameId].perfectGames = data.perfectGames || 0
+                            this.gameStats[gameId].averageMistakes = data.averageMistakes || 0
+                        }
+                        if (gameId === 'flag') {
+                            this.gameStats[gameId].totalScore = data.totalScore || 0
+                            this.gameStats[gameId].averageScore = data.averageScore || 0
+                        }
+
+                        // Check today's status
+                        const today = dateStrUTC()
+                        if (data.lastPlayedUTC === today) {
+                            // Read today's game document to get actual status
+                            const todayRef = doc(firestore, 'users', userId, 'dailyChallenges', gameId, 'days', today)
+                            getDoc(todayRef).then(todaySnap => {
+                                if (todaySnap.exists()) {
+                                    const todayData = todaySnap.data()
+                                    if (todayData.outcome === 'win') {
+                                        this.dailyStatus[gameId] = 'won'
+                                    } else if (todayData.outcome === 'loss') {
+                                        this.dailyStatus[gameId] = 'lost'
+                                    } else if (todayData.outcome === 'in_progress') {
+                                        this.dailyStatus[gameId] = 'in-progress'
+                                    }
+                                }
+                            }).catch(() => {
+                                // Ignore errors, keep default status
+                            })
+                        } else {
+                            this.dailyStatus[gameId] = 'not-started'
+                        }
+                    }
+                })
+
+                this.lastUpdated = Date.now()
+
+            } catch (error) {
+                console.warn('Error loading game stats from Firestore:', error)
             }
         },
 
-        // Update game completion status
+        // Load Wordle Unlimited stats directly from Firestore (kept for backwards compatibility)
+        async loadWordleUnlimitedStats(userId = null) {
+            if (!userId) {
+                const auth = getAuth()
+                userId = auth.currentUser?.uid
+            }
+
+            if (!userId) return // No user, can't read Firestore
+
+            try {
+                const profileRef = doc(firestore, 'users', userId, 'dailyChallenges', 'wordle-unlimited')
+                const profileSnap = await getDoc(profileRef)
+
+                if (profileSnap.exists()) {
+                    const data = profileSnap.data()
+                    this.wordleUnlimitedStats = {
+                        currentStreak: data.currentStreak || 0,
+                        maxStreak: data.maxStreak || 0,
+                        wins: data.wins || 0,
+                        losses: data.losses || 0,
+                        totalPlayed: data.totalPlayed || 0,
+                        winPercentage: data.totalPlayed ? Math.round((data.wins / data.totalPlayed) * 100) : 0,
+                        lastPlayedAt: data.lastPlayedAt || null,
+                        attemptsHistogram: data.attemptsHistogram ?
+                            [1, 2, 3, 4, 5, 6].map(i => data.attemptsHistogram[String(i)] || 0) :
+                            [0, 0, 0, 0, 0, 0]
+                    }
+                }
+            } catch (error) {
+                console.warn('Error loading Wordle Unlimited stats from Firestore:', error)
+            }
+        },
+
+        // Update individual game stats (called by game stores when they load/update)
+        updateGameStats(gameId, newStats) {
+            if (this.gameStats[gameId]) {
+                this.gameStats[gameId] = { ...this.gameStats[gameId], ...newStats }
+                this.lastUpdated = Date.now()
+            }
+        },
+
+        // Update game completion status (called by game stores)
         updateGameStatus(gameId, status) {
             this.dailyStatus[gameId] = status
+            this.lastUpdated = Date.now()
         },
 
         // Get stats for a specific game
@@ -342,7 +564,7 @@ export const useDailyStore = defineStore('daily', {
 
     persist: {
         key: 'mxn:daily:combined',
-        paths: ['gameStats', 'dailyStatus', 'rolloverAt', 'lastUpdated'],
+        paths: ['gameStats', 'dailyStatus', 'rolloverAt', 'lastUpdated', 'wordleUnlimitedStats'],
         storage: localStorage
     }
 })

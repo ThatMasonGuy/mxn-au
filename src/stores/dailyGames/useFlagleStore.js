@@ -1,10 +1,11 @@
-// src/stores/dailyGames/useFlagleStore.js
+// src/stores/dailyGames/useFlagleStore.js - Complete Version with Hints
 import { defineStore } from 'pinia'
 import { getFunctions, httpsCallable } from 'firebase/functions'
 import { getAuth, onAuthStateChanged } from 'firebase/auth'
 import { firestore } from '@/firebase'
-import { doc, onSnapshot, getDoc } from 'firebase/firestore'
+import { doc, onSnapshot, getDoc, setDoc } from 'firebase/firestore'
 import { useDailyStore } from '../useDailyStore'
+import { getCountryHint } from '@/utils/useDistanceBearing'
 import countries from 'i18n-iso-countries'
 import en from 'i18n-iso-countries/langs/en.json'
 
@@ -88,22 +89,20 @@ export const useFlagleStore = defineStore('flagle', {
         // Ephemeral
         loading: true,
         isLocked: false,
-        lastFinalizeError: null,
         _loadPromise: null,
         _lastLoadTime: null,
         _profileUnsubscribe: null,
 
-        // Persisted per-day puzzle
+        // Cached puzzle data (persisted until rollover)
         puzzleId: null,
         countries: [], // Array of 5 country names
         rolloverAt: null,
 
         // Per-day play state
         days: {},
-        lastSeenDate: null,
         profile: null,
 
-        // Current game state
+        // Current game state - these are derived from today's day state, not persisted
         currentFlagIndex: 0,
         currentInput: '',
         lives: 3,
@@ -115,13 +114,15 @@ export const useFlagleStore = defineStore('flagle', {
     getters: {
         todayDate: () => dateStrUTC(),
         todayState(state) {
-            const key = state.lastSeenDate || dateStrUTC()
+            // Always use today's actual date, not lastSeenDate
+            const key = dateStrUTC()
             if (!state.days[key]) return {
                 answers: [],
                 status: 'idle',
                 score: 0,
                 lives: 3,
-                currentFlagIndex: 0
+                currentFlagIndex: 0,
+                allAttempts: []
             }
             return state.days[key]
         },
@@ -139,6 +140,40 @@ export const useFlagleStore = defineStore('flagle', {
         correctAnswers() {
             return this.answers.filter(a => a.correct).length
         },
+
+        // Recent guesses for the current flag (for UI display)
+        currentFlagAttempts() {
+            return this.allAttempts.filter(attempt =>
+                attempt.flagIndex === this.currentFlagIndex
+            )
+        },
+
+        // All incorrect guesses for current flag (for displaying recent wrong guesses)
+        currentFlagIncorrectGuesses() {
+            return this.currentFlagAttempts
+                .filter(attempt => !attempt.correct)
+                .map(attempt => attempt.guess)
+        },
+
+        // Game reconstruction info (useful for debugging)
+        gameReconstructionInfo() {
+            const today = dateStrUTC()
+            const dayState = this.days[today] || {}
+
+            return {
+                hasLocalState: !!this.days[today],
+                currentFlag: this.currentFlagIndex + 1,
+                totalFlags: 5,
+                livesRemaining: this.lives,
+                score: this.score,
+                correctAnswers: this.answers.length,
+                totalAttempts: this.allAttempts.length,
+                attemptsThisFlag: this.currentFlagAttempts.length,
+                incorrectGuessesThisFlag: this.currentFlagIncorrectGuesses,
+                gameStatus: this.status,
+                isComplete: this.isComplete
+            }
+        },
     },
 
     actions: {
@@ -149,10 +184,37 @@ export const useFlagleStore = defineStore('flagle', {
                     status: 'idle',
                     score: 0,
                     lives: 3,
-                    currentFlagIndex: 0
+                    currentFlagIndex: 0,
+                    allAttempts: []
                 }
             }
-            if (this.lastSeenDate !== dateStr) this.lastSeenDate = dateStr
+        },
+
+        _syncCurrentStateFromDay(date) {
+            // Always use today's date, and ensure the day exists
+            const today = dateStrUTC()
+            this._ensureDay(today)
+            const dayState = this.days[today]
+
+            // Always sync current state variables from day state
+            this.answers = dayState.answers || []
+            this.currentFlagIndex = dayState.currentFlagIndex || 0
+            this.score = dayState.score || 0
+            this.lives = dayState.lives !== undefined ? dayState.lives : 3
+            this.allAttempts = dayState.allAttempts || []
+
+            // Clear current input when loading saved state
+            this.currentInput = ''
+
+            console.log('Synced current state from day:', {
+                date: today,
+                flagIndex: this.currentFlagIndex,
+                lives: this.lives,
+                score: this.score,
+                answers: this.answers.length,
+                allAttempts: this.allAttempts.length,
+                status: dayState.status
+            })
         },
 
         initAuthListener() {
@@ -190,32 +252,94 @@ export const useFlagleStore = defineStore('flagle', {
                         }
                     })
 
-                    // Load today's game state
-                    if (this.puzzleId) {
-                        const date = this.puzzleId.replace('flagle-', '')
-                        const dayRef = doc(firestore, 'users', user.uid, 'dailyChallenges', 'flag', 'days', date)
-                        const daySnap = await getDoc(dayRef)
-                        if (daySnap.exists()) {
-                            const userState = daySnap.data()
-                            if (userState.answers && userState.answers.length > 0) {
-                                this.days[date] = {
-                                    answers: userState.answers,
-                                    status: userState.outcome || 'idle',
-                                    score: userState.score || 0,
-                                    lives: userState.lives || 3,
-                                    currentFlagIndex: userState.currentFlagIndex || userState.answers.length
-                                }
-                                this.answers = userState.answers
-                                this.currentFlagIndex = userState.currentFlagIndex || userState.answers.length
-                                this.score = userState.score || 0
-                                this.lives = userState.lives || 3
-                            }
-                        }
+                    // Reconcile state with cloud if we have today's countries
+                    if (this.puzzleId && this.countries.length === 5) {
+                        await this._reconcileCloudState(user.uid)
                     }
                 } else {
                     this.profile = null
                 }
             })
+        },
+
+        async _reconcileCloudState(uid) {
+            if (!this.puzzleId || this.countries.length !== 5) return
+
+            const date = this.puzzleId.replace('flagle-', '')
+            // Make sure we're working with today's date
+            const today = dateStrUTC()
+
+            // Only reconcile if the puzzle is for today
+            if (date !== today) return
+
+            const dayRef = doc(firestore, 'users', uid, 'dailyChallenges', 'flag', 'days', date)
+            const daySnap = await getDoc(dayRef)
+
+            if (daySnap.exists()) {
+                const cloudState = daySnap.data()
+
+                this._ensureDay(date)
+                const localState = this.days[date]
+                const localProgress = localState.currentFlagIndex || 0
+                const cloudProgress = cloudState.currentFlagIndex || 0
+
+                // Take whichever has more progress
+                if (cloudProgress > localProgress) {
+                    // Fully reconstruct day state from cloud
+                    this.days[date] = {
+                        answers: cloudState.answers || [],
+                        status: cloudState.outcome === 'win' ? 'won' :
+                            cloudState.outcome === 'loss' ? 'lost' : 'idle',
+                        score: cloudState.score || 0,
+                        lives: cloudState.lives !== undefined ? cloudState.lives : 3,
+                        currentFlagIndex: cloudState.currentFlagIndex || 0,
+                        allAttempts: cloudState.allAttempts || []
+                    }
+
+                    // Update current state variables from restored day state
+                    this._syncCurrentStateFromDay(date)
+
+                    console.log('Restored game state from cloud:', {
+                        flagIndex: this.currentFlagIndex,
+                        lives: this.lives,
+                        score: this.score,
+                        totalAttempts: this.allAttempts.length,
+                        currentFlagAttempts: this.currentFlagAttempts.length
+                    })
+                } else if (localProgress > cloudProgress) {
+                    // Local is ahead - sync to cloud
+                    await this._saveStateToCloud(uid, date)
+                }
+            }
+        },
+
+        async _saveStateToCloud(uid, date, showErrors = true) {
+            if (!uid) return
+
+            try {
+                const dayState = this.days[date]
+                if (!dayState) return
+
+                const dayRef = doc(firestore, 'users', uid, 'dailyChallenges', 'flag', 'days', date)
+                const outcome = dayState.status === 'won' ? 'win' :
+                    dayState.status === 'lost' ? 'loss' : 'in_progress'
+
+                await setDoc(dayRef, {
+                    answers: dayState.answers || [],
+                    score: dayState.score || 0,
+                    lives: dayState.lives !== undefined ? dayState.lives : 3,
+                    currentFlagIndex: dayState.currentFlagIndex || 0,
+                    allAttempts: dayState.allAttempts || [],
+                    outcome,
+                    updatedAt: new Date()
+                }, { merge: true })
+
+            } catch (error) {
+                if (showErrors) {
+                    console.error('Failed to save to cloud:', error)
+                    throw error
+                }
+            }
         },
 
         _syncWithDailyStore() {
@@ -232,16 +356,27 @@ export const useFlagleStore = defineStore('flagle', {
         async loadDaily(preferServer = false) {
             const now = Date.now()
 
+            // Check if we've rolled over to a new day
+            if (!preferServer && this.rolloverAt && now >= Date.parse(this.rolloverAt)) {
+                preferServer = true
+                this.isLocked = true
+                this.countries = []
+                this._lastLoadTime = null
+            }
+
             const cacheValid = this.puzzleId &&
                 this.countries.length === 5 &&
                 this.rolloverAt &&
                 now < Date.parse(this.rolloverAt) &&
                 this._lastLoadTime &&
-                (now - this._lastLoadTime) < 60000 &&
+                (now - this._lastLoadTime) < 300000 && // 5 minute cache
                 !preferServer
 
             if (cacheValid) {
                 this.loading = false
+                // Always sync current state from today's day state (includes all attempts)
+                this._syncCurrentStateFromDay(dateStrUTC())
+                console.log('Using cached data. Synced state:', this.gameReconstructionInfo)
                 return
             }
 
@@ -264,42 +399,30 @@ export const useFlagleStore = defineStore('flagle', {
             try {
                 const call = httpsCallable(functions(), 'getDailyFlagle')
                 const { data } = await call({})
-                const { puzzleId, packet, userState, rolloverAt } = data
 
-                this.puzzleId = puzzleId
-                this.countries = packet?.countries || []
-                this.rolloverAt = rolloverAt
-                this.isLocked = rolloverAt ? (Date.now() >= Date.parse(rolloverAt)) : false
+                this.puzzleId = data.puzzleId
+                this.countries = data.countries || []
+                this.rolloverAt = data.rolloverAt
+                this.isLocked = data.rolloverAt ? (Date.now() >= Date.parse(data.rolloverAt)) : false
                 this._lastLoadTime = Date.now()
 
-                const date = puzzleId.replace('flagle-', '')
+                const date = this.puzzleId.replace('flagle-', '')
                 this._ensureDay(date)
 
+                // If user is logged in, reconcile state with cloud
                 const auth = getAuth()
-                const loggedIn = !!auth.currentUser
-
-                if (userState && userState.answers) {
-                    this.days[date] = {
-                        answers: userState.answers,
-                        status: userState.outcome || 'idle',
-                        score: userState.score || 0,
-                        lives: userState.lives || 3,
-                        currentFlagIndex: userState.currentFlagIndex || userState.answers.length
-                    }
-                    this.answers = userState.answers
-                    this.currentFlagIndex = userState.currentFlagIndex || userState.answers.length
-                    this.score = userState.score || 0
-                    this.lives = userState.lives || 3
+                if (auth.currentUser) {
+                    await this._reconcileCloudState(auth.currentUser.uid)
                 } else {
-                    // Reset for new game
-                    this.answers = []
-                    this.currentFlagIndex = 0
-                    this.score = 0
-                    this.lives = 3
+                    // No user - sync current state from local day state
+                    this._syncCurrentStateFromDay(date)
                 }
 
+                // Always clear input after loading
                 this.currentInput = ''
                 this._syncWithDailyStore()
+
+                console.log('Game loaded successfully. Current state:', this.gameReconstructionInfo)
 
             } catch (error) {
                 console.error('Error loading daily flagle:', error)
@@ -316,24 +439,34 @@ export const useFlagleStore = defineStore('flagle', {
 
         async submitGuess() {
             if (!this.canType || !this.currentInput.trim()) return
-        
+
             const guess = this.currentInput.trim()
             const currentCountry = this.countries[this.currentFlagIndex]
-        
+
             const variants = getCountryVariants(currentCountry)
-            const normalizedGuess = normalizeCountry(guess)
             const correct = variants.includes(normalizeCountry(guess))
-        
+
+            // Calculate hint for wrong guesses
+            let hint = null
+            if (!correct) {
+                try {
+                    hint = getCountryHint(guess, currentCountry)
+                } catch (error) {
+                    console.warn('Failed to calculate hint:', error)
+                }
+            }
+
             // Store EVERY attempt for state reconstruction
             const attempt = {
                 flagIndex: this.currentFlagIndex,
                 country: currentCountry,
                 guess,
                 correct,
+                hint,
                 timestamp: Date.now()
             }
             this.allAttempts.push(attempt)
-        
+
             if (correct) {
                 // Only add to answers when moving to next flag
                 const answer = {
@@ -348,30 +481,34 @@ export const useFlagleStore = defineStore('flagle', {
             } else {
                 this.lives = Math.max(0, this.lives - 1)
             }
-        
-            // Persist state
-            const date = this.puzzleId.replace('flagle-', '')
-            this.days[date].answers = this.answers
-            this.days[date].allAttempts = this.allAttempts
-            this.days[date].score = this.score
-            this.days[date].lives = this.lives
-            this.days[date].currentFlagIndex = this.currentFlagIndex
-        
-            // Save to server with all attempts
-            httpsCallable(functions(), 'saveFlagleProgress')({
-                puzzleId: this.puzzleId,
-                flagIndex: this.currentFlagIndex,
-                guess,
-                correct,
+
+            const today = dateStrUTC()
+            this.days[today] = {
+                answers: this.answers,
+                allAttempts: this.allAttempts,
                 score: this.score,
                 lives: this.lives,
-                allAttempts: this.allAttempts
-            }).catch(() => { })
-        
+                currentFlagIndex: this.currentFlagIndex,
+                status: 'idle'
+            }
+
+            // Save to cloud immediately with error handling
+            const auth = getAuth()
+            if (auth.currentUser) {
+                try {
+                    await this._saveStateToCloud(auth.currentUser.uid, today)
+                } catch (error) {
+                    console.error('Failed to save state:', error)
+                    // Continue with game - local state is still updated
+                }
+            }
+
             this.currentInput = ''
-        
-            // End conditions
-            if (this.lives === 0 || this.currentFlagIndex >= 5) {
+
+            // Check end conditions
+            const isGameOver = this.lives === 0 || this.currentFlagIndex >= 5
+
+            if (isGameOver) {
                 // If we ran out of lives, add final answer for current flag
                 if (this.lives === 0 && this.answers.length < this.currentFlagIndex + 1) {
                     const finalAnswer = {
@@ -381,35 +518,114 @@ export const useFlagleStore = defineStore('flagle', {
                         skipped: false
                     }
                     this.answers.push(finalAnswer)
-                    this.days[date].answers = this.answers
+                    this.days[today].answers = this.answers
                 }
-        
-                const finalStatus = this.score >= 150 ? 'won' : 'lost'
-                this.days[date].status = finalStatus
-                await this._finalize()
+
+                const finalStatus = this.currentFlagIndex >= 5 ? 'won' : 'lost'
+                this.days[today].status = finalStatus
+
+                // Save final state
+                if (auth.currentUser) {
+                    try {
+                        await this._saveStateToCloud(auth.currentUser.uid, today)
+                    } catch (error) {
+                        console.error('Failed to save final state:', error)
+                    }
+                }
+
+                await this._submitCompletion()
             }
-        
+
             return { correct, answer: currentCountry }
         },
 
-        async _finalize() {
-            const call = httpsCallable(functions(), 'submitFlagleOutcome')
+        async _updateProfileStatsDirectly(uid) {
+            const profileRef = doc(firestore, 'users', uid, 'dailyChallenges', 'flag')
+            const profileSnap = await getDoc(profileRef)
+
+            const currentProfile = profileSnap.exists() ? profileSnap.data() : {
+                currentStreak: 0,
+                maxStreak: 0,
+                wins: 0,
+                losses: 0,
+                totalPlays: 0,
+                totalScore: 0,
+                averageScore: 0,
+                lastPlayedUTC: null
+            }
+
+            const isWin = this.status === 'won'
+            const today = dateStrUTC()
+
+            // Calculate new stats
+            const newTotalPlays = currentProfile.totalPlays + 1
+            const newWins = currentProfile.wins + (isWin ? 1 : 0)
+            const newLosses = currentProfile.losses + (isWin ? 0 : 1)
+            const newTotalScore = currentProfile.totalScore + this.score
+            const newAverageScore = Math.round(newTotalScore / newTotalPlays)
+
+            // Calculate streak
+            let newCurrentStreak = 0
+            if (isWin) {
+                const lastPlayedDate = currentProfile.lastPlayedUTC
+                const yesterday = new Date()
+                yesterday.setUTCDate(yesterday.getUTCDate() - 1)
+                const yesterdayStr = dateStrUTC(yesterday)
+
+                if (!lastPlayedDate || lastPlayedDate === yesterdayStr) {
+                    // Continue streak
+                    newCurrentStreak = currentProfile.currentStreak + 1
+                } else {
+                    // Start new streak
+                    newCurrentStreak = 1
+                }
+            }
+
+            const newMaxStreak = Math.max(currentProfile.maxStreak, newCurrentStreak)
+
+            const updatedProfile = {
+                currentStreak: newCurrentStreak,
+                maxStreak: newMaxStreak,
+                wins: newWins,
+                losses: newLosses,
+                totalPlays: newTotalPlays,
+                totalScore: newTotalScore,
+                averageScore: newAverageScore,
+                lastPlayedUTC: today,
+                updatedAt: new Date()
+            }
+
+            await setDoc(profileRef, updatedProfile, { merge: true })
+        },
+
+        async _submitCompletion() {
+            const auth = getAuth()
+            if (!auth.currentUser) return
+
+            const uid = auth.currentUser.uid
+            let cloudFunctionWorked = false
+
             try {
-                const { data } = await call({
+                const call = httpsCallable(functions(), 'submitFlagleCompletion')
+                await call({
                     puzzleId: this.puzzleId,
                     answers: this.answers,
-                    score: this.score
+                    score: this.score,
+                    outcome: this.status === 'won' ? 'win' : 'loss'
                 })
+                cloudFunctionWorked = true
+            } catch (error) {
+                console.error('Cloud function failed:', error)
+                cloudFunctionWorked = false
+            }
 
-                if (data?.outcome) {
-                    const date = this.puzzleId.replace('flagle-', '')
-                    this.days[date].status = data.outcome
-                    this.days[date].completedAt = Date.now()
+            // Fallback: Update profile stats directly if cloud function failed
+            if (!cloudFunctionWorked) {
+                try {
+                    await this._updateProfileStatsDirectly(uid)
+                } catch (error) {
+                    console.error('Direct profile update failed:', error)
                 }
-
-                this.lastFinalizeError = null
-            } catch (e) {
-                this.lastFinalizeError = e?.message || String(e)
             }
         },
 
@@ -445,7 +661,6 @@ export const useFlagleStore = defineStore('flagle', {
                 this._profileUnsubscribe = null
             }
             this.days = {}
-            this.lastSeenDate = null
             this.profile = null
             this.countries = []
             this.puzzleId = null
@@ -458,6 +673,7 @@ export const useFlagleStore = defineStore('flagle', {
             this.lives = 3
             this.score = 0
             this.answers = []
+            this.allAttempts = []
         },
 
         $dispose() {
@@ -470,7 +686,7 @@ export const useFlagleStore = defineStore('flagle', {
 
     persist: {
         key: 'mxn:daily:flagle',
-        paths: ['days', 'lastSeenDate', 'profile'],
+        paths: ['days', 'profile', 'puzzleId', 'countries', 'rolloverAt'],
         storage: localStorage,
     },
 })
