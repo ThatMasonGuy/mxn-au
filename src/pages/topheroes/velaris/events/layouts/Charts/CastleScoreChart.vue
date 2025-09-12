@@ -1,3 +1,4 @@
+<!-- CastleScoreChart.vue -->
 <template>
     <WorkbenchCard title="Castle Level vs Avg Score">
         <WorkbenchChart :option="castleOption" :theme="theme" />
@@ -10,6 +11,6 @@ import WorkbenchChart from '@/pages/topheroes/velaris/events/layouts/Charts/Work
 
 defineProps({
     castleOption: Object,
-    theme: { type: String, default: 'light' }
+    theme: { type: String }
 })
 </script>

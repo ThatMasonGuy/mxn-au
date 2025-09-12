@@ -1,13 +1,13 @@
 <template>
-    <div>
-        <span class="font-medium text-sm text-gray-500 mr-2">{{ title }}:</span>
-        <div class="inline-flex flex-wrap gap-2">
+    <div class="filter-group">
+        <label class="filter-label">{{ title }}</label>
+        <div class="filter-options">
             <button v-for="option in options" :key="option.value" @click="handleClick(option.value)" :class="[
-                'filter-pill px-3 py-1 rounded-full text-sm border',
+                'filter-pill',
                 {
                     'filter-active': isOptionActive(option.value),
-                    'border-gray-300 bg-white': !isOptionActive(option.value),
-                    'opacity-50 cursor-not-allowed bg-gray-100 text-gray-400': option.disabled,
+                    'filter-inactive': !isOptionActive(option.value),
+                    'filter-disabled': option.disabled,
                     'pulse-on-click': clickedOption === option.value
                 }
             ]" :disabled="option.disabled">
@@ -32,10 +32,12 @@ const emit = defineEmits(['toggle'])
 const clickedOption = ref(null)
 
 function handleClick(value) {
+    if (props.options.find(opt => opt.value === value)?.disabled) return
+
     clickedOption.value = value
     setTimeout(() => {
         clickedOption.value = null
-    }, 500)
+    }, 300)
     emit('toggle', value)
 }
 
@@ -50,58 +52,81 @@ function isOptionActive(value) {
 </script>
 
 <style scoped>
-/* Filter Pill Base */
+.filter-group {
+    @apply flex flex-col gap-2;
+}
+
+.filter-label {
+    @apply text-sm font-medium text-foreground;
+}
+
+.filter-options {
+    @apply flex flex-wrap gap-2;
+}
+
 .filter-pill {
-    transition: all 0.2s ease;
-    cursor: pointer;
+    @apply px-3 py-2 rounded-lg text-sm font-medium border-2 transition-all duration-200 cursor-pointer select-none;
+    @apply focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-1;
+    min-height: 36px;
+    min-width: 60px;
 }
 
-/* Hover State */
-.filter-pill:hover:not(:disabled) {
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    transform: translateY(-1px);
+.filter-inactive {
+    @apply bg-card border-border text-foreground;
 }
 
-/* Active State */
+.filter-inactive:hover:not(.filter-disabled) {
+    @apply bg-muted border-primary/30 shadow-sm transform translate-y-[-1px];
+}
+
 .filter-active {
-    background-color: #4f46e5;
-    /* Indigo-600 */
-    color: white;
-    border-color: #4f46e5;
+    @apply bg-primary border-primary text-primary-foreground shadow-md;
 }
 
-/* Disabled State */
-.filter-pill:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    background-color: #f3f4f6;
-    /* Gray-100 */
-    color: #9ca3af;
-    /* Gray-400 */
-    border-color: #d1d5db;
-    /* Gray-300 */
+.filter-active:hover {
+    @apply bg-primary/90 shadow-lg;
+}
+
+.filter-disabled {
+    @apply opacity-40 cursor-not-allowed bg-muted/50 text-muted-foreground border-border/50;
 }
 
 /* Pulse Animation on Click */
 @keyframes pulse-click {
     0% {
         transform: scale(1);
-        box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.7);
-        /* Indigo */
+        box-shadow: 0 0 0 0 hsl(var(--primary) / 0.5);
     }
 
     50% {
-        transform: scale(1.05);
-        box-shadow: 0 0 0 8px rgba(79, 70, 229, 0);
+        transform: scale(1.02);
+        box-shadow: 0 0 0 6px hsl(var(--primary) / 0);
     }
 
     100% {
         transform: scale(1);
-        box-shadow: 0 0 0 0 rgba(79, 70, 229, 0);
+        box-shadow: 0 0 0 0 hsl(var(--primary) / 0);
     }
 }
 
 .pulse-on-click {
-    animation: pulse-click 0.5s ease-out;
+    animation: pulse-click 0.3s ease-out;
+}
+
+/* Mobile optimizations */
+@media (max-width: 640px) {
+    .filter-options {
+        @apply gap-1.5;
+    }
+
+    .filter-pill {
+        @apply px-2.5 py-1.5 text-xs;
+        min-height: 32px;
+        min-width: 50px;
+    }
+
+    .filter-label {
+        @apply text-xs;
+    }
 }
 </style>

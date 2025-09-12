@@ -1,5 +1,6 @@
+<!-- TotalScorePieChart.vue -->
 <template>
-    <div :class="styling.wrapper || 'bg-white rounded-lg shadow-md p-4'">
+    <div :class="styling.wrapper || 'bg-white dark:bg-gray-800 rounded-lg shadow-md p-4'">
         <div class="chart-container">
             <v-chart :option="option" autoresize id="scoreByDayPie" />
         </div>
@@ -8,7 +9,7 @@
 
 <script setup>
 const props = defineProps({
-  option: { type: Object, required: true },
-  styling: { type: Object, default: () => ({}) }
+    option: { type: Object, required: true },
+    styling: { type: Object, default: () => ({}) }
 })
 </script>

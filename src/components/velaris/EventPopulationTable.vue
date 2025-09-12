@@ -8,14 +8,32 @@
                 :class="rowHighlight(player.status)">
                 <!-- Player Header -->
                 <div class="flex items-center justify-between mb-4">
-                    <div class="flex-1">
-                        <h3 class="font-semibold text-white text-lg">{{ player.name }}</h3>
-                        <div class="flex items-center space-x-2 mt-1">
-                            <span v-if="player.status && player.status !== 'active'"
-                                class="text-xs font-medium px-2 py-1 rounded-full" :class="statusBadge(player.status)">
-                                {{ player.status }}
-                            </span>
-                            <span class="text-slate-400 text-sm" :class="roleColor(player.role)">{{ player.role || 'No Role' }}</span>
+                    <div class="flex items-center gap-3 flex-1">
+                        <!-- Mobile Rank Badge -->
+                        <div v-if="player.displayRank" :class="[
+                            'flex items-center justify-center px-2 py-1 rounded-full text-xs font-bold',
+                            getRankBadgeClass(player.displayRank)
+                        ]">
+                            <span v-if="getRankIcon(player.displayRank)" class="mr-1">{{ getRankIcon(player.displayRank)
+                                }}</span>
+                            #{{ player.displayRank }}
+                        </div>
+
+                        <div class="flex-1">
+                            <h3 class="font-semibold text-white text-lg">{{ player.name }}</h3>
+                            <div class="flex items-center space-x-2 mt-1">
+                                <span v-if="player.status && player.status !== 'active'"
+                                    class="text-xs font-medium px-2 py-1 rounded-full"
+                                    :class="statusBadge(player.status)">
+                                    {{ player.status }}
+                                </span>
+                                <span class="text-slate-400 text-sm" :class="roleColor(player.role)">{{ player.role ||
+                                    'No Role' }}</span>
+                            </div>
+                            <!-- Mobile total score display -->
+                            <div v-if="player.displayTotal > 0" class="text-xs text-slate-400 mt-1 font-mono">
+                                Total: {{ formatNumber(player.displayTotal) }}
+                            </div>
                         </div>
                     </div>
 
@@ -125,9 +143,9 @@
                 <thead class="bg-gradient-to-r from-slate-800 to-slate-700 text-slate-100 sticky top-0 z-10">
                     <tr>
                         <th class="px-6 py-4 font-semibold cursor-pointer hover:bg-slate-600/50 transition-colors"
-                            @click="$emit('onSort', 'name')">
+                            @click="$emit('onSort', 'calculatedRank')">
                             <div class="flex items-center space-x-2">
-                                <span>Name</span>
+                                <span>Rank & Name</span>
                                 <ChevronDown class="w-4 h-4 opacity-60" />
                             </div>
                         </th>
@@ -193,15 +211,38 @@
                         :class="rowHighlight(player.status)">
                         <td class="px-6 py-4">
                             <div class="leading-relaxed">
-                                <div class="font-medium text-slate-100 text-base">{{ player.name }}</div>
-                                <div v-if="player.status && player.status !== 'active'"
-                                    class="text-xs font-medium mt-1 px-2 py-0.5 rounded-full inline-block"
-                                    :class="statusBadge(player.status)">
-                                    {{ player.status }}
-                                </div>
-                                <div v-if="player.role" class="text-xs font-medium mt-1"
-                                    :class="roleColor(player.role)">
-                                    {{ player.role }}
+                                <div class="flex items-center gap-3">
+                                    <!-- Rank Badge -->
+                                    <div v-if="player.displayRank" :class="[
+                                        'flex items-center justify-center px-2 py-1 rounded-full text-xs font-bold min-w-[2rem] h-6',
+                                        getRankBadgeClass(player.displayRank)
+                                    ]">
+                                        <span v-if="getRankIcon(player.displayRank)" class="mr-1">{{
+                                            getRankIcon(player.displayRank) }}</span>
+                                        #{{ player.displayRank }}
+                                    </div>
+                                    <div v-else
+                                        class="flex items-center justify-center px-2 py-1 rounded-full text-xs bg-slate-700/50 text-slate-500 min-w-[2rem] h-6">
+                                        --
+                                    </div>
+
+                                    <div class="flex-1">
+                                        <div class="font-medium text-slate-100 text-base">{{ player.name }}</div>
+                                        <div v-if="player.status && player.status !== 'active'"
+                                            class="text-xs font-medium mt-1 px-2 py-0.5 rounded-full inline-block"
+                                            :class="statusBadge(player.status)">
+                                            {{ player.status }}
+                                        </div>
+                                        <div v-if="player.role" class="text-xs font-medium mt-1"
+                                            :class="roleColor(player.role)">
+                                            {{ player.role }}
+                                        </div>
+                                        <!-- Display calculated total if available -->
+                                        <div v-if="player.displayTotal > 0"
+                                            class="text-xs text-slate-400 mt-1 font-mono">
+                                            Total: {{ formatNumber(player.displayTotal) }}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </td>
@@ -344,6 +385,17 @@ const emit = defineEmits([
     'onHardRefresh'
 ])
 
+const playersWithRankDisplay = computed(() => {
+    if (!props.players) return []
+
+    return props.players.map(player => ({
+        ...player,
+        displayRank: player.calculatedRank || null,
+        displayTotal: player.calculatedTotal || 0,
+        hasRank: player.calculatedRank != null && player.calculatedRank > 0
+    }))
+})
+
 // Number formatting functions
 const formatNumber = (num) => {
     if (!num || isNaN(num)) return ''
@@ -420,6 +472,32 @@ const rowHighlight = (status) => {
         case 'left': return 'bg-orange-900/5 border-l-4 border-l-orange-500/50'
         case 'kicked': return 'bg-red-900/5 border-l-4 border-l-red-500/50'
         default: return ''
+    }
+}
+
+const getRankBadgeClass = (rank) => {
+    if (!rank || rank < 1) return 'bg-slate-600/50 text-slate-400'
+
+    switch (rank) {
+        case 1: return 'bg-gradient-to-r from-yellow-400 to-yellow-600 text-yellow-900 font-bold shadow-lg'
+        case 2: return 'bg-gradient-to-r from-gray-300 to-gray-500 text-gray-900 font-semibold shadow-md'
+        case 3: return 'bg-gradient-to-r from-amber-600 to-amber-800 text-amber-100 font-semibold shadow-md'
+        default:
+            if (rank <= 10) return 'bg-gradient-to-r from-blue-500 to-blue-700 text-blue-100 font-medium'
+            if (rank <= 25) return 'bg-gradient-to-r from-green-500 to-green-700 text-green-100'
+            return 'bg-slate-600/70 text-slate-200'
+    }
+}
+
+// Helper function to get rank icon
+const getRankIcon = (rank) => {
+    if (!rank || rank < 1) return null
+
+    switch (rank) {
+        case 1: return '🥇'
+        case 2: return '🥈'
+        case 3: return '🥉'
+        default: return rank <= 10 ? '⭐' : null
     }
 }
 

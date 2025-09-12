@@ -1,15 +1,15 @@
 <template>
     <div class="relative flex-1">
-        <span class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-gray-400">
-            <Search class="w-5 h-5 text-slate-400" />
+        <span class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
+            <Search class="w-5 h-5 text-foreground/50" />
         </span>
 
-        <input type="text" v-model="search" :placeholder="placeholder"
-            class="bg-gray-700/50 border border-gray-600 text-white py-3 pl-12 pr-4 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 placeholder-gray-400 shadow-indigo-500/10 shadow-md hover:shadow-md hover:shadow-indigo-500/40 focus:shadow-indigo-500/40 focus:shadow-md" />
+        <input type="text" v-model="searchTerm" :placeholder="placeholder"
+            class="bg-background border border-border/60 text-foreground h-10 pl-12 pr-4 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-velaris-purple/50 focus:border-velaris-purple transition-all duration-200 placeholder:text-foreground/50 hover:border-border/80 hover:shadow-velaris-purple/10 focus:shadow-velaris-purple/20" />
 
-        <span v-if="search.length > 0" @click="search = ''"
-            class="absolute inset-y-0 right-0 flex items-center pr-4 cursor-pointer text-gray-400">
-            <X class="w-5 h-5 text-red-400/50 hover:text-red-400 transition-all duration-200" />
+        <span v-if="searchTerm.length > 0" @click="searchTerm = ''"
+            class="absolute inset-y-0 right-0 flex items-center pr-4 cursor-pointer">
+            <X class="w-5 h-5 text-foreground/50 hover:text-red-400 transition-all duration-200" />
         </span>
     </div>
 </template>
@@ -32,7 +32,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:results'])
-const search = ref('')
+const searchTerm = ref('')
 
 /* ------------------------- helpers ------------------------- */
 
@@ -103,7 +103,7 @@ function sortByField(a, b, key, direction = 'desc') {
 /* --------------------- computed results -------------------- */
 
 const filteredResults = computed(() => {
-    const term = props.preserveCase ? search.value : search.value.toLowerCase()
+    const term = props.preserveCase ? searchTerm.value : searchTerm.value.toLowerCase()
     let result = [...props.data]
 
     // Text filtering

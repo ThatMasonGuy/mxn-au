@@ -131,7 +131,27 @@ module.exports = {
 					'3': 'hsl(var(--chart-3))',
 					'4': 'hsl(var(--chart-4))',
 					'5': 'hsl(var(--chart-5))'
-				}
+				},
+				velaris: {
+					purple: 'hsl(var(--velaris-purple))',
+					teal: 'hsl(var(--velaris-teal))',
+					green: 'hsl(var(--velaris-green))',
+					amber: 'hsl(var(--velaris-amber))',
+				},
+				base: {
+					// App background layers
+					light: 'hsl(var(--base-light))',
+					'light-surface': 'hsl(var(--base-light-surface))',
+					dark: 'hsl(var(--base-dark))',
+					'dark-surface': 'hsl(var(--base-dark-surface))',
+				},
+
+			},
+			backgroundImage: {
+				'velaris-gradient': 'linear-gradient(135deg, hsl(var(--velaris-purple)) 0%, hsl(var(--velaris-teal)) 60%)',
+			},
+			boxShadow: {
+				'velaris-glow': '0 0 18px 0 hsl(var(--velaris-purple)/0.35)',
 			},
 			borderRadius: {
 				xl: 'calc(var(--radius) + 4px)',

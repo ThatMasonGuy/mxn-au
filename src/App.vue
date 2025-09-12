@@ -2,9 +2,9 @@
   <div id="app" class="flex flex-col bg-black text-white relative scroll-smooth">
     <TooltipProvider>
 
-      <!-- Headers -->
-      <TopHeroesHeader v-if="isTopHeroes && layout === 'default'" />
-      <TopHeroesAdminHeader v-else-if="isTopHeroes && layout === 'admin'" />
+      <!-- Headers (TopHeroes only when overlay is required) -->
+      <TopHeroesHeader v-if="showTopHeroesOverlay && layout === 'default'" />
+      <TopHeroesAdminHeader v-else-if="showTopHeroesOverlay && layout === 'admin'" />
 
       <Toaster />
 
@@ -12,14 +12,14 @@
       <div class="flex-grow">
         <router-view v-slot="{ Component, route }">
           <component :is="Component" :key="route.fullPath" ref="pageRef" class="min-h-screen w-full" :class="{
-            'pt-28 pb-32': isTopHeroes && (layout === 'default' || layout === 'admin')
+            'pt-28 pb-32': showTopHeroesOverlay && (layout === 'default' || layout === 'admin')
           }" />
         </router-view>
       </div>
 
-      <!-- Footers -->
-      <TopHeroesFooter v-if="isTopHeroes && layout === 'default'" :author="pageAuthor" />
-      <TopHeroesAdminFooter v-else-if="isTopHeroes && layout === 'admin'" :author="pageAuthor" />
+      <!-- Footers (TopHeroes only when overlay is required) -->
+      <TopHeroesFooter v-if="showTopHeroesOverlay && layout === 'default'" :author="pageAuthor" />
+      <TopHeroesAdminFooter v-else-if="showTopHeroesOverlay && layout === 'admin'" :author="pageAuthor" />
 
     </TooltipProvider>
   </div>
@@ -45,15 +45,22 @@ watchEffect(() => {
   pageAuthor.value = exposed?.author || '[VLR]Mason in s10154'
 })
 
-// Computed layout from meta
+// Layout from meta (defaults to 'default')
 const layout = computed(() => route.meta?.layout || 'default')
 
-// Check if current route is under /topheroes
-const isTopHeroes = computed(() => route.path.startsWith('/topheroes'))
+// Route must be under /topheroes
+const isTopHeroes = computed(() => route.path?.startsWith('/topheroes'))
+
+// Only show TopHeroes header/footer if path starts with /topheroes AND the page opts into the overlay
+const showTopHeroesOverlay = computed(() => {
+  return isTopHeroes.value && route.meta?.requiresOverlay === true
+})
 </script>
 
 <style>
-#app, html, body {
+#app,
+html,
+body {
   min-height: 100dvh;
   background-color: black;
 }

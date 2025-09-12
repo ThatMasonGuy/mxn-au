@@ -29,7 +29,7 @@ export const useEventDataStore = defineStore('eventData', () => {
     const activeCastleFilters = ref(['all'])
     const activePowerFilters = ref(['all'])
     const activeDayFilters = ref([])
-    const lowScoreFilter = ref(false)
+    const scoreFilter = ref({ operator: '', value: null })
     const itemsPerPage = ref(20)
     const page = ref(1)
     const summaryView = ref(true)
@@ -48,17 +48,14 @@ export const useEventDataStore = defineStore('eventData', () => {
 
     // Player Color Map
     const playerColorMap = computed(() => {
-        const colours = [
-            '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728',
-            '#9467bd', '#8c564b', '#e377c2', '#7f7f7f',
-            '#bcbd22', '#17becf'
-        ]
+        const colours = Array.from({ length: 10 }, (_, i) => `var(--comparison-${i + 1})`)
         const map = {}
         selectedComparisonPlayers.value.forEach((p, i) => {
             map[p.Player] = colours[i % colours.length]
         })
         return map
     })
+
 
     // Highlighting functions
     const highlightSeries = name => {
@@ -358,10 +355,21 @@ export const useEventDataStore = defineStore('eventData', () => {
                 if (f === '100M+') return pow >= 100000000
             })
         })
-        if (lowScoreFilter.value) {
+        if (scoreFilter.value.operator && scoreFilter.value.value) {
             data = data.filter(p => {
                 const days = activeDayFilters.value.length > 0 ? activeDayFilters.value : ALL_DAYS
-                return days.some(d => (p[`Score (D${d})`] || 0) < 1_000_000)
+                const totalScore = days.reduce((sum, d) => sum + (p[`Score (D${d})`] || 0), 0)
+
+                switch (scoreFilter.value.operator) {
+                    case 'gte':
+                        return totalScore >= scoreFilter.value.value
+                    case 'lte':
+                        return totalScore <= scoreFilter.value.value
+                    case 'eq':
+                        return totalScore === scoreFilter.value.value
+                    default:
+                        return true
+                }
             })
         }
 
@@ -495,8 +503,17 @@ export const useEventDataStore = defineStore('eventData', () => {
         page.value = 1
     }
 
-    const toggleLowScoreFilter = () => {
-        lowScoreFilter.value = !lowScoreFilter.value
+    const updateScoreFilter = (filterObj) => {
+        scoreFilter.value = filterObj
+        page.value = 1
+    }
+
+    const clearAllFilters = () => {
+        activeRoleFilters.value = ['all']
+        activeCastleFilters.value = ['all']
+        activePowerFilters.value = ['all']
+        activeDayFilters.value = []
+        scoreFilter.value = { operator: '', value: null }
         page.value = 1
     }
 
@@ -559,7 +576,7 @@ export const useEventDataStore = defineStore('eventData', () => {
         // UI State
         searchTerm, sortField, sortDirection,
         activeRoleFilters, activeCastleFilters, activePowerFilters, activeDayFilters,
-        lowScoreFilter, page, itemsPerPage, paginatedData,
+        page, itemsPerPage, paginatedData,
         summaryView, comparisonView, selectedComparisonPlayers, comparisonSearchTerm, maxComparisonPlayers,
 
         // Computed data
@@ -568,7 +585,10 @@ export const useEventDataStore = defineStore('eventData', () => {
         // Actions
         toggleFilter, updateSort,
         topPerformers, efficiencyLeaders, formatNumber,
-        toggleRoleFilter, toggleCastleFilter, togglePowerFilter, toggleDayFilter, toggleLowScoreFilter,
+        toggleRoleFilter, toggleCastleFilter, togglePowerFilter, toggleDayFilter,
+        scoreFilter,
+        updateScoreFilter,
+        clearAllFilters,
         togglePlayerForComparison, addPlayerToComparisonFromSearch,
         updateComparisonSearchTerm, filteredComparisonSearchResults,
 

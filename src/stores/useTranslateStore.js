@@ -47,6 +47,8 @@ export const useTranslateStore = defineStore('translate', () => {
     const discordDailyStats = ref({})
     const discordHourlyStats = ref({})
     const discordLanguages = ref({})
+    const discordChannelsByGuild = ref({})
+    const discordChannelListeners = ref([])
 
     // --- Error Logging State ---
     const errorLogs = ref({})
@@ -219,22 +221,48 @@ export const useTranslateStore = defineStore('translate', () => {
             .slice(0, 5)
     })
 
+    const topDiscordChannels = computed(() => {
+        const channels = []
+
+        // Iterate through all guilds and their channels
+        Object.entries(discordChannelsByGuild.value || {}).forEach(([guildId, guildChannels]) => {
+            const guild = discordGuilds.value?.[guildId]
+            const guildName = guild?.guildName || 'Unknown Server'
+
+            Object.entries(guildChannels || {}).forEach(([channelId, channel]) => {
+                channels.push({
+                    id: channelId,
+                    name: channel.channelName || 'Unknown Channel',
+                    guildName: guildName,
+                    translations: channel.totalTranslations || channel.freshTranslations || 0,
+                    uniqueUsers: channel.uniqueUsers?.length || 0
+                })
+            })
+        })
+
+        return channels
+            .sort((a, b) => b.translations - a.translations)
+            .slice(0, 3)
+    })
+
+    const discordCounts = computed(() => {
+        const stats = discordStats.value || {}
+
+        // Count channels from the subcollection data
+        const channelCount = Object.values(discordChannelsByGuild.value || {})
+            .reduce((total, guildChannels) => total + Object.keys(guildChannels || {}).length, 0)
+
+        return {
+            guilds: typeof stats.guildCount === 'number' ? stats.guildCount : Object.keys(discordGuilds.value || {}).length,
+            channels: typeof stats.channelCount === 'number' ? stats.channelCount : channelCount,
+            users: typeof stats.userCount === 'number' ? stats.userCount : Object.keys(discordUsers.value || {}).length,
+        }
+    })
+
     const activeToday = computed(() => {
         const today = new Date().toISOString().split('T')[0]
         const todayStats = dailyStats.value[today]
         return todayStats?.uniqueUsers?.length || 0
-    })
-
-    // NEW: counts sourced from the top-level translations/discord document when present
-    const discordCounts = computed(() => {
-        const stats = discordStats.value || {}
-        return {
-            guilds: typeof stats.guildCount === 'number' ? stats.guildCount : Object.keys(discordGuilds.value || {}).length,
-            channels: typeof stats.channelCount === 'number'
-                ? stats.channelCount
-                : Object.values(discordGuilds.value || {}).reduce((sum, guild) => sum + Object.keys(guild.channels || {}).length, 0),
-            users: typeof stats.userCount === 'number' ? stats.userCount : Object.keys(discordUsers.value || {}).length,
-        }
     })
 
     const discordGlobalStats = computed(() => {
@@ -249,6 +277,7 @@ export const useTranslateStore = defineStore('translate', () => {
         }
     })
 
+    // Update the topDiscordGuilds computed property to use correct channel counts
     const topDiscordGuilds = computed(() => {
         return Object.entries(discordGuilds.value || {})
             .map(([id, data]) => ({
@@ -256,48 +285,44 @@ export const useTranslateStore = defineStore('translate', () => {
                 name: data.guildName || 'Unknown Server',
                 translations: data.totalTranslations || 0,
                 uniqueUsers: data.uniqueUsers?.length || 0,
-                channels: Object.keys(data.channels || {}).length
+                // Get channel count from the new discordChannelsByGuild structure
+                channels: Object.keys(discordChannelsByGuild.value?.[id] || {}).length
             }))
             .sort((a, b) => b.translations - a.translations)
             .slice(0, 3)
     })
 
-    const topDiscordChannels = computed(() => {
-        const guilds = discordGuilds.value || {}
-        const channels = []
-
-        Object.entries(guilds).forEach(([guildId, guild]) => {
-            Object.entries(guild.channels || {}).forEach(([channelId, channel]) => {
-                channels.push({
-                    id: channelId,
-                    name: channel.channelName || 'Unknown Channel',
-                    guildName: guild.guildName || 'Unknown Server',
-                    translations: channel.totalTranslations || 0,
-                    uniqueUsers: channel.uniqueUsers?.length || 0
-                })
-            })
-        })
-
-        return channels
-            .sort((a, b) => b.translations - a.translations)
-            .slice(0, 3)
-    })
-
+    // Update the topDiscordUsers computed property to show user name and actual cost
     const topDiscordUsers = computed(() => {
         const users = discordUsers.value || {}
         return Object.entries(users)
             .map(([userId, data]) => ({
                 id: userId,
+                userName: data.userName || `User ${userId.substring(0, 8)}`, // Use userName or fallback
                 translations: data.totalTranslations || 0,
                 words: data.totalWords || 0,
                 avgResponseTime: data.totalResponseTime
                     ? Math.round(data.totalResponseTime / data.totalTranslations)
                     : 0,
-                costSaved: calculateUserSavings(data)
+                // Calculate actual cost instead of savings
+                actualCost: calculateUserActualCost(data)
             }))
             .sort((a, b) => b.translations - a.translations)
             .slice(0, 3)
     })
+
+    // Add helper function to calculate actual cost (not savings)
+    const calculateUserActualCost = (userData) => {
+        if (!userData?.tokenUsage) return 0
+
+        const promptTokens = userData.tokenUsage.prompt || 0
+        const completionTokens = userData.tokenUsage.completion || 0
+
+        const inputCost = (promptTokens / 1000000) * GPT4O_INPUT_COST_PER_MILLION
+        const outputCost = (completionTokens / 1000000) * GPT4O_OUTPUT_COST_PER_MILLION
+
+        return inputCost + outputCost
+    }
 
     const hasDiscordData = computed(() => discordStats.value !== null || Object.keys(discordGuilds.value || {}).length > 0)
 
@@ -591,6 +616,50 @@ export const useTranslateStore = defineStore('translate', () => {
         setupListener()
     }
 
+    const createChannelListener = (guildId) => {
+        const channelPath = `translations/discord/guilds/${guildId}/channels`
+
+        try {
+            const channelsRef = collection(firestore, channelPath)
+
+            const unsubscribe = onSnapshot(channelsRef,
+                (snapshot) => {
+                    const channelData = {}
+                    snapshot.forEach(doc => {
+                        channelData[doc.id] = doc.data()
+                    })
+
+                    // Update the channels for this specific guild
+                    if (!discordChannelsByGuild.value[guildId]) {
+                        discordChannelsByGuild.value[guildId] = {}
+                    }
+                    discordChannelsByGuild.value[guildId] = channelData
+                },
+                (error) => {
+                    console.error(`[CHANNEL_LISTENER] Error listening to ${channelPath}:`, error)
+                }
+            )
+
+            // Store the unsubscribe function
+            discordChannelListeners.value.push(unsubscribe)
+
+        } catch (error) {
+            console.error(`[CHANNEL_LISTENER] Failed to set up listener for ${channelPath}:`, error)
+        }
+    }
+
+    // Helper function to cleanup all channel listeners
+    const cleanupChannelListeners = () => {
+        discordChannelListeners.value.forEach(unsubscribe => {
+            if (typeof unsubscribe === 'function') {
+                unsubscribe()
+            }
+        })
+        discordChannelListeners.value = []
+        discordChannelsByGuild.value = {}
+    }
+
+    // Update the initializeAllListeners function
     const initializeAllListeners = () => {
         cleanupAllListeners()
 
@@ -602,11 +671,48 @@ export const useTranslateStore = defineStore('translate', () => {
 
         // --- Discord Stats Listeners ---
         createListener('translations/discord', discordStats, false) // doc with counts
-        createListener('translations/discord/guilds', discordGuilds)
+
+        // Listen to guilds and set up channel listeners when guilds change
+        const guildsRef = collection(firestore, 'translations/discord/guilds')
+        const unsubscribeGuilds = onSnapshot(guildsRef,
+            (snapshot) => {
+                const guildData = {}
+                const newGuildIds = new Set()
+
+                snapshot.forEach(doc => {
+                    guildData[doc.id] = doc.data()
+                    newGuildIds.add(doc.id)
+                })
+
+                discordGuilds.value = guildData
+
+                // Clean up old channel listeners
+                cleanupChannelListeners()
+
+                // Set up channel listeners for each guild
+                newGuildIds.forEach(guildId => {
+                    createChannelListener(guildId)
+                })
+            },
+            (error) => {
+                console.error('[GUILD_LISTENER] Error listening to guilds:', error)
+            }
+        )
+
+        unsubscribers.value.push(unsubscribeGuilds)
+        unsubscribers.value.push(() => cleanupChannelListeners())
+
         createListener('translations/discord/users', discordUsers)
         createListener('translations/discord/daily_stats', discordDailyStats)
         createListener('translations/discord/hourly_stats', discordHourlyStats)
         createListener('translations/discord/languages', discordLanguages)
+    }
+
+    // Update the cleanupAllListeners function
+    const cleanupAllListeners = () => {
+        unsubscribers.value.forEach(unsub => unsub())
+        unsubscribers.value = []
+        cleanupChannelListeners() // Clean up channel listeners too
     }
 
     const initializeUserHistoryListener = (userId) => {
@@ -678,11 +784,6 @@ export const useTranslateStore = defineStore('translate', () => {
         if (userHistory.value.length > 0) {
             userHistory.value = []
         }
-    }
-
-    const cleanupAllListeners = () => {
-        unsubscribers.value.forEach(unsub => unsub())
-        unsubscribers.value = []
     }
 
     // Watch for sync changes with better error handling
@@ -817,7 +918,7 @@ export const useTranslateStore = defineStore('translate', () => {
         settingsOpen, showApiKey, isTranslating, accuracy, accuracyRating,
         lastOriginalText, lastTranslationDirection, leftText, rightText, retranslatedText,
         apiKey, selectedLanguage, fromLanguage, autoCopy, syncHistory,
-        recentTranslations, userHistory, history,
+        recentTranslations, userHistory, history, discordChannelsByGuild,
 
         // Global Stats State
         appStats, languageStats, dailyStats, hourlyStats,

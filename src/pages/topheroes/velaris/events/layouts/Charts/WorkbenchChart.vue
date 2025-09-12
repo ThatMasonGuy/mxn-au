@@ -1,7 +1,7 @@
 <template>
     <div :style="{ height }" class="relative">
         <template v-if="isReady">
-            <v-chart :option="styledOption" autoresize :theme="theme" class="w-full h-full" />
+            <v-chart :option="option" autoresize :theme="theme" class="w-full h-full" ref="chartRef" />
         </template>
         <template v-else>
             <WorkbenchChartLoader :error="loadError" />
@@ -10,9 +10,8 @@
 </template>
 
 <script setup>
-import { ref, watchEffect, computed, watch } from 'vue'
+import { ref, watchEffect, watch } from 'vue'
 import WorkbenchChartLoader from './WorkbenchChartLoader.vue'
-import { useChartTheme } from './useChartTheme.js'
 
 const props = defineProps({
     option: { type: Object, required: true },
@@ -22,9 +21,10 @@ const props = defineProps({
 
 const isReady = ref(false)
 const loadError = ref(false)
+const chartRef = ref(null)
 
 watchEffect(() => {
-    if (!props.option || !props.option.baseOption) {
+    if (!props.option) {
         isReady.value = false
         loadError.value = true
     } else {
@@ -33,18 +33,12 @@ watchEffect(() => {
     }
 })
 
-const chartRef = ref(null)
-
-// Watch for theme changes and force update
+// Watch for theme changes and force chart update
 watch(() => props.theme, (newTheme) => {
     setTimeout(() => {
         if (chartRef.value && chartRef.value.chart) {
-            chartRef.value.chart.setOption(styledOption.value, true)
+            chartRef.value.chart.setOption(props.option, true)
         }
     }, 50)
 })
-
-// Inject theme colors
-const { applyTheme, roleColorsGradient, roleColorsStatic, playerGradients, dayTasks, comparisonColours } = useChartTheme()
-const styledOption = computed(() => applyTheme(props.option, props.theme))
 </script>

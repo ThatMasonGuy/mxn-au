@@ -18,6 +18,22 @@ export default [
         },
     },
     {
+        path: '/translate/legal',
+        name: 'TranslateLegal',
+        component: () => import('@/pages/translate/Legal.vue'),
+        meta: {
+            requiresAuth: false,
+            role: null,
+            title: 'Translate Legal',
+            drawerRanking: 2,
+            drawerVisible: true,
+            layout: 'admin',
+            description: 'Terms of Service and Privacy Policy for the MXNTranslate platform.',
+            badge: '',
+            requiresOverlay: false,
+        },
+    },
+    {
         path: '/translate/bot',
         name: 'TranslateBot',
         component: () => import('@/pages/translate/TR_Landing.vue'),

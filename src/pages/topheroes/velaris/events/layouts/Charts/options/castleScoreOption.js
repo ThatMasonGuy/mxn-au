@@ -5,6 +5,13 @@ export function useCastleScoreOption(players, allDays) {
     const { applyTheme } = useChartTheme()
 
     return computed(() => {
+        const chartTheme = useChartTheme()
+        const formatAxisNumber = chartTheme.formatAxisNumber
+        const formatTooltipNumber = chartTheme.formatTooltipNumber
+
+        const GRID_STD = { top: 70, right: '10%', bottom: 60, left: '10%', containLabel: true }
+        const GRID_MOBILE_STD = { top: 70, right: 10, bottom: 30, left: 10, containLabel: true }
+
         const castleMap = new Map()
         players.value.forEach(p => {
             const c = p.Castle
@@ -15,50 +22,27 @@ export function useCastleScoreOption(players, allDays) {
 
         const entries = [...castleMap.entries()].sort((a, b) => a[0] - b[0])
         const xData = entries.map(([castle]) => castle)
-        const yData = entries.map(([_, v]) =>
-            v.count > 0 ? Math.round(v.total / v.count) : 0
-        )
+        const yData = entries.map(([_, v]) => v.count > 0 ? Math.round(v.total / v.count) : 0)
 
         const option = {
-            baseOption: {
-                title: {
-                    text: 'Castle Level vs Avg Score',
-                    left: 'center',
-                    textStyle: { fontSize: 18, fontWeight: 'bold' }
-                },
-                tooltip: {
-                    trigger: 'axis',
-                    formatter: p => `Castle ${p[0].axisValue}<br/>Avg Score: ${p[0].value.toLocaleString()}`
-                },
-                grid: { top: 70, bottom: 60, left: '10%', right: '10%' },
-                xAxis: {
-                    type: 'category',
-                    data: xData,
-                    axisLabel: { fontWeight: 'bold' }
-                },
-                yAxis: {
-                    type: 'value',
-                    axisLabel: {
-                        formatter: v =>
-                            v >= 1e6 ? (v / 1e6).toFixed(1) + 'M' : v.toLocaleString()
-                    }
-                },
-                series: [{
-                    type: 'line',
-                    data: yData,
-                    areaStyle: { opacity: 0.3 },
-                    smooth: true,
-                    symbol: 'circle',
-                    itemStyle: { color: '#6366f1' },
-                    lineStyle: { color: '#6366f1', width: 3 }
-                }]
+            title: { text: 'Castle Level vs Avg Score', left: 'center', textStyle: { fontSize: 18, fontWeight: 'bold' } },
+            tooltip: {
+                trigger: 'axis',
+                formatter: p => `Castle ${p[0].axisValue}<br/>Avg Score: <strong>${formatTooltipNumber(p[0].value)}</strong>`
             },
-            media: [{
-                query: { maxWidth: 600 },
-                option: {
-                    grid: { top: 50, bottom: 50, left: '5%', right: '5%' }
-                }
-            }]
+            grid: GRID_STD,
+            xAxis: { type: 'category', data: xData, axisLabel: { fontWeight: 'bold' } },
+            yAxis: { type: 'value', axisLabel: { formatter: formatAxisNumber } },
+            series: [{
+                type: 'line',
+                data: yData,
+                areaStyle: { opacity: 0.3 },
+                smooth: true,
+                symbol: 'circle',
+                itemStyle: { color: '#6366f1' },
+                lineStyle: { color: '#6366f1', width: 3 }
+            }],
+            media: [{ query: { maxWidth: 800 }, option: { grid: GRID_MOBILE_STD } }]
         }
 
         return applyTheme(option)

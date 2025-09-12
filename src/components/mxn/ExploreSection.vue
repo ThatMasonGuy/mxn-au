@@ -14,6 +14,10 @@
                 desc="AI-powered web translator for real-time language conversion. Free & open to all."
                 link="/translate" :image="Translate_image" badge="New!" />
 
+            <ToolCard :icon="Grid" title="Daily Games"
+                desc="AI-powered daily games like wordle, connections, flagle and more."
+                link="/daily" :image="Daily_Image" badge="New!" />
+
             <ToolCard :icon="Crosshair" title="Destiny 2"
                 desc="AI-powered challenge optimiser for Destiny 2. Plan, optimise, and track your progress. 100% free."
                 link="/destiny" :image="Destiny2_image" badge="New!" />
@@ -43,7 +47,7 @@
 
 <script setup>
 // Lucide-vue icons
-import { Wrench, Puzzle, Box, Server, Languages, User, Crosshair } from 'lucide-vue-next'
+import { Wrench, Puzzle, Box, Server, Languages, User, Crosshair, Grid } from 'lucide-vue-next'
 
 import ToolCard from '@/components/topheroes/ToolCard.vue'
 
@@ -54,6 +58,7 @@ import Server_image from '@/assets/images/mxn/Server_Image.jpg';
 import Translate_image from '@/assets/images/mxn/Translate_Image.jpg';
 import Personal_image from '@/assets/images/mxn/Personal_Image.png';
 import Destiny2_image from '@/assets/images/mxn/Destiny2_Image.jpg';
+import Daily_Image from '@/assets/images/mxn/Daily_Image.png';
 </script>
 
 <style scoped>

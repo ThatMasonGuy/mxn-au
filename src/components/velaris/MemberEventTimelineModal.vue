@@ -1,317 +1,306 @@
 <template>
     <Dialog :open="true" @update:open="$emit('close')">
-        <DialogContent
-            class="w-full max-w-6xl max-h-[95vh] overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 border border-slate-700/50 shadow-2xl shadow-black/50 backdrop-blur-xl">
-
-            <!-- Animated background elements -->
-            <div class="absolute inset-0 overflow-hidden pointer-events-none">
-                <div class="absolute top-0 right-0 w-80 h-80 bg-purple-500/5 rounded-full blur-3xl animate-pulse"></div>
-                <div
-                    class="absolute bottom-0 left-0 w-64 h-64 bg-cyan-500/5 rounded-full blur-3xl animate-pulse delay-1000">
-                </div>
-                <div
-                    class="absolute top-1/2 left-1/2 w-96 h-96 bg-blue-500/3 rounded-full blur-3xl animate-pulse delay-500">
-                </div>
-            </div>
-
-            <!-- Scrollable content -->
-            <div class="relative z-10 max-h-[90vh] overflow-y-auto custom-scrollbar">
-                <!-- Enhanced Header -->
-                <DialogHeader class="border-b border-slate-700/50 pb-6 mb-8">
-                    <div class="flex items-center gap-4">
+        <DialogContent class="w-full max-w-5xl max-h-[95vh] overflow-hidden">
+            <!-- Fixed Header -->
+            <DialogHeader class="pb-4 border-b border-border flex-shrink-0">
+                <div class="flex items-start gap-4">
+                    <div class="relative">
                         <div
-                            class="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-700 border border-indigo-500/30 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                            class="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 border-2 border-indigo-400 flex items-center justify-center">
                             <Calendar class="w-6 h-6 text-white" />
                         </div>
-                        <div class="space-y-2">
-                            <DialogTitle class="text-3xl font-bold text-white flex items-center gap-3">
-                                Event History
-                                <span
-                                    class="text-2xl bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
-                                    {{ member.name }}
-                                </span>
-                            </DialogTitle>
-                            <div class="flex items-center gap-2 text-slate-400 text-sm">
+                    </div>
+                    <div class="space-y-2 flex-1">
+                        <DialogTitle class="text-2xl font-bold text-foreground flex items-center gap-3">
+                            Event History
+                            <span
+                                class="text-xl bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                                {{ member.name }}
+                            </span>
+                        </DialogTitle>
+                        <div class="flex items-center gap-4 text-sm text-foreground/60">
+                            <div class="flex items-center gap-1">
                                 <Trophy class="w-4 h-4" />
-                                <span>{{ sortedEvents.length }} event{{ sortedEvents.length !== 1 ? 's' : '' }}
-                                    recorded</span>
-                                <span class="text-slate-600">•</span>
-                                <span>{{ activeEvents.length }} active participation{{ activeEvents.length !== 1 ? 's' :
-                                    '' }}</span>
+                                <span>{{ sortedEvents.length }} event{{ sortedEvents.length !== 1 ? 's' : '' }}</span>
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <Activity class="w-4 h-4" />
+                                <span>{{ activeEvents.length }} active</span>
                             </div>
                         </div>
-                    </div>
-                </DialogHeader>
-
-                <!-- Event Statistics Cards -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                    <div
-                        class="bg-gradient-to-br from-slate-800/80 to-slate-900/80 backdrop-blur-sm p-4 rounded-xl border border-slate-700/50 hover:border-slate-600/70 transition-all duration-300">
-                        <div class="flex items-center gap-3 mb-2">
-                            <Swords class="w-5 h-5 text-blue-400" />
-                            <span class="text-xs uppercase text-slate-400 font-semibold tracking-wide">KvK Events</span>
-                        </div>
-                        <div class="text-white font-bold text-xl">{{ kvkEvents.length }}</div>
-                    </div>
-
-                    <div
-                        class="bg-gradient-to-br from-slate-800/80 to-slate-900/80 backdrop-blur-sm p-4 rounded-xl border border-slate-700/50 hover:border-slate-600/70 transition-all duration-300">
-                        <div class="flex items-center gap-3 mb-2">
-                            <Shield class="w-5 h-5 text-purple-400" />
-                            <span class="text-xs uppercase text-slate-400 font-semibold tracking-wide">GvG Events</span>
-                        </div>
-                        <div class="text-white font-bold text-xl">{{ gvgEvents.length }}</div>
-                    </div>
-
-                    <div
-                        class="bg-gradient-to-br from-slate-800/80 to-slate-900/80 backdrop-blur-sm p-4 rounded-xl border border-slate-700/50 hover:border-slate-600/70 transition-all duration-300">
-                        <div class="flex items-center gap-3 mb-2">
-                            <Crown class="w-5 h-5 text-green-400" />
-                            <span class="text-xs uppercase text-slate-400 font-semibold tracking-wide">GR Events</span>
-                        </div>
-                        <div class="text-white font-bold text-xl">{{ grEvents.length }}</div>
-                    </div>
-
-                    <div
-                        class="bg-gradient-to-br from-slate-800/80 to-slate-900/80 backdrop-blur-sm p-4 rounded-xl border border-slate-700/50 hover:border-slate-600/70 transition-all duration-300">
-                        <div class="flex items-center gap-3 mb-2">
-                            <TrendingUp class="w-5 h-5 text-cyan-400" />
-                            <span class="text-xs uppercase text-slate-400 font-semibold tracking-wide">Avg Score</span>
-                        </div>
-                        <div class="text-white font-bold text-xl">{{ formatNumber(averageScore) }}</div>
                     </div>
                 </div>
+            </DialogHeader>
 
-                <!-- Events Timeline -->
-                <div class="relative">
-                    <!-- Timeline line -->
-                    <div
-                        class="absolute left-8 top-0 bottom-0 w-0.5 bg-gradient-to-b from-indigo-500 via-purple-500 to-cyan-500 opacity-30">
+            <!-- Scrollable Content -->
+            <div class="flex-1 overflow-y-auto pr-3 pl-1 pb-4" style="max-height: calc(95vh - 140px);">
+                <div class="py-4 space-y-4">
+                    <!-- Event Statistics Cards -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div
+                            class="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
+                            <div class="flex items-center gap-2 mb-1">
+                                <Swords class="w-4 h-4 text-blue-600" />
+                                <span class="text-xs text-blue-800 dark:text-blue-200 font-medium">KvK Events</span>
+                            </div>
+                            <div class="text-xl font-bold text-blue-900 dark:text-blue-100">{{ kvkEvents.length }}</div>
+                        </div>
+
+                        <div
+                            class="bg-gradient-to-br from-purple-50 to-violet-50 dark:from-purple-950/30 dark:to-violet-950/30 rounded-lg p-3 border border-purple-200 dark:border-purple-800">
+                            <div class="flex items-center gap-2 mb-1">
+                                <Shield class="w-4 h-4 text-purple-600" />
+                                <span class="text-xs text-purple-800 dark:text-purple-200 font-medium">GvG Events</span>
+                            </div>
+                            <div class="text-xl font-bold text-purple-900 dark:text-purple-100">{{ gvgEvents.length }}
+                            </div>
+                        </div>
+
+                        <div
+                            class="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30 rounded-lg p-3 border border-green-200 dark:border-green-800">
+                            <div class="flex items-center gap-2 mb-1">
+                                <Crown class="w-4 h-4 text-green-600" />
+                                <span class="text-xs text-green-800 dark:text-green-200 font-medium">GR Events</span>
+                            </div>
+                            <div class="text-xl font-bold text-green-900 dark:text-green-100">{{ grEvents.length }}
+                            </div>
+                        </div>
+
+                        <div
+                            class="bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950/30 dark:to-amber-950/30 rounded-lg p-3 border border-orange-200 dark:border-orange-800">
+                            <div class="flex items-center gap-2 mb-1">
+                                <TrendingUp class="w-4 h-4 text-orange-600" />
+                                <span class="text-xs text-orange-800 dark:text-orange-200 font-medium">Avg Score</span>
+                            </div>
+                            <div class="text-xl font-bold text-orange-900 dark:text-orange-100">{{
+                                formatNumber(averageScore) }}</div>
+                        </div>
                     </div>
 
-                    <div class="space-y-8">
+                    <!-- Events Timeline -->
+                    <div v-if="sortedEvents.length" class="space-y-3">
                         <div v-for="event in sortedEvents" :key="event.id" class="relative">
-                            <!-- Enhanced Timeline dot -->
-                            <div :class="['absolute left-4 top-6 w-8 h-8 rounded-full border-2 border-slate-900 shadow-xl flex items-center justify-center transition-all duration-300 hover:scale-110', eventColor(event.type)]"
-                                :style="{ boxShadow: `0 0 20px ${eventGlowColor(event.type)}40` }">
-                                <component :is="eventIconComponent(event.type)" class="w-4 h-4 text-white font-bold" />
-                            </div>
+                            <!-- Event Card -->
+                            <div class="rounded-lg border transition-all duration-200 hover:shadow-md bg-card"
+                                :class="getEventCardClasses(event.type)">
 
-                            <!-- Enhanced Event card -->
-                            <div class="ml-20 group">
-                                <div class="bg-gradient-to-br from-slate-800/90 to-slate-900/90 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50 shadow-xl hover:border-slate-600/70 hover:shadow-2xl transition-all duration-500 hover:transform hover:scale-[1.01]"
-                                    :class="{ 'ring-2 ring-cyan-500/30': editingEvent === event.id }">
-
-                                    <!-- Event header -->
-                                    <div
-                                        class="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-700/30">
-                                        <div class="flex items-center gap-4">
-                                            <span
-                                                :class="['px-4 py-2 rounded-xl text-sm font-bold tracking-wide uppercase shadow-lg', eventBadgeColor(event.type)]"
-                                                :style="{ boxShadow: `0 0 15px ${eventGlowColor(event.type)}30` }">
-                                                {{ event.type }}
-                                            </span>
-                                            <div class="space-y-1">
-                                                <div class="text-slate-300 font-mono text-lg font-semibold">{{
-                                                    event.eventId }}</div>
-                                                <div class="text-slate-400 text-sm flex items-center gap-2">
-                                                    <CalendarDays class="w-4 h-4" />
+                                <!-- Event Header -->
+                                <div class="p-4 border-b border-border">
+                                    <div class="flex flex-wrap items-center justify-between gap-3">
+                                        <div class="flex items-center gap-3">
+                                            <div class="w-8 h-8 rounded-full border-2 border-background flex items-center justify-center"
+                                                :style="getEventIconStyle(event.type)">
+                                                <component :is="getEventIcon(event.type)" class="w-4 h-4 text-white" />
+                                            </div>
+                                            <div>
+                                                <div class="flex items-center gap-2">
+                                                    <span
+                                                        class="px-2 py-1 rounded text-xs font-bold uppercase tracking-wide text-white"
+                                                        :style="getEventBadgeStyle(event.type)">
+                                                        {{ event.type }}
+                                                    </span>
+                                                    <span class="font-mono text-sm font-semibold">{{ event.eventId
+                                                        }}</span>
+                                                </div>
+                                                <div class="flex items-center gap-1 mt-1 text-xs text-foreground/60">
+                                                    <CalendarDays class="w-3 h-3" />
                                                     {{ formatDate(event.enteredDate) }}
                                                 </div>
                                             </div>
                                         </div>
 
                                         <div class="flex items-center gap-2">
-                                            <div
-                                                class="text-center bg-slate-800/50 rounded-xl p-3 border border-slate-700/30">
-                                                <div class="text-xs text-slate-400 mb-1">Rank</div>
-                                                <div class="text-xl font-bold text-white">#{{ event.overallRank }}</div>
+                                            <div class="text-center bg-muted rounded-lg p-2 min-w-[60px]">
+                                                <div class="text-xs text-muted-foreground">Rank</div>
+                                                <div class="text-lg font-bold text-foreground">#{{ event.calculatedRank }}
+                                                </div>
                                             </div>
-                                            <div
-                                                class="text-center bg-slate-800/50 rounded-xl p-3 border border-slate-700/30">
-                                                <div class="text-xs text-slate-400 mb-1">Score</div>
-                                                <div class="text-xl font-bold text-white">{{
+                                            <div class="text-center bg-muted rounded-lg p-2 min-w-[80px]">
+                                                <div class="text-xs text-muted-foreground">Score</div>
+                                                <div class="text-lg font-bold text-foreground">{{
                                                     formatNumber(event.overallScore) }}</div>
                                             </div>
                                         </div>
                                     </div>
+                                </div>
 
-                                    <!-- Event details -->
-                                    <div class="mt-6" :class="{ 'opacity-50': editingEvent === event.id }">
-                                        <div class="grid lg:grid-cols-2 gap-6">
-                                            <!-- Left column - Core stats -->
-                                            <div class="space-y-4">
-                                                <h4
-                                                    class="text-sm uppercase text-slate-400 font-semibold tracking-wide flex items-center gap-2">
-                                                    <BarChart3 class="w-4 h-4" />
-                                                    Performance Stats
-                                                </h4>
-                                                <div class="grid grid-cols-2 gap-4">
-                                                    <div
-                                                        class="bg-slate-700/50 rounded-lg p-3 border border-slate-600/30">
-                                                        <div class="flex items-center gap-2 text-slate-400 mb-1">
-                                                            <Zap class="w-3 h-3" />
-                                                            <span class="text-xs">Power</span>
-                                                        </div>
-                                                        <div class="text-white font-bold">{{ formatPower(event.power) }}
-                                                        </div>
+                                <!-- Event Details -->
+                                <div class="p-4" :class="{ 'opacity-60': editingEvent === event.id }">
+                                    <div class="grid lg:grid-cols-2 gap-4">
+                                        <!-- Core Stats with better styling -->
+                                        <div class="space-y-3">
+                                            <h4
+                                                class="text-sm font-semibold text-foreground/70 flex items-center gap-2">
+                                                <BarChart3 class="w-4 h-4" />
+                                                Performance Stats
+                                            </h4>
+                                            <div class="grid grid-cols-2 gap-2">
+                                                <div
+                                                    class="bg-gradient-to-br from-yellow-50 to-amber-50 dark:from-yellow-950/30 dark:to-amber-950/30 rounded-lg p-3 text-center border border-yellow-200 dark:border-yellow-800">
+                                                    <div class="flex items-center justify-center gap-1 mb-1">
+                                                        <Zap class="w-3 h-3 text-yellow-600" />
+                                                        <span
+                                                            class="text-xs text-yellow-800 dark:text-yellow-200 font-medium">Power</span>
                                                     </div>
-                                                    <div
-                                                        class="bg-slate-700/50 rounded-lg p-3 border border-slate-600/30">
-                                                        <div class="flex items-center gap-2 text-slate-400 mb-1">
-                                                            <Castle class="w-3 h-3" />
-                                                            <span class="text-xs">Castle</span>
-                                                        </div>
-                                                        <div class="text-white font-bold">{{ event.castle }}</div>
-                                                    </div>
-                                                    <div
-                                                        class="bg-slate-700/50 rounded-lg p-3 border border-slate-600/30">
-                                                        <div class="flex items-center gap-2 text-slate-400 mb-1">
-                                                            <Star class="w-3 h-3" />
-                                                            <span class="text-xs">Role</span>
-                                                        </div>
-                                                        <div class="text-white font-bold">{{ event.role }}</div>
-                                                    </div>
-                                                    <div
-                                                        class="bg-slate-700/50 rounded-lg p-3 border border-slate-600/30">
-                                                        <div class="flex items-center gap-2 text-slate-400 mb-1">
-                                                            <Trophy class="w-3 h-3" />
-                                                            <span class="text-xs">Rank</span>
-                                                        </div>
-                                                        <div class="text-white font-bold">#{{ event.overallRank }}</div>
-                                                    </div>
+                                                    <div class="font-bold text-yellow-900 dark:text-yellow-100">{{
+                                                        formatPower(event.power) }}</div>
                                                 </div>
-                                            </div>
-
-                                            <!-- Right column - Daily scores (for KvK/GvG) -->
-                                            <div v-if="!event.score" class="space-y-4">
-                                                <h4
-                                                    class="text-sm uppercase text-slate-400 font-semibold tracking-wide flex items-center gap-2">
-                                                    <Calendar class="w-4 h-4" />
-                                                    Daily Performance
-                                                </h4>
-                                                <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                                    <div v-for="d in 6" :key="d"
-                                                        :class="['bg-slate-700/50 rounded-lg p-3 border text-center transition-all duration-300',
-                                                            event[`scoreD${d}`] > 0 ? 'border-slate-500/50 shadow-lg' : 'border-slate-600/30 opacity-60']">
-                                                        <div class="text-xs text-slate-400 mb-1">Day {{ d }}</div>
-                                                        <div class="text-white font-bold text-lg">{{
-                                                            formatNumber(event[`scoreD${d}`] || 0) }}</div>
-                                                        <div v-if="event[`scoreD${d}`] > 0"
-                                                            class="w-full bg-slate-600 rounded-full h-1 mt-2">
-                                                            <div class="bg-gradient-to-r from-cyan-500 to-blue-600 h-1 rounded-full transition-all duration-500"
-                                                                :style="{ width: `${Math.min(100, (event[`scoreD${d}`] / Math.max(...Array.from({ length: 6 }, (_, i) => event[`scoreD${i + 1}`] || 0))) * 100)}%` }">
-                                                            </div>
-                                                        </div>
+                                                <div
+                                                    class="bg-gradient-to-br from-purple-50 to-violet-50 dark:from-purple-950/30 dark:to-violet-950/30 rounded-lg p-3 text-center border border-purple-200 dark:border-purple-800">
+                                                    <div class="flex items-center justify-center gap-1 mb-1">
+                                                        <Castle class="w-3 h-3 text-purple-600" />
+                                                        <span
+                                                            class="text-xs text-purple-800 dark:text-purple-200 font-medium">Castle</span>
                                                     </div>
+                                                    <div class="font-bold text-purple-900 dark:text-purple-100">{{
+                                                        event.castle }}</div>
+                                                </div>
+                                                <div
+                                                    class="bg-gradient-to-br from-blue-50 to-sky-50 dark:from-blue-950/30 dark:to-sky-950/30 rounded-lg p-3 text-center border border-blue-200 dark:border-blue-800">
+                                                    <div class="flex items-center justify-center gap-1 mb-1">
+                                                        <Star class="w-3 h-3 text-blue-600" />
+                                                        <span
+                                                            class="text-xs text-blue-800 dark:text-blue-200 font-medium">Role</span>
+                                                    </div>
+                                                    <div class="font-bold text-blue-900 dark:text-blue-100">{{
+                                                        event.role }}</div>
+                                                </div>
+                                                <div
+                                                    class="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 rounded-lg p-3 text-center border border-amber-200 dark:border-amber-800">
+                                                    <div class="flex items-center justify-center gap-1 mb-1">
+                                                        <Trophy class="w-3 h-3 text-amber-600" />
+                                                        <span
+                                                            class="text-xs text-amber-800 dark:text-amber-200 font-medium">Rank</span>
+                                                    </div>
+                                                    <div class="font-bold text-amber-900 dark:text-amber-100">#{{
+                                                        event.calculatedRank }}</div>
                                                 </div>
                                             </div>
                                         </div>
 
-                                        <!-- Notes section -->
-                                        <div v-if="event.notes"
-                                            class="mt-6 bg-slate-700/30 rounded-xl p-4 border border-slate-600/30">
-                                            <div class="flex items-center gap-2 text-slate-400 mb-2">
-                                                <MessageSquare class="w-4 h-4" />
-                                                <span class="text-xs uppercase font-semibold tracking-wide">Notes</span>
+                                        <!-- Daily Scores (for KvK/GvG) - Fixed condition -->
+                                        <div v-if="event.type === 'KvK' || event.type === 'GvG'" class="space-y-3">
+                                            <h4
+                                                class="text-sm font-semibold text-foreground/70 flex items-center gap-2">
+                                                <Calendar class="w-4 h-4" />
+                                                Daily Performance
+                                            </h4>
+                                            <div class="grid grid-cols-3 gap-2">
+                                                <div v-for="d in 6" :key="d"
+                                                    class="bg-muted rounded-lg p-2 text-center transition-all border"
+                                                    :class="event[`scoreD${d}`] > 0 ? 'border-primary/20 bg-primary/5' : 'border-border opacity-60'">
+                                                    <div class="text-xs text-foreground/60 mb-1">Day {{ d }}</div>
+                                                    <div class="font-bold text-sm text-foreground">{{
+                                                        formatNumber(event[`scoreD${d}`] || 0) }}</div>
+                                                    <div v-if="event[`scoreD${d}`] > 0"
+                                                        class="w-full bg-border rounded-full h-1 mt-1">
+                                                        <div class="bg-primary h-1 rounded-full transition-all duration-500"
+                                                            :style="{ width: `${Math.min(100, (event[`scoreD${d}`] / Math.max(...Array.from({ length: 6 }, (_, i) => event[`scoreD${i + 1}`] || 0))) * 100)}%` }">
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <p class="text-slate-300 leading-relaxed">{{ event.notes }}</p>
                                         </div>
                                     </div>
 
-                                    <!-- Edit form -->
-                                    <div v-if="editingEvent === event.id"
-                                        class="mt-6 bg-slate-800/80 backdrop-blur-sm p-6 rounded-2xl border border-slate-600/50 shadow-2xl">
-                                        <h4 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                                            <Edit class="w-5 h-5" />
-                                            Edit Event Data
-                                        </h4>
+                                    <!-- Notes -->
+                                    <div v-if="event.notes" class="mt-4 bg-muted rounded-lg p-3 border">
+                                        <div class="flex items-center gap-2 mb-2">
+                                            <MessageSquare class="w-4 h-4 text-foreground/60" />
+                                            <span class="text-sm font-semibold text-foreground">Notes</span>
+                                        </div>
+                                        <p class="text-sm leading-relaxed text-foreground/80">{{ event.notes }}</p>
+                                    </div>
+                                </div>
 
-                                        <div class="grid lg:grid-cols-2 gap-6 mb-6">
-                                            <div class="space-y-4">
-                                                <div class="grid grid-cols-2 gap-4">
-                                                    <div>
-                                                        <label
-                                                            class="block text-xs text-slate-300 mb-2 font-medium">Power</label>
-                                                        <input v-model="editForm.power"
-                                                            class="w-full bg-slate-700/80 rounded-lg px-3 py-2 text-white border border-slate-600/50 focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all" />
-                                                    </div>
-                                                    <div>
-                                                        <label
-                                                            class="block text-xs text-slate-300 mb-2 font-medium">Castle</label>
-                                                        <input v-model="editForm.castle"
-                                                            class="w-full bg-slate-700/80 rounded-lg px-3 py-2 text-white border border-slate-600/50 focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all" />
-                                                    </div>
-                                                    <div>
-                                                        <label
-                                                            class="block text-xs text-slate-300 mb-2 font-medium">Role</label>
-                                                        <input v-model="editForm.role"
-                                                            class="w-full bg-slate-700/80 rounded-lg px-3 py-2 text-white border border-slate-600/50 focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all" />
-                                                    </div>
-                                                    <div>
-                                                        <label
-                                                            class="block text-xs text-slate-300 mb-2 font-medium">Rank</label>
-                                                        <input v-model="editForm.overallRank"
-                                                            class="w-full bg-slate-700/80 rounded-lg px-3 py-2 text-white border border-slate-600/50 focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all" />
-                                                    </div>
+                                <!-- Edit Form -->
+                                <div v-if="editingEvent === event.id"
+                                    class="p-4 bg-muted/50 backdrop-blur-sm border-t border-border">
+                                    <h4 class="text-sm font-semibold mb-3 flex items-center gap-2 text-foreground">
+                                        <Edit class="w-4 h-4" />
+                                        Edit Event Data
+                                    </h4>
+
+                                    <div class="grid lg:grid-cols-2 gap-4 mb-4">
+                                        <div class="space-y-3">
+                                            <div class="grid grid-cols-2 gap-3">
+                                                <div>
+                                                    <label
+                                                        class="block text-xs font-medium mb-1 text-foreground">Power</label>
+                                                    <input v-model="editForm.power"
+                                                        class="w-full bg-background rounded-lg px-3 py-2 border border-border focus:border-primary focus:outline-none transition-all text-sm" />
                                                 </div>
-                                            </div>
-
-                                            <div class="space-y-4">
-                                                <label class="block text-xs text-slate-300 mb-2 font-medium">Daily
-                                                    Scores</label>
-                                                <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                                    <div v-for="d in 6" :key="d">
-                                                        <input v-model="editForm[`scoreD${d}`]"
-                                                            :placeholder="`Day ${d}`"
-                                                            class="w-full bg-slate-700/80 rounded-lg px-3 py-2 text-white border border-slate-600/50 focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all text-sm" />
-                                                    </div>
+                                                <div>
+                                                    <label
+                                                        class="block text-xs font-medium mb-1 text-foreground">Castle</label>
+                                                    <input v-model="editForm.castle"
+                                                        class="w-full bg-background rounded-lg px-3 py-2 border border-border focus:border-primary focus:outline-none transition-all text-sm" />
+                                                </div>
+                                                <div>
+                                                    <label
+                                                        class="block text-xs font-medium mb-1 text-foreground">Role</label>
+                                                    <input v-model="editForm.role"
+                                                        class="w-full bg-background rounded-lg px-3 py-2 border border-border focus:border-primary focus:outline-none transition-all text-sm" />
+                                                </div>
+                                                <div>
+                                                    <label
+                                                        class="block text-xs font-medium mb-1 text-foreground">Rank</label>
+                                                    <input v-model="editForm.overallRank"
+                                                        class="w-full bg-background rounded-lg px-3 py-2 border border-border focus:border-primary focus:outline-none transition-all text-sm" />
                                                 </div>
                                             </div>
                                         </div>
 
-                                        <div class="mb-6">
-                                            <label class="block text-xs text-slate-300 mb-2 font-medium">Notes</label>
-                                            <textarea v-model="editForm.notes"
-                                                class="w-full bg-slate-700/80 rounded-lg px-3 py-2 text-white border border-slate-600/50 focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
-                                                rows="3"></textarea>
-                                        </div>
-
-                                        <div class="flex justify-end gap-3">
-                                            <Button variant="outline" size="sm" @click="editingEvent = null"
-                                                class="bg-slate-700/50 border-slate-600/50 hover:bg-slate-600/70">
-                                                Cancel
-                                            </Button>
-                                            <Button size="sm" @click="saveChanges(event)"
-                                                class="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 border-0 shadow-lg shadow-cyan-500/25">
-                                                Save Changes
-                                            </Button>
+                                        <div class="space-y-3">
+                                            <label class="block text-xs font-medium text-foreground">Daily
+                                                Scores</label>
+                                            <div class="grid grid-cols-3 gap-2">
+                                                <div v-for="d in 6" :key="d">
+                                                    <input v-model="editForm[`scoreD${d}`]" :placeholder="`Day ${d}`"
+                                                        class="w-full bg-background rounded-lg px-2 py-2 border border-border focus:border-primary focus:outline-none transition-all text-xs" />
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
 
-                                    <!-- Action buttons -->
-                                    <div class="mt-6 flex justify-end">
-                                        <Button v-if="editingEvent !== event.id" variant="ghost" size="sm"
-                                            @click="toggleEdit(event.id)"
-                                            class="text-slate-400 hover:text-white hover:bg-slate-700/50 group">
-                                            <Edit class="w-4 h-4 mr-2 group-hover:text-cyan-400 transition-colors" />
-                                            Edit Event
+                                    <div class="mb-4">
+                                        <label class="block text-xs font-medium mb-1 text-foreground">Notes</label>
+                                        <textarea v-model="editForm.notes"
+                                            class="w-full bg-background rounded-lg px-3 py-2 border border-border focus:border-primary focus:outline-none transition-all text-sm"
+                                            rows="2"></textarea>
+                                    </div>
+
+                                    <div class="flex justify-end gap-2">
+                                        <Button variant="outline" size="sm" @click="editingEvent = null">
+                                            Cancel
+                                        </Button>
+                                        <Button size="sm" @click="saveChanges(event)">
+                                            Save Changes
                                         </Button>
                                     </div>
+                                </div>
+
+                                <!-- Action Button -->
+                                <div v-if="editingEvent !== event.id" class="px-4 pb-4">
+                                    <Button variant="ghost" size="sm" @click="toggleEdit(event.id)"
+                                        class="text-foreground/70 hover:text-foreground hover:bg-muted">
+                                        <Edit class="w-4 h-4 mr-2" />
+                                        Edit Event
+                                    </Button>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Empty state -->
-                <div v-if="!sortedEvents.length" class="text-center py-16">
-                    <div
-                        class="w-20 h-20 mx-auto mb-6 bg-slate-800/50 rounded-2xl border border-slate-700/50 flex items-center justify-center">
-                        <Calendar class="w-10 h-10 text-slate-500" />
+                    <!-- Empty State -->
+                    <div v-else class="text-center py-16">
+                        <div class="w-16 h-16 mx-auto mb-4 bg-muted rounded-xl border flex items-center justify-center">
+                            <Calendar class="w-8 h-8 text-muted-foreground" />
+                        </div>
+                        <h3 class="text-lg font-semibold text-foreground/80 mb-2">No Events Recorded</h3>
+                        <p class="text-foreground/60">Event participation history will appear here once data is
+                            available.</p>
                     </div>
-                    <h3 class="text-xl font-semibold text-slate-400 mb-2">No Events Recorded</h3>
-                    <p class="text-slate-500">Event participation history will appear here once data is available.</p>
                 </div>
             </div>
         </DialogContent>
@@ -328,7 +317,7 @@ import { firestore } from '@/firebase'
 import { useToast } from '@/components/ui/toast'
 import {
     Calendar, Trophy, Swords, Shield, Crown, TrendingUp, CalendarDays,
-    BarChart3, Zap, Castle, Star, MessageSquare, Edit
+    BarChart3, Zap, Castle, Star, MessageSquare, Edit, Activity
 } from 'lucide-vue-next'
 
 const { toast } = useToast()
@@ -342,6 +331,56 @@ const emit = defineEmits(['close'])
 const editingEvent = ref(null)
 const editForm = ref({})
 
+// Event type styling with better contrast
+const eventStyles = {
+    KvK: {
+        bg: 'bg-gradient-to-br from-blue-500/20 to-indigo-600/20 dark:from-blue-400/10 dark:to-indigo-500/10',
+        border: 'border-blue-400 dark:border-blue-500',
+        text: 'text-blue-900 dark:text-blue-100',
+        icon: '#2563eb'
+    },
+    GvG: {
+        bg: 'bg-gradient-to-br from-purple-500/20 to-violet-600/20 dark:from-purple-400/10 dark:to-violet-500/10',
+        border: 'border-purple-400 dark:border-purple-500',
+        text: 'text-purple-900 dark:text-purple-100',
+        icon: '#9333ea'
+    },
+    GR: {
+        bg: 'bg-gradient-to-br from-green-500/20 to-emerald-600/20 dark:from-green-400/10 dark:to-emerald-500/10',
+        border: 'border-green-400 dark:border-green-500',
+        text: 'text-green-900 dark:text-green-100',
+        icon: '#059669'
+    }
+}
+
+const getEventCardClasses = (type) => {
+    const style = eventStyles[type] || eventStyles.KvK
+    return `${style.bg} ${style.border} ${style.text} border-2`
+}
+
+const getEventCardStyle = (type) => {
+    // Remove the problematic CSS custom properties
+    return {}
+}
+
+const getEventIconStyle = (type) => {
+    const style = eventStyles[type] || eventStyles.KvK
+    return {
+        backgroundColor: style.icon
+    }
+}
+
+const getEventBadgeStyle = (type) => {
+    const style = eventStyles[type] || eventStyles.KvK
+    return {
+        backgroundColor: style.icon
+    }
+}
+
+const getEventIcon = (type) => {
+    return { KvK: Swords, GvG: Shield, GR: Crown }[type] || Calendar
+}
+
 const toggleEdit = (id) => {
     editingEvent.value = editingEvent.value === id ? null : id
     if (editingEvent.value) {
@@ -354,47 +393,36 @@ const formatDate = (d) => {
     if (!d) return '—'
     const date = typeof d.toDate === 'function' ? d.toDate() : new Date(d)
     return date.toLocaleDateString('en-AU', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
+        year: 'numeric', month: 'short', day: 'numeric',
+        hour: '2-digit', minute: '2-digit'
     })
 }
 
 const formatPower = (n) => Intl.NumberFormat('en', {
-    notation: 'compact',
-    maximumFractionDigits: 1
+    notation: 'compact', maximumFractionDigits: 1
 }).format(Number(n) || 0)
 
 const formatNumber = (n) => Intl.NumberFormat('en').format(Number(n) || 0)
 
-const eventColor = (type) => ({
-    KvK: 'bg-gradient-to-br from-blue-500 to-blue-600',
-    GvG: 'bg-gradient-to-br from-purple-500 to-purple-600',
-    GR: 'bg-gradient-to-br from-green-500 to-green-600'
-}[type] || 'bg-gradient-to-br from-slate-500 to-slate-600')
+const sortedEvents = computed(() => {
+    return [...props.events].sort((a, b) => {
+        // Parse event IDs: format is {guildId}-{eventType}-{MM}-{YYYY}
+        const parseEventId = (eventId) => {
+            const parts = eventId.split('-')
+            if (parts.length >= 4) {
+                const month = parseInt(parts[parts.length - 2]) // MM
+                const year = parseInt(parts[parts.length - 1])   // YYYY
+                return new Date(year, month - 1) // month is 0-indexed in Date constructor
+            }
+            return new Date(0) // fallback for malformed IDs
+        }
 
-const eventBadgeColor = (type) => ({
-    KvK: 'bg-blue-500/20 text-blue-300 border border-blue-500/30',
-    GvG: 'bg-purple-500/20 text-purple-300 border border-purple-500/30',
-    GR: 'bg-green-500/20 text-green-300 border border-green-500/30'
-}[type] || 'bg-slate-500/20 text-slate-300 border border-slate-500/30')
+        const dateA = parseEventId(a.eventId)
+        const dateB = parseEventId(b.eventId)
 
-const eventGlowColor = (type) => ({
-    KvK: '#3B82F6',
-    GvG: '#A855F7',
-    GR: '#10B981'
-}[type] || '#64748B')
-
-const eventIconComponent = (type) => ({
-    KvK: Swords,
-    GvG: Shield,
-    GR: Crown
-}[type] || Calendar)
-
-const sortedEvents = computed(() => [...props.events].sort((a, b) => new Date(b.enteredDate) - new Date(a.enteredDate)))
-
+        return dateB.getTime() - dateA.getTime() // Newest first
+    })
+})
 const kvkEvents = computed(() => props.events.filter(e => e.type === 'KvK'))
 const gvgEvents = computed(() => props.events.filter(e => e.type === 'GvG'))
 const grEvents = computed(() => props.events.filter(e => e.type === 'GR'))
@@ -426,10 +454,7 @@ const saveChanges = async (event) => {
     const changes = {}
     Object.keys(updates).forEach(key => {
         if (event[key] !== updates[key]) {
-            changes[key] = {
-                from: event[key] ?? null,
-                to: updates[key] ?? null
-            }
+            changes[key] = { from: event[key] ?? null, to: updates[key] ?? null }
         }
     })
 
@@ -448,8 +473,8 @@ const saveChanges = async (event) => {
 
         toast({
             variant: 'success',
-            title: 'Update Successful',
-            description: `${event.eventId} was updated.`
+            title: 'Event Updated',
+            description: `${event.eventId} was updated successfully.`
         })
 
         editingEvent.value = null
@@ -465,32 +490,35 @@ const saveChanges = async (event) => {
 </script>
 
 <style scoped>
-.custom-scrollbar {
+/* Custom scrollbar styling */
+.overflow-y-auto {
     scrollbar-width: thin;
-    scrollbar-color: rgba(6, 182, 212, 0.5) rgba(51, 65, 85, 0.3);
+    scrollbar-color: hsl(var(--muted-foreground)) hsl(var(--muted));
 }
 
-.custom-scrollbar::-webkit-scrollbar {
+.overflow-y-auto::-webkit-scrollbar {
     width: 8px;
 }
 
-.custom-scrollbar::-webkit-scrollbar-track {
-    background: rgba(51, 65, 85, 0.3);
-    border-radius: 10px;
+.overflow-y-auto::-webkit-scrollbar-track {
+    background: hsl(var(--muted));
+    border-radius: 4px;
+    margin: 4px;
 }
 
-.custom-scrollbar::-webkit-scrollbar-thumb {
-    background: linear-gradient(to bottom, #06b6d4, #3b82f6);
-    border-radius: 10px;
-    box-shadow: 0 0 10px rgba(6, 182, 212, 0.3);
+.overflow-y-auto::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground));
+    border-radius: 4px;
 }
 
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(to bottom, #0891b2, #2563eb);
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--foreground) / 0.6);
 }
 
+/* Input styling within gradient backgrounds */
 input:focus,
 textarea:focus {
     transform: translateY(-1px);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.2);
 }
 </style>

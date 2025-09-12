@@ -400,6 +400,7 @@ import { useToast } from '@/components/ui/toast';
 import { useEventPlayerStore } from '@/stores/useEventPlayerStore';
 import { savePlayerToFirestore } from '@/services/firestorePlayerSaver';
 import { reprocessEventData } from '@/services/manualReprocessEvent'
+import { processEventAggregation } from '@/services/eventAggregationService'
 import AddMissingMemberModal from '@/components/velaris/AddMissingMemberModal.vue'
 import BulkMemberEventImportModal from '@/components/velaris/BulkMemberEventImportModal.vue';
 import SmartInput from '@/components/ui/SmartInput.vue'
@@ -915,7 +916,38 @@ const handleSaveOnePlayer = async (player) => {
       toast({ variant: 'info', title: 'Skipped', description: `${player.name} has no scores and was not saved.` });
     } else {
       store.updatePlayer(eventId, player.id, { ...result.data, localOnly: false });
-      toast({ variant: 'success', title: 'Player Saved', description: `${player.name}'s data saved successfully.` });
+      
+      // After saving individual player, recalculate aggregates if they have scores
+      if (result.saved) {
+        try {
+          const allPlayers = playerRows.value;
+          const aggregationResult = await processEventAggregation(allPlayers, event.value, eventId);
+          
+          // Update local store with new ranks for all players
+          aggregationResult.aggregates.allPlayersWithTotals.forEach(rankedPlayer => {
+            if (rankedPlayer.calculatedRank) {
+              store.updatePlayer(eventId, rankedPlayer.id, { 
+                calculatedRank: rankedPlayer.calculatedRank,
+                calculatedTotal: rankedPlayer.calculatedTotal,
+                localOnly: false 
+              });
+            }
+          });
+
+          toast({ 
+            variant: 'success', 
+            title: 'Player Saved & Ranked', 
+            description: `${player.name} saved and event rankings updated.` 
+          });
+        } catch (aggregationError) {
+          console.error('Aggregation error:', aggregationError);
+          toast({ 
+            variant: 'warning', 
+            title: 'Player Saved', 
+            description: `${player.name} saved but ranking calculation failed.` 
+          });
+        }
+      }
     }
   } catch (err) {
     console.error("Error saving player:", err);
@@ -949,6 +981,7 @@ const saveAll = async () => {
   let skippedCount = 0;
   let errorCount = 0;
 
+  // Step 1: Save all individual players
   const results = await Promise.allSettled(
     playersToSave.map(player => savePlayerToFirestore(player, event.value)
       .then(result => {
@@ -969,16 +1002,59 @@ const saveAll = async () => {
     }
   });
 
-  if (successCount > 0) {
-    toast({ variant: 'success', title: 'Save Complete', description: `${successCount} players saved successfully.` });
-  }
+  // Step 2: Calculate and save event aggregates and rankings
+  try {
+    const allPlayers = playerRows.value;
+    const aggregationResult = await processEventAggregation(allPlayers, event.value, eventId);
+    
+    // Step 3: Update local store with calculated ranks
+    aggregationResult.aggregates.allPlayersWithTotals.forEach(rankedPlayer => {
+      if (rankedPlayer.calculatedRank) {
+        store.updatePlayer(eventId, rankedPlayer.id, { 
+          calculatedRank: rankedPlayer.calculatedRank,
+          calculatedTotal: rankedPlayer.calculatedTotal,
+          localOnly: false 
+        });
+      }
+    });
 
-  if (skippedCount > 0) {
-    toast({ variant: 'info', title: 'Some Skipped', description: `${skippedCount} players were skipped (no scores).` });
-  }
+    // Success messages with aggregation info
+    if (successCount > 0) {
+      toast({ 
+        variant: 'success', 
+        title: 'Save Complete', 
+        description: `${successCount} players saved. Event total: ${aggregationResult.summary.eventTotal.toLocaleString()}. ${aggregationResult.summary.rankedPlayers} players ranked.` 
+      });
+    }
 
-  if (errorCount > 0) {
-    toast({ variant: 'destructive', title: 'Errors Occurred', description: `${errorCount} players failed to save.` });
+    if (skippedCount > 0) {
+      toast({ variant: 'info', title: 'Some Skipped', description: `${skippedCount} players were skipped (no scores).` });
+    }
+
+    if (errorCount > 0) {
+      toast({ variant: 'destructive', title: 'Errors Occurred', description: `${errorCount} players failed to save.` });
+    }
+
+    // Log aggregation summary for debugging
+    console.log('Event Aggregation Summary:', aggregationResult.summary);
+
+  } catch (aggregationError) {
+    console.error('Aggregation failed:', aggregationError);
+    
+    // Still show success for individual saves even if aggregation fails
+    if (successCount > 0) {
+      toast({ 
+        variant: 'warning', 
+        title: 'Partial Success', 
+        description: `${successCount} players saved but event totals and rankings could not be calculated.` 
+      });
+    }
+    
+    toast({ 
+      variant: 'destructive', 
+      title: 'Aggregation Failed', 
+      description: 'Individual players saved but event statistics could not be updated.' 
+    });
   }
 
   isSaving.value = false;

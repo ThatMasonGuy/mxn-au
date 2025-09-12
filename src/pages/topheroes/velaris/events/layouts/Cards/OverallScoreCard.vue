@@ -1,7 +1,7 @@
 <template>
-    <div ref="cardObserverEl" class="bg-white rounded-lg shadow-md px-4 sm:px-6 md:px-8 py-6 sm:py-8
+    <div ref="cardObserverEl" class="bg-card border border-border rounded-xl shadow-md p-6 px-4 sm:px-6 md:px-8 py-6 sm:py-8
       flex flex-col items-center justify-center text-center gap-3 sm:gap-4">
-        <h3 class="text-lg sm:text-xl font-semibold text-gray-600">
+        <h3 class="text-lg sm:text-xl font-semibold text-foreground">
             Overall Score
         </h3>
 

@@ -35,14 +35,15 @@
 <script setup>
 import ToolCard from '@/components/topheroes/ToolCard.vue'
 import {
-    ChartBarIcon,
-    MoonIcon,
-    FaceFrownIcon,
-    CurrencyDollarIcon,
-    BeakerIcon,
-    CpuChipIcon,
-    ArchiveBoxIcon,
-} from '@heroicons/vue/24/outline'
+    BarChart3,
+    Moon,
+    Frown,
+    DollarSign,
+    FlaskConical,
+    Cpu,
+    Archive,
+    Trello,
+} from 'lucide-vue-next'
 
 const greenCardColor =
     'bg-white/5 border-emerald-500/30 hover:shadow-emerald-500/40 hover:border-emerald-500/70'
@@ -60,7 +61,7 @@ const tools = [
         description: 'Food and hydration logging with chaotic vibes and emotional damage built-in.',
         link: '/personal/tracker',
         active: true,
-        icon: ChartBarIcon,
+        icon: BarChart3, // was ChartBarIcon
         badges: ['New!'],
     },
     {
@@ -68,14 +69,14 @@ const tools = [
         description: 'Log sleep patterns, bedtime rituals, and how cooked you feel the next day.',
         active: false,
         disabled: true,
-        icon: MoonIcon,
+        icon: Moon, // was MoonIcon
         badges: ['Coming Soon'],
     },
     {
         title: '📉 Mood Oscillator',
         description: 'A moody little chart with tags, emojis, and existential vibes.',
         active: false,
-        icon: FaceFrownIcon,
+        icon: Frown, // was FaceFrownIcon
         badges: ['Coming Soon'],
     },
     {
@@ -83,7 +84,7 @@ const tools = [
         description: 'Track how much you’ve spent on iced coffee. Experience financial guilt in real-time.',
         link: '/personal/dare-shame',
         active: true,
-        icon: CurrencyDollarIcon,
+        icon: DollarSign, // was CurrencyDollarIcon
         badges: ['New!', 'Too Real'],
     },
     {
@@ -91,14 +92,14 @@ const tools = [
         description: 'Chat to a context aware AI Journal, or switch back to oldschool journalling.',
         link: '/personal/journal',
         active: true,
-        icon: BeakerIcon,
+        icon: FlaskConical, // was BeakerIcon
         badges: ['New!'],
     },
     {
         title: '🧠 Memory Vault',
         description: 'Frontend for the Activity Logger: searchable sessions, semantic tags, digital footprint.',
         active: false,
-        icon: CpuChipIcon,
+        icon: Cpu, // was CpuChipIcon
         badges: [
             'Phase 2',
             { label: 'Private', glow: true },
@@ -108,8 +109,17 @@ const tools = [
         title: '📦 Screenshot Graveyard',
         description: 'Old projects, cursed designs, half-finished UIs—archived in glorious shameful light.',
         active: false,
-        icon: ArchiveBoxIcon,
+        icon: Archive, // was ArchiveBoxIcon
         badges: ['Shame'],
+    },
+    // NEW: Kanban card using Trello icon
+    {
+        title: '🗂️ Kanban Board',
+        description: 'My custom, no-bloat Kanban that actually does what I want.',
+        link: '/personal/kanban',
+        active: true,
+        icon: Trello,
+        badges: ['New!'],
     },
 ]
 

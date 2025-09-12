@@ -7,7 +7,7 @@
                     <User class="w-4 h-4 text-white" />
                 </div>
                 <div>
-                    <h4 class="font-semibold text-white text-sm">Discord User</h4>
+                    <h4 class="font-semibold text-white text-sm">{{ user.userName }}</h4>
                     <p class="text-white/60 text-xs">{{ user.translations.toLocaleString() }} translations</p>
                 </div>
             </div>
@@ -23,8 +23,8 @@
                 <div class="text-white font-semibold">{{ user.words.toLocaleString() }}</div>
             </div>
             <div class="bg-white/5 rounded-lg p-2">
-                <div class="text-white/60">Saved</div>
-                <div class="text-white font-semibold">${{ user.costSaved.toFixed(2) }}</div>
+                <div class="text-white/60">API Cost</div>
+                <div class="text-white font-semibold">${{ user.actualCost.toFixed(4) }}</div>
             </div>
         </div>
     </div>
@@ -39,9 +39,10 @@ defineProps({
         type: Object,
         required: true,
         validator: (user) => {
-            return typeof user.translations === 'number' &&
+            return user.id &&
+                typeof user.translations === 'number' &&
                 typeof user.words === 'number' &&
-                typeof user.costSaved === 'number'
+                typeof user.actualCost === 'number'
         }
     },
     rank: {

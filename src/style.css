@@ -38,7 +38,7 @@
     --header-height: 90px;
     --footer-height: 60px;
     --adjusted-height: calc(100vh - var(--footer-height));
-    
+
     --text-50: #fbeaf5;
     --text-100: #f7d4eb;
     --text-200: #eeaad7;
@@ -50,7 +50,7 @@
     --text-800: #55113e;
     --text-900: #2b081f;
     --text-950: #150410;
-    
+
     --background-50: #f5f0f3;
     --background-100: #ebe0e7;
     --background-200: #d6c2cf;
@@ -62,7 +62,7 @@
     --background-800: #3d2936;
     --background-900: #1f141b;
     --background-950: #0f0a0d;
-    
+
     --primary-50: #f7eef4;
     --primary-100: #eedde9;
     --primary-200: #ddbbd2;
@@ -74,7 +74,7 @@
     --primary-800: #442239;
     --primary-900: #22111d;
     --primary-950: #11080e;
-    
+
     --secondary-50: #fbece9;
     --secondary-100: #f7dad4;
     --secondary-200: #efb5a9;
@@ -86,7 +86,7 @@
     --secondary-800: #561c10;
     --secondary-900: #2b0e08;
     --secondary-950: #160704;
-    
+
     --accent-50: #fbf2e9;
     --accent-100: #f7e4d4;
     --accent-200: #efcaa9;
@@ -103,6 +103,116 @@
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
+
+    /* ===== ROLE COLORS (Static) ===== */
+    --role-r1: #6ee7b7;
+    /* Emerald */
+    --role-r2: #93c5fd;
+    /* Blue */
+    --role-r3: #f9a8d4;
+    /* Pink */
+    --role-r4: #fde68a;
+    /* Yellow */
+    --role-r5: #ddd6fe;
+    /* Purple */
+
+    /* ===== ROLE COLORS (Gradient Start) ===== */
+    --role-r1-start: #34d399;
+    --role-r2-start: #60a5fa;
+    --role-r3-start: #f472b6;
+    --role-r4-start: #facc15;
+    --role-r5-start: #a78bfa;
+
+    /* ===== ROLE COLORS (Gradient End) ===== */
+    --role-r1-end: #6ee7b7;
+    --role-r2-end: #93c5fd;
+    --role-r3-end: #f9a8d4;
+    --role-r4-end: #fde68a;
+    --role-r5-end: #ddd6fe;
+
+    /* ===== PLAYER GRADIENTS ===== */
+    --player-1-start: #60a5fa;
+    --player-1-end: #93c5fd;
+    --player-2-start: #f472b6;
+    --player-2-end: #f9a8d4;
+    --player-3-start: #34d399;
+    --player-3-end: #6ee7b7;
+    --player-4-start: #facc15;
+    --player-4-end: #fde68a;
+    --player-5-start: #a78bfa;
+    --player-5-end: #ddd6fe;
+    --player-6-start: #fb923c;
+    --player-6-end: #fdba74;
+    --player-7-start: #38bdf8;
+    --player-7-end: #7dd3fc;
+    --player-8-start: #c084fc;
+    --player-8-end: #d8b4fe;
+    --player-9-start: #f87171;
+    --player-9-end: #fca5a5;
+    --player-10-start: #4ade80;
+    --player-10-end: #86efac;
+
+    /* ===== VELARIS THEME COLORS ===== */
+    --velaris-purple: #7C3AED;
+    --velaris-teal: #06B6D4;
+    --velaris-green: #22C55E;
+    --velaris-amber: #F59E0B;
+    --velaris-purple-variant: #A855F7;
+    --velaris-teal-variant: #14B8A6;
+    --velaris-lime: #84CC16;
+    --velaris-orange: #F97316;
+    --velaris-pink: #EC4899;
+    --velaris-violet: #8B5CF6;
+
+    /* ===== FROGGY THEME COLORS ===== */
+    --froggy-main-green: #22C55E;
+    --froggy-mint: #14B8A6;
+    --froggy-lime: #84CC16;
+    --froggy-yellow: #FDE047;
+    --froggy-forest: #16A34A;
+    --froggy-emerald: #10B981;
+    --froggy-olive: #65A30D;
+    --froggy-light-lime: #A3E635;
+    --froggy-spring: #4ADE80;
+    --froggy-pale: #86EFAC;
+
+    /* ===== COMPARISON COLORS ===== */
+    --comparison-1: #1f77b4;
+    --comparison-2: #ff7f0e;
+    --comparison-3: #2ca02c;
+    --comparison-4: #d62728;
+    --comparison-5: #9467bd;
+    --comparison-6: #8c564b;
+    --comparison-7: #e377c2;
+    --comparison-8: #7f7f7f;
+    --comparison-9: #bcbd22;
+    --comparison-10: #17becf;
+
+    /* ===== GENERAL COLOR PALETTE ===== */
+    --color-palette-1: #60a5fa;
+    --color-palette-2: #f472b6;
+    --color-palette-3: #34d399;
+    --color-palette-4: #facc15;
+    --color-palette-5: #a78bfa;
+    --color-palette-6: #fb923c;
+    --color-palette-7: #38bdf8;
+    --color-palette-8: #c084fc;
+    --color-palette-9: #f87171;
+    --color-palette-10: #4ade80;
+
+    /* ===== DAY TASK COLORS ===== */
+    --day-construction: var(--role-r4);
+    /* Yellow for Construction */
+    --day-research: var(--role-r2);
+    /* Blue for Research */
+    --day-rally: var(--role-r3);
+    /* Pink for Rally */
+    --day-hero: var(--role-r5);
+    /* Purple for Hero */
+    --day-training: var(--role-r1);
+    /* Green for Training */
+    --day-combat: var(--comparison-4);
+    /* Red for Combat */
   }
 
   .dark {
@@ -134,7 +244,7 @@
     --destructive-foreground: 60 9.1% 97.8%;
 
     --ring: 24 5.7% 82.9%;
-    
+
     --text-50: #150410;
     --text-100: #2b081f;
     --text-200: #55113e;
@@ -146,7 +256,7 @@
     --text-800: #eeaad7;
     --text-900: #f7d4eb;
     --text-950: #fbeaf5;
-    
+
     --background-50: #0f0a0d;
     --background-100: #1f141b;
     --background-200: #3d2935;
@@ -158,7 +268,7 @@
     --background-800: #d6c2ce;
     --background-900: #ebe0e7;
     --background-950: #f5f0f3;
-    
+
     --primary-50: #11080e;
     --primary-100: #22111c;
     --primary-200: #442239;
@@ -170,7 +280,7 @@
     --primary-800: #ddbbd2;
     --primary-900: #eedde8;
     --primary-950: #f7eef4;
-    
+
     --secondary-50: #160704;
     --secondary-100: #2b0e08;
     --secondary-200: #561c10;
@@ -182,7 +292,7 @@
     --secondary-800: #efb5a9;
     --secondary-900: #f7dad4;
     --secondary-950: #fbece9;
-    
+
     --accent-50: #160c04;
     --accent-100: #2b1808;
     --accent-200: #563110;
@@ -257,6 +367,7 @@
   height: 6px;
   background: transparent;
 }
+
 .prose pre::-webkit-scrollbar-thumb,
 .prose code::-webkit-scrollbar-thumb {
   background-color: rgba(100, 100, 100, 0.3);
@@ -265,8 +376,10 @@
 
 /* Webkit-based browsers */
 ::-webkit-scrollbar {
-  width: 8px;     /* vertical scrollbar width */
-  height: 6px;    /* horizontal scrollbar height */
+  width: 8px;
+  /* vertical scrollbar width */
+  height: 6px;
+  /* horizontal scrollbar height */
   background: transparent;
 }
 
@@ -289,13 +402,15 @@
 
 @keyframes typing {
   0% {
-      content: '.';
+    content: '.';
   }
+
   33% {
-      content: '..';
+    content: '..';
   }
+
   66% {
-      content: '...';
+    content: '...';
   }
 }
 
@@ -303,11 +418,714 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
     font-family: theme('fontFamily.body');
   }
-  h1, h2, h3, h4, h5, h6 {
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: theme('fontFamily.heading');
+  }
+}
+
+@layer base {
+  /* Complete theme definitions for your @layer base section */
+
+  /* ===== VELARIS THEME (Default) ===== */
+  .theme-velaris {
+    /* Brand colors - Purple/Teal/Green palette */
+    --velaris-purple: 262 83% 58%;
+    /* #7C3AED */
+    --velaris-teal: 189 94% 43%;
+    /* #06B6D4 */
+    --velaris-green: 142 71% 45%;
+    /* #22C55E */
+    --velaris-amber: 38 92% 50%;
+    /* #F59E0B */
+
+    /* Light mode - Better contrast */
+    --background: 0 0% 100%;
+    /* Pure white for max contrast */
+    --foreground: 222 47% 11%;
+    /* Deep navy text for excellent readability */
+
+    --muted: 210 20% 94%;
+    /* Slightly darker muted bg */
+    --muted-foreground: 215 25% 35%;
+    /* Much darker muted text */
+
+    --popover: 0 0% 100%;
+    /* Pure white popovers */
+    --popover-foreground: 222 47% 11%;
+
+    --card: 210 25% 98%;
+    /* Subtle blue-gray cards */
+    --card-foreground: 222 47% 11%;
+
+    --border: 214 20% 82%;
+    /* More visible borders */
+    --input: 214 20% 82%;
+
+    --primary: 262 83% 58%;
+    /* Purple primary */
+    --primary-foreground: 0 0% 98%;
+
+    --secondary: 210 20% 94%;
+    --secondary-foreground: 222 47% 11%;
+
+    --accent: 189 94% 43%;
+    /* Teal accent */
+    --accent-foreground: 0 0% 98%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+
+    --ring: 262 83% 58%;
+
+    /* Base colors */
+    --base-light: 0 0% 100%;
+    --base-light-surface: 210 25% 98%;
+    --base-dark: 216 65% 11%;
+    --base-dark-surface: 218 58% 16%;
+  }
+
+  /* Velaris Dark Mode */
+  .dark.theme-velaris {
+    /* Keep brand colors */
+    --velaris-purple: 262 83% 58%;
+    --velaris-teal: 189 94% 43%;
+    --velaris-green: 142 71% 45%;
+    --velaris-amber: 38 92% 50%;
+
+    /* Dark mode - Deep navy blue backgrounds */
+    --background: 216 65% 11%;
+    /* #0A192F - deep navy */
+    --foreground: 210 40% 98%;
+    /* Light text */
+
+    --muted: 217 33% 17%;
+    /* Muted navy */
+    --muted-foreground: 215 20% 65%;
+
+    --popover: 216 65% 11%;
+    --popover-foreground: 210 40% 98%;
+
+    --card: 218 58% 13%;
+    /* Slightly lighter navy cards */
+    --card-foreground: 210 40% 98%;
+
+    --border: 217 33% 20%;
+    /* Navy borders */
+    --input: 217 33% 20%;
+
+    --primary: 262 83% 58%;
+    --primary-foreground: 0 0% 98%;
+
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 98%;
+
+    --accent: 189 94% 43%;
+    --accent-foreground: 222 47% 11%;
+
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 210 40% 98%;
+
+    --ring: 262 83% 70%;
+
+    /* Dark base colors */
+    --base-dark: 216 65% 11%;
+    --base-dark-surface: 218 58% 16%;
+  }
+
+  /* ===== FROGGY THEME ===== */
+  .froggy.theme-velaris {
+    /* Froggy brand colors - green themed */
+    --velaris-purple: 142 71% 45%;
+    /* main frog green */
+    --velaris-teal: 160 65% 40%;
+    /* mint accent */
+    --velaris-green: 90 70% 45%;
+    /* lime accent */
+    --velaris-amber: 70 85% 50%;
+    /* yellow pop */
+
+    /* Froggy light mode - MORE GREEN! 🐸 */
+    --background: 120 45% 94%;
+    /* Noticeably green background #e8f5e8 */
+    --foreground: 140 40% 12%;
+    /* Deep forest green text */
+
+    --muted: 120 35% 88%;
+    /* Green-tinted muted */
+    --muted-foreground: 140 30% 30%;
+
+    --popover: 120 45% 96%;
+    /* Light green popovers */
+    --popover-foreground: 140 40% 12%;
+
+    --card: 120 40% 92%;
+    /* Definitely green cards #e2f0e2 */
+    --card-foreground: 140 40% 12%;
+
+    --border: 120 25% 80%;
+    /* Green borders */
+    --input: 120 25% 80%;
+
+    --primary: 142 71% 45%;
+    /* Frog green primary */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 120 35% 88%;
+    --secondary-foreground: 140 40% 12%;
+
+    --accent: 160 65% 40%;
+    /* Mint accent */
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 60 9% 98%;
+
+    --ring: 142 71% 45%;
+
+    /* Froggy light base colors */
+    --base-light: 120 45% 94%;
+    --base-light-surface: 120 40% 90%;
+    --base-dark: 140 35% 12%;
+    --base-dark-surface: 140 30% 18%;
+  }
+
+  /* Froggy dark mode - UNTOUCHED as requested */
+  .dark.froggy.theme-velaris {
+    /* Keep the same brand colors */
+    --velaris-purple: 142 71% 45%;
+    --velaris-teal: 160 65% 40%;
+    --velaris-green: 90 70% 45%;
+    --velaris-amber: 70 85% 50%;
+
+    /* Froggy dark mode backgrounds - deep forest green */
+    --background: 140 35% 8%;
+    /* Very dark green background */
+    --foreground: 120 30% 90%;
+    /* Light green-tinted text */
+
+    --muted: 140 25% 15%;
+    --muted-foreground: 120 20% 65%;
+
+    --popover: 140 35% 10%;
+    --popover-foreground: 120 30% 90%;
+
+    --card: 140 30% 12%;
+    /* Dark green cards */
+    --card-foreground: 120 30% 90%;
+
+    --border: 140 20% 20%;
+    /* Dark green borders */
+    --input: 140 20% 20%;
+
+    --primary: 142 71% 45%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 140 25% 15%;
+    --secondary-foreground: 120 30% 90%;
+
+    --accent: 160 65% 40%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 60 9% 98%;
+
+    --ring: 142 50% 60%;
+
+    /* Dark froggy base colors */
+    --base-dark: 140 35% 8%;
+    --base-dark-surface: 140 30% 12%;
+  }
+}
+
+/* ===== Velaris admin – shared surfaces, buttons, utilities ===== */
+@layer components {
+
+  /* ---- Elevated surfaces (card-like) ---- */
+  .elev-card,
+  .stat-card,
+  .member-card,
+  .event-card,
+  .kpi-card,
+  .hero-card,
+  .method-card,
+  .session-item,
+  .integration-card,
+  .battle-item,
+  .filter-panel {
+    @apply rounded-xl ring-1 ring-border p-4 shadow-md;
+    /* emulate ring-border/70 */
+    --tw-ring-opacity: 0.7;
+    /* soft surface gradient */
+    background: linear-gradient(to bottom,
+        hsl(0 0% 100% / 0.06),
+        hsl(0 0% 100% / 0.02));
+  }
+
+  /* optional larger padding variant some views used */
+  .elev-card-lg {
+    @apply p-6;
+  }
+
+  .dark .elev-card,
+  .dark .stat-card,
+  .dark .member-card,
+  .dark .event-card,
+  .dark .kpi-card,
+  .dark .hero-card,
+  .dark .method-card,
+  .dark .session-item,
+  .dark .integration-card,
+  .dark .battle-item,
+  .dark .filter-panel {
+    background: linear-gradient(to bottom,
+        hsl(0 0% 0% / 0.25),
+        hsl(0 0% 0% / 0.15));
+  }
+
+  /* ---- List / row surfaces with light fill ---- */
+  .ranking-row,
+  .hero-card,
+  .insight-item,
+  .tool-tile,
+  .strategy-btn,
+  .setting-item {
+    @apply rounded-lg border border-border p-3 transition;
+    @apply text-left;
+    @apply bg-white;
+    --tw-bg-opacity: 0.05;
+    /* = bg-white/5 */
+  }
+
+  .setting-item {
+    @apply p-4;
+  }
+
+  /* specific spacing */
+  .strategy-btn {
+    @apply w-full flex items-center gap-3;
+  }
+
+  .ranking-row:hover,
+  .strategy-btn:hover {
+    @apply bg-foreground;
+    --tw-bg-opacity: 0.05;
+  }
+
+  .dark .ranking-row,
+  .dark .hero-card,
+  .dark .insight-item,
+  .dark .tool-tile,
+  .dark .strategy-btn,
+  .dark .setting-item {
+    background: hsl(0 0% 100% / 0.03);
+  }
+
+  /* ===== ROLE COLOR UTILITY CLASSES ===== */
+  .role-r1 {
+    color: var(--role-r1);
+  }
+
+  .role-r2 {
+    color: var(--role-r2);
+  }
+
+  .role-r3 {
+    color: var(--role-r3);
+  }
+
+  .role-r4 {
+    color: var(--role-r4);
+  }
+
+  .role-r5 {
+    color: var(--role-r5);
+  }
+
+  .bg-role-r1 {
+    background-color: var(--role-r1);
+  }
+
+  .bg-role-r2 {
+    background-color: var(--role-r2);
+  }
+
+  .bg-role-r3 {
+    background-color: var(--role-r3);
+  }
+
+  .bg-role-r4 {
+    background-color: var(--role-r4);
+  }
+
+  .bg-role-r5 {
+    background-color: var(--role-r5);
+  }
+
+  .border-role-r1 {
+    border-color: var(--role-r1);
+  }
+
+  .border-role-r2 {
+    border-color: var(--role-r2);
+  }
+
+  .border-role-r3 {
+    border-color: var(--role-r3);
+  }
+
+  .border-role-r4 {
+    border-color: var(--role-r4);
+  }
+
+  .border-role-r5 {
+    border-color: var(--role-r5);
+  }
+
+  /* ===== ROLE GRADIENT CLASSES ===== */
+  .bg-gradient-r1 {
+    background: linear-gradient(135deg, var(--role-r1-start), var(--role-r1-end));
+  }
+
+  .bg-gradient-r2 {
+    background: linear-gradient(135deg, var(--role-r2-start), var(--role-r2-end));
+  }
+
+  .bg-gradient-r3 {
+    background: linear-gradient(135deg, var(--role-r3-start), var(--role-r3-end));
+  }
+
+  .bg-gradient-r4 {
+    background: linear-gradient(135deg, var(--role-r4-start), var(--role-r4-end));
+  }
+
+  .bg-gradient-r5 {
+    background: linear-gradient(135deg, var(--role-r5-start), var(--role-r5-end));
+  }
+
+  /* ===== PLAYER GRADIENT CLASSES ===== */
+  .bg-gradient-player-1 {
+    background: linear-gradient(135deg, var(--player-1-start), var(--player-1-end));
+  }
+
+  .bg-gradient-player-2 {
+    background: linear-gradient(135deg, var(--player-2-start), var(--player-2-end));
+  }
+
+  .bg-gradient-player-3 {
+    background: linear-gradient(135deg, var(--player-3-start), var(--player-3-end));
+  }
+
+  .bg-gradient-player-4 {
+    background: linear-gradient(135deg, var(--player-4-start), var(--player-4-end));
+  }
+
+  .bg-gradient-player-5 {
+    background: linear-gradient(135deg, var(--player-5-start), var(--player-5-end));
+  }
+
+  .bg-gradient-player-6 {
+    background: linear-gradient(135deg, var(--player-6-start), var(--player-6-end));
+  }
+
+  .bg-gradient-player-7 {
+    background: linear-gradient(135deg, var(--player-7-start), var(--player-7-end));
+  }
+
+  .bg-gradient-player-8 {
+    background: linear-gradient(135deg, var(--player-8-start), var(--player-8-end));
+  }
+
+  .bg-gradient-player-9 {
+    background: linear-gradient(135deg, var(--player-9-start), var(--player-9-end));
+  }
+
+  .bg-gradient-player-10 {
+    background: linear-gradient(135deg, var(--player-10-start), var(--player-10-end));
+  }
+
+  /* ===== DAY TASK UTILITY CLASSES ===== */
+  .day-construction {
+    color: var(--day-construction);
+  }
+
+  .day-research {
+    color: var(--day-research);
+  }
+
+  .day-rally {
+    color: var(--day-rally);
+  }
+
+  .day-hero {
+    color: var(--day-hero);
+  }
+
+  .day-training {
+    color: var(--day-training);
+  }
+
+  .day-combat {
+    color: var(--day-combat);
+  }
+
+  .bg-day-construction {
+    background-color: var(--day-construction);
+  }
+
+  .bg-day-research {
+    background-color: var(--day-research);
+  }
+
+  .bg-day-rally {
+    background-color: var(--day-rally);
+  }
+
+  .bg-day-hero {
+    background-color: var(--day-hero);
+  }
+
+  .bg-day-training {
+    background-color: var(--day-training);
+  }
+
+  .bg-day-combat {
+    background-color: var(--day-combat);
+  }
+
+  /* ---- Settings / forms ---- */
+  .setting-label {
+    @apply flex items-center gap-3;
+  }
+
+  .setting-select,
+  .filter-select {
+    @apply w-full px-3 py-2 bg-card border border-border rounded-md text-sm;
+    @apply focus:outline-none;
+  }
+
+  .setting-select:focus,
+  .filter-select:focus {
+    @apply ring-2;
+    /* focus:ring-velaris-purple/50 */
+    --tw-ring-color: hsl(var(--velaris-purple) / 0.5);
+  }
+
+  .theme-option {
+    @apply flex items-center gap-2 px-3 py-1.5 rounded-md border border-border text-sm transition;
+  }
+
+  .theme-option.active {
+    @apply bg-velaris-purple text-white border-velaris-purple;
+  }
+
+  /* ---- Toggle ---- */
+  .toggle-switch {
+    @apply relative w-11 h-6 rounded-full cursor-pointer transition bg-border;
+  }
+
+  .toggle-switch.active {
+    @apply bg-velaris-green;
+  }
+
+  .toggle-thumb {
+    @apply absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition transform;
+  }
+
+  .toggle-switch.active .toggle-thumb {
+    @apply translate-x-5;
+  }
+
+  /* ---- Pagination ---- */
+  .pagination-btn {
+    @apply px-3 py-1 rounded-md text-sm border border-border transition;
+  }
+
+  .pagination-btn:hover {
+    @apply bg-foreground;
+    --tw-bg-opacity: 0.05;
+  }
+
+  .pagination-btn:disabled {
+    @apply opacity-50 cursor-not-allowed;
+  }
+
+  .pagination-btn.active {
+    @apply bg-velaris-purple text-white border-velaris-purple;
+  }
+
+  /* ---- Buttons ---- */
+  .btn-soft-violet {
+    @apply inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition;
+    @apply text-white ring-1 ring-velaris-purple bg-velaris-purple;
+    --tw-ring-opacity: .4;
+    /* ring-velaris-purple/40 */
+    --tw-bg-opacity: .10;
+    /* bg-velaris-purple/10 */
+  }
+
+  .btn-soft-violet:hover {
+    --tw-bg-opacity: .20;
+  }
+
+  .btn-solid-purple {
+    @apply inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm text-white transition shadow-sm bg-velaris-purple;
+  }
+
+  .btn-solid-cyan {
+    @apply inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm text-white transition shadow-sm bg-velaris-teal;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm text-white transition shadow-sm bg-velaris-purple;
+  }
+
+  .btn-primary:disabled {
+    @apply opacity-50 cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm transition;
+    @apply text-foreground/80 ring-1 ring-border;
+  }
+
+  .btn-danger {
+    @apply bg-red-500 hover:bg-red-600 text-white rounded-md px-4 py-2 text-sm;
+  }
+
+  /* ---- Misc view-specific ---- */
+  .filter-panel {
+    @apply p-4;
+  }
+
+  .ranking-row {
+    /* already has hover above */
+  }
+
+  .member-card:hover,
+  .event-card:hover {
+    @apply shadow-lg;
+  }
+}
+
+@layer utilities {
+
+  /* ---- Fade (two variants) ---- */
+  .fade-enter-active,
+  .fade-leave-active {
+    transition: all 0.2s ease;
+  }
+
+  .fade-enter-from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  .fade-leave-to {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  .fade--opacity-enter-active,
+  .fade--opacity-leave-active {
+    transition: opacity .15s ease;
+  }
+
+  .fade--opacity-enter-from,
+  .fade--opacity-leave-to {
+    opacity: 0;
+  }
+
+  /* ---- Slide down ---- */
+  .slide-down-enter-active,
+  .slide-down-leave-active {
+    transition: all 0.2s ease;
+  }
+
+  .slide-down-enter-from,
+  .slide-down-leave-to {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  /* ---- Modal pop ---- */
+  .modal-enter-active,
+  .modal-leave-active {
+    transition: all 0.2s ease;
+  }
+
+  .modal-enter-from,
+  .modal-leave-to {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  /* ---- Simple fade-in keyframed ---- */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-out;
+  }
+
+  /* ---- Shimmer (skeletons) ---- */
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+
+    100% {
+      background-position: 200% 0;
+    }
+  }
+
+  .animate-shimmer {
+    background: linear-gradient(90deg,
+        hsl(var(--foreground)/0.05) 25%,
+        hsl(var(--foreground)/0.15) 50%,
+        hsl(var(--foreground)/0.05) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 2s infinite;
+  }
+
+  /* (Optional) spinner + bounce if you use them */
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @keyframes bounce {
+
+    0%,
+    80%,
+    100% {
+      transform: scale(0);
+      opacity: .5;
+    }
+
+    40% {
+      transform: scale(1);
+      opacity: 1;
+    }
   }
 }

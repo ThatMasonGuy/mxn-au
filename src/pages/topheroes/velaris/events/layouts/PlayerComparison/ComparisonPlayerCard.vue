@@ -1,18 +1,21 @@
 <!-- @/pages/topheroes/velaris/events/layouts/PlayerComparison/ComparisonPlayerCard.vue -->
 <template>
-    <div class="border rounded-xl p-4 shadow bg-white transition-transform transform hover:-translate-y-1 hover:shadow-lg"
-        :style="{
-            borderColor: color,
-            backgroundColor: washedColor
-        }" @mouseenter="$emit('hover', player.Player)" @mouseleave="$emit('leave')">
-        <h3 class="font-bold text-lg mb-3" :class="player.Player === 'Average Player' ? 'text-purple-600' : ''"
-            :style="{ color }">
+    <div class="border rounded-xl p-4 shadow bg-card transition-transform transform hover:-translate-y-1 hover:shadow-lg"
+        :style="cardStyle" @mouseenter="$emit('hover', player.Player)" @mouseleave="$emit('leave')">
+        <h3 class="font-bold text-lg mb-3" :style="{
+            color: player.Player === 'Average Player'
+                ? 'hsl(var(--velaris-purple))'
+                : color
+        }">
             {{ player.Player }}
         </h3>
+
         <dl class="grid grid-cols-2 gap-4 text-sm">
             <div v-for="field in fields" :key="field.key" class="space-y-1">
-                <dt class="font-medium text-gray-500">{{ field.label }}</dt>
-                <dd class="text-gray-900 font-semibold">{{ field.fmt(player[field.key] ?? 0) }}</dd>
+                <dt class="font-medium text-muted-foreground">{{ field.label }}</dt>
+                <dd class="text-foreground font-semibold">
+                    {{ field.fmt(player[field.key] ?? 0) }}
+                </dd>
             </div>
         </dl>
     </div>
@@ -26,11 +29,16 @@ const props = defineProps({
     fields: Array,
     color: String
 })
+defineEmits(['hover', 'leave'])
 
-const emit = defineEmits(['hover', 'leave'])
-
-const washedColor = computed(() => {
-    // simple wash effect, you can replace this logic
-    return props.color + '22'
+const cardStyle = computed(() => {
+    const c = props.color || 'hsl(var(--accent))'
+    return {
+        // accent border that works in all themes
+        borderColor: c,
+        // readable tinted background against --card in light/dark
+        background:
+            `color-mix(in srgb, hsl(var(--card)) 88%, ${c} 12%)`
+    }
 })
 </script>
