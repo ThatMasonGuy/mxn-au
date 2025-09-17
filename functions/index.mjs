@@ -23,3 +23,5 @@ export { getDailyConnections, submitConnectionsCompletion } from './dailyGames/c
 export { connectionsGenerateCron, connectionsGenerateNow } from './dailyGames/connectionsGenerate.mjs'
 export { getDailyFlagle, submitFlagleCompletion } from './dailyGames/flagle.mjs'
 export { flagleGenerateCron, flagleGenerateNow } from './dailyGames/flagleGenerate.mjs'
+
+export { generateRankingsReport } from './api/generateRankingsReport.mjs';

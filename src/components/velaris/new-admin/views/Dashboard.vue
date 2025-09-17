@@ -357,7 +357,7 @@
                             <span
                                 :class="['text-sm font-medium', guildStats.participationRate > 70 ? 'text-velaris-green' : guildStats.participationRate > 50 ? 'text-velaris-amber' : 'text-red-400']">
                                 {{ guildStats.participationRate > 70 ? 'Excellent' : guildStats.participationRate > 50 ?
-                                'Good' : 'Needs Attention' }}
+                                    'Good' : 'Needs Attention' }}
                             </span>
                         </div>
 
@@ -402,7 +402,7 @@
                             </div>
                             <div class="flex-1 min-w-0">
                                 <div class="text-sm font-medium truncate">{{ member.name }}</div>
-                                <div class="text-xs text-foreground/60">{{ member.role }} • {{
+                                <div class="text-xs text-foreground/60">{{ member.role }} â€¢ {{
                                     formatTimeAgo(member.joinedAt) }}</div>
                             </div>
                             <component :is="getRoleIcon(member.role)" class="h-3 w-3"

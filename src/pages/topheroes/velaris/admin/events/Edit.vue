@@ -916,35 +916,35 @@ const handleSaveOnePlayer = async (player) => {
       toast({ variant: 'info', title: 'Skipped', description: `${player.name} has no scores and was not saved.` });
     } else {
       store.updatePlayer(eventId, player.id, { ...result.data, localOnly: false });
-      
+
       // After saving individual player, recalculate aggregates if they have scores
       if (result.saved) {
         try {
           const allPlayers = playerRows.value;
           const aggregationResult = await processEventAggregation(allPlayers, event.value, eventId);
-          
+
           // Update local store with new ranks for all players
           aggregationResult.aggregates.allPlayersWithTotals.forEach(rankedPlayer => {
             if (rankedPlayer.calculatedRank) {
-              store.updatePlayer(eventId, rankedPlayer.id, { 
+              store.updatePlayer(eventId, rankedPlayer.id, {
                 calculatedRank: rankedPlayer.calculatedRank,
                 calculatedTotal: rankedPlayer.calculatedTotal,
-                localOnly: false 
+                localOnly: false
               });
             }
           });
 
-          toast({ 
-            variant: 'success', 
-            title: 'Player Saved & Ranked', 
-            description: `${player.name} saved and event rankings updated.` 
+          toast({
+            variant: 'success',
+            title: 'Player Saved & Ranked',
+            description: `${player.name} saved and event rankings updated.`
           });
         } catch (aggregationError) {
           console.error('Aggregation error:', aggregationError);
-          toast({ 
-            variant: 'warning', 
-            title: 'Player Saved', 
-            description: `${player.name} saved but ranking calculation failed.` 
+          toast({
+            variant: 'warning',
+            title: 'Player Saved',
+            description: `${player.name} saved but ranking calculation failed.`
           });
         }
       }
@@ -1006,24 +1006,24 @@ const saveAll = async () => {
   try {
     const allPlayers = playerRows.value;
     const aggregationResult = await processEventAggregation(allPlayers, event.value, eventId);
-    
+
     // Step 3: Update local store with calculated ranks
     aggregationResult.aggregates.allPlayersWithTotals.forEach(rankedPlayer => {
       if (rankedPlayer.calculatedRank) {
-        store.updatePlayer(eventId, rankedPlayer.id, { 
+        store.updatePlayer(eventId, rankedPlayer.id, {
           calculatedRank: rankedPlayer.calculatedRank,
           calculatedTotal: rankedPlayer.calculatedTotal,
-          localOnly: false 
+          localOnly: false
         });
       }
     });
 
     // Success messages with aggregation info
     if (successCount > 0) {
-      toast({ 
-        variant: 'success', 
-        title: 'Save Complete', 
-        description: `${successCount} players saved. Event total: ${aggregationResult.summary.eventTotal.toLocaleString()}. ${aggregationResult.summary.rankedPlayers} players ranked.` 
+      toast({
+        variant: 'success',
+        title: 'Save Complete',
+        description: `${successCount} players saved. Event total: ${aggregationResult.summary.eventTotal.toLocaleString()}. ${aggregationResult.summary.rankedPlayers} players ranked.`
       });
     }
 
@@ -1040,20 +1040,20 @@ const saveAll = async () => {
 
   } catch (aggregationError) {
     console.error('Aggregation failed:', aggregationError);
-    
+
     // Still show success for individual saves even if aggregation fails
     if (successCount > 0) {
-      toast({ 
-        variant: 'warning', 
-        title: 'Partial Success', 
-        description: `${successCount} players saved but event totals and rankings could not be calculated.` 
+      toast({
+        variant: 'warning',
+        title: 'Partial Success',
+        description: `${successCount} players saved but event totals and rankings could not be calculated.`
       });
     }
-    
-    toast({ 
-      variant: 'destructive', 
-      title: 'Aggregation Failed', 
-      description: 'Individual players saved but event statistics could not be updated.' 
+
+    toast({
+      variant: 'destructive',
+      title: 'Aggregation Failed',
+      description: 'Individual players saved but event statistics could not be updated.'
     });
   }
 
@@ -1068,7 +1068,8 @@ const FIELD_ALIASES = {
   role: ['role'],
   score: ['score', 'total', 'overall'],
   notes: ['notes', 'note'],
-  overallRank: ['overallRank', 'overall rank', 'rank'],
+  rank: ['rank', 'position', 'place'],
+  overallRank: ['overall rank', 'overallRank'],
   scoreD1: ['scoreD1', 'score d1', 'score (d1)', 'd1'],
   scoreD2: ['scoreD2', 'score d2', 'score (d2)', 'd2'],
   scoreD3: ['scoreD3', 'score d3', 'score (d3)', 'd3'],
@@ -1115,6 +1116,7 @@ const handleFinalized = (imported) => {
       score: getField(row, FIELD_ALIASES.score),
       notes: getField(row, FIELD_ALIASES.notes),
       overallRank: getField(row, FIELD_ALIASES.overallRank),
+      rank: getField(row, FIELD_ALIASES.rank),
       scoreD1: getField(row, FIELD_ALIASES.scoreD1),
       scoreD2: getField(row, FIELD_ALIASES.scoreD2),
       scoreD3: getField(row, FIELD_ALIASES.scoreD3),
@@ -1144,6 +1146,7 @@ const handleFinalized = (imported) => {
       role: row.role || baseMember.role || "",
       status: baseMember.status || "active",
       overallRank: row.overallRank || "",
+      rank: Number(row.rank ?? rawRow.rank) || prev.rank || "",
       enteredBy: "Unknown",
       type: event.value?.type || "",
       score: row.score || "",
@@ -1154,7 +1157,7 @@ const handleFinalized = (imported) => {
       guild: event.value?.guildShort || "",
       enteredDate: new Date(),
       localOnly: true,
-    };
+    }
 
     SCORE_FIELDS.forEach(field => {
       const importedScore = Number(row[field] ?? 0);

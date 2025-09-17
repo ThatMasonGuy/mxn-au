@@ -1,107 +1,121 @@
 <template>
     <Dialog :open="true" @update:open="(val) => !val && $emit('close')">
-        <DialogContent class="w-full max-w-4xl max-h-[95vh] overflow-hidden">
-            <!-- Fixed Header outside scroll area -->
-            <DialogHeader class="pb-4 border-b border-border flex-shrink-0">
-                <!-- One row, bottom-aligned -->
-                <div class="flex items-end justify-between gap-6">
+        <DialogContent
+            class="w-full h-full sm:w-full sm:h-auto sm:max-w-[95vw] lg:max-w-4xl sm:max-h-[95vh] overflow-hidden sm:mx-auto sm:rounded-lg rounded-none border-0 sm:border px-3 sm:px-6">
+            <!-- Fixed Header -->
+            <DialogHeader class="pb-3 lg:pb-4 border-b border-border flex-shrink-0">
+                <!-- Mobile: Stack vertically, Desktop: One row -->
+                <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-3 lg:gap-6">
                     <!-- Left: avatar + meta -->
-                    <div class="flex items-start gap-4 flex-1 min-w-0">
-                        <div class="relative">
-                            <div class="w-16 h-16 rounded-xl bg-gradient-to-br from-slate-600 to-slate-700 border-2 flex items-center justify-center text-white font-bold text-xl"
+                    <div class="flex items-center gap-3 lg:gap-4 flex-1 min-w-0">
+                        <!-- Avatar -->
+                        <div class="relative flex-shrink-0">
+                            <div class="w-12 lg:w-16 h-12 lg:h-16 rounded-xl bg-gradient-to-br from-slate-600 to-slate-700 border-2 flex items-center justify-center text-white font-bold text-lg lg:text-xl"
                                 :style="avatarStyle">
                                 {{ member.name.slice(0, 2).toUpperCase() }}
                             </div>
-                            <div class="absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-background flex items-center justify-center"
+                            <div class="absolute -bottom-0.5 lg:-bottom-1 -right-0.5 lg:-right-1 w-5 lg:w-6 h-5 lg:h-6 rounded-full border-2 border-background flex items-center justify-center"
                                 :style="roleIconStyle">
-                                <component :is="getRoleIcon(member.role)" class="w-3 h-3 text-white" />
+                                <component :is="getRoleIcon(member.role)"
+                                    class="w-2.5 lg:w-3 h-2.5 lg:h-3 text-white" />
                             </div>
                         </div>
 
-                        <div class="space-y-2 flex-1 min-w-0">
-                            <DialogTitle class="text-2xl font-bold text-foreground">
-                                {{ member.name }}
-                            </DialogTitle>
-                            <div class="flex flex-wrap gap-2">
+                        <!-- Name + details -->
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center justify-start">
+                                <DialogTitle class="text-xl lg:text-2xl font-bold text-foreground truncate">
+                                    {{ member.name }}
+                                </DialogTitle>
+                            </div>
+
+                            <div class="flex flex-wrap gap-2 mt-1">
                                 <Badge :label="member.role" variant="role" />
                                 <Badge :label="member.status" variant="status" />
                             </div>
-                            <!-- Tags display -->
-                            <div v-if="member.tags && member.tags.length > 0" class="flex flex-wrap gap-1">
-                                <Tag v-for="tagId in member.tags" :key="tagId" :tag-id="tagId" />
+
+                            <div v-if="member.tags?.length" class="flex flex-wrap gap-1 mt-1">
+                                <Tag v-for="tagId in member.tags.slice(0, 3)" :key="tagId" :tag-id="tagId" />
+                                <span v-if="member.tags.length > 3"
+                                    class="inline-flex items-center px-1.5 py-0.5 text-xs font-medium rounded-full bg-foreground/5 text-foreground/60 border border-foreground/10">
+                                    +{{ member.tags.length - 3 }}
+                                </span>
                             </div>
-                            <DialogDescription class="sr-only">
-                                Member profile and management for {{ member.name }}
-                            </DialogDescription>
                         </div>
                     </div>
 
-                    <!-- Right: Buttons (same row, pinned to bottom) -->
-                    <div class="flex gap-2 flex-nowrap self-end">
-                        <Button variant="outline" size="sm" @click="handleViewEvents" class="gap-2">
+
+                    <!-- Right: Compact inline buttons -->
+                    <div class="flex items-center gap-1 flex-shrink-0">
+                        <Button variant="outline" size="sm" @click="handleViewEvents"
+                            class="h-8 w-8 sm:h-9 sm:w-auto sm:px-3 p-0 sm:p-2">
                             <Calendar class="h-4 w-4" />
-                            Events
+                            <span class="hidden sm:ml-2 sm:inline">Events</span>
                         </Button>
-                        <Button variant="outline" size="sm" @click="showEditForm = true" class="gap-2">
+                        <Button variant="outline" size="sm" @click="showEditForm = true"
+                            class="h-8 w-8 sm:h-9 sm:w-auto sm:px-3 p-0 sm:p-2">
                             <Edit class="h-4 w-4" />
-                            Edit
+                            <span class="hidden sm:ml-2 sm:inline">Edit</span>
                         </Button>
-                        <Button variant="destructive" size="sm" @click="confirmDelete = true" class="gap-2">
+                        <Button variant="destructive" size="sm" @click="confirmDelete = true"
+                            class="h-8 w-8 sm:h-9 sm:w-auto sm:px-3 p-0 sm:p-2">
                             <Trash2 class="h-4 w-4" />
-                            Delete
+                            <span class="hidden sm:ml-2 sm:inline">Delete</span>
                         </Button>
                     </div>
                 </div>
             </DialogHeader>
 
-
-            <!-- Scrollable Content Area with proper padding and height -->
-            <div class="flex-1 overflow-y-auto pr-3 pl-1 pb-4" style="max-height: calc(95vh - 180px);">
-                <div class="py-4 space-y-4">
-                    <!-- Edit Form with distinct background and tighter spacing -->
+            <!-- Scrollable Content Area -->
+            <div class="flex-1 overflow-y-auto -mr-3 pr-2 sm:pb-8 sm:mb-24 sm:-mr-0 sm:pr-2 lg:pr-3"
+                style="height: calc(100vh - 140px); max-height: calc(95vh - 140px);">
+                <div class="py-3 lg:py-4 space-y-4">
+                    <!-- Edit Form -->
                     <div v-if="showEditForm"
-                        class="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-lg p-4 border-2 border-blue-200 dark:border-blue-800 space-y-4">
+                        class="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-lg p-3 lg:p-4 border-2 border-blue-200 dark:border-blue-800 space-y-3 lg:space-y-4">
                         <div class="flex items-center justify-between">
-                            <h3 class="text-lg font-semibold text-blue-900 dark:text-blue-100 flex items-center gap-2">
-                                <Edit class="w-5 h-5 text-blue-600" />
+                            <h3
+                                class="text-base lg:text-lg font-semibold text-blue-900 dark:text-blue-100 flex items-center gap-2">
+                                <Edit class="w-4 lg:w-5 h-4 lg:h-5 text-blue-600" />
                                 Edit Member Details
                             </h3>
-                            <Button variant="ghost" size="sm" @click="showEditForm = false">
+                            <Button variant="ghost" size="sm" @click="showEditForm = false" class="h-8 w-8 p-0">
                                 <X class="h-4 w-4" />
                             </Button>
                         </div>
 
-                        <form @submit.prevent="saveEdit" class="space-y-4">
-                            <!-- Basic Info -->
+                        <form @submit.prevent="saveEdit" class="space-y-3 lg:space-y-4">
+                            <!-- Basic Info - Mobile: 1 col, Tablet: 2 col, Desktop: 3 col -->
                             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                                 <div class="space-y-1.5">
-                                    <Label for="edit-name">Name</Label>
-                                    <Input id="edit-name" v-model="editForm.name" />
+                                    <Label for="edit-name" class="text-sm">Name</Label>
+                                    <Input id="edit-name" v-model="editForm.name" class="text-sm h-9" />
                                 </div>
                                 <div class="space-y-1.5">
-                                    <Label for="edit-power">Power</Label>
-                                    <Input id="edit-power" v-model="editForm.power" type="number" />
+                                    <Label for="edit-power" class="text-sm">Power</Label>
+                                    <Input id="edit-power" v-model="editForm.power" type="number" class="text-sm h-9" />
+                                </div>
+                                <div class="space-y-1.5 sm:col-span-2 lg:col-span-1">
+                                    <Label for="edit-castle" class="text-sm">Castle Level</Label>
+                                    <Input id="edit-castle" v-model="editForm.castle" type="number"
+                                        class="text-sm h-9" />
                                 </div>
                                 <div class="space-y-1.5">
-                                    <Label for="edit-castle">Castle Level</Label>
-                                    <Input id="edit-castle" v-model="editForm.castle" type="number" />
+                                    <Label for="edit-country" class="text-sm">Country</Label>
+                                    <Input id="edit-country" v-model="editForm.country" class="text-sm h-9" />
                                 </div>
                                 <div class="space-y-1.5">
-                                    <Label for="edit-country">Country</Label>
-                                    <Input id="edit-country" v-model="editForm.country" />
+                                    <Label for="edit-discord" class="text-sm">Discord</Label>
+                                    <Input id="edit-discord" v-model="editForm.discord" class="text-sm h-9" />
+                                </div>
+                                <div class="space-y-1.5 sm:col-span-2 lg:col-span-1">
+                                    <Label for="edit-server" class="text-sm">Server</Label>
+                                    <Input id="edit-server" v-model="editForm.server" class="text-sm h-9" />
                                 </div>
                                 <div class="space-y-1.5">
-                                    <Label for="edit-discord">Discord</Label>
-                                    <Input id="edit-discord" v-model="editForm.discord" />
-                                </div>
-                                <div class="space-y-1.5">
-                                    <Label for="edit-server">Server</Label>
-                                    <Input id="edit-server" v-model="editForm.server" />
-                                </div>
-                                <div class="space-y-1.5">
-                                    <Label for="edit-role">Role</Label>
+                                    <Label for="edit-role" class="text-sm">Role</Label>
                                     <Select v-model="editForm.role">
-                                        <SelectTrigger>
+                                        <SelectTrigger class="text-sm h-9">
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -114,9 +128,9 @@
                                     </Select>
                                 </div>
                                 <div class="space-y-1.5">
-                                    <Label for="edit-status">Status</Label>
+                                    <Label for="edit-status" class="text-sm">Status</Label>
                                     <Select v-model="editForm.status">
-                                        <SelectTrigger>
+                                        <SelectTrigger class="text-sm h-9">
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -127,21 +141,21 @@
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                <div class="space-y-1.5">
-                                    <Label for="edit-gameuid">Game UID</Label>
-                                    <Input id="edit-gameuid" v-model="editForm.gameUid" />
+                                <div class="space-y-1.5 sm:col-span-2 lg:col-span-1">
+                                    <Label for="edit-gameuid" class="text-sm">Game UID</Label>
+                                    <Input id="edit-gameuid" v-model="editForm.gameUid" class="text-sm h-9" />
                                 </div>
                             </div>
 
                             <div class="space-y-1.5">
-                                <Label for="edit-othernames">Other Names (comma separated)</Label>
+                                <Label for="edit-othernames" class="text-sm">Other Names (comma separated)</Label>
                                 <Input id="edit-othernames" v-model="editForm.otherNames"
-                                    placeholder="alias1, alias2, alias3" />
+                                    placeholder="alias1, alias2, alias3" class="text-sm h-9" />
                             </div>
 
                             <!-- Tags Section -->
                             <div class="space-y-3">
-                                <Label>Tags</Label>
+                                <Label class="text-sm">Tags</Label>
                                 <div class="space-y-2">
                                     <!-- Selected Tags -->
                                     <div v-if="editForm.tags && editForm.tags.length > 0" class="flex flex-wrap gap-2">
@@ -150,14 +164,14 @@
                                     </div>
                                     <!-- Add Tag Dropdown -->
                                     <Select v-model="selectedTagToAdd" @update:model-value="addTag">
-                                        <SelectTrigger class="w-full">
+                                        <SelectTrigger class="w-full text-sm h-9">
                                             <SelectValue placeholder="Add a tag..." />
                                         </SelectTrigger>
                                         <SelectContent>
                                             <SelectItem v-for="[tagId, tagInfo] in availableTagsForAdd" :key="tagId"
                                                 :value="tagId">
                                                 <div class="flex items-center gap-2">
-                                                    <span>{{ tagInfo.label }}</span>
+                                                    <span class="text-sm">{{ tagInfo.label }}</span>
                                                     <span class="text-xs text-foreground/50">{{ tagInfo.description
                                                         }}</span>
                                                 </div>
@@ -168,15 +182,15 @@
                             </div>
 
                             <div class="space-y-1.5">
-                                <Label for="edit-notes">Notes</Label>
-                                <Textarea id="edit-notes" v-model="editForm.notes" rows="3" />
+                                <Label for="edit-notes" class="text-sm">Notes</Label>
+                                <Textarea id="edit-notes" v-model="editForm.notes" rows="3" class="text-sm" />
                             </div>
 
-                            <div class="flex justify-end gap-3 pt-3 border-t border-border">
-                                <Button type="button" variant="outline" @click="showEditForm = false">
+                            <div class="flex items-center justify-end gap-2 pt-3 border-t border-border">
+                                <Button type="button" variant="outline" @click="showEditForm = false" size="sm">
                                     Cancel
                                 </Button>
-                                <Button type="submit">
+                                <Button type="submit" size="sm">
                                     Save Changes
                                 </Button>
                             </div>
@@ -184,162 +198,170 @@
                     </div>
 
                     <!-- Profile View -->
-                    <div v-else class="space-y-4">
-                        <!-- Stats Grid with more color -->
-                        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                    <div v-else class="space-y-3">
+                        <!-- Stats Grid - Mobile: 2 cols, Desktop: up to 4 cols -->
+                        <div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 lg:gap-3">
                             <div
-                                class="bg-gradient-to-br from-yellow-50 to-amber-50 dark:from-yellow-950/30 dark:to-amber-950/30 rounded-lg p-4 border border-yellow-200 dark:border-yellow-800">
-                                <div class="flex items-center gap-2 mb-2">
-                                    <Zap class="w-4 h-4 text-yellow-600" />
-                                    <span class="text-sm text-yellow-800 dark:text-yellow-200 font-medium">Power</span>
+                                class="bg-gradient-to-br from-yellow-50 to-amber-50 dark:from-yellow-950/30 dark:to-amber-950/30 rounded-lg p-3 border border-yellow-200 dark:border-yellow-800">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <Zap class="w-3 h-3 text-yellow-600" />
+                                    <span class="text-xs text-yellow-800 dark:text-yellow-200 font-medium">Power</span>
                                 </div>
-                                <div class="text-xl font-bold text-yellow-900 dark:text-yellow-100">{{
+                                <div class="text-base lg:text-lg font-bold text-yellow-900 dark:text-yellow-100">{{
                                     formatPower(member.power) }}</div>
                             </div>
 
                             <div
-                                class="bg-gradient-to-br from-purple-50 to-violet-50 dark:from-purple-950/30 dark:to-violet-950/30 rounded-lg p-4 border border-purple-200 dark:border-purple-800">
-                                <div class="flex items-center gap-2 mb-2">
-                                    <Castle class="w-4 h-4 text-purple-600" />
-                                    <span class="text-sm text-purple-800 dark:text-purple-200 font-medium">Castle</span>
+                                class="bg-gradient-to-br from-purple-50 to-violet-50 dark:from-purple-950/30 dark:to-violet-950/30 rounded-lg p-3 border border-purple-200 dark:border-purple-800">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <Castle class="w-3 h-3 text-purple-600" />
+                                    <span class="text-xs text-purple-800 dark:text-purple-200 font-medium">Castle</span>
                                 </div>
-                                <div class="text-xl font-bold text-purple-900 dark:text-purple-100">{{ member.castle ||
+                                <div class="text-base lg:text-lg font-bold text-purple-900 dark:text-purple-100">{{
+                                    member.castle ||
                                     '-' }}</div>
                             </div>
 
                             <div
-                                class="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30 rounded-lg p-4 border border-green-200 dark:border-green-800">
-                                <div class="flex items-center gap-2 mb-2">
-                                    <Activity class="w-4 h-4 text-green-600" />
-                                    <span class="text-sm text-green-800 dark:text-green-200 font-medium">Status</span>
+                                class="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30 rounded-lg p-3 border border-green-200 dark:border-green-800">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <Activity class="w-3 h-3 text-green-600" />
+                                    <span class="text-xs text-green-800 dark:text-green-200 font-medium">Status</span>
                                 </div>
-                                <div class="text-lg font-semibold text-green-900 dark:text-green-100 capitalize">{{
-                                    member.status }}</div>
+                                <div
+                                    class="text-sm lg:text-base font-semibold text-green-900 dark:text-green-100 capitalize">
+                                    {{
+                                        member.status }}</div>
                             </div>
 
                             <div v-if="member.country"
-                                class="bg-gradient-to-br from-blue-50 to-sky-50 dark:from-blue-950/30 dark:to-sky-950/30 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
-                                <div class="flex items-center gap-2 mb-2">
-                                    <MapPin class="w-4 h-4 text-blue-600" />
-                                    <span class="text-sm text-blue-800 dark:text-blue-200 font-medium">Country</span>
+                                class="bg-gradient-to-br from-blue-50 to-sky-50 dark:from-blue-950/30 dark:to-sky-950/30 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <MapPin class="w-3 h-3 text-blue-600" />
+                                    <span class="text-xs text-blue-800 dark:text-blue-200 font-medium">Country</span>
                                 </div>
-                                <div class="text-lg font-semibold text-blue-900 dark:text-blue-100">{{ member.country }}
-                                </div>
+                                <div class="text-sm lg:text-base font-semibold text-blue-900 dark:text-blue-100">{{
+                                    member.country }}</div>
                             </div>
 
                             <div v-if="member.discord"
-                                class="bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950/30 dark:to-purple-950/30 rounded-lg p-4 border border-indigo-200 dark:border-indigo-800">
-                                <div class="flex items-center gap-2 mb-2">
-                                    <MessageCircle class="w-4 h-4 text-indigo-600" />
+                                class="bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950/30 dark:to-purple-950/30 rounded-lg p-3 border border-indigo-200 dark:border-indigo-800">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <MessageCircle class="w-3 h-3 text-indigo-600" />
                                     <span
-                                        class="text-sm text-indigo-800 dark:text-indigo-200 font-medium">Discord</span>
+                                        class="text-xs text-indigo-800 dark:text-indigo-200 font-medium">Discord</span>
                                 </div>
-                                <div class="text-lg font-semibold text-indigo-900 dark:text-indigo-100">{{
+                                <div class="text-sm lg:text-base font-semibold text-indigo-900 dark:text-indigo-100">{{
                                     member.discord }}</div>
                             </div>
 
                             <div v-if="member.server"
-                                class="bg-gradient-to-br from-cyan-50 to-teal-50 dark:from-cyan-950/30 dark:to-teal-950/30 rounded-lg p-4 border border-cyan-200 dark:border-cyan-800">
-                                <div class="flex items-center gap-2 mb-2">
-                                    <Server class="w-4 h-4 text-cyan-600" />
-                                    <span class="text-sm text-cyan-800 dark:text-cyan-200 font-medium">Server</span>
+                                class="bg-gradient-to-br from-cyan-50 to-teal-50 dark:from-cyan-950/30 dark:to-teal-950/30 rounded-lg p-3 border border-cyan-200 dark:border-cyan-800">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <Server class="w-3 h-3 text-cyan-600" />
+                                    <span class="text-xs text-cyan-800 dark:text-cyan-200 font-medium">Server</span>
                                 </div>
-                                <div class="text-lg font-semibold text-cyan-900 dark:text-cyan-100">{{ member.server }}
-                                </div>
+                                <div class="text-sm lg:text-base font-semibold text-cyan-900 dark:text-cyan-100">{{
+                                    member.server }}</div>
                             </div>
 
                             <div v-if="member.gameUid"
-                                class="bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-950/30 dark:to-red-950/30 rounded-lg p-4 border border-orange-200 dark:border-orange-800">
-                                <div class="flex items-center gap-2 mb-2">
-                                    <Hash class="w-4 h-4 text-orange-600" />
-                                    <span class="text-sm text-orange-800 dark:text-orange-200 font-medium">Game
+                                class="bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-950/30 dark:to-red-950/30 rounded-lg p-3 border border-orange-200 dark:border-orange-800">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <Hash class="w-3 h-3 text-orange-600" />
+                                    <span class="text-xs text-orange-800 dark:text-orange-200 font-medium">Game
                                         UID</span>
                                 </div>
-                                <div class="text-lg font-mono text-orange-900 dark:text-orange-100">{{ member.gameUid }}
-                                </div>
+                                <div
+                                    class="text-xs lg:text-sm font-mono text-orange-900 dark:text-orange-100 break-all">
+                                    {{ member.gameUid }}</div>
                             </div>
 
                             <div v-if="member.updatedAt"
-                                class="bg-gradient-to-br from-pink-50 to-rose-50 dark:from-pink-950/30 dark:to-rose-950/30 rounded-lg p-4 border border-pink-200 dark:border-pink-800">
-                                <div class="flex items-center gap-2 mb-2">
-                                    <Clock class="w-4 h-4 text-pink-600" />
-                                    <span class="text-sm text-pink-800 dark:text-pink-200 font-medium">Last
+                                class="bg-gradient-to-br from-pink-50 to-rose-50 dark:from-pink-950/30 dark:to-rose-950/30 rounded-lg p-3 border border-pink-200 dark:border-pink-800 col-span-2 lg:col-span-1">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <Clock class="w-3 h-3 text-pink-600" />
+                                    <span class="text-xs text-pink-800 dark:text-pink-200 font-medium">Last
                                         Updated</span>
                                 </div>
-                                <div class="text-lg font-semibold text-pink-900 dark:text-pink-100">{{
+                                <div class="text-xs lg:text-sm font-semibold text-pink-900 dark:text-pink-100">{{
                                     formatDate(member.updatedAt) }}</div>
                             </div>
                         </div>
 
-                        <!-- Notes Section with color -->
+                        <!-- Notes Section -->
                         <div v-if="member.notes"
-                            class="bg-gradient-to-br from-slate-50 to-gray-50 dark:from-slate-950/30 dark:to-gray-950/30 rounded-lg p-4 border border-slate-200 dark:border-slate-800">
-                            <div class="flex items-center gap-2 mb-3">
+                            class="bg-gradient-to-br from-slate-50 to-gray-50 dark:from-slate-950/30 dark:to-gray-950/30 rounded-lg p-3 border border-slate-200 dark:border-slate-800">
+                            <div class="flex items-center gap-2 mb-2">
                                 <MessageSquare class="w-4 h-4 text-slate-600" />
-                                <h4 class="font-semibold text-slate-800 dark:text-slate-200">Notes</h4>
+                                <h4 class="font-semibold text-slate-800 dark:text-slate-200 text-sm">Notes</h4>
                             </div>
-                            <p class="text-slate-700 dark:text-slate-300 leading-relaxed">{{ member.notes }}</p>
+                            <p class="text-slate-700 dark:text-slate-300 leading-relaxed text-sm">{{ member.notes }}</p>
                         </div>
 
-                        <!-- Other Names with color -->
+                        <!-- Other Names -->
                         <div v-if="member.otherNames?.length"
-                            class="bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-950/30 dark:to-purple-950/30 rounded-lg p-4 border border-violet-200 dark:border-violet-800">
-                            <div class="flex items-center gap-2 mb-3">
+                            class="bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-950/30 dark:to-purple-950/30 rounded-lg p-3 border border-violet-200 dark:border-violet-800">
+                            <div class="flex items-center gap-2 mb-2">
                                 <Tags class="w-4 h-4 text-violet-600" />
-                                <h4 class="font-semibold text-violet-800 dark:text-violet-200">Other Names</h4>
+                                <h4 class="font-semibold text-violet-800 dark:text-violet-200 text-sm">Other Names</h4>
                             </div>
-                            <div class="flex flex-wrap gap-2">
+                            <div class="flex flex-wrap gap-1">
                                 <span v-for="(name, i) in member.otherNames" :key="i"
-                                    class="bg-violet-100 dark:bg-violet-900/30 border border-violet-300 dark:border-violet-700 px-3 py-1 rounded-full text-sm text-violet-800 dark:text-violet-200 font-medium">
+                                    class="bg-violet-100 dark:bg-violet-900/30 border border-violet-300 dark:border-violet-700 px-2 py-0.5 rounded-full text-xs text-violet-800 dark:text-violet-200 font-medium">
                                     {{ name }}
                                 </span>
                             </div>
                         </div>
 
                         <!-- Compact History Timeline -->
-                        <div v-if="history.length" class="space-y-3">
+                        <div v-if="history.length" class="space-y-2">
                             <div class="flex items-center gap-2">
                                 <History class="w-4 h-4 text-slate-600" />
-                                <h4 class="font-semibold text-slate-800 dark:text-slate-200">Change History</h4>
+                                <h4 class="font-semibold text-slate-800 dark:text-slate-200 text-sm">Change History</h4>
                             </div>
 
                             <div class="space-y-2">
                                 <div v-for="(entry, i) in visibleHistory" :key="i"
-                                    class="bg-gradient-to-br from-slate-50 to-gray-50 dark:from-slate-950/30 dark:to-gray-950/30 rounded-lg p-3 border border-slate-200 dark:border-slate-800">
-                                    <div class="flex justify-between items-center mb-2">
+                                    class="bg-gradient-to-br from-slate-50 to-gray-50 dark:from-slate-950/30 dark:to-gray-950/30 rounded-lg p-2 border border-slate-200 dark:border-slate-800">
+                                    <div class="flex justify-between items-center gap-2 mb-1">
                                         <div class="flex items-center gap-2">
-                                            <User class="w-3.5 h-3.5 text-slate-500" />
-                                            <span class="font-medium text-sm text-slate-700 dark:text-slate-300">{{
+                                            <User class="w-3 h-3 text-slate-500" />
+                                            <span class="font-medium text-xs text-slate-700 dark:text-slate-300">{{
                                                 entry.updatedBy }}</span>
                                         </div>
                                         <span class="text-xs text-slate-500">{{ formatDate(entry.updatedAt) }}</span>
                                     </div>
 
-                                    <div class="space-y-1.5">
+                                    <div class="space-y-2">
                                         <div v-for="(change, key) in entry.changes" :key="key"
-                                            class="flex items-center justify-between p-2 bg-slate-100 dark:bg-slate-800/50 rounded border text-xs">
-                                            <span class="font-medium text-slate-600 dark:text-slate-400 capitalize">{{
-                                                formatFieldName(key) }}</span>
-                                            <div class="flex items-center gap-1.5">
-                                                <span
-                                                    class="line-through text-red-600 bg-red-50 dark:bg-red-950/30 px-2 py-0.5 rounded text-xs">
-                                                    {{ change.from || 'â€"' }}
-                                                </span>
-                                                <ArrowRight class="h-3 w-3 text-slate-400" />
-                                                <span
-                                                    class="text-green-600 bg-green-50 dark:bg-green-950/30 px-2 py-0.5 rounded text-xs">
-                                                    {{ change.to || 'â€"' }}
-                                                </span>
+                                            class="bg-slate-100 dark:bg-slate-800/50 rounded p-2 border">
+                                            <div
+                                                class="text-xs font-medium text-slate-600 dark:text-slate-400 capitalize mb-1">
+                                                {{
+                                                    formatFieldName(key) }}</div>
+                                            <div class="flex flex-wrap items-center gap-2">
+                                                <div class="flex items-center gap-1">
+                                                    <span
+                                                        class="text-xs text-red-600 bg-red-50 dark:bg-red-950/30 px-2 py-1 rounded line-through break-words">
+                                                        {{ change.from || '—' }}
+                                                    </span>
+                                                    <ArrowRight class="h-3 w-3 text-slate-400 flex-shrink-0" />
+                                                    <span
+                                                        class="text-xs text-green-600 bg-green-50 dark:bg-green-950/30 px-2 py-1 rounded break-words">
+                                                        {{ change.to || '—' }}
+                                                    </span>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <div v-if="canLoadMore" class="text-center pb-4">
-                                <Button variant="outline" size="sm" @click="loadMore">
-                                    <ChevronDown class="h-4 w-4 mr-2" />
-                                    Load More History
+                            <div v-if="canLoadMore" class="text-center">
+                                <Button variant="outline" size="sm" @click="loadMore" class="h-8 text-xs">
+                                    <ChevronDown class="h-3 w-3 mr-1" />
+                                    Load More
                                 </Button>
                             </div>
                         </div>
@@ -351,7 +373,8 @@
 
     <!-- Delete Confirmation -->
     <Dialog :open="confirmDelete" @update:open="(val) => !val && (confirmDelete = false)">
-        <DialogContent class="max-w-md">
+        <DialogContent
+            class="w-full h-full sm:w-auto sm:h-auto sm:max-w-md sm:max-h-[95vh] sm:mx-auto sm:rounded-lg rounded-none border-0 sm:border">
             <DialogHeader>
                 <DialogTitle class="flex items-center gap-2 text-foreground">
                     <AlertTriangle class="w-5 h-5 text-red-500" />
@@ -362,11 +385,11 @@
                     This action cannot be undone.
                 </DialogDescription>
             </DialogHeader>
-            <div class="flex justify-end gap-3 mt-6">
-                <Button variant="outline" @click="confirmDelete = false">
+            <div class="flex items-center justify-end gap-2 mt-6">
+                <Button variant="outline" @click="confirmDelete = false" size="sm">
                     Cancel
                 </Button>
-                <Button variant="destructive" @click="handleDelete">
+                <Button variant="destructive" @click="handleDelete" size="sm">
                     <Trash2 class="w-4 h-4 mr-2" />
                     Delete Forever
                 </Button>
@@ -430,7 +453,7 @@ const formatPower = (n) => {
 }
 
 const formatDate = (d) => {
-    if (!d) return 'â€"'
+    if (!d) return '—'
     const date = typeof d.toDate === 'function' ? d.toDate() : new Date(d)
     return date.toLocaleDateString('en-AU', {
         year: '2-digit', month: 'numeric', day: 'numeric',
@@ -612,7 +635,7 @@ const loadMore = () => { visibleCount.value += 3 }
 }
 
 .overflow-y-auto::-webkit-scrollbar {
-    width: 8px;
+    width: 4px;
 }
 
 .overflow-y-auto::-webkit-scrollbar-track {
@@ -630,9 +653,9 @@ const loadMore = () => { visibleCount.value += 3 }
     background: hsl(var(--foreground) / 0.6);
 }
 
-/* Ensure edit form has distinct appearance */
-.bg-muted\/50 {
-    background-color: hsl(var(--muted) / 0.5);
-    backdrop-filter: blur(2px);
+/* Text utilities */
+.break-all {
+    word-break: break-all;
+    overflow-wrap: break-word;
 }
 </style>

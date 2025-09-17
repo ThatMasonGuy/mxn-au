@@ -247,22 +247,6 @@ export default [
             requiresOverlay: true,
         },
     },
-    {
-        path: '/topheroes/velaris/events/KvK',
-        name: 'Velaris Dynamic Event',
-        component: () => import('@/pages/topheroes/velaris/events/KvK_Event.vue'),
-        meta: {
-            requiresAuth: false,
-            role: null,
-            title: 'Event Details',
-            drawerRanking: null,
-            drawerVisible: false,
-            layout: 'default',
-            description: 'Dynamic Guild vs Guild event statistics for Velaris.',
-            badge: 'Dynamic',
-            requiresOverlay: true,
-        },
-    },
 
     // --- TopHeroes Events ---
     {

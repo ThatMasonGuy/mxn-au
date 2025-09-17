@@ -72,7 +72,7 @@
                         <div>
                             <div class="text-sm text-foreground/70">Total Power</div>
                             <div class="text-2xl font-bold text-velaris-purple">{{ formatNumber(guildStats.totalPower)
-                                }}</div>
+                            }}</div>
                             <div class="text-xs"
                                 :class="guildStats.growthPercent > 0 ? 'text-velaris-green' : 'text-foreground/60'">
                                 {{ guildStats.growthPercent > 0 ? '+' : '' }}{{ guildStats.growthPercent }}% growth
@@ -355,12 +355,12 @@
                             <div v-if="activeCategory === 'gvg' && gvgShowAverage" class="flex justify-between">
                                 <span class="text-foreground/60">With GvG Data:</span>
                                 <span class="font-medium">{{getCurrentRankings().filter(m => m.gvgCount > 0).length
-                                    }}</span>
+                                }}</span>
                             </div>
                             <div class="flex justify-between">
                                 <span class="text-foreground/60">Showing:</span>
                                 <span class="font-medium">{{ Math.min(displayLimit, getCurrentRankings().length)
-                                    }}</span>
+                                }}</span>
                             </div>
                         </div>
                     </div>

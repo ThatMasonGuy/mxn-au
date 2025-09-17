@@ -4,7 +4,7 @@ import { useMainStore } from '@/stores/useMainStore'
 import { useJournalChatStore } from '@/stores/useJournalChatStore'
 import { useSummaryManifest } from '@/composables/useSummaryManifest'
 import { getFunctions, httpsCallable } from 'firebase/functions'
-import { getUserTimezone } from '@/utils/timezone'
+import { getUserTimezone } from '@/utils/timezones'
 import { useTokenTracker } from '@/composables/useTokenTracker.js'
 
 const { trackTokenUsage } = useTokenTracker()
