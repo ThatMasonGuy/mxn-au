@@ -1,6 +1,5 @@
 // src/firebase.js
 import { initializeApp, setLogLevel } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
 import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { getDatabase } from "firebase/database";
@@ -20,7 +19,23 @@ const firebaseConfig = {
 const firebaseApp = initializeApp(firebaseConfig);
 setLogLevel('warning');
 
-const analytics = getAnalytics(firebaseApp);
+let analytics = null;
+
+if (typeof window !== 'undefined') {
+  import('firebase/analytics')
+    .then(async ({ getAnalytics, isSupported }) => {
+      const analyticsSupported =
+        typeof isSupported === 'function' ? await isSupported() : true;
+
+      if (analyticsSupported) {
+        analytics = getAnalytics(firebaseApp);
+      }
+    })
+    .catch(() => {
+      analytics = null;
+    });
+}
+
 const firestore = getFirestore(firebaseApp);
 const auth = getAuth(firebaseApp);
 const realTimeDb = getDatabase(firebaseApp);

@@ -473,26 +473,6 @@ function getTimestamp(date) {
     return new Date(date).getTime()
 }
 
-function getBoardGradient(board) {
-    // Use the board's color if it exists, otherwise use default gradient
-    if (board.color) {
-        return `from-[${board.color}] to-[${board.color}]`
-    }
-    // Fallback to generated gradient
-    const gradients = [
-        'from-blue-500 to-indigo-600',
-        'from-purple-500 to-pink-600',
-        'from-green-500 to-teal-600',
-        'from-orange-500 to-red-600',
-        'from-cyan-500 to-blue-600',
-        'from-pink-500 to-purple-600',
-        'from-yellow-500 to-orange-600',
-        'from-indigo-500 to-purple-600'
-    ]
-    const index = board.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
-    return gradients[index % gradients.length]
-}
-
 function formatDate(date) {
     if (!date) return 'Never'
 
