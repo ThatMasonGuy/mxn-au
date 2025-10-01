@@ -1,54 +1,43 @@
 <!-- ConfirmationModal.vue - Reusable confirmation dialog -->
 <template>
-    <teleport to="body">
-        <transition name="modal">
-            <div v-if="isOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
-                @click="handleBackdropClick">
-                <div class="bg-card rounded-xl ring-1 ring-border/70 p-6 max-w-md w-full shadow-2xl" @click.stop>
-                    <!-- Header -->
-                    <div class="flex items-center justify-between mb-4">
-                        <div class="flex items-center gap-3">
-                            <div class="h-10 w-10 rounded-full flex items-center justify-center" :class="iconBgClass">
-                                <component :is="icon" class="h-5 w-5" :class="iconColorClass" />
-                            </div>
-                            <h3 class="text-lg font-semibold">{{ title }}</h3>
-                        </div>
-                        <button @click="close" class="p-2 hover:bg-foreground/5 rounded-lg transition">
-                            <X class="h-4 w-4 text-foreground/60" />
-                        </button>
+    <Dialog :open="isOpen" @update:open="handleOpenChange">
+        <DialogContent class="max-w-md">
+            <DialogHeader>
+                <div class="flex items-center gap-3">
+                    <div class="h-10 w-10 rounded-full flex items-center justify-center" :class="iconBgClass">
+                        <component :is="icon" class="h-5 w-5" :class="iconColorClass" />
                     </div>
-
-                    <!-- Content -->
-                    <div class="mb-6">
-                        <p class="text-foreground/80">{{ message }}</p>
-                        <div v-if="details" class="mt-3 p-3 bg-foreground/5 rounded-lg text-sm text-foreground/70">
-                            {{ details }}
-                        </div>
-                    </div>
-
-                    <!-- Actions -->
-                    <div class="flex items-center justify-end gap-3">
-                        <button @click="close" class="btn-secondary">
-                            {{ cancelText }}
-                        </button>
-                        <button @click="confirm" :disabled="loading" :class="[
-                            'btn-primary',
-                            variant === 'danger' ? 'btn-danger' : 'btn-primary'
-                        ]">
-                            <component v-if="loading" :is="LoaderIcon" class="h-4 w-4 animate-spin" />
-                            <component v-else-if="confirmIcon" :is="confirmIcon" class="h-4 w-4" />
-                            {{ confirmText }}
-                        </button>
-                    </div>
+                    <DialogTitle>{{ title }}</DialogTitle>
                 </div>
+                <DialogDescription v-if="message">
+                    {{ message }}
+                </DialogDescription>
+            </DialogHeader>
+
+            <!-- Content -->
+            <div v-if="details" class="mt-3 p-3 bg-foreground/5 rounded-lg text-sm text-foreground/70">
+                {{ details }}
             </div>
-        </transition>
-    </teleport>
+
+            <DialogFooter class="gap-3">
+                <Button variant="outline" @click="cancel" :disabled="loading">
+                    {{ cancelText }}
+                </Button>
+                <Button @click="confirm" :disabled="loading" :variant="buttonVariant">
+                    <component v-if="loading" :is="LoaderIcon" class="h-4 w-4 animate-spin mr-2" />
+                    <component v-else-if="confirmIcon" :is="confirmIcon" class="h-4 w-4 mr-2" />
+                    {{ confirmText }}
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
 </template>
 
 <script setup>
 import { computed } from 'vue'
-import { X, AlertTriangle, Info, CheckCircle, Loader2 } from 'lucide-vue-next'
+import { AlertTriangle, Info, CheckCircle, Loader2 } from 'lucide-vue-next'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
 
 const props = defineProps({
     isOpen: {
@@ -61,7 +50,7 @@ const props = defineProps({
     },
     message: {
         type: String,
-        required: true
+        default: ''
     },
     details: {
         type: String,
@@ -94,7 +83,7 @@ const props = defineProps({
     }
 })
 
-const emit = defineEmits(['confirm', 'cancel', 'close'])
+const emit = defineEmits(['update:isOpen', 'confirm', 'cancel', 'close'])
 
 const LoaderIcon = Loader2
 
@@ -128,15 +117,27 @@ const iconColorClass = computed(() => {
     return classes[props.variant]
 })
 
-function handleBackdropClick() {
-    if (props.closeOnBackdrop) {
-        close()
+const buttonVariant = computed(() => {
+    const variants = {
+        default: 'default',
+        danger: 'destructive',
+        warning: 'default',
+        success: 'default'
+    }
+    return variants[props.variant]
+})
+
+const handleOpenChange = (open) => {
+    emit('update:isOpen', open)
+    if (!open) {
+        emit('close')
     }
 }
 
-function close() {
-    emit('close')
+function cancel() {
+    emit('update:isOpen', false)
     emit('cancel')
+    emit('close')
 }
 
 function confirm() {

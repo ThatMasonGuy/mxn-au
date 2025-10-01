@@ -50,6 +50,38 @@ export default [
         },
     },
     {
+        path: '/topheroes/queues',
+        name: 'TopHeroesQueues',
+        component: () => import('@/pages/topheroes/QueuesBrowse.vue'),
+        meta: {
+            requiresAuth: false,
+            role: null,
+            title: 'Heroes',
+            drawerRanking: 3,
+            drawerVisible: true,
+            layout: 'default',
+            description: 'Guides and event walkthroughs for TopHeroes.',
+            badge: '',
+            requiresOverlay: true,
+        },
+    },
+    {
+        path: '/topheroes/queues/:id',
+        name: 'TopHeroesQueueDetail',
+        component: () => import('@/pages/topheroes/QueueDetail.vue'),
+        meta: {
+            requiresAuth: false,
+            role: null,
+            title: 'Queues',
+            drawerRanking: 0,
+            drawerVisible: false,
+            layout: 'default',
+            description: 'Guides and event walkthroughs for TopHeroes.',
+            badge: '',
+            requiresOverlay: true,
+        },
+    },
+    {
         path: '/topheroes/velaris',
         name: 'TopHeroes - Velaris',
         component: () => import('@/pages/topheroes/velaris/TH_VelarisHome.vue'),
@@ -70,7 +102,7 @@ export default [
     {
         path: '/topheroes/admin',
         name: 'TopHeroes - Admin',
-        component: () => import('@/pages/topheroes/admin/TH_AdminHome.vue'),
+        component: () => import('@/pages/topheroes/admin/Admin.vue'),
         meta: {
             requiresAuth: true,
             role: ROLES.TOPHEROES_ADMIN,

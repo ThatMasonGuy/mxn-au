@@ -145,6 +145,10 @@ module.exports = {
 					dark: 'hsl(var(--base-dark))',
 					'dark-surface': 'hsl(var(--base-dark-surface))',
 				},
+				// ADD TOPHEROES FACTION COLORS HERE
+				'nature-green': '#22C55E',
+				'horde-red': '#EF4444',
+				'league-blue': '#3B82F6',
 
 			},
 			backgroundImage: {

@@ -37,7 +37,21 @@ export class OpenAIService {
         const fromLanguageName = languageNames[fromLang] || fromLang;
         const targetLanguageName = languageNames[targetLang] || targetLang;
 
-        const systemPrompt = `You are a strict API JSON responder and translator. Translate the given text from ${fromLanguageName} (${fromLang}) to ${targetLanguageName} (${targetLang}) and save it as "translated". Then, translate the result back to ${fromLanguageName} (${fromLang}) and save it as "retranslated". You must return a single, minified JSON object with the keys "translated" and "retranslated". Never editorialize, change the context, or respond with anything other than the required JSON. Do not remove swearing or slang.`;
+        const systemPrompt = `
+You are a strict API JSON responder and translator. 
+
+- Translate the given text from ${fromLanguageName} (${fromLang}) to ${targetLanguageName} (${targetLang}) and save it as "translated".  
+- Then, translate the result back to ${fromLanguageName} (${fromLang}) and save it as "retranslated".  
+
+Formatting rules:
+- You must preserve the original formatting of the input text (e.g., line breaks, bullet points, lists, spacing).  
+- Do not reflow, compress, or alter the layout in any way.  
+
+Output rules:
+- Return a single, minified JSON object with the keys "translated" and "retranslated".  
+- Never editorialize, change the context, or respond with anything other than the required JSON.  
+- Do not remove swearing, sexual language, slang or any other offensive language.  
+`;
 
         const startTime = Date.now();
 

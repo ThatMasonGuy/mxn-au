@@ -213,6 +213,59 @@
     /* Green for Training */
     --day-combat: var(--comparison-4);
     /* Red for Combat */
+
+    /* ===== TOPHEROES THEME COLORS ===== */
+    --th-primary: #1E40AF;
+    /* Heroic blue */
+    --th-secondary: #EA580C;
+    /* Action orange */
+    --th-success: #16A34A;
+    /* Victory green */
+    --th-warning: #D97706;
+    /* Alert amber */
+    --th-danger: #DC2626;
+    /* Danger red */
+    --th-gold: #F59E0B;
+    /* Gold accent */
+    --th-silver: #6B7280;
+    /* Silver accent */
+    --th-bronze: #92400E;
+    /* Bronze accent */
+
+    /* Hero tier colors */
+    --th-legendary: #7C3AED;
+    /* Purple for legendary */
+    --th-epic: #DB2777;
+    /* Magenta for epic */
+    --th-rare: #2563EB;
+    /* Blue for rare */
+    --th-common: #16A34A;
+    /* Green for common */
+
+    /* Element colors for hero types */
+    --th-fire: #DC2626;
+    /* Red */
+    --th-water: #0284C7;
+    /* Blue */
+    --th-earth: #65A30D;
+    /* Green */
+    --th-air: #7C3AED;
+    /* Purple */
+    --th-light: #F59E0B;
+    /* Gold */
+    --th-dark: #374151;
+    /* Dark gray */
+
+    /* Hero faction colors */
+    --league-blue: #3B82F6;
+    --nature-green: #22C55E;
+    --horde-red: #EF4444;
+
+    /* Hero rarity colors */
+    --mythic-red: #DC2626;
+    --legendary-yellow: #F59E0B;
+    --epic-purple: #8B5CF6;
+    --rare-blue: #3B82F6;
   }
 
   .dark {
@@ -555,7 +608,7 @@
     --velaris-amber: 70 85% 50%;
     /* yellow pop */
 
-    /* Froggy light mode - MORE GREEN! 🐸 */
+    /* Froggy light mode - MORE GREEN! */
     --background: 120 45% 94%;
     /* Noticeably green background #e8f5e8 */
     --foreground: 140 40% 12%;
@@ -646,12 +699,394 @@
     --base-dark: 140 35% 8%;
     --base-dark-surface: 140 30% 12%;
   }
+
+  /* ===== TRANSLATE THEME (Based on TR_Landing.vue) ===== */
+  .theme-translate {
+    /* Translate brand colors - Purple/Violet/Fuchsia palette */
+    --translate-primary: 262 83% 58%;
+    /* #7C3AED - violet */
+    --translate-secondary: 328 85% 70%;
+    /* #F472B6 - fuchsia */
+    --translate-accent: 189 94% 43%;
+    /* #06B6D4 - cyan */
+    --translate-success: 142 71% 45%;
+    /* #22C55E - green */
+
+    /* Light mode - Dark backgrounds for contrast */
+    --background: 240 10% 4%;
+    /* Deep dark navy */
+    --foreground: 240 5% 96%;
+    /* Light text */
+
+    --muted: 240 4% 16%;
+    /* Dark muted */
+    --muted-foreground: 240 5% 65%;
+    /* Light muted text */
+
+    --popover: 240 10% 4%;
+    /* Match background */
+    --popover-foreground: 240 5% 96%;
+
+    --card: 240 4% 10%;
+    /* Dark cards with subtle blue tint */
+    --card-foreground: 240 5% 96%;
+
+    --border: 240 4% 16%;
+    /* Dark borders */
+    --input: 240 4% 16%;
+
+    --primary: 262 83% 58%;
+    /* Violet primary */
+    --primary-foreground: 0 0% 98%;
+
+    --secondary: 240 4% 16%;
+    /* Dark secondary */
+    --secondary-foreground: 240 5% 96%;
+
+    --accent: 328 85% 70%;
+    /* Fuchsia accent */
+    --accent-foreground: 0 0% 98%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+
+    --ring: 262 83% 58%;
+    /* Violet ring */
+
+    /* Translate theme specific colors */
+    --translate-zinc-900: 240 5% 6%;
+    --translate-zinc-800: 240 4% 10%;
+    --translate-zinc-700: 240 4% 16%;
+    --translate-zinc-600: 240 3% 25%;
+    --translate-violet-950: 262 50% 8%;
+  }
+
+  /* Dark mode for translate theme (same as light since it's already dark) */
+  .dark.theme-translate {
+    /* Keep the same dark aesthetic */
+    --background: 240 10% 4%;
+    --foreground: 240 5% 96%;
+
+    --muted: 240 4% 16%;
+    --muted-foreground: 240 5% 65%;
+
+    --popover: 240 10% 4%;
+    --popover-foreground: 240 5% 96%;
+
+    --card: 240 4% 10%;
+    --card-foreground: 240 5% 96%;
+
+    --border: 240 4% 16%;
+    --input: 240 4% 16%;
+
+    --primary: 262 83% 58%;
+    --primary-foreground: 0 0% 98%;
+
+    --secondary: 240 4% 16%;
+    --secondary-foreground: 240 5% 96%;
+
+    --accent: 328 85% 70%;
+    --accent-foreground: 0 0% 98%;
+
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 240 5% 96%;
+
+    --ring: 262 83% 70%;
+  }
+
+  /* ===== TOPHEROES THEME (Default Light Mode) ===== */
+  .theme-topheroes {
+    /* Background and surfaces */
+    --background: 220 25% 96%;
+    /* Light blue-gray background */
+    --foreground: 220 25% 8%;
+    /* Dark text for excellent contrast */
+
+    --muted: 220 20% 92%;
+    /* Muted blue-gray */
+    --muted-foreground: 220 15% 35%;
+
+    --popover: 0 0% 100%;
+    /* Pure white popovers */
+    --popover-foreground: 220 25% 8%;
+
+    --card: 220 15% 98%;
+    /* Subtle blue-tinted cards */
+    --card-foreground: 220 25% 8%;
+
+    --border: 220 15% 85%;
+    /* Visible borders */
+    --input: 220 15% 85%;
+
+    /* Theme colors */
+    --primary: 214 88% 41%;
+    /* Heroic blue primary */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 221 83% 53%;
+    /* Lighter blue secondary */
+    --secondary-foreground: 0 0% 100%;
+
+    --accent: 24 100% 50%;
+    /* Orange accent */
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 142 76% 36%;
+    /* Green success */
+    --success-foreground: 0 0% 100%;
+
+    --warning: 32 95% 44%;
+    /* Amber warning */
+    --warning-foreground: 0 0% 100%;
+
+    --ring: 214 88% 41%;
+
+    /* TopHeroes specific */
+    --th-bg-primary: 220 25% 96%;
+    --th-surface-primary: 220 15% 98%;
+    --th-text-primary: 220 25% 8%;
+  }
+
+  /* TopHeroes Dark Mode */
+  .dark.theme-topheroes {
+    /* Dark blue-gray backgrounds for heroic feel */
+    --background: 220 30% 6%;
+    /* Deep blue-gray */
+    --foreground: 220 15% 95%;
+    /* Light text */
+
+    --muted: 220 25% 12%;
+    /* Muted dark blue */
+    --muted-foreground: 220 15% 70%;
+
+    --popover: 220 30% 6%;
+    --popover-foreground: 220 15% 95%;
+
+    --card: 220 25% 9%;
+    /* Dark blue cards */
+    --card-foreground: 220 15% 95%;
+
+    --border: 220 20% 18%;
+    /* Dark borders */
+    --input: 220 20% 18%;
+
+    /* Theme colors - brighter in dark mode */
+    --primary: 214 88% 58%;
+    /* Brighter blue */
+    --primary-foreground: 220 30% 6%;
+
+    --secondary: 221 83% 65%;
+    --secondary-foreground: 220 30% 6%;
+
+    --accent: 24 100% 58%;
+    /* Brighter orange */
+    --accent-foreground: 220 30% 6%;
+
+    --destructive: 0 75% 60%;
+    --destructive-foreground: 220 15% 95%;
+
+    --success: 142 76% 48%;
+    --success-foreground: 220 30% 6%;
+
+    --warning: 32 95% 58%;
+    --warning-foreground: 220 30% 6%;
+
+    --ring: 214 88% 70%;
+
+    /* TopHeroes dark specific */
+    --th-bg-primary: 220 30% 6%;
+    --th-surface-primary: 220 25% 9%;
+    --th-text-primary: 220 15% 95%;
+  }
 }
 
-/* ===== Velaris admin – shared surfaces, buttons, utilities ===== */
+/* TopHeroes Component Styles */
 @layer components {
 
-  /* ---- Elevated surfaces (card-like) ---- */
+  /* Theme-specific button variants */
+  .theme-topheroes .btn-th-primary {
+    @apply inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white transition-all;
+    background: linear-gradient(135deg, hsl(214 88% 41%), hsl(214 88% 51%));
+    box-shadow: 0 4px 12px hsl(214 88% 41% / 0.3);
+  }
+
+  .theme-topheroes .btn-th-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px hsl(214 88% 41% / 0.4);
+  }
+
+  .theme-topheroes .btn-th-secondary {
+    @apply inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white transition-all;
+    background: linear-gradient(135deg, hsl(24 100% 50%), hsl(24 100% 60%));
+    box-shadow: 0 4px 12px hsl(24 100% 50% / 0.3);
+  }
+
+  .theme-topheroes .btn-th-secondary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px hsl(24 100% 50% / 0.4);
+  }
+
+  .theme-topheroes .btn-th-soft {
+    @apply inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all;
+    background: hsl(214 88% 41% / 0.1);
+    color: hsl(214 88% 41%);
+    border: 1px solid hsl(214 88% 41% / 0.2);
+  }
+
+  .theme-topheroes .btn-th-soft:hover {
+    background: hsl(214 88% 41% / 0.15);
+    border-color: hsl(214 88% 41% / 0.3);
+  }
+
+  /* TopHeroes specific cards */
+  .theme-topheroes .th-hero-card {
+    @apply rounded-xl p-4 transition-all cursor-pointer;
+    background: linear-gradient(135deg,
+        hsl(var(--card)) 0%,
+        hsl(var(--card) / 0.8) 100%);
+    border: 1px solid hsl(var(--border));
+    box-shadow: 0 2px 8px hsl(220 25% 8% / 0.1);
+  }
+
+  .theme-topheroes .th-hero-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px hsl(220 25% 8% / 0.15);
+    border-color: hsl(214 88% 41% / 0.3);
+  }
+
+  .theme-topheroes .th-guide-card {
+    @apply rounded-lg p-4 border border-border transition-all;
+    background: hsl(var(--card));
+  }
+
+  .theme-topheroes .th-guide-card:hover {
+    border-color: hsl(214 88% 41% / 0.4);
+    box-shadow: 0 4px 12px hsl(214 88% 41% / 0.1);
+  }
+
+  /* Status indicators */
+  .theme-topheroes .th-status-online {
+    @apply h-2 w-2 rounded-full bg-green-400 animate-pulse;
+  }
+
+  .theme-topheroes .th-status-scheduled {
+    @apply h-2 w-2 rounded-full bg-blue-400 animate-pulse;
+  }
+
+  .theme-topheroes .th-status-draft {
+    @apply h-2 w-2 rounded-full bg-amber-400;
+  }
+
+  .theme-topheroes .th-status-inactive {
+    @apply h-2 w-2 rounded-full bg-gray-400;
+  }
+
+  /* Tier badges */
+  .theme-topheroes .th-tier-legendary {
+    background: linear-gradient(135deg, hsl(271 85% 65%), hsl(271 85% 75%));
+    @apply text-white text-xs font-bold px-2 py-1 rounded;
+  }
+
+  .theme-topheroes .th-tier-epic {
+    background: linear-gradient(135deg, hsl(322 84% 50%), hsl(322 84% 60%));
+    @apply text-white text-xs font-bold px-2 py-1 rounded;
+  }
+
+  .theme-topheroes .th-tier-rare {
+    background: linear-gradient(135deg, hsl(214 88% 41%), hsl(214 88% 51%));
+    @apply text-white text-xs font-bold px-2 py-1 rounded;
+  }
+
+  .theme-topheroes .th-tier-common {
+    background: linear-gradient(135deg, hsl(142 76% 36%), hsl(142 76% 46%));
+    @apply text-white text-xs font-bold px-2 py-1 rounded;
+  }
+
+  /* Element badges */
+  .theme-topheroes .th-element-fire {
+    @apply bg-red-500/15 text-red-600 border border-red-500/30;
+  }
+
+  .theme-topheroes .th-element-water {
+    @apply bg-blue-500/15 text-blue-600 border border-blue-500/30;
+  }
+
+  .theme-topheroes .th-element-earth {
+    @apply bg-green-600/15 text-green-700 border border-green-600/30;
+  }
+
+  .theme-topheroes .th-element-air {
+    @apply bg-purple-500/15 text-purple-600 border border-purple-500/30;
+  }
+
+  .theme-topheroes .th-element-light {
+    @apply bg-amber-500/15 text-amber-600 border border-amber-500/30;
+  }
+
+  .theme-topheroes .th-element-dark {
+    @apply bg-gray-600/15 text-gray-700 border border-gray-600/30;
+  }
+
+  /* Stats displays */
+  .theme-topheroes .th-stat-card {
+    @apply rounded-xl p-4 border border-border;
+    background: linear-gradient(135deg,
+        hsl(var(--card)) 0%,
+        hsl(var(--muted)) 100%);
+  }
+
+  .theme-topheroes .th-metric-positive {
+    @apply text-green-600 font-semibold;
+  }
+
+  .theme-topheroes .th-metric-negative {
+    @apply text-red-600 font-semibold;
+  }
+
+  .theme-topheroes .th-metric-neutral {
+    @apply text-blue-600 font-semibold;
+  }
+
+  /* Navigation enhancements */
+  .theme-topheroes .th-nav-item {
+    @apply rounded-lg px-3 py-2 text-sm font-medium transition-all;
+    color: hsl(var(--foreground) / 0.8);
+  }
+
+  .theme-topheroes .th-nav-item:hover {
+    background: hsl(214 88% 41% / 0.1);
+    color: hsl(214 88% 41%);
+  }
+
+  .theme-topheroes .th-nav-item.active {
+    background: linear-gradient(135deg,
+        hsl(214 88% 41% / 0.15),
+        hsl(214 88% 41% / 0.1));
+    color: hsl(214 88% 41%);
+    border: 1px solid hsl(214 88% 41% / 0.3);
+  }
+
+  /* Loading states with theme colors */
+  .theme-topheroes .th-loading-spinner {
+    @apply h-8 w-8 rounded-full border-2 border-transparent animate-spin;
+    border-top-color: hsl(214 88% 41%);
+    border-right-color: hsl(24 100% 50%);
+  }
+
+  .theme-topheroes .th-skeleton {
+    @apply animate-pulse;
+    background: linear-gradient(90deg,
+        hsl(var(--muted)) 25%,
+        hsl(var(--muted) / 0.5) 50%,
+        hsl(var(--muted)) 75%);
+    background-size: 200% 100%;
+  }
+
+  /* ===== Velaris admin — shared surfaces, buttons, utilities ===== */
+  /* ---- Elevated surfaces (card-like) - FIXED TO USE THEME COLORS ---- */
   .elev-card,
   .stat-card,
   .member-card,
@@ -663,34 +1098,14 @@
   .integration-card,
   .battle-item,
   .filter-panel {
-    @apply rounded-xl ring-1 ring-border p-4 shadow-md;
-    /* emulate ring-border/70 */
+    @apply rounded-xl ring-1 ring-border p-4 shadow-md bg-card;
+    /* Use theme's card color instead of hardcoded white gradient */
     --tw-ring-opacity: 0.7;
-    /* soft surface gradient */
-    background: linear-gradient(to bottom,
-        hsl(0 0% 100% / 0.06),
-        hsl(0 0% 100% / 0.02));
   }
 
   /* optional larger padding variant some views used */
   .elev-card-lg {
     @apply p-6;
-  }
-
-  .dark .elev-card,
-  .dark .stat-card,
-  .dark .member-card,
-  .dark .event-card,
-  .dark .kpi-card,
-  .dark .hero-card,
-  .dark .method-card,
-  .dark .session-item,
-  .dark .integration-card,
-  .dark .battle-item,
-  .dark .filter-panel {
-    background: linear-gradient(to bottom,
-        hsl(0 0% 0% / 0.25),
-        hsl(0 0% 0% / 0.15));
   }
 
   /* ---- List / row surfaces with light fill ---- */
@@ -700,11 +1115,8 @@
   .tool-tile,
   .strategy-btn,
   .setting-item {
-    @apply rounded-lg border border-border p-3 transition;
-    @apply text-left;
-    @apply bg-white;
-    --tw-bg-opacity: 0.05;
-    /* = bg-white/5 */
+    @apply rounded-lg border border-border p-3 transition text-left bg-card;
+    /* Use theme's card color */
   }
 
   .setting-item {
@@ -718,17 +1130,8 @@
 
   .ranking-row:hover,
   .strategy-btn:hover {
-    @apply bg-foreground;
-    --tw-bg-opacity: 0.05;
-  }
-
-  .dark .ranking-row,
-  .dark .hero-card,
-  .dark .insight-item,
-  .dark .tool-tile,
-  .dark .strategy-btn,
-  .dark .setting-item {
-    background: hsl(0 0% 100% / 0.03);
+    @apply bg-muted;
+    /* Use theme's muted color for hover */
   }
 
   /* ===== ROLE COLOR UTILITY CLASSES ===== */
@@ -952,8 +1355,7 @@
   }
 
   .pagination-btn:hover {
-    @apply bg-foreground;
-    --tw-bg-opacity: 0.05;
+    @apply bg-muted;
   }
 
   .pagination-btn:disabled {
@@ -1003,22 +1405,283 @@
     @apply bg-red-500 hover:bg-red-600 text-white rounded-md px-4 py-2 text-sm;
   }
 
-  /* ---- Misc view-specific ---- */
-  .filter-panel {
-    @apply p-4;
+  /* ---- Translate Theme Components ---- */
+  .theme-translate .translate-gradient-bg {
+    background: linear-gradient(to bottom right,
+        hsl(240 10% 4%),
+        hsl(262 50% 8%),
+        hsl(240 10% 4%));
   }
 
-  .ranking-row {
-    /* already has hover above */
+  .theme-translate .translate-card {
+    @apply rounded-xl ring-1 ring-border/70 p-6 shadow-lg;
+    background: linear-gradient(to bottom,
+        hsl(240 4% 10% / 0.8),
+        hsl(240 4% 8% / 0.9));
+    backdrop-filter: blur(12px);
   }
 
-  .member-card:hover,
-  .event-card:hover {
-    @apply shadow-lg;
+  .theme-translate .translate-glass-card {
+    @apply rounded-2xl ring-1 ring-white/10 p-6 shadow-2xl;
+    background: linear-gradient(to bottom,
+        hsl(240 4% 10% / 0.4),
+        hsl(240 4% 8% / 0.6));
+    backdrop-filter: blur(16px);
+  }
+
+  .theme-translate .translate-btn-primary {
+    @apply inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-bold text-white transition-all;
+    background: linear-gradient(to right,
+        hsl(262 83% 58%),
+        hsl(328 85% 70%));
+    box-shadow: 0 0 24px hsl(262 83% 58% / 0.35);
+  }
+
+  .theme-translate .translate-btn-primary:hover {
+    transform: scale(1.05);
+    background: linear-gradient(to right,
+        hsl(262 83% 65%),
+        hsl(328 85% 75%));
+  }
+
+  .theme-translate .translate-btn-secondary {
+    @apply inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold text-white transition-all;
+    background: hsl(240 4% 10% / 0.5);
+    backdrop-filter: blur(12px);
+    border: 1px solid hsl(240 5% 20%);
+  }
+
+  .theme-translate .translate-btn-secondary:hover {
+    background: hsl(240 4% 15% / 0.7);
+  }
+
+  .theme-translate .translate-input {
+    @apply w-full px-4 py-3 rounded-xl text-white border border-white/10 transition-all;
+    background: hsl(240 4% 8% / 0.6);
+    backdrop-filter: blur(12px);
+  }
+
+  .theme-translate .translate-input:focus {
+    outline: none;
+    border-color: hsl(262 83% 58% / 0.5);
+    box-shadow: 0 0 0 3px hsl(262 83% 58% / 0.1);
+  }
+
+  .theme-translate .translate-server-card {
+    @apply p-4 rounded-xl border border-white/10 transition-all cursor-pointer;
+    background: linear-gradient(to bottom,
+        hsl(240 4% 10% / 0.6),
+        hsl(240 4% 8% / 0.8));
+    backdrop-filter: blur(12px);
+  }
+
+  .theme-translate .translate-server-card:hover {
+    border-color: hsl(262 83% 58% / 0.5);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px hsl(262 83% 58% / 0.15);
+  }
+
+  .theme-translate .translate-server-card.selected {
+    border-color: hsl(262 83% 58%);
+    box-shadow: 0 0 0 1px hsl(262 83% 58%),
+      0 8px 32px hsl(262 83% 58% / 0.25);
+  }
+
+  /* Noise texture overlay like in TR_Landing */
+  .theme-translate .translate-noise-overlay {
+    position: fixed;
+    inset: 0;
+    opacity: 0.2;
+    mix-blend-mode: soft-light;
+    pointer-events: none;
+    background-image: url('data:image/svg+xml,%3Csvg width="100" height="100" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noise"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.9" /%3E%3C/filter%3E%3Crect width="100" height="100" filter="url(%23noise)" opacity="0.4"/%3E%3C/svg%3E');
+  }
+
+  /* Status indicators */
+  .theme-translate .translate-status-online {
+    @apply h-2 w-2 rounded-full bg-green-400 animate-pulse;
+  }
+
+  .theme-translate .translate-status-offline {
+    @apply h-2 w-2 rounded-full bg-red-400;
+  }
+
+  .theme-translate .translate-status-partial {
+    @apply h-2 w-2 rounded-full bg-amber-400;
   }
 }
 
+/* TopHeroes utility classes */
 @layer utilities {
+  .text-th-primary {
+    color: hsl(214 88% 41%);
+  }
+
+  .text-th-secondary {
+    color: hsl(24 100% 50%);
+  }
+
+  .text-th-success {
+    color: hsl(142 76% 36%);
+  }
+
+  .text-th-warning {
+    color: hsl(32 95% 44%);
+  }
+
+  .text-th-danger {
+    color: hsl(0 84% 60%);
+  }
+
+  .bg-th-primary {
+    background-color: hsl(214 88% 41%);
+  }
+
+  .bg-th-secondary {
+    background-color: hsl(24 100% 50%);
+  }
+
+  .bg-th-success {
+    background-color: hsl(142 76% 36%);
+  }
+
+  .bg-th-warning {
+    background-color: hsl(32 95% 44%);
+  }
+
+  .bg-th-danger {
+    background-color: hsl(0 84% 60%);
+  }
+
+  .border-th-primary {
+    border-color: hsl(214 88% 41%);
+  }
+
+  .border-th-secondary {
+    border-color: hsl(24 100% 50%);
+  }
+
+  .border-th-success {
+    border-color: hsl(142 76% 36%);
+  }
+
+  .border-th-warning {
+    border-color: hsl(32 95% 44%);
+  }
+
+  .border-th-danger {
+    border-color: hsl(0 84% 60%);
+  }
+
+  /* ===== ROLE COLOR UTILITY CLASSES ===== */
+  .role-r1 {
+    color: var(--role-r1);
+  }
+
+  .role-r2 {
+    color: var(--role-r2);
+  }
+
+  .role-r3 {
+    color: var(--role-r3);
+  }
+
+  .role-r4 {
+    color: var(--role-r4);
+  }
+
+  .role-r5 {
+    color: var(--role-r5);
+  }
+
+  .bg-role-r1 {
+    background-color: var(--role-r1);
+  }
+
+  .bg-role-r2 {
+    background-color: var(--role-r2);
+  }
+
+  .bg-role-r3 {
+    background-color: var(--role-r3);
+  }
+
+  .bg-role-r4 {
+    background-color: var(--role-r4);
+  }
+
+  .bg-role-r5 {
+    background-color: var(--role-r5);
+  }
+
+  .border-role-r1 {
+    border-color: var(--role-r1);
+  }
+
+  .border-role-r2 {
+    border-color: var(--role-r2);
+  }
+
+  .border-role-r3 {
+    border-color: var(--role-r3);
+  }
+
+  .border-role-r4 {
+    border-color: var(--role-r4);
+  }
+
+  .border-role-r5 {
+    border-color: var(--role-r5);
+  }
+
+  /* ===== DAY TASK UTILITY CLASSES ===== */
+  .day-construction {
+    color: var(--day-construction);
+  }
+
+  .day-research {
+    color: var(--day-research);
+  }
+
+  .day-rally {
+    color: var(--day-rally);
+  }
+
+  .day-hero {
+    color: var(--day-hero);
+  }
+
+  .day-training {
+    color: var(--day-training);
+  }
+
+  .day-combat {
+    color: var(--day-combat);
+  }
+
+  .bg-day-construction {
+    background-color: var(--day-construction);
+  }
+
+  .bg-day-research {
+    background-color: var(--day-research);
+  }
+
+  .bg-day-rally {
+    background-color: var(--day-rally);
+  }
+
+  .bg-day-hero {
+    background-color: var(--day-hero);
+  }
+
+  .bg-day-training {
+    background-color: var(--day-training);
+  }
+
+  .bg-day-combat {
+    background-color: var(--day-combat);
+  }
 
   /* ---- Fade (two variants) ---- */
   .fade-enter-active,

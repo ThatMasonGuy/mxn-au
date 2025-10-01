@@ -402,7 +402,7 @@
                             </div>
                             <div class="flex-1 min-w-0">
                                 <div class="text-sm font-medium truncate">{{ member.name }}</div>
-                                <div class="text-xs text-foreground/60">{{ member.role }} â€¢ {{
+                                <div class="text-xs text-foreground/60">{{ member.role }} • {{
                                     formatTimeAgo(member.joinedAt) }}</div>
                             </div>
                             <component :is="getRoleIcon(member.role)" class="h-3 w-3"

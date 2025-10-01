@@ -50,6 +50,22 @@ export default [
         },
     },
     {
+        path: '/translate/bot/dashboard',
+        name: 'TranslateBotDashboard',
+        component: () => import('@/pages/translate/DiscordBotHome.vue'),
+        meta: {
+            requiresAuth: false,
+            role: null,
+            title: 'Translate Bot',
+            drawerRanking: 2,
+            drawerVisible: true,
+            layout: 'admin',
+            description: 'Manage Discord bot translations and translation services.',
+            badge: '',
+            requiresOverlay: false,
+        },
+    },
+    {
         path: '/translate/usage',
         name: 'TranslateUsage',
         component: () => import('@/pages/translate/TranslateUsage.vue'),

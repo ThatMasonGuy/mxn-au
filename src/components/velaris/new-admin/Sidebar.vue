@@ -77,7 +77,7 @@ import VLR from '@/assets/icons/VLR.svg'
 import {
     Users, ActivitySquare, Shield, Trophy, Settings, FileText,
     LayoutDashboard, ChevronLeft, ChevronRight, X, Plus, Clock,
-    Calendar
+    Calendar, Swords
 } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -96,6 +96,7 @@ const navigationItems = computed(() => [
     { key: 'rankings', icon: Trophy, label: 'Rankings' },
     { key: 'time', icon: Clock, label: 'Time' },
     { key: 'calendar', icon: Calendar, label: 'Calendar' },
+    { key: 'heroes', icon: Swords, label: 'Heroes' }
 ])
 
 const settingsItems = computed(() => [

@@ -38,55 +38,61 @@ const store = useTopheroesAdminStore()
 
 const Dashboard = defineAsyncComponent(() =>
     new Promise(resolve => {
-        setTimeout(() => resolve(import('./views/Dashboard.vue')), 400)
+        setTimeout(() => resolve(import('./views/Dashboard.vue')), 0)
     })
 )
 
 const Members = defineAsyncComponent(() =>
     new Promise(resolve => {
-        setTimeout(() => resolve(import('./views/Members.vue')), 500)
+        setTimeout(() => resolve(import('./views/Members.vue')), 0)
     })
 )
 
 const Events = defineAsyncComponent(() =>
     new Promise(resolve => {
-        setTimeout(() => resolve(import('./views/Events.vue')), 450)
+        setTimeout(() => resolve(import('./views/Events.vue')), 0)
     })
 )
 
 const GuildVsGuild = defineAsyncComponent(() =>
     new Promise(resolve => {
-        setTimeout(() => resolve(import('./views/GuildVsGuild.vue')), 600)
+        setTimeout(() => resolve(import('./views/GuildVsGuild.vue')), 0)
     })
 )
 
 const Rankings = defineAsyncComponent(() =>
     new Promise(resolve => {
-        setTimeout(() => resolve(import('./views/Rankings.vue')), 550)
+        setTimeout(() => resolve(import('./views/Rankings.vue')), 0)
     })
 )
 
 const Settings = defineAsyncComponent(() =>
     new Promise(resolve => {
-        setTimeout(() => resolve(import('./views/Settings.vue')), 500)
+        setTimeout(() => resolve(import('./views/Settings.vue')), 0)
     })
 )
 
 const AuditLog = defineAsyncComponent(() =>
     new Promise(resolve => {
-        setTimeout(() => resolve(import('./views/AuditLog.vue')), 700) // Heaviest component
+        setTimeout(() => resolve(import('./views/AuditLog.vue')), 0) // Heaviest component
     })
 )
 
 const Time = defineAsyncComponent(() =>
     new Promise(resolve => {
-        setTimeout(() => resolve(import('./views/Time.vue')), 700)
+        setTimeout(() => resolve(import('./views/Time.vue')), 0)
     })
 )
 
 const Calendar = defineAsyncComponent(() =>
     new Promise(resolve => {
-        setTimeout(() => resolve(import('./views/Calendar.vue')), 700)
+        setTimeout(() => resolve(import('./views/Calendar.vue')), 0)
+    })
+)
+
+const Heroes = defineAsyncComponent(() =>
+    new Promise(resolve => {
+        setTimeout(() => resolve(import('./views/Heroes.vue')), 0)
     })
 )
 
@@ -100,6 +106,7 @@ const componentMap = {
     'audit-log': AuditLog,
     'time': Time,
     'calendar': Calendar,
+    'heroes': Heroes
 }
 
 const sidebarOpen = ref(false)
