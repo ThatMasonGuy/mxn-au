@@ -1,6 +1,8 @@
 <!-- pages/QueueDetail.vue -->
 <template>
     <div class="min-h-screen bg-background text-foreground">
+        <!-- Theme Switcher -->
+        <ThemeSwitcher />
         <!-- Loading State -->
         <div v-if="isLoading" class="flex items-center justify-center min-h-screen">
             <div class="text-center">
@@ -19,7 +21,8 @@
                 </div>
                 <h2 class="text-2xl font-bold mb-2">Queue Not Found</h2>
                 <p class="text-foreground/60 mb-6">{{ error }}</p>
-                <button @click="router.push('/topheroes/queues')" class="bg-gradient-to-r from-velaris-purple to-velaris-teal text-white font-medium py-2 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 inline-flex items-center">
+                <button @click="router.push('/topheroes/queues')"
+                    class="bg-gradient-to-r from-velaris-purple to-velaris-teal text-white font-medium py-2 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 inline-flex items-center">
                     <ArrowLeft class="h-4 w-4 mr-2" />
                     Back to Browse
                 </button>
@@ -114,7 +117,7 @@
                             :bonds="publicStore.bonds" />
                     </div>
 
-                    <!-- Gear Setup -->
+                    <!--
                     <div class="bg-card border border-border rounded-xl p-6">
                         <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
                             <Zap class="h-5 w-5 text-velaris-amber" />
@@ -123,7 +126,8 @@
 
                         <GearSetupDisplay :queue="queue" :heroes="publicStore.heroes" />
                     </div>
-
+                    Gear Setup -->
+                    
                     <!-- Comments Section -->
                     <CommentSection :queue-id="queueId" />
                 </div>
@@ -172,6 +176,7 @@ import TeamFormationDisplay from '@/components/topheroes/public/TeamFormationDis
 import GearSetupDisplay from '@/components/topheroes/public/GearSetupDisplay.vue'
 import TeamSynergiesDisplay from '@/components/topheroes/public/TeamSynergiesDisplay.vue'
 import CommentSection from '@/components/topheroes/public/CommentSection.vue'
+import ThemeSwitcher from '@/components/ui/ThemeSwitcher.vue'
 
 const route = useRoute()
 const router = useRouter()
