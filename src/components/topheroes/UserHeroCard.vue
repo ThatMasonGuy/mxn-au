@@ -1,4 +1,4 @@
-<!-- components/topheroes/HeroCard.vue -->
+<!-- components/topheroes/UserHeroCard.vue -->
 <template>
     <div class="hero-showcase-card group" :class="[
         cardClasses,
@@ -32,7 +32,7 @@
                 <div class="flex items-center justify-center gap-2 mt-1">
                     <component :is="factionIcon" class="h-4 w-4" :class="factionColor" />
                     <span class="text-sm font-medium" :class="factionColor">
-                        {{ store.getFactionById(hero.faction)?.name || faction }}
+                        {{ store.getFactionById(hero.faction)?.name || hero.faction }}
                     </span>
                 </div>
             </div>
@@ -65,43 +65,27 @@
         <div
             class="absolute inset-x-4 bottom-4 opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all duration-300 z-10">
             <div class="flex gap-2">
+                <button @click.stop="$emit('view', hero)"
+                    class="flex-1 bg-gradient-to-r from-velaris-purple/80 to-velaris-teal/80 backdrop-blur-sm text-white font-medium py-2 px-3 rounded-xl shadow-lg hover:shadow-xl hover:from-velaris-purple hover:to-velaris-teal transition-all duration-200 text-sm cursor-pointer">
+                    <Eye class="h-4 w-4 inline mr-1" />
+                    View Details
+                </button>
                 <button @click.stop="$emit('add-to-queue', hero)"
-                    class="flex-1 bg-gradient-to-r from-velaris-purple to-velaris-teal text-white font-medium py-2 px-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 text-sm cursor-pointer backdrop-blur-sm">
-                    <Plus class="h-4 w-4 inline mr-1" />
-                    Add to Queue
-                </button>
-                <button @click.stop="$emit('edit', hero)"
-                    class="bg-velaris-amber/40 hover:bg-velaris-amber/60 text-velaris-amber border border-velaris-amber/50 p-2 rounded-xl transition-all duration-200 cursor-pointer backdrop-blur-sm">
-                    <Settings class="h-4 w-4" />
-                </button>
-                <button @click.stop="handleDelete"
-                    class="bg-red-500/40 hover:bg-red-500/60 text-red-400 border border-red-500/50 p-2 rounded-xl transition-all duration-200 cursor-pointer backdrop-blur-sm">
-                    <X class="h-4 w-4" />
+                    class="bg-emerald-500/40 hover:bg-emerald-500/60 backdrop-blur-sm text-emerald-400 border border-emerald-500/50 p-2 rounded-xl transition-all duration-200 cursor-pointer">
+                    <Plus class="h-4 w-4" />
                 </button>
             </div>
         </div>
-
-        <!-- Confirmation Modal -->
-        <ConfirmationModal v-model:isOpen="showDeleteConfirmation" :title="`Delete ${hero.name}?`"
-            :message="`Are you sure you want to delete ${hero.name}? This action cannot be undone.`"
-            :details="`This will permanently remove ${hero.name} from your hero collection.`" variant="danger"
-            confirm-text="Delete Hero" cancel-text="Keep Hero" :confirm-icon="Trash2" :loading="isDeleting"
-            @confirm="confirmDelete" />
     </div>
 </template>
 
 <script setup>
 import { computed, ref, onMounted, watch } from 'vue'
-import { Plus, Settings, X, Trash2, Flame, Leaf, Shield, Crown, Star, Gem, Hexagon } from 'lucide-vue-next'
-import ConfirmationModal from '@/components/velaris/new-admin/ConfirmationModal.vue'
+import { Plus, Eye, Flame, Leaf, Shield, Crown, Star, Gem, Hexagon } from 'lucide-vue-next'
 
 const props = defineProps({
     hero: {
         type: Object,
-        required: true
-    },
-    faction: {
-        type: String,
         required: true
     },
     store: {
@@ -110,11 +94,9 @@ const props = defineProps({
     }
 })
 
-const emit = defineEmits(['add-to-queue', 'edit', 'delete'])
+const emit = defineEmits(['add-to-queue', 'view'])
 
-// State for confirmation modal and image loading
-const showDeleteConfirmation = ref(false)
-const isDeleting = ref(false)
+// State for image loading
 const heroImageLoaded = ref(false)
 const heroImageSrc = ref('')
 
@@ -143,23 +125,6 @@ watch(() => props.hero.id, () => {
     loadHeroImage()
 })
 
-// Delete confirmation handlers
-const handleDelete = () => {
-    showDeleteConfirmation.value = true
-}
-
-const confirmDelete = async () => {
-    isDeleting.value = true
-    try {
-        emit('delete', props.hero)
-        showDeleteConfirmation.value = false
-    } catch (error) {
-        console.error('Error deleting hero:', error)
-    } finally {
-        isDeleting.value = false
-    }
-}
-
 // Computed properties
 const cardClasses = computed(() => {
     const classes = {
@@ -167,7 +132,7 @@ const cardClasses = computed(() => {
         horde: 'hero-card-horde',
         league: 'hero-card-league'
     }
-    return classes[props.faction] || 'hero-card-league'
+    return classes[props.hero.faction] || 'hero-card-league'
 })
 
 const rarityClasses = computed(() => {
@@ -186,12 +151,12 @@ const factionGradient = computed(() => {
         horde: 'bg-gradient-to-br from-horde-red to-red-600',
         league: 'bg-gradient-to-br from-league-blue to-blue-600'
     }
-    return gradients[props.faction] || 'bg-gradient-to-br from-velaris-purple to-velaris-teal'
+    return gradients[props.hero.faction] || 'bg-gradient-to-br from-velaris-purple to-velaris-teal'
 })
 
 const factionIcon = computed(() => {
     const icons = { nature: Leaf, horde: Flame, league: Shield }
-    return icons[props.faction] || Shield
+    return icons[props.hero.faction] || Shield
 })
 
 const factionColor = computed(() => {
@@ -200,7 +165,7 @@ const factionColor = computed(() => {
         horde: 'text-horde-red',
         league: 'text-league-blue'
     }
-    return colors[props.faction] || 'text-foreground'
+    return colors[props.hero.faction] || 'text-foreground'
 })
 
 const rarityIcon = computed(() => {
@@ -238,7 +203,7 @@ const displayTags = computed(() => {
     if (props.hero.tagNames?.length) {
         return props.hero.tagNames.slice(0, 3)
     }
-    
+
     // Otherwise look up tag names from store using tag IDs
     if (props.hero.tags?.length && props.store) {
         return props.hero.tags
@@ -246,7 +211,7 @@ const displayTags = computed(() => {
             .map(tagId => props.store.getTagById(tagId)?.name || tagId)
             .filter(Boolean)
     }
-    
+
     return []
 })
 </script>
@@ -339,5 +304,23 @@ const displayTags = computed(() => {
 
 .tag-pill-more {
     @apply px-2.5 py-1 bg-gradient-to-r from-velaris-purple/20 to-velaris-teal/20 text-velaris-purple rounded-full text-xs font-bold border border-velaris-purple/30;
+}
+
+:root {
+    --nature-green: #10b981;
+    --horde-red: #ef4444;
+    --league-blue: #3b82f6;
+}
+
+.text-nature-green {
+    color: var(--nature-green);
+}
+
+.text-horde-red {
+    color: var(--horde-red);
+}
+
+.text-league-blue {
+    color: var(--league-blue);
 }
 </style>

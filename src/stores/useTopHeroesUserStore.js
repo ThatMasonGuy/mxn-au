@@ -1,4 +1,4 @@
-// stores/useTopHeroesHeroStore.js
+// stores/useTopHeroesUserStore.js
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import {
@@ -12,14 +12,15 @@ import {
     query,
     where,
     orderBy,
-    onSnapshot,
-    serverTimestamp,
-    writeBatch
+    serverTimestamp
 } from 'firebase/firestore'
 import { firestore } from '@/firebase'
+import { useMainStore } from '@/stores/useMainStore'
 
-export const useTopHeroesHeroStore = defineStore('topHeroesHero', () => {
-    // State
+export const useTopHeroesUserStore = defineStore('topHeroesUser', () => {
+    const mainStore = useMainStore()
+
+    // State (read-only for heroes, editable for user's queues)
     const heroes = ref([])
     const factions = ref([])
     const rarities = ref([])
@@ -30,7 +31,8 @@ export const useTopHeroesHeroStore = defineStore('topHeroesHero', () => {
     const relics = ref([])
     const pets = ref([])
     const skins = ref([])
-    const queues = ref([])
+    const userQueues = ref([])
+    const allQueues = ref([])
     const metadata = ref(null)
 
     // Loading states
@@ -44,15 +46,8 @@ export const useTopHeroesHeroStore = defineStore('topHeroesHero', () => {
     const error = ref(null)
     const lastUpdated = ref(null)
 
-    // Cache control
-    const cacheTimeout = 5 * 60 * 1000 // 5 minutes
-    const lastFetched = ref(null)
-
     // Computed getters
-    const isDataStale = computed(() => {
-        if (!lastFetched.value) return true
-        return Date.now() - lastFetched.value > cacheTimeout
-    })
+    const currentUserId = computed(() => mainStore.user?.id || null)
 
     const heroesCount = computed(() => heroes.value.length)
 
@@ -77,9 +72,11 @@ export const useTopHeroesHeroStore = defineStore('topHeroesHero', () => {
         }, {})
     })
 
-    const activeQueues = computed(() => {
-        return queues.value.filter(queue => queue.isVisible)
+    const visibleQueues = computed(() => {
+        return allQueues.value.filter(queue => queue.isVisible)
     })
+
+    const queues = computed(() => userQueues.value)
 
     const gearByType = computed(() => {
         return gear.value.reduce((acc, item) => {
@@ -92,30 +89,6 @@ export const useTopHeroesHeroStore = defineStore('topHeroesHero', () => {
         return relics.value.reduce((acc, relic) => {
             if (!acc[relic.type]) acc[relic.type] = []
             acc[relic.type].push(relic)
-            return acc
-        }, {})
-    })
-
-    const relicsByRarity = computed(() => {
-        return relics.value.reduce((acc, relic) => {
-            if (!acc[relic.rarity]) acc[relic.rarity] = []
-            acc[relic.rarity].push(relic)
-            return acc
-        }, {})
-    })
-
-    const petsByFaction = computed(() => {
-        return pets.value.reduce((acc, pet) => {
-            if (!acc[pet.faction]) acc[pet.faction] = []
-            acc[pet.faction].push(pet)
-            return acc
-        }, {})
-    })
-
-    const skinsByRarity = computed(() => {
-        return skins.value.reduce((acc, skin) => {
-            if (!acc[skin.rarity]) acc[skin.rarity] = []
-            acc[skin.rarity].push(skin)
             return acc
         }, {})
     })
@@ -169,13 +142,13 @@ export const useTopHeroesHeroStore = defineStore('topHeroesHero', () => {
 
     const getActiveBondsFiltered = (heroIds) => {
         const activeBonds = getBondsForTeam(heroIds)
-        
+
         return activeBonds.filter(bond => {
             const isPartial = activeBonds.some(otherBond => {
                 if (otherBond === bond) return false
-                
+
                 return otherBond.heroes.length > bond.heroes.length &&
-                       bond.heroes.every(heroId => otherBond.heroes.includes(heroId))
+                    bond.heroes.every(heroId => otherBond.heroes.includes(heroId))
             })
             return !isPartial
         })
@@ -196,26 +169,22 @@ export const useTopHeroesHeroStore = defineStore('topHeroesHero', () => {
         }
     }
 
-    // Data fetching functions
+    // Data fetching functions (read-only)
     const fetchMetadata = async (forceRefresh = false) => {
-        if (!forceRefresh && !isDataStale.value && metadata.value) {
-            return metadata.value
-        }
-
         isLoadingMetadata.value = true
         error.value = null
 
         try {
-            console.log('📡 Fetching TopHeroes metadata from Firestore...')
+            console.log('📡 Fetching TopHeroes metadata...')
 
             const generalDocRef = doc(firestore, 'topheroes', 'general')
             const generalDoc = await getDoc(generalDocRef)
 
             if (generalDoc.exists()) {
                 metadata.value = generalDoc.data()
-                console.log('✅ Metadata loaded:', metadata.value)
+                console.log('✅ Metadata loaded')
             } else {
-                throw new Error('TopHeroes metadata not found. Please sync the data first.')
+                throw new Error('TopHeroes data not found. Please contact an administrator.')
             }
 
             // Fetch all collections in parallel
@@ -252,11 +221,10 @@ export const useTopHeroesHeroStore = defineStore('topHeroesHero', () => {
             skins.value = skinsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
 
             console.log('✅ All metadata collections loaded')
-            lastFetched.value = Date.now()
 
         } catch (err) {
             console.error('❌ Failed to fetch metadata:', err)
-            error.value = `Failed to load metadata: ${err.message}`
+            error.value = `Failed to load game data: ${err.message}`
             throw err
         } finally {
             isLoadingMetadata.value = false
@@ -264,15 +232,11 @@ export const useTopHeroesHeroStore = defineStore('topHeroesHero', () => {
     }
 
     const fetchHeroes = async (forceRefresh = false) => {
-        if (!forceRefresh && !isDataStale.value && heroes.value.length > 0) {
-            return heroes.value
-        }
-
         isLoadingHeroes.value = true
         error.value = null
 
         try {
-            console.log('📡 Fetching heroes from Firestore...')
+            console.log('📡 Fetching heroes...')
 
             const heroesQuery = query(
                 collection(firestore, 'topheroes', 'general', 'heroes'),
@@ -287,7 +251,6 @@ export const useTopHeroesHeroStore = defineStore('topHeroesHero', () => {
             }))
 
             console.log(`✅ Loaded ${heroes.value.length} heroes`)
-            lastFetched.value = Date.now()
             lastUpdated.value = new Date().toISOString()
 
         } catch (err) {
@@ -300,38 +263,56 @@ export const useTopHeroesHeroStore = defineStore('topHeroesHero', () => {
     }
 
     const fetchQueues = async (forceRefresh = false) => {
-        if (!forceRefresh && queues.value.length > 0) {
-            return queues.value
-        }
-
+        const userId = mainStore.user?.id || mainStore.user?.uid
+    
         isLoadingQueues.value = true
         error.value = null
-
+    
         try {
-            console.log('📡 Fetching queues from Firestore...')
-
-            const queuesQuery = query(
+            console.log('📡 Fetching user queues...')
+    
+            // Build queries
+            let userQueuesQuery = null
+            if (userId) {
+                userQueuesQuery = query(
+                    collection(firestore, 'topheroes', 'general', 'queues'),
+                    where('createdByUserId', '==', userId),
+                    orderBy('createdAt', 'desc')
+                )
+            }
+    
+            const allQueuesQuery = query(
                 collection(firestore, 'topheroes', 'general', 'queues'),
+                where('isVisible', '==', true),
                 where('__name__', '!=', '_metadata'),
                 orderBy('__name__')
             )
-
-            const queuesSnap = await getDocs(queuesQuery)
-
-            const queuesData = queuesSnap.docs.map(doc => ({
+    
+            // Run queries (conditionally run user query)
+            const [userQueuesSnap, allQueuesSnap] = await Promise.all([
+                userQueuesQuery ? getDocs(userQueuesQuery) : Promise.resolve({ docs: [] }),
+                getDocs(allQueuesQuery)
+            ])
+    
+            // Map results
+            userQueues.value = userQueuesSnap.docs.map(doc => ({
                 id: doc.id,
-                ...doc.data()
+                ...doc.data(),
+                isOwner: true
             }))
-
-            // Sort by createdAt locally (newest first)
-            queues.value = queuesData.sort((a, b) => {
+    
+            allQueues.value = allQueuesSnap.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                isOwner: doc.data().createdByUserId === currentUserId.value
+            })).sort((a, b) => {
                 const dateA = new Date(a.createdAt?.seconds ? a.createdAt.seconds * 1000 : a.createdAt || 0)
                 const dateB = new Date(b.createdAt?.seconds ? b.createdAt.seconds * 1000 : b.createdAt || 0)
                 return dateB - dateA
             })
-
-            console.log(`✅ Loaded ${queues.value.length} queues`)
-
+    
+            console.log(`✅ Loaded ${userQueues.value.length} user queues and ${allQueues.value.length} visible queues`)
+    
         } catch (err) {
             console.error('❌ Failed to fetch queues:', err)
             error.value = `Failed to load queues: ${err.message}`
@@ -340,7 +321,7 @@ export const useTopHeroesHeroStore = defineStore('topHeroesHero', () => {
             isLoadingQueues.value = false
         }
     }
-
+    
     const loadAll = async (forceRefresh = false) => {
         isLoading.value = true
         error.value = null
@@ -365,143 +346,14 @@ export const useTopHeroesHeroStore = defineStore('topHeroesHero', () => {
         }
     }
 
-    // Hero CRUD operations
-    const createHero = async (heroData) => {
-        isSaving.value = true
-        error.value = null
-
-        try {
-            console.log('🔥 Creating new hero:', heroData.name)
-
-            const factionData = getFactionById(heroData.faction)
-            const rarityData = getRarityById(heroData.rarity)
-            const tagData = heroData.tags?.map(tagId => getTagById(tagId)).filter(Boolean) || []
-
-            const heroDocument = {
-                ...heroData,
-                factionName: factionData?.name,
-                rarityName: rarityData?.name,
-                tagNames: tagData.map(tag => tag.name),
-                tagDescriptions: tagData.map(tag => ({
-                    id: tag.id,
-                    name: tag.name,
-                    description: tag.description
-                })),
-                searchTerms: [
-                    heroData.name.toLowerCase(),
-                    ...heroData.name.toLowerCase().split(' '),
-                    factionData?.name.toLowerCase(),
-                    rarityData?.name.toLowerCase(),
-                    ...tagData.map(tag => tag.name.toLowerCase()),
-                    ...(heroData.tags || [])
-                ].filter(Boolean),
-                createdAt: serverTimestamp(),
-                updatedAt: serverTimestamp()
-            }
-
-            const docRef = await addDoc(
-                collection(firestore, 'topheroes', 'general', 'heroes'),
-                heroDocument
-            )
-
-            const newHero = { id: docRef.id, ...heroDocument }
-            heroes.value.push(newHero)
-
-            console.log('✅ Hero created successfully:', docRef.id)
-            return newHero
-
-        } catch (err) {
-            console.error('❌ Failed to create hero:', err)
-            error.value = `Failed to create hero: ${err.message}`
-            throw err
-        } finally {
-            isSaving.value = false
-        }
-    }
-
-    const updateHero = async (heroId, heroData) => {
-        isSaving.value = true
-        error.value = null
-
-        try {
-            console.log('🔥 Updating hero:', heroId)
-
-            const factionData = getFactionById(heroData.faction)
-            const rarityData = getRarityById(heroData.rarity)
-            const tagData = heroData.tags?.map(tagId => getTagById(tagId)).filter(Boolean) || []
-
-            const updateData = {
-                ...heroData,
-                factionName: factionData?.name,
-                rarityName: rarityData?.name,
-                tagNames: tagData.map(tag => tag.name),
-                tagDescriptions: tagData.map(tag => ({
-                    id: tag.id,
-                    name: tag.name,
-                    description: tag.description
-                })),
-                searchTerms: [
-                    heroData.name.toLowerCase(),
-                    ...heroData.name.toLowerCase().split(' '),
-                    factionData?.name.toLowerCase(),
-                    rarityData?.name.toLowerCase(),
-                    ...tagData.map(tag => tag.name.toLowerCase()),
-                    ...(heroData.tags || [])
-                ].filter(Boolean),
-                updatedAt: serverTimestamp()
-            }
-
-            const docRef = doc(firestore, 'topheroes', 'general', 'heroes', heroId)
-            await updateDoc(docRef, updateData)
-
-            const heroIndex = heroes.value.findIndex(hero => hero.id === heroId)
-            if (heroIndex !== -1) {
-                heroes.value[heroIndex] = { id: heroId, ...updateData }
-            }
-
-            console.log('✅ Hero updated successfully:', heroId)
-            return heroes.value[heroIndex]
-
-        } catch (err) {
-            console.error('❌ Failed to update hero:', err)
-            error.value = `Failed to update hero: ${err.message}`
-            throw err
-        } finally {
-            isSaving.value = false
-        }
-    }
-
-    const deleteHero = async (heroId) => {
-        isSaving.value = true
-        error.value = null
-
-        try {
-            console.log('🗑️ Deleting hero:', heroId)
-
-            const docRef = doc(firestore, 'topheroes', 'general', 'heroes', heroId)
-            await deleteDoc(docRef)
-
-            heroes.value = heroes.value.filter(hero => hero.id !== heroId)
-
-            console.log('✅ Hero deleted successfully:', heroId)
-
-        } catch (err) {
-            console.error('❌ Failed to delete hero:', err)
-            error.value = `Failed to delete hero: ${err.message}`
-            throw err
-        } finally {
-            isSaving.value = false
-        }
-    }
-
-    // Queue CRUD operations
+    // Queue CRUD operations (only for user's own queues)
     const createQueue = async (queueData) => {
         isSaving.value = true
         error.value = null
-    
+
         try {
             console.log('🔥 Creating new queue:', queueData.name)
-    
+
             const queueDocument = {
                 ...queueData,
                 gearData: queueData.gearData || {},
@@ -511,18 +363,23 @@ export const useTopHeroesHeroStore = defineStore('topHeroesHero', () => {
                 createdByUserId: mainStore.user?.id || mainStore.user?.uid,
                 createdByUserEmail: mainStore.user?.email
             }
-    
+
             const docRef = await addDoc(
                 collection(firestore, 'topheroes', 'general', 'queues'),
                 queueDocument
             )
-    
+
             const newQueue = { id: docRef.id, ...queueDocument, isOwner: true }
-            queues.value.unshift(newQueue)
-    
+            userQueues.value.unshift(newQueue)
+
+            // Also add to allQueues if visible
+            if (queueDocument.isVisible) {
+                allQueues.value.unshift(newQueue)
+            }
+
             console.log('✅ Queue created successfully:', docRef.id)
             return newQueue
-    
+
         } catch (err) {
             console.error('❌ Failed to create queue:', err)
             error.value = `Failed to create queue: ${err.message}`
@@ -530,9 +387,17 @@ export const useTopHeroesHeroStore = defineStore('topHeroesHero', () => {
         } finally {
             isSaving.value = false
         }
-    }    
+    }
 
     const updateQueue = async (queueId, queueData) => {
+        const userId = mainStore.user?.id || mainStore.user?.uid
+
+        // Check if user owns this queue
+        const queue = userQueues.value.find(q => q.id === queueId)
+        if (!queue || (queue.createdByUserId && queue.createdByUserId !== userId)) {
+            throw new Error('You can only edit your own queues')
+        }
+
         isSaving.value = true
         error.value = null
 
@@ -548,13 +413,25 @@ export const useTopHeroesHeroStore = defineStore('topHeroesHero', () => {
             const docRef = doc(firestore, 'topheroes', 'general', 'queues', queueId)
             await updateDoc(docRef, updateData)
 
-            const queueIndex = queues.value.findIndex(queue => queue.id === queueId)
+            // Update in local state
+            const queueIndex = userQueues.value.findIndex(q => q.id === queueId)
             if (queueIndex !== -1) {
-                queues.value[queueIndex] = { id: queueId, ...updateData }
+                userQueues.value[queueIndex] = { id: queueId, ...updateData, isOwner: true }
+            }
+
+            const allQueuesIndex = allQueues.value.findIndex(q => q.id === queueId)
+            if (allQueuesIndex !== -1) {
+                if (updateData.isVisible) {
+                    allQueues.value[allQueuesIndex] = { id: queueId, ...updateData, isOwner: true }
+                } else {
+                    allQueues.value.splice(allQueuesIndex, 1)
+                }
+            } else if (updateData.isVisible) {
+                allQueues.value.unshift({ id: queueId, ...updateData, isOwner: true })
             }
 
             console.log('✅ Queue updated successfully:', queueId)
-            return queues.value[queueIndex]
+            return userQueues.value[queueIndex]
 
         } catch (err) {
             console.error('❌ Failed to update queue:', err)
@@ -566,6 +443,14 @@ export const useTopHeroesHeroStore = defineStore('topHeroesHero', () => {
     }
 
     const deleteQueue = async (queueId) => {
+        const userId = mainStore.user?.id || mainStore.user?.uid
+
+        // Check if user owns this queue
+        const queue = userQueues.value.find(q => q.id === queueId)
+        if (!queue || (queue.createdByUserId && queue.createdByUserId !== userId)) {
+            throw new Error('You can only delete your own queues')
+        }
+
         isSaving.value = true
         error.value = null
 
@@ -575,7 +460,8 @@ export const useTopHeroesHeroStore = defineStore('topHeroesHero', () => {
             const docRef = doc(firestore, 'topheroes', 'general', 'queues', queueId)
             await deleteDoc(docRef)
 
-            queues.value = queues.value.filter(queue => queue.id !== queueId)
+            userQueues.value = userQueues.value.filter(q => q.id !== queueId)
+            allQueues.value = allQueues.value.filter(q => q.id !== queueId)
 
             console.log('✅ Queue deleted successfully:', queueId)
 
@@ -586,6 +472,12 @@ export const useTopHeroesHeroStore = defineStore('topHeroesHero', () => {
         } finally {
             isSaving.value = false
         }
+    }
+
+    const canEditQueue = (queue) => {
+        const userId = mainStore.user?.id || mainStore.user?.uid
+        return userId &&
+            (queue.createdByUserId === userId || queue.isOwner)
     }
 
     // Search and filter methods
@@ -623,132 +515,6 @@ export const useTopHeroesHeroStore = defineStore('topHeroesHero', () => {
         return filtered
     }
 
-    // Real-time listeners
-    const subscribeToHeroes = (callback) => {
-        const heroesQuery = query(
-            collection(firestore, 'topheroes', 'general', 'heroes'),
-            orderBy('rarity'),
-            orderBy('name')
-        )
-
-        return onSnapshot(heroesQuery, (snapshot) => {
-            heroes.value = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }))
-
-            lastUpdated.value = new Date().toISOString()
-
-            if (callback) callback(heroes.value)
-        }, (err) => {
-            console.error('❌ Heroes subscription error:', err)
-            error.value = `Real-time update failed: ${err.message}`
-        })
-    }
-
-    const subscribeToQueues = (callback) => {
-        const queuesQuery = query(
-            collection(firestore, 'topheroes', 'general', 'queues'),
-            where('__name__', '!=', '_metadata'),
-            orderBy('__name__')
-        )
-
-        return onSnapshot(queuesQuery, (snapshot) => {
-            const queuesData = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }))
-
-            queues.value = queuesData.sort((a, b) => {
-                const dateA = new Date(a.createdAt?.seconds ? a.createdAt.seconds * 1000 : a.createdAt || 0)
-                const dateB = new Date(b.createdAt?.seconds ? b.createdAt.seconds * 1000 : b.createdAt || 0)
-                return dateB - dateA
-            })
-
-            if (callback) callback(queues.value)
-        }, (err) => {
-            console.error('❌ Queues subscription error:', err)
-            error.value = `Queues subscription failed: ${err.message}`
-        })
-    }
-
-    // Batch operations
-    const bulkUpdateHeroes = async (updates) => {
-        isSaving.value = true
-        error.value = null
-
-        try {
-            console.log(`🔥 Bulk updating ${updates.length} heroes...`)
-
-            const batch = writeBatch(firestore)
-
-            updates.forEach(({ heroId, data }) => {
-                const docRef = doc(firestore, 'topheroes', 'general', 'heroes', heroId)
-                batch.update(docRef, {
-                    ...data,
-                    updatedAt: serverTimestamp()
-                })
-            })
-
-            await batch.commit()
-            await fetchHeroes(true)
-
-            console.log('✅ Bulk update completed')
-
-        } catch (err) {
-            console.error('❌ Failed to bulk update heroes:', err)
-            error.value = `Failed to bulk update: ${err.message}`
-            throw err
-        } finally {
-            isSaving.value = false
-        }
-    }
-
-    // Utility methods
-    const clearCache = () => {
-        heroes.value = []
-        factions.value = []
-        rarities.value = []
-        tags.value = []
-        bonds.value = []
-        factionAuras.value = []
-        gear.value = []
-        relics.value = []
-        pets.value = []
-        skins.value = []
-        queues.value = []
-        metadata.value = null
-        lastFetched.value = null
-        lastUpdated.value = null
-        error.value = null
-    }
-
-    const getStats = computed(() => ({
-        totalHeroes: heroes.value.length,
-        heroesByFaction: Object.fromEntries(
-            factions.value.map(faction => [
-                faction.id,
-                heroes.value.filter(hero => hero.faction === faction.id).length
-            ])
-        ),
-        heroesByRarity: Object.fromEntries(
-            rarities.value.map(rarity => [
-                rarity.id,
-                heroes.value.filter(hero => hero.rarity === rarity.id).length
-            ])
-        ),
-        totalBonds: bonds.value.length,
-        totalFactionAuras: factionAuras.value.length,
-        totalGear: gear.value.length,
-        totalRelics: relics.value.length,
-        totalPets: pets.value.length,
-        totalSkins: skins.value.length,
-        totalQueues: queues.value.length,
-        activeQueues: activeQueues.value.length,
-        lastUpdated: lastUpdated.value,
-        isDataStale: isDataStale.value
-    }))
-
     return {
         // State
         heroes,
@@ -761,6 +527,8 @@ export const useTopHeroesHeroStore = defineStore('topHeroesHero', () => {
         relics,
         pets,
         skins,
+        userQueues,
+        allQueues,
         queues,
         metadata,
 
@@ -776,36 +544,26 @@ export const useTopHeroesHeroStore = defineStore('topHeroesHero', () => {
         lastUpdated,
 
         // Computed
+        currentUserId,
         heroesCount,
         heroesByFaction,
         heroesByRarity,
         heroesByTag,
-        activeQueues,
+        visibleQueues,
         gearByType,
         relicsByType,
-        relicsByRarity,
-        petsByFaction,
-        skinsByRarity,
-        isDataStale,
-        getStats,
 
         // Data loading
         loadAll,
         fetchMetadata,
         fetchHeroes,
         fetchQueues,
-        clearCache,
 
-        // Hero CRUD
-        createHero,
-        updateHero,
-        deleteHero,
-        bulkUpdateHeroes,
-
-        // Queue CRUD
+        // Queue CRUD (user's own only)
         createQueue,
         updateQueue,
         deleteQueue,
+        canEditQueue,
 
         // Search and filter
         searchHeroes,
@@ -822,10 +580,6 @@ export const useTopHeroesHeroStore = defineStore('topHeroesHero', () => {
         getBondsForTeam,
         getActiveBondsFiltered,
         getFactionAuraForCount,
-        getFactionCounterData,
-
-        // Real-time subscriptions
-        subscribeToHeroes,
-        subscribeToQueues
+        getFactionCounterData
     }
 })

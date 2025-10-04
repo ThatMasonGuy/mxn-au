@@ -1,7 +1,7 @@
 <!-- components/topheroes/QueueBuilder.vue -->
 <template>
     <!-- Header -->
-    <div class="flex items-center justify-between">
+    <div class="flex items-center justify-between mb-6">
         <div>
             <h2 class="text-xl font-semibold text-velaris-purple">
                 {{ isEditing ? 'Edit Queue' : 'Create New Queue' }}
@@ -25,7 +25,6 @@
                 <span v-else>{{ isEditing ? 'Update Queue' : 'Create Queue' }}</span>
             </button>
         </div>
-
     </div>
 
     <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
@@ -90,6 +89,29 @@
                 </h3>
 
                 <div class="space-y-3">
+                    <!-- Faction Auras -->
+                    <div v-if="activeFactionAura"
+                        class="p-4 bg-gradient-to-r from-purple-500/20 to-indigo-500/20 border border-purple-500/30 rounded-lg">
+                        <div class="flex items-center gap-2 mb-2">
+                            <Shield class="h-4 w-4 text-purple-400" />
+                            <span class="font-medium text-purple-400">Faction Aura Active</span>
+                        </div>
+                        <p class="text-sm text-foreground/70 mb-2">
+                            {{ dominantFactionCount }} {{ getFactionName(dominantFaction) }} heroes
+                        </p>
+                        <div class="text-xs space-y-1">
+                            <div v-for="buff in activeFactionAura.buffs" :key="`${buff.stat}-${buff.value}`"
+                                class="text-purple-400 font-medium">
+                                +{{ buff.value }}% {{ buff.stat.toUpperCase() }} ({{ buff.applies_to }})
+                            </div>
+                            <div v-if="activeFactionAura.counter_reduction"
+                                class="text-purple-400 font-medium pt-2 border-t border-purple-500/20">
+                                Faction counter reduced: {{ activeFactionAura.counter_reduction.original_counter }}% →
+                                {{ activeFactionAura.counter_reduction.result_counter }}%
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Active Hero Bonds -->
                     <div v-for="bond in activeTeamBonds" :key="bond.id"
                         class="p-4 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 rounded-lg">
@@ -97,7 +119,7 @@
                             <Zap class="h-4 w-4 text-emerald-400" />
                             <span class="font-medium text-emerald-400">Hero Bond Active</span>
                         </div>
-                        <p class="text-sm text-foreground/70 mb-2">{{ bond.heroes.join(', ') }}</p>
+                        <p class="text-sm text-foreground/70 mb-2">{{ formatBondHeroes(bond.heroes) }}</p>
                         <div class="text-xs text-emerald-400 font-medium">
                             {{ formatBondBuffs(bond.buffs) }}
                         </div>
@@ -107,8 +129,8 @@
                     <div v-if="!hasAnySynergies" class="text-center py-8 text-foreground/60">
                         <Zap class="h-8 w-8 mx-auto mb-2 opacity-50" />
                         <p class="text-sm">No active synergies</p>
-                        <p class="text-xs text-foreground/40 mt-1">Add more heroes from the same faction or with
-                            matching bonds</p>
+                        <p class="text-xs text-foreground/40 mt-1">Add 4+ heroes from the same faction for aura bonuses,
+                            or heroes with matching bonds</p>
                     </div>
                 </div>
             </div>
@@ -126,7 +148,7 @@
             </div>
         </div>
 
-        <!-- Team Formation Panel -->
+        <!-- Team Formation & Extras Panel -->
         <div class="xl:col-span-2 space-y-6">
             <!-- Team Formation -->
             <div class="bg-gradient-to-br from-card/80 to-card/60 border border-border/50 rounded-xl shadow-sm p-6">
@@ -158,7 +180,7 @@
                         </h4>
                         <div class="grid grid-cols-2 gap-4">
                             <TeamSlot v-for="position in ['back1', 'back2']" :key="position" :position="position"
-                                :hero="currentTeam[position]"
+                                :hero="currentTeam[position]" :store="store"
                                 :position-name="`Back ${position === 'back1' ? '1' : '2'}`" :gear-data="teamGearData"
                                 @drop="onDrop" @remove="removeHero" @gear="openGear" />
                         </div>
@@ -172,8 +194,9 @@
                         </h4>
                         <div class="grid grid-cols-2 gap-4">
                             <TeamSlot v-for="position in ['mid1', 'mid2']" :key="position" :position="position"
-                                :hero="currentTeam[position]" :position-name="`Mid ${position === 'mid1' ? '1' : '2'}`"
-                                :gear-data="teamGearData" @drop="onDrop" @remove="removeHero" @gear="openGear" />
+                                :hero="currentTeam[position]" :store="store"
+                                :position-name="`Mid ${position === 'mid1' ? '1' : '2'}`" :gear-data="teamGearData"
+                                @drop="onDrop" @remove="removeHero" @gear="openGear" />
                         </div>
                     </div>
 
@@ -185,10 +208,51 @@
                         </h4>
                         <div class="grid grid-cols-2 gap-4">
                             <TeamSlot v-for="position in ['front1', 'front2']" :key="position" :position="position"
-                                :hero="currentTeam[position]"
+                                :hero="currentTeam[position]" :store="store"
                                 :position-name="`Front ${position === 'front1' ? '1' : '2'}`" :gear-data="teamGearData"
                                 @drop="onDrop" @remove="removeHero" @gear="openGear" />
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Relics, Pet, and Skin -->
+            <div class="grid grid-cols-5 gap-4">
+                <!-- Relics (3 columns) -->
+                <div class="col-span-3">
+                    <div class="bg-gradient-to-br from-card/80 to-card border border-border/50 rounded-xl shadow-sm p-4">
+                        <h3 class="text-sm font-semibold mb-3 flex items-center gap-2">
+                            <Gem class="h-4 w-4 text-cyan-400" />
+                            Relics
+                            <span class="text-xs text-foreground/60 font-normal">(Order matters: 1→2→3)</span>
+                        </h3>
+                        <div class="grid grid-cols-3 gap-3">
+                            <RelicSlot v-for="slot in ['slot1', 'slot2', 'slot3']" :key="slot" :slot="slot"
+                                :relic="teamRelics[slot]" :store="store" :slot-number="slot.replace('slot', '')"
+                                @select="openRelicSelection(slot)" @remove="removeRelic(slot)" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pet (1 column) -->
+                <div class="col-span-1">
+                    <div class="bg-gradient-to-br from-card/80 to-card border border-border/50 rounded-xl shadow-sm p-4">
+                        <h3 class="text-sm font-semibold mb-3 flex items-center gap-2">
+                            <Dog class="h-4 w-4 text-pink-400" />
+                            Pet
+                        </h3>
+                        <PetSlot :pet="teamPet" :store="store" @select="openPetSelection" @remove="removePet" />
+                    </div>
+                </div>
+
+                <!-- Troop Skin (1 column) -->
+                <div class="col-span-1">
+                    <div class="bg-gradient-to-br from-card/80 to-card border border-border/50 rounded-xl shadow-sm p-4">
+                        <h3 class="text-sm font-semibold mb-3 flex items-center gap-2">
+                            <Shirt class="h-4 w-4 text-violet-400" />
+                            Skin
+                        </h3>
+                        <SkinSlot :skin="teamSkin" :store="store" @select="openSkinSelection" @remove="removeSkin" />
                     </div>
                 </div>
             </div>
@@ -233,16 +297,12 @@
                             </div>
 
                             <!-- Heroes Grid for this Faction -->
-                            <div class="grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 pl-11 pb-4">
+                            <div
+                                class="grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 pl-11 pb-4 pr-2">
                                 <HeroMiniCard v-for="hero in getAvailableHeroesByFaction(faction)" :key="hero.id"
-                                    :hero="hero" @click="addHeroToTeam(hero)" @dragstart="onDragStart($event, hero)" />
+                                    :hero="hero" :store="store" @click="addHeroToTeam(hero)"
+                                    @dragstart="onDragStart($event, hero)" />
                             </div>
-                        </div>
-
-                        <!-- Scroll indicator -->
-                        <div v-if="availableHeroes.length > 12"
-                            class="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-card via-card/80 to-transparent pointer-events-none flex items-end justify-center pb-2">
-                            <ChevronDown class="h-4 w-4 text-foreground/40 animate-bounce" />
                         </div>
                     </div>
                 </div>
@@ -257,21 +317,30 @@
         </div>
     </div>
 
-    <!-- Gear Modal -->
+    <!-- Modals -->
     <GearModal v-model:isOpen="showGearModal" :hero="gearModalHero" :position="gearModalPosition"
-        :gear-data="currentGearData" @save="saveGearData" />
+        :gear-data="currentGearData" :available-gear="store.gear" @save="saveGearData" />
+
+    <SelectionModal v-model:isOpen="showSelectionModal" :title="selectionModalTitle"
+        :description="selectionModalDescription" :items="selectionModalItems" :currentSelection="currentSelection"
+        :groupByType="selectionModalGroupByType" :disabledItems="disabledRelicTypes" @select="handleSelection"
+        @clear="handleClearSelection" />
 </template>
 
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
 import {
     Users, Shield, Swords, Sword, Library, RotateCcw, Shuffle, Zap,
-    Settings, BarChart, X, Save, Flame, Leaf, ChevronDown
+    Settings, X, Save, Flame, Leaf, ChevronDown, Gem, Dog, Shirt
 } from 'lucide-vue-next'
 import { Checkbox } from '@/components/ui/checkbox'
 import TeamSlot from './TeamSlot.vue'
 import HeroMiniCard from './HeroMiniCard.vue'
+import RelicSlot from './RelicSlot.vue'
+import PetSlot from './PetSlot.vue'
+import SkinSlot from './SkinSlot.vue'
 import GearModal from './modals/GearModal.vue'
+import SelectionModal from './modals/SelectionModal.vue'
 
 const props = defineProps({
     queue: {
@@ -315,20 +384,90 @@ const currentTeam = reactive({
     back2: null
 })
 
-// Gear tracking - CHANGED: Now uses only heroId as key
+// Gear tracking
 const teamGearData = ref({})
+
+// Relics, Pet, Skin state
+const teamRelics = ref({
+    slot1: null,
+    slot2: null,
+    slot3: null
+})
+const teamPet = ref(null)
+const teamSkin = ref(null)
 
 // Gear modal state
 const showGearModal = ref(false)
 const gearModalPosition = ref('')
 const gearModalHero = ref(null)
 
-// Current gear data for the modal - CHANGED: Now uses only heroId
+// Selection modal state
+const showSelectionModal = ref(false)
+const selectionModalType = ref('') // 'relic', 'pet', 'skin'
+const selectionModalSlot = ref('') // for relics
+
+// Current gear data for the modal
 const currentGearData = computed(() => {
     if (gearModalHero.value) {
         return teamGearData.value[gearModalHero.value.id] || {}
     }
     return {}
+})
+
+// Selection modal configuration
+const selectionModalTitle = computed(() => {
+    if (selectionModalType.value === 'relic') {
+        const slotNum = selectionModalSlot.value.replace('slot', '')
+        return `Select Relic (Position ${slotNum})`
+    }
+    if (selectionModalType.value === 'pet') return 'Select Pet'
+    if (selectionModalType.value === 'skin') return 'Select Troop Skin'
+    return ''
+})
+
+const selectionModalDescription = computed(() => {
+    if (selectionModalType.value === 'relic') {
+        return 'You can only equip one relic of each type (Damage, Defense, Utility)'
+    }
+    return 'Choose an item for your team'
+})
+
+const selectionModalItems = computed(() => {
+    if (selectionModalType.value === 'relic') return props.store.relics
+    if (selectionModalType.value === 'pet') return props.store.pets
+    if (selectionModalType.value === 'skin') return props.store.skins
+    return []
+})
+
+const selectionModalGroupByType = computed(() => {
+    return selectionModalType.value === 'relic'
+})
+
+const currentSelection = computed(() => {
+    if (selectionModalType.value === 'relic') {
+        return teamRelics.value[selectionModalSlot.value]
+    }
+    if (selectionModalType.value === 'pet') return teamPet.value
+    if (selectionModalType.value === 'skin') return teamSkin.value
+    return null
+})
+
+// Get already used relic types to disable them
+const disabledRelicTypes = computed(() => {
+    if (selectionModalType.value !== 'relic') return []
+    
+    const usedTypes = new Set()
+    Object.entries(teamRelics.value).forEach(([slot, relic]) => {
+        // Don't count the current slot being edited
+        if (slot !== selectionModalSlot.value && relic?.type) {
+            usedTypes.add(relic.type)
+        }
+    })
+    
+    // Return IDs of relics with already-used types
+    return props.store.relics
+        .filter(r => usedTypes.has(r.type))
+        .map(r => r.id)
 })
 
 // Computed properties
@@ -352,89 +491,66 @@ const factionDistribution = computed(() => {
     return distribution
 })
 
-const uniqueFactions = computed(() => {
-    const factions = new Set(teamHeroes.value.map(hero => hero.faction))
-    return factions.size
-})
-
-const averageRarity = computed(() => {
-    if (teamHeroes.value.length === 0) return 0
-
-    const rarityValues = { MY: 4, LE: 3, EP: 2, RA: 1 }
-    const total = teamHeroes.value.reduce((sum, hero) => {
-        return sum + (rarityValues[hero.rarity] || 1)
-    }, 0)
-
-    return total / teamHeroes.value.length
+const dominantFactionCount = computed(() => {
+    return Math.max(...Object.values(factionDistribution.value), 0)
 })
 
 const activeTeamBonds = computed(() => {
-    const teamHeroNames = teamHeroes.value.map(hero => hero.name)
-    return props.store.bonds.filter(bond => {
-        return bond.heroes.every(heroName => teamHeroNames.includes(heroName))
-    })
+    const teamHeroIds = teamHeroes.value.map(hero => hero.id)
+    return props.store.getActiveBondsFiltered(teamHeroIds)
 })
 
-const activeBonds = computed(() => {
-    return activeTeamBonds.value.length
+// Faction aura calculation
+const activeFactionAura = computed(() => {
+    const dominantFactionHeroes = teamHeroes.value.filter(hero =>
+        hero.faction === dominantFaction.value &&
+        (hero.rarity === 'legendary' || hero.rarity === 'mythic')
+    )
+
+    if (dominantFactionHeroes.length >= 4) {
+        return props.store.getFactionAuraForCount(dominantFactionHeroes.length)
+    }
+
+    return null
 })
 
-// Faction bonus calculation (using the real logic from original TeamBuilder)
-const factionBonus = computed(() => {
-    const maxCount = Math.max(...Object.values(factionDistribution.value), 0)
-    if (maxCount >= 4) return 35
-    if (maxCount >= 3) return 25
-    if (maxCount >= 2) return 15
-    return 0
-})
-
-// Check if any synergies are active
 const hasAnySynergies = computed(() => {
-    return factionBonus.value > 0 || activeTeamBonds.value.length > 0
+    return activeFactionAura.value !== null || activeTeamBonds.value.length > 0
 })
 
-// Available heroes computation (heroes not in current team)
 const availableHeroes = computed(() => {
-    if (!props.availableHeroes.length) return []
+    if (!props.availableHeroes?.length) return []
 
     const usedHeroIds = Object.values(currentTeam).filter(Boolean).map(hero => hero.id)
     return props.availableHeroes.filter(hero => !usedHeroIds.includes(hero.id))
 })
 
-// Dominant faction detection
 const dominantFaction = computed(() => {
-    if (teamHeroCount.value === 0) return 'league' // Default
+    if (teamHeroCount.value === 0) return 'league'
 
     const maxCount = Math.max(...Object.values(factionDistribution.value))
     const dominantFactions = Object.entries(factionDistribution.value)
         .filter(([faction, count]) => count === maxCount)
         .map(([faction]) => faction)
 
-    // If tied, prefer league > nature > horde
     const priorityOrder = ['league', 'nature', 'horde']
     return priorityOrder.find(faction => dominantFactions.includes(faction)) || dominantFactions[0]
 })
 
-// Faction ordering with dominant faction first
 const factionOrder = computed(() => {
     const baseFactions = ['nature', 'horde', 'league']
     const dominant = dominantFaction.value
 
-    // Put dominant faction first, then others
     return [dominant, ...baseFactions.filter(f => f !== dominant)]
 })
 
-// Get available heroes by faction with proper sorting
 const getAvailableHeroesByFaction = (faction) => {
     const factionHeroes = availableHeroes.value.filter(hero => hero.faction === faction)
-    const rarityOrder = { 'MY': 0, 'LE': 1, 'EP': 2, 'RA': 3 }
+    const rarityOrder = { 'mythic': 0, 'legendary': 1, 'epic': 2, 'rare': 3 }
 
     return factionHeroes.sort((a, b) => {
-        // First by rarity (MY > LE > EP > RA)
         const rarityDiff = rarityOrder[a.rarity] - rarityOrder[b.rarity]
         if (rarityDiff !== 0) return rarityDiff
-
-        // Then alphabetically by name
         return a.name.localeCompare(b.name)
     })
 }
@@ -473,24 +589,20 @@ const getFactionColor = (faction) => {
 }
 
 const getFactionName = (faction) => {
-    const factionData = props.store.getFactionById(faction)
-    return factionData ? factionData.name : faction
-}
-
-const getFactionBgClass = (faction) => {
-    const classes = {
-        nature: 'bg-nature-green/10 border border-nature-green/20',
-        horde: 'bg-horde-red/10 border border-horde-red/20',
-        league: 'bg-league-blue/10 border border-league-blue/20'
-    }
-    return classes[faction] || 'bg-foreground/10'
+    return props.store.getFactionById(faction)?.name || faction
 }
 
 const formatBondBuffs = (buffs) => {
     return buffs.map(buff => `+${buff.value}% ${buff.stat.toUpperCase()}`).join(', ')
 }
 
-// Faction helper functions for display
+const formatBondHeroes = (heroIds) => {
+    return heroIds.map(id => {
+        const hero = props.store.getHeroById(id)
+        return hero?.name || id
+    }).join(', ')
+}
+
 const getFactionGradient = (faction) => {
     const gradients = {
         nature: 'bg-gradient-to-br from-nature-green to-emerald-600',
@@ -522,16 +634,63 @@ const clearTeam = () => {
 }
 
 const randomizeTeam = () => {
-    // Clear current team first
     clearTeam()
-
-    // Get shuffled available heroes
     const shuffled = [...availableHeroes.value].sort(() => Math.random() - 0.5)
-
-    // Assign up to 6 heroes to positions
     Object.keys(currentTeam).forEach((position, index) => {
         currentTeam[position] = shuffled[index] || null
     })
+}
+
+// Relics management
+const openRelicSelection = (slot) => {
+    selectionModalType.value = 'relic'
+    selectionModalSlot.value = slot
+    showSelectionModal.value = true
+}
+
+const removeRelic = (slot) => {
+    teamRelics.value[slot] = null
+}
+
+// Pet management
+const openPetSelection = () => {
+    selectionModalType.value = 'pet'
+    showSelectionModal.value = true
+}
+
+const removePet = () => {
+    teamPet.value = null
+}
+
+// Skin management
+const openSkinSelection = () => {
+    selectionModalType.value = 'skin'
+    showSelectionModal.value = true
+}
+
+const removeSkin = () => {
+    teamSkin.value = null
+}
+
+// Selection modal handlers
+const handleSelection = (item) => {
+    if (selectionModalType.value === 'relic') {
+        teamRelics.value[selectionModalSlot.value] = item
+    } else if (selectionModalType.value === 'pet') {
+        teamPet.value = item
+    } else if (selectionModalType.value === 'skin') {
+        teamSkin.value = item
+    }
+}
+
+const handleClearSelection = () => {
+    if (selectionModalType.value === 'relic') {
+        teamRelics.value[selectionModalSlot.value] = null
+    } else if (selectionModalType.value === 'pet') {
+        teamPet.value = null
+    } else if (selectionModalType.value === 'skin') {
+        teamSkin.value = null
+    }
 }
 
 // Drag and drop
@@ -563,27 +722,24 @@ const openGear = (position) => {
     }
 }
 
-// CHANGED: Now saves gear data using only heroId as key
 const saveGearData = (data) => {
     if (gearModalHero.value) {
         teamGearData.value[gearModalHero.value.id] = { ...data }
         emit('update-gear', teamGearData.value)
     }
 
-    // Reset gear modal state
     showGearModal.value = false
     gearModalPosition.value = ''
     gearModalHero.value = null
 }
 
-// Save queue - gear data now uses heroId only
+// Save queue
 const saveQueue = async () => {
     if (!canSave.value) return
 
     isSaving.value = true
 
     try {
-        // Convert team to heroes array format
         const heroes = []
         Object.entries(currentTeam).forEach(([position, hero]) => {
             if (hero) {
@@ -598,7 +754,14 @@ const saveQueue = async () => {
             fromServer: queueForm.fromServer,
             isVisible: queueForm.isVisible,
             heroes,
-            gearData: teamGearData.value // Gear data uses heroId as key
+            gearData: teamGearData.value,
+            relics: {
+                slot1: teamRelics.value.slot1?.id || null,
+                slot2: teamRelics.value.slot2?.id || null,
+                slot3: teamRelics.value.slot3?.id || null
+            },
+            pet: teamPet.value?.id || null,
+            skin: teamSkin.value?.id || null
         }
 
         emit('save', queueData)
@@ -612,7 +775,6 @@ const saveQueue = async () => {
 // Initialize form with existing queue data
 watch(() => props.queue, (queue) => {
     if (queue) {
-        // Load queue details
         Object.assign(queueForm, {
             name: queue.name || '',
             description: queue.description || '',
@@ -621,7 +783,6 @@ watch(() => props.queue, (queue) => {
             isVisible: queue.isVisible !== false
         })
 
-        // Load team formation
         Object.keys(currentTeam).forEach(position => {
             currentTeam[position] = null
         })
@@ -635,14 +796,27 @@ watch(() => props.queue, (queue) => {
             })
         }
 
-        // Load gear data - now uses heroId as key
         if (queue.gearData) {
             teamGearData.value = { ...queue.gearData }
         } else {
             teamGearData.value = {}
         }
+
+        // Load relics
+        if (queue.relics) {
+            teamRelics.value.slot1 = props.store.getRelicById(queue.relics.slot1)
+            teamRelics.value.slot2 = props.store.getRelicById(queue.relics.slot2)
+            teamRelics.value.slot3 = props.store.getRelicById(queue.relics.slot3)
+        } else {
+            teamRelics.value = { slot1: null, slot2: null, slot3: null }
+        }
+
+        // Load pet
+        teamPet.value = queue.pet ? props.store.getPetById(queue.pet) : null
+
+        // Load skin
+        teamSkin.value = queue.skin ? props.store.getSkinById(queue.skin) : null
     } else {
-        // Reset form for new queue
         Object.assign(queueForm, {
             name: '',
             description: '',
@@ -652,12 +826,14 @@ watch(() => props.queue, (queue) => {
         })
         clearTeam()
         teamGearData.value = {}
+        teamRelics.value = { slot1: null, slot2: null, slot3: null }
+        teamPet.value = null
+        teamSkin.value = null
     }
 }, { immediate: true })
 </script>
 
 <style scoped>
-/* Scrollbar fade effect for hero list */
 .scrollbar-fade {
     position: relative;
 }

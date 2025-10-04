@@ -37,11 +37,23 @@
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="none">No Gear Set</SelectItem>
-                            <SelectItem value="titans-might">Titan's Might</SelectItem>
-                            <SelectItem value="fury-of-blood">Fury of Blood</SelectItem>
-                            <SelectItem value="glory-of-knight">Glory of the Knight</SelectItem>
+                            <SelectItem v-if="!availableGear || availableGear.length === 0" value="loading" disabled>
+                                Loading gear sets...
+                            </SelectItem>
+                            <SelectItem v-for="gear in availableGear" :key="gear.id" :value="gear.id">
+                                {{ gear.name }}
+                            </SelectItem>
                         </SelectContent>
                     </Select>
+
+                    <!-- Debug info -->
+                    <div class="text-xs text-foreground/50 mt-2">
+                        Available gear: {{ availableGear?.length || 0 }} sets
+                        <button @click="console.log('Gear data:', availableGear)"
+                            class="ml-2 text-velaris-purple hover:underline">
+                            Log to console
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Current Gear Summary -->
@@ -51,15 +63,19 @@
                         <Zap class="h-4 w-4" />
                         Current Configuration
                     </h4>
-                    <div class="text-sm text-foreground/70 space-y-3">
+                    <div v-if="selectedGearSet" class="text-sm text-foreground/70 space-y-3">
                         <div class="flex items-center justify-between p-2 bg-green-500/10 rounded">
                             <span>Gear Set:</span>
-                            <span class="font-medium text-green-400">{{ selectedGearSet?.name }}</span>
+                            <span class="font-medium text-green-400">{{ selectedGearSet.name }}</span>
+                        </div>
+                        <div v-if="selectedGearSet.description"
+                            class="text-xs text-foreground/60 italic p-2 bg-green-500/5 rounded">
+                            {{ selectedGearSet.description }}
                         </div>
                         <div class="pt-2 border-t border-green-500/20">
                             <div class="text-xs text-foreground/60 mb-3">Available bonuses:</div>
                             <div class="text-xs space-y-3">
-                                <div v-for="level in selectedGearSet.levels" :key="level.value"
+                                <div v-for="level in selectedGearSet.levels" :key="level.tier"
                                     class="p-3 bg-green-500/5 rounded border border-green-500/10">
                                     <div class="font-medium text-green-400 mb-2 flex items-center gap-2">
                                         <Crown class="h-3 w-3" />
@@ -139,6 +155,10 @@ const props = defineProps({
     gearData: {
         type: Object,
         default: () => ({})
+    },
+    availableGear: {
+        type: Array,
+        default: () => []
     }
 })
 
@@ -148,96 +168,6 @@ const localGearData = reactive({
     gearSet: 'none',
     notes: ''
 })
-
-const gearSets = {
-    'titans-might': {
-        name: "Titan's Might",
-        description: "Focused on raw attack power and damage amplification",
-        bgClass: "bg-red-500/10 border-red-500/20",
-        textClass: "text-red-400",
-        levels: [
-            {
-                tier: "1",
-                name: "4-Piece Set",
-                iconClass: "bg-gray-500",
-                value: "tier1",
-                stats: ["Gear Attack +20%", "Damage Increase +3%"]
-            },
-            {
-                tier: "2",
-                name: "Level 40",
-                iconClass: "bg-blue-500",
-                value: "tier2",
-                stats: ["Gear Attack +80%", "Damage Increase +6%"]
-            },
-            {
-                tier: "3",
-                name: "Mythic",
-                iconClass: "bg-red-500",
-                value: "tier3",
-                stats: ["Gear Attack +160%", "Damage Increase +12%"]
-            }
-        ]
-    },
-    'fury-of-blood': {
-        name: "Fury of Blood",
-        description: "Defensive set focused on HP and damage reduction",
-        bgClass: "bg-amber-500/10 border-amber-500/20",
-        textClass: "text-amber-400",
-        levels: [
-            {
-                tier: "1",
-                name: "4-Piece Set",
-                iconClass: "bg-gray-500",
-                value: "tier1",
-                stats: ["Gear HP +40%", "Damage Reduction +3%"]
-            },
-            {
-                tier: "2",
-                name: "Level 40",
-                iconClass: "bg-blue-500",
-                value: "tier2",
-                stats: ["Gear HP +160%", "Damage Reduction +6%"]
-            },
-            {
-                tier: "3",
-                name: "Mythic",
-                iconClass: "bg-red-500",
-                value: "tier3",
-                stats: ["Gear HP +480%", "Damage Reduction +12%"]
-            }
-        ]
-    },
-    'glory-of-knight': {
-        name: "Glory of the Knight",
-        description: "Balanced set with skill amplification",
-        bgClass: "bg-purple-500/10 border-purple-500/20",
-        textClass: "text-purple-400",
-        levels: [
-            {
-                tier: "1",
-                name: "4-Piece Set",
-                iconClass: "bg-gray-500",
-                value: "tier1",
-                stats: ["Gear Attack +10%", "Gear HP +20%", "Skill Damage +4%"]
-            },
-            {
-                tier: "2",
-                name: "Level 40",
-                iconClass: "bg-blue-500",
-                value: "tier2",
-                stats: ["Gear Attack +40%", "Gear HP +80%", "Skill Damage +8%"]
-            },
-            {
-                tier: "3",
-                name: "Mythic",
-                iconClass: "bg-red-500",
-                value: "tier3",
-                stats: ["Gear Attack +80%", "Gear HP +240%", "Skill Damage +16%"]
-            }
-        ]
-    }
-}
 
 const factionGradient = computed(() => {
     if (!props.hero) return 'bg-gradient-to-br from-velaris-purple to-velaris-teal'
@@ -251,7 +181,8 @@ const factionGradient = computed(() => {
 })
 
 const selectedGearSet = computed(() => {
-    return (localGearData.gearSet && localGearData.gearSet !== 'none') ? gearSets[localGearData.gearSet] : null
+    if (!localGearData.gearSet || localGearData.gearSet === 'none') return null
+    return props.availableGear?.find(gear => gear.id === localGearData.gearSet)
 })
 
 const handleOpenChange = (open) => {
@@ -288,7 +219,7 @@ const clearAllGear = () => {
     })
 }
 
-// Watch for changes in props to update local state - FIX for modal data issue
+// Watch for changes in props to update local state
 watch(() => [props.gearData, props.isOpen], ([newData, isOpen]) => {
     if (isOpen && newData) {
         Object.assign(localGearData, {

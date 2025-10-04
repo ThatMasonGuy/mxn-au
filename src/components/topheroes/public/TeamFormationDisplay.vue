@@ -10,7 +10,8 @@
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <HeroSlotDetail v-for="position in ['back1', 'back2']" :key="position"
-                    :hero="getHeroInPosition(position)" :gear="getGearForPosition(position)" :position="position" />
+                    :hero="getHeroInPosition(position)" :gear="getGearForPosition(position)" :position="position"
+                    :store="store" />
             </div>
         </div>
 
@@ -23,7 +24,7 @@
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <HeroSlotDetail v-for="position in ['mid1', 'mid2']" :key="position" :hero="getHeroInPosition(position)"
-                    :gear="getGearForPosition(position)" :position="position" />
+                    :gear="getGearForPosition(position)" :position="position" :store="store" />
             </div>
         </div>
 
@@ -36,7 +37,8 @@
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <HeroSlotDetail v-for="position in ['front1', 'front2']" :key="position"
-                    :hero="getHeroInPosition(position)" :gear="getGearForPosition(position)" :position="position" />
+                    :hero="getHeroInPosition(position)" :gear="getGearForPosition(position)" :position="position"
+                    :store="store" />
             </div>
         </div>
     </div>
@@ -53,6 +55,10 @@ const props = defineProps({
     },
     heroes: {
         type: Array,
+        required: true
+    },
+    store: {
+        type: Object,
         required: true
     }
 })

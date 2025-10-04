@@ -20,68 +20,93 @@
             </div>
         </div>
 
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <!-- Stats Bar -->
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-                <div class="bg-card border border-border rounded-xl p-4 text-center">
-                    <div class="text-2xl font-bold text-velaris-purple">{{ totalQueues }}</div>
-                    <div class="text-sm text-foreground/60 mt-1">Total Queues</div>
-                </div>
-                <div class="bg-card border border-border rounded-xl p-4 text-center">
-                    <div class="text-2xl font-bold text-velaris-teal">{{ filteredQueues.length }}</div>
-                    <div class="text-sm text-foreground/60 mt-1">Matching Results</div>
-                </div>
-                <div class="bg-card border border-border rounded-xl p-4 text-center">
-                    <div class="text-2xl font-bold text-velaris-amber">{{ selectedHeroes.length }}</div>
-                    <div class="text-sm text-foreground/60 mt-1">Heroes Selected</div>
-                </div>
-                <div class="bg-card border border-border rounded-xl p-4 text-center">
-                    <div class="text-2xl font-bold text-green-400">{{ availableHeroes.length }}</div>
-                    <div class="text-sm text-foreground/60 mt-1">Heroes Available</div>
+        <div class="max-w-[120rem] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <!-- Error State -->
+            <div v-if="error" class="mb-8 bg-red-500/10 border border-red-500/30 rounded-xl p-4">
+                <div class="flex items-start gap-3">
+                    <div class="text-red-400">⚠️</div>
+                    <div>
+                        <h3 class="font-semibold text-red-400 mb-1">Error Loading Queues</h3>
+                        <p class="text-sm text-red-400/80">{{ error }}</p>
+                        <button @click="retryLoad" class="mt-2 text-sm text-red-400 hover:text-red-300 underline">
+                            Try Again
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            <!-- Filters Section -->
-            <div class="bg-card border border-border rounded-xl p-6 mb-8">
-                <div class="space-y-6">
-                    <!-- Search Bar -->
+            <!-- Top Bar with Stats and Submit Button -->
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+                <!-- Stats -->
+                <div class="flex items-center gap-6">
                     <div>
-                        <label class="block text-sm font-medium mb-2">Search Queues</label>
-                        <div class="relative">
-                            <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-foreground/50" />
-                            <input v-model="searchQuery" type="search"
-                                placeholder="Search by queue name or description..."
-                                class="w-full pl-10 pr-4 py-3 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-velaris-purple/50 transition-all" />
+                        <div class="text-2xl font-bold text-velaris-purple">{{ totalQueues }}</div>
+                        <div class="text-sm text-foreground/60">Total Queues</div>
+                    </div>
+                    <div class="h-12 w-px bg-border"></div>
+                    <div>
+                        <div class="text-2xl font-bold text-velaris-teal">{{ totalViews.toLocaleString() }}</div>
+                        <div class="text-sm text-foreground/60">Total Views</div>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="flex flex-col items-start sm:items-end gap-1">
+                    <button @click="router.push('/topheroes/queues/user')"
+                        class="bg-gradient-to-r from-velaris-purple to-velaris-teal text-white font-medium py-3 px-6 rounded-xl shadow-lg">
+                        Submit Your Own
+                    </button>
+                    <p class="text-xs text-foreground/60">Login to submit your own queues</p>
+                </div>
+            </div>
+
+            <!-- Main Content with Sidebar Layout -->
+            <div class="xl:grid xl:grid-cols-12 xl:gap-8">
+                <!-- Main Content Area -->
+                <div class="xl:col-span-9">
+                    <!-- Search and Sort -->
+                    <div class="bg-card border border-border rounded-xl p-6 mb-6">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <!-- Search Bar -->
+                            <div class="md:col-span-2">
+                                <label class="block text-sm font-medium mb-2">Search Queues</label>
+                                <div class="relative">
+                                    <Search
+                                        class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-foreground/50" />
+                                    <input v-model="searchQuery" type="search"
+                                        placeholder="Search by queue name or description..."
+                                        class="w-full pl-10 pr-4 py-3 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-velaris-purple/50 transition-all" />
+                                </div>
+                            </div>
+
+                            <!-- Sort -->
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Sort By</label>
+                                <select v-model="sortBy"
+                                    class="w-full px-4 py-3 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-velaris-purple/50 transition-all">
+                                    <option value="popular">Most Popular</option>
+                                    <option value="recent">Most Recent</option>
+                                    <option value="votes">Highest Rated</option>
+                                    <option value="comments">Most Discussed</option>
+                                </select>
+                            </div>
+
+                            <!-- Mobile Filter Toggle -->
+                            <div class="xl:hidden md:col-span-3">
+                                <button @click="showMobileFilters = !showMobileFilters"
+                                    class="w-full px-4 py-2 bg-velaris-purple/10 border border-velaris-purple/30 rounded-lg text-velaris-purple font-medium flex items-center justify-between">
+                                    <span>Hero Filters {{ selectedHeroes.length > 0 ? `(${selectedHeroes.length})` : ''
+                                        }}</span>
+                                    <ChevronDown
+                                        :class="['h-5 w-5 transition-transform', showMobileFilters ? 'rotate-180' : '']" />
+                                </button>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Hero Filter -->
-                    <div>
-                        <div class="flex items-center justify-between mb-2">
-                            <label class="text-sm font-medium">Filter by Your Heroes</label>
-                            <button v-if="selectedHeroes.length > 0" @click="clearSelectedHeroes"
-                                class="text-xs text-velaris-purple hover:text-velaris-teal transition-colors">
-                                Clear All ({{ selectedHeroes.length }})
-                            </button>
-                        </div>
-                        <HeroFilter :heroes="availableHeroes" :selected-heroes="selectedHeroes"
-                            @update:selected-heroes="selectedHeroes = $event" />
-                    </div>
-
-                    <!-- Sort Options -->
-                    <div class="flex flex-wrap gap-4">
-                        <div class="flex-1 min-w-[200px]">
-                            <label class="block text-sm font-medium mb-2">Sort By</label>
-                            <select v-model="sortBy"
-                                class="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-velaris-purple/50 transition-all">
-                                <option value="popular">Most Popular</option>
-                                <option value="recent">Most Recent</option>
-                                <option value="votes">Highest Rated</option>
-                                <option value="comments">Most Discussed</option>
-                            </select>
-                        </div>
-
-                        <div class="flex-1 min-w-[200px]">
+                    <!-- Mobile Filters Collapse -->
+                    <div v-if="showMobileFilters" class="xl:hidden mb-6 bg-card border border-border rounded-xl p-6">
+                        <div class="mb-4">
                             <label class="block text-sm font-medium mb-2">Match Type</label>
                             <select v-model="matchType"
                                 class="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-velaris-purple/50 transition-all">
@@ -90,69 +115,102 @@
                                 <option value="partial">Partial Match (3+ heroes)</option>
                             </select>
                         </div>
+                        <HeroFilter :heroes="availableHeroes" :selected-heroes="selectedHeroes"
+                            @update:selected-heroes="selectedHeroes = $event" />
                     </div>
-                </div>
-            </div>
 
-            <!-- Results -->
-            <div v-if="isLoading" class="text-center py-16">
-                <div class="inline-flex items-center gap-3 text-foreground/60">
-                    <div class="animate-spin h-8 w-8 border-2 border-velaris-purple border-t-transparent rounded-full">
+                    <!-- Results -->
+                    <div v-if="isLoading" class="text-center py-16">
+                        <div class="inline-flex items-center gap-3 text-foreground/60">
+                            <div
+                                class="animate-spin h-8 w-8 border-2 border-velaris-purple border-t-transparent rounded-full">
+                            </div>
+                            <span>Loading queues...</span>
+                        </div>
                     </div>
-                    <span>Loading queues...</span>
-                </div>
-            </div>
 
-            <!-- No Results -->
-            <div v-else-if="filteredQueues.length === 0" class="text-center py-16">
-                <div
-                    class="h-24 w-24 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-foreground/10 to-foreground/5 flex items-center justify-center">
-                    <Search class="h-12 w-12 text-foreground/30" />
-                </div>
-                <h3 class="text-xl font-semibold mb-2">No Queues Found</h3>
-                <p class="text-foreground/60 mb-6">
-                    {{ selectedHeroes.length > 0
-                        ? 'No queues match your selected heroes. Try selecting fewer heroes or changing the match type.'
-                        : 'Try adjusting your filters or search terms.'
-                    }}
-                </p>
-                <button v-if="selectedHeroes.length > 0 || searchQuery" @click="clearFilters"
-                    class="bg-gradient-to-r from-velaris-purple to-velaris-teal text-white font-medium py-2 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200">
-                    Clear Filters
-                </button>
-            </div>
-
-            <!-- Queue Grid -->
-            <div v-else>
-                <div class="mb-4 text-sm text-foreground/60">
-                    Showing {{ filteredQueues.length }} of {{ totalQueues }} queues
-                </div>
-                <div class="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
-                    <PublicQueueCard v-for="queue in paginatedQueues" :key="queue.id" :queue="queue"
-                        :heroes="availableHeroes" :user-votes="userVotes" @vote="handleVote" @view="viewQueue" />
-                </div>
-
-                <!-- Pagination -->
-                <div v-if="totalPages > 1" class="mt-8 flex items-center justify-center gap-2">
-                    <button @click="currentPage = Math.max(1, currentPage - 1)" :disabled="currentPage === 1"
-                        class="px-4 py-2 bg-card border border-border rounded-lg hover:bg-foreground/5 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
-                        Previous
-                    </button>
-
-                    <div class="flex gap-2">
-                        <button v-for="page in visiblePages" :key="page" @click="currentPage = page" :class="page === currentPage
-                            ? 'bg-gradient-to-r from-velaris-purple to-velaris-teal text-white'
-                            : 'bg-card border border-border hover:bg-foreground/5'"
-                            class="px-4 py-2 rounded-lg transition-all">
-                            {{ page }}
+                    <!-- No Results -->
+                    <div v-else-if="filteredQueues.length === 0" class="text-center py-16">
+                        <div
+                            class="h-24 w-24 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-foreground/10 to-foreground/5 flex items-center justify-center">
+                            <Search class="h-12 w-12 text-foreground/30" />
+                        </div>
+                        <h3 class="text-xl font-semibold mb-2">No Queues Found</h3>
+                        <p class="text-foreground/60 mb-6">
+                            {{ selectedHeroes.length > 0
+                                ? 'No queues match your selected heroes. Try selecting fewer heroes or changing the match type.'
+                            : 'Try adjusting your filters or search terms.'
+                            }}
+                        </p>
+                        <button v-if="selectedHeroes.length > 0 || searchQuery" @click="clearFilters"
+                            class="bg-gradient-to-r from-velaris-purple to-velaris-teal text-white font-medium py-2 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200">
+                            Clear Filters
                         </button>
                     </div>
 
-                    <button @click="currentPage = Math.min(totalPages, currentPage + 1)"
-                        :disabled="currentPage === totalPages"
-                        class="px-4 py-2 bg-card border border-border rounded-lg hover:bg-foreground/5 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
-                        Next
-                    </button>
+                    <!-- Queue Grid -->
+                    <div v-else>
+                        <div class="mb-4 text-sm text-foreground/60">
+                            Showing {{ filteredQueues.length }} of {{ totalQueues }} queues
+                        </div>
+                        <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+                            <PublicQueueCard v-for="queue in paginatedQueues" :key="queue.id" :queue="queue"
+                                :heroes="availableHeroes" :user-votes="userVotes" @vote="handleVote"
+                                @view="viewQueue" />
+                        </div>
+
+                        <!-- Pagination -->
+                        <div v-if="totalPages > 1" class="mt-8 flex items-center justify-center gap-2">
+                            <button @click="currentPage = Math.max(1, currentPage - 1)" :disabled="currentPage === 1"
+                                class="px-4 py-2 bg-card border border-border rounded-lg hover:bg-foreground/5 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
+                                Previous
+                            </button>
+
+                            <div class="flex gap-2">
+                                <button v-for="page in visiblePages" :key="page" @click="currentPage = page" :class="page === currentPage
+                                    ? 'bg-gradient-to-r from-velaris-purple to-velaris-teal text-white'
+                                    : 'bg-card border border-border hover:bg-foreground/5'"
+                                    class="px-4 py-2 rounded-lg transition-all">
+                                    {{ page }}
+                                </button>
+                            </div>
+
+                            <button @click="currentPage = Math.min(totalPages, currentPage + 1)"
+                                :disabled="currentPage === totalPages"
+                                class="px-4 py-2 bg-card border border-border rounded-lg hover:bg-foreground/5 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
+                                Next
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sidebar - Hero Filters (Desktop Only) -->
+                <div class="hidden xl:block xl:col-span-3">
+                    <div class="sticky top-8">
+                        <div class="bg-card border border-border rounded-xl p-6">
+                            <h3 class="text-lg font-semibold mb-4 flex items-center justify-between">
+                                <span>Hero Filters</span>
+                                <button v-if="selectedHeroes.length > 0" @click="clearSelectedHeroes"
+                                    class="text-xs text-velaris-purple hover:text-velaris-teal transition-colors">
+                                    Clear ({{ selectedHeroes.length }})
+                                </button>
+                            </h3>
+
+                            <!-- Match Type -->
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium mb-2">Match Type</label>
+                                <select v-model="matchType"
+                                    class="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-velaris-purple/50 transition-all text-sm">
+                                    <option value="any">Any Match</option>
+                                    <option value="exact">Exact Match</option>
+                                    <option value="partial">Partial (3+)</option>
+                                </select>
+                            </div>
+
+                            <HeroFilter :heroes="availableHeroes" :selected-heroes="selectedHeroes"
+                                @update:selected-heroes="selectedHeroes = $event" />
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -162,7 +220,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Search } from 'lucide-vue-next'
+import { Search, ChevronDown } from 'lucide-vue-next'
 import HeroFilter from '@/components/topheroes/public/HeroFilter.vue'
 import PublicQueueCard from '@/components/topheroes/public/PublicQueueCard.vue'
 import { useTopHeroesPublicStore } from '@/stores/useTopHeroesPublicStore'
@@ -179,11 +237,17 @@ const matchType = ref('any')
 const currentPage = ref(1)
 const itemsPerPage = 12
 const isLoading = ref(true)
-const userVotes = ref({}) // Track user votes { queueId: 'up' | 'down' }
+const error = ref(null)
+const userVotes = ref({})
+const showMobileFilters = ref(false)
 
 // Computed
 const availableHeroes = computed(() => publicStore.heroes)
 const totalQueues = computed(() => publicStore.queues.length)
+
+const totalViews = computed(() => {
+    return publicStore.queues.reduce((sum, queue) => sum + (queue.views || 0), 0)
+})
 
 const filteredQueues = computed(() => {
     let filtered = publicStore.queues.filter(q => q.isVisible)
@@ -217,19 +281,21 @@ const filteredQueues = computed(() => {
         })
     }
 
-    // Sort
-    return filtered.sort((a, b) => {
+    // Sort - create a new array copy before sorting to ensure reactivity
+    return [...filtered].sort((a, b) => {
         switch (sortBy.value) {
             case 'popular':
                 return (b.views || 0) - (a.views || 0)
             case 'votes':
-                return (b.upvotes || 0) - (a.upvotes || 0)
+                const netA = (a.upvotes || 0) - (a.downvotes || 0)
+                const netB = (b.upvotes || 0) - (b.downvotes || 0)
+                return netB - netA
             case 'comments':
                 return (b.commentCount || 0) - (a.commentCount || 0)
             case 'recent':
             default:
-                const dateA = new Date(a.lastUpdated || a.createdAt || 0)
-                const dateB = new Date(b.lastUpdated || b.createdAt || 0)
+                const dateA = a.lastUpdated?.seconds ? a.lastUpdated.seconds * 1000 : new Date(a.lastUpdated || a.createdAt || 0).getTime()
+                const dateB = b.lastUpdated?.seconds ? b.lastUpdated.seconds * 1000 : new Date(b.lastUpdated || b.createdAt || 0).getTime()
                 return dateB - dateA
         }
     })
@@ -272,7 +338,6 @@ const clearFilters = () => {
 }
 
 const handleVote = ({ queueId, voteType }) => {
-    // Toggle vote if clicking same type, otherwise switch
     const currentVote = userVotes.value[queueId]
 
     if (currentVote === voteType) {
@@ -284,7 +349,7 @@ const handleVote = ({ queueId, voteType }) => {
     // Save to localStorage
     localStorage.setItem('topheroes_votes', JSON.stringify(userVotes.value))
 
-    // TODO: Send to backend
+    // Send to backend
     publicStore.voteQueue(queueId, voteType, currentVote)
 }
 
@@ -296,21 +361,38 @@ const viewQueue = (queue) => {
     router.push(`/topheroes/queues/${queue.id}`)
 }
 
-// Lifecycle
-onMounted(async () => {
+const loadData = async () => {
+    isLoading.value = true
+    error.value = null
+
     try {
         await publicStore.loadAll()
 
         // Load user votes from localStorage
         const savedVotes = localStorage.getItem('topheroes_votes')
         if (savedVotes) {
-            userVotes.value = JSON.parse(savedVotes)
+            try {
+                userVotes.value = JSON.parse(savedVotes)
+            } catch (e) {
+                console.error('Failed to parse saved votes:', e)
+                localStorage.removeItem('topheroes_votes')
+            }
         }
-    } catch (error) {
-        console.error('Failed to load queues:', error)
+    } catch (err) {
+        console.error('Failed to load queues:', err)
+        error.value = err.message || 'Failed to load queues. Please try again.'
     } finally {
         isLoading.value = false
     }
+}
+
+const retryLoad = () => {
+    loadData()
+}
+
+// Lifecycle
+onMounted(() => {
+    loadData()
 })
 
 // Reset to page 1 when filters change

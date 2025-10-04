@@ -43,6 +43,9 @@
                     Available Tools
                 </h2>
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 animate-fade-up delay-500">
+                    <ToolCard :icon="Gem" title="Recommended Queues"
+                        desc="View, add, vote and comment on the best queue formations submitted by the community."
+                        link="/topheroes/queues" :image="TopHeroes_3" badge="New!" />
                     <ToolCard :icon="ChartBarIcon" title="Speed-Ups Calculator"
                         desc="Calculate how many speed-ups you need for buildings, troops, and research."
                         link="/topheroes/tools/speedups" :image="TopHeroes_1" />
@@ -51,7 +54,7 @@
                         link="/topheroes/tools/stars" :image="StarsImage" badge="New!" />                        
                     <ToolCard :icon="UsersIcon" title="Resource Calculator"
                         desc="Track how much gold, food, and wood you’ll need based on progression."
-                        link="/topheroes/tools/resources" :image="TopHeroes_2" badge="New!" />
+                        link="/topheroes/tools/resources" :image="TopHeroes_2" />
                     <ToolCard :icon="CalendarIcon" title="Event Guide Hub"
                         desc="Get prepared for Dark Empire Invasion, KvK, Guild Race, and more."
                         link="/topheroes/events" :image="DarkEmpireInvasion" />
@@ -120,9 +123,11 @@ import {
     TrophyIcon,
     StarIcon
 } from '@heroicons/vue/24/outline'
+import { Gem } from 'lucide-vue-next'
 import ToolCard from '@/components/topheroes/ToolCard.vue'
 import TopHeroes_1 from '@/assets/images/topHeroes/TopHeroes_1.jpg';
 import TopHeroes_2 from '@/assets/images/topHeroes/TopHeroes_2.jpg';
+import TopHeroes_3 from '@/assets/images/topHeroes/TopHeroes_3.jpg';
 import DarkEmpireInvasion from '@/assets/images/topHeroes/DarkEmpireInvasion.jpg';
 import TopHeroesBanner from '@/assets/images/topHeroes/TopHeroesBanner.jpg';
 import KingdomDuelsBanner from '@/assets/images/topHeroes/KingdomDuelsBanner.jpg';

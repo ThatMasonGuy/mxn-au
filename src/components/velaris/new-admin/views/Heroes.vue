@@ -48,6 +48,10 @@
                         title="Refresh data from Firestore">
                         <RotateCcw :class="['h-4 w-4', isLoadingData ? 'animate-spin' : '']" />
                     </button>
+                    <button @click="showSyncModal = true" class="btn-soft-violet rounded-md"
+                        title="Sync hero database from JSON">
+                        <Database class="h-4 w-4" />
+                    </button>
                 </div>
             </div>
         </div>
@@ -175,14 +179,14 @@
                                 class="bg-background/50 backdrop-blur-sm border border-border/50 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-velaris-purple/50 transition-all">
                                 <option value="">All Factions</option>
                                 <option v-for="faction in store.factions" :key="faction.id" :value="faction.id">
-                                    {{ getFactionIcon(faction.id) }} {{ faction.name }}
+                                    {{ getFactionIconText(faction.id) }} {{ faction.name }}
                                 </option>
                             </select>
                             <select v-model="filterRarity"
                                 class="bg-background/50 backdrop-blur-sm border border-border/50 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-velaris-purple/50 transition-all">
                                 <option value="">All Rarities</option>
                                 <option v-for="rarity in store.rarities" :key="rarity.id" :value="rarity.id">
-                                    {{ getRarityIcon(rarity.id) }} {{ rarity.name }}
+                                    {{ getRarityIconText(rarity.id) }} {{ rarity.name }}
                                 </option>
                             </select>
                             <select v-model="filterTag"
@@ -243,7 +247,7 @@
 
                     <div class="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                         <HeroCard v-for="hero in getFilteredHeroesByFaction(faction)" :key="hero.id" :hero="hero"
-                            :faction="faction" @add-to-queue="createQueueWithHero" @edit="editHero"
+                            :faction="faction" :store="store" @add-to-queue="createQueueWithHero" @edit="editHero"
                             @delete="deleteHero" />
                     </div>
                 </div>
@@ -252,7 +256,7 @@
             <div v-else class="space-y-6">
                 <div class="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                     <HeroCard v-for="hero in getMixedSortedHeroes" :key="hero.id" :hero="hero" :faction="hero.faction"
-                        @add-to-queue="createQueueWithHero" @edit="editHero" @delete="deleteHero" />
+                        :store="store" @add-to-queue="createQueueWithHero" @edit="editHero" @delete="deleteHero" />
                 </div>
             </div>
         </div>
@@ -280,16 +284,16 @@
 
         <!-- Queues View -->
         <div v-else-if="activeView === 'queues'" class="space-y-6">
-            <QueueManager :queues="store.queues" :heroes="store.heroes" :is-loading="store.isLoadingQueues"
-                @create-queue="createNewQueue" @edit-queue="editQueue" @delete-queue="deleteQueue"
-                @refresh="refreshQueues" @toggle-status="toggleQueueStatus" />
+            <QueueManager :queues="store.queues" :heroes="store.heroes" :store="store"
+                :is-loading="store.isLoadingQueues" @create-queue="createNewQueue" @edit-queue="editQueue"
+                @delete-queue="deleteQueue" @refresh="refreshQueues" @toggle-status="toggleQueueStatus" />
         </div>
 
         <!-- Modals -->
         <GearModal v-model:isOpen="showGearModal" :hero="gearModalHero" :position="gearModalPosition"
-            :gear-data="gearData" @save="saveGearData" />
+            :gear-data="gearData" :available-gear="store.gear" @save="saveGearData" />
 
-        <SyncModal v-model:isOpen="showSyncModal" :hero-data="heroData" :store="store" />
+        <SyncModal v-model:isOpen="showSyncModal" :store="store" />
 
         <HeroModal v-model:isOpen="showHeroModal" :hero="editingHero" :factions="store.factions"
             :rarities="store.rarities" :tags="store.tags" @save="saveHero" />
@@ -300,7 +304,7 @@
 import { ref, computed, reactive, onMounted, watch } from 'vue'
 import {
     Search, Plus, Library, Users, Flame, Leaf, Shield, Star, RotateCcw,
-    Settings, X, Zap, Lightbulb, TrendingUp, Sword, Crown, Gem, Award, Hexagon, List
+    Settings, X, Zap, Lightbulb, TrendingUp, Sword, Crown, Gem, Award, Hexagon, List, Database
 } from 'lucide-vue-next'
 
 // Store
@@ -315,15 +319,6 @@ import SyncModal from '@/components/topheroes/modals/SyncModal.vue'
 import HeroModal from '@/components/topheroes/modals/HeroModal.vue'
 
 const store = useTopHeroesHeroStore()
-
-// Computed hero data for backward compatibility
-const heroData = computed(() => ({
-    factions: store.factions,
-    rarities: store.rarities,
-    tags: store.tags,
-    hero_bonds: store.bonds,
-    heroes: store.heroes
-}))
 
 // UI State
 const activeView = ref('heroes')
@@ -357,7 +352,7 @@ const teamGearData = ref({})
 const isLoadingData = computed(() => store.isLoading || store.isLoadingHeroes)
 
 const filteredHeroes = computed(() => {
-    if (!store.heroes.length) return []
+    if (!store.heroes?.length) return []
 
     return store.searchHeroes(searchQuery.value, {
         faction: filterFaction.value,
@@ -368,7 +363,7 @@ const filteredHeroes = computed(() => {
 
 const getFilteredHeroesByFaction = (faction) => {
     const factionHeroes = filteredHeroes.value.filter(hero => hero.faction === faction)
-    const rarityOrder = { 'MY': 0, 'LE': 1, 'EP': 2, 'RA': 3 }
+    const rarityOrder = { 'mythic': 0, 'legendary': 1, 'epic': 2, 'rare': 3 }
 
     return factionHeroes.sort((a, b) => {
         const rarityDiff = rarityOrder[a.rarity] - rarityOrder[b.rarity]
@@ -378,7 +373,7 @@ const getFilteredHeroesByFaction = (faction) => {
 }
 
 const getMixedSortedHeroes = computed(() => {
-    const rarityOrder = { 'MY': 0, 'LE': 1, 'EP': 2, 'RA': 3 }
+    const rarityOrder = { 'mythic': 0, 'legendary': 1, 'epic': 2, 'rare': 3 }
     const factionOrder = { 'league': 0, 'nature': 1, 'horde': 2 }
 
     return filteredHeroes.value.sort((a, b) => {
@@ -403,22 +398,27 @@ const getFactionCount = (faction) => {
 
 const getFactionName = (faction) => {
     const factionData = store.getFactionById(faction)
-    return factionData ? factionData.name : faction
+    return factionData?.name || faction
 }
 
 const getRarityName = (rarity) => {
     const rarityData = store.getRarityById(rarity)
-    return rarityData ? rarityData.name : rarity
+    return rarityData?.name || rarity
 }
 
 const getTagName = (tagId) => {
     const tag = store.getTagById(tagId)
-    return tag ? tag.name : tagId
+    return tag?.name || tagId
 }
 
 const getFactionIcon = (faction) => {
     const icons = { nature: Leaf, horde: Flame, league: Shield }
     return icons[faction] || Shield
+}
+
+const getFactionIconText = (faction) => {
+    const icons = { nature: '🌿', horde: '🔥', league: '🛡️' }
+    return icons[faction] || '⚔️'
 }
 
 const getFactionColor = (faction) => {
@@ -448,14 +448,30 @@ const getFactionBgClass = (faction) => {
     return classes[faction] || 'bg-foreground/20'
 }
 
-const getRarityIcon = (rarity) => {
+const getRarityIconText = (rarity) => {
     const icons = {
-        MY: Crown,
-        LE: Star,
-        EP: Gem,
-        RA: Hexagon
+        mythic: '👑',
+        legendary: '⭐',
+        epic: '💎',
+        rare: '⬡'
     }
-    return icons[rarity] || Star
+    return icons[rarity] || '⭐'
+}
+
+// Add this function in the script section
+const openGearModal = (hero, position, existingGearData = {}) => {
+    gearModalHero.value = hero
+    gearModalPosition.value = position
+    
+    // Set the gear data
+    Object.assign(gearData, {
+        gearSet: existingGearData.gearSet || 'none',
+        gearSetName: existingGearData.gearSetName || '',
+        gearLevel: existingGearData.gearLevel || '',
+        notes: existingGearData.notes || ''
+    })
+    
+    showGearModal.value = true
 }
 
 // Actions
@@ -491,12 +507,13 @@ const createQueueWithHero = (hero) => {
         category: '',
         strategy: '',
         isActive: true,
+        isVisible: true,
         heroes: [
             { heroId: hero.id, position: 'front1' }
-        ]
+        ],
+        gearData: {}
     }
 
-    // Switch to queue builder view
     activeView.value = 'queue-builder'
 }
 
@@ -506,7 +523,6 @@ const editHero = (hero) => {
 }
 
 const deleteHero = async (hero) => {
-    // The confirmation is handled by the HeroCard component itself now
     try {
         await store.deleteHero(hero.id)
     } catch (err) {
@@ -531,7 +547,16 @@ const saveHero = async (heroData) => {
 
 // Queue builder navigation
 const createNewQueue = () => {
-    editingQueue.value = null
+    editingQueue.value = {
+        name: '',
+        description: '',
+        category: '',
+        strategy: '',
+        isActive: true,
+        isVisible: true,
+        heroes: [],
+        gearData: {}
+    }
     activeView.value = 'queue-builder'
 }
 
@@ -547,7 +572,6 @@ const cancelQueueBuilder = () => {
 
 // Queue actions
 const deleteQueue = async (queue) => {
-    // The confirmation is handled by the QueueCard component itself now
     try {
         await store.deleteQueue(queue.id)
     } catch (err) {
@@ -574,7 +598,6 @@ const saveQueue = async (queueData) => {
             await store.createQueue(queueData)
         }
 
-        // Navigate back to queues view after saving
         activeView.value = 'queues'
         editingQueue.value = null
     } catch (err) {
@@ -582,7 +605,7 @@ const saveQueue = async (queueData) => {
     }
 }
 
-// Modal actions - Gear modal (keeping for compatibility but not used in current flow)
+// Gear modal actions
 const saveGearData = (data) => {
     if (gearModalHero.value && gearModalPosition.value) {
         const key = `${gearModalHero.value.id}_${gearModalPosition.value}`
@@ -607,7 +630,7 @@ const updateGearData = (newGearData) => {
 // Lifecycle
 onMounted(async () => {
     try {
-        if (store.heroes.length === 0) {
+        if (!store.heroes?.length) {
             console.log('Loading TopHeroes data from Firestore...')
             await store.loadAll()
             console.log('TopHeroes data loaded successfully!')
@@ -617,7 +640,7 @@ onMounted(async () => {
     }
 })
 
-watch(() => store.heroes.length, (newCount) => {
+watch(() => store.heroes?.length, (newCount) => {
     if (newCount > 0) {
         console.log(`Loaded ${newCount} heroes from Firestore`)
     }

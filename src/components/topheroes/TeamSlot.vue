@@ -53,7 +53,7 @@
                                 </TooltipProvider>
                             </template>
                         </div>
-                        <p class="text-sm text-foreground/60 mt-1">{{ hero.factionName || hero.faction }}</p>
+                        <p class="text-sm text-foreground/60 mt-1">{{ factionName }}</p>
                     </div>
                     <button @click.stop="$emit('remove', position)"
                         class="p-2 rounded-lg transition-all duration-200 hover:bg-red-500/20 text-foreground/60 hover:text-red-400 flex-shrink-0"
@@ -70,11 +70,12 @@
                         :class="gearDisplayClass">
                         <div class="flex items-center gap-2 flex-1">
                             <div class="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
-                                style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.8), rgba(56, 178, 172, 0.8));">
+                                :class="gearIconBackground">
                                 <component :is="gearSetIcon" class="h-4 w-4 text-white" />
                             </div>
                             <div class="flex-1 min-w-0">
-                                <p class="text-sm font-medium truncate leading-tight">{{ gearSetName }}</p>
+                                <p class="text-sm font-medium truncate leading-tight" :class="gearTextColor">{{
+                                    gearSetName }}</p>
                                 <p class="text-xs text-foreground/60 mt-0.5">Gear Set</p>
                             </div>
                         </div>
@@ -118,7 +119,7 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import { Users, Settings, X, Plus, Zap, Crown, Sword } from 'lucide-vue-next'
+import { Users, Settings, X, Plus, Zap, Crown, Sword, Shield } from 'lucide-vue-next'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 const props = defineProps({
@@ -137,6 +138,10 @@ const props = defineProps({
     gearData: {
         type: Object,
         default: () => ({})
+    },
+    store: {
+        type: Object,
+        required: true
     }
 })
 
@@ -145,14 +150,14 @@ const emit = defineEmits(['drop', 'remove', 'gear'])
 const isDragOver = ref(false)
 let dragCounter = 0
 
-// CHANGED: Check if hero has gear configured using only heroId
+// Check if hero has gear configured
 const hasGear = computed(() => {
     if (!props.hero) return false
     const gear = props.gearData[props.hero.id]
     return gear && gear.gearSet && gear.gearSet !== 'none' && gear.gearSet !== ''
 })
 
-// CHANGED: Gear set name for display using only heroId
+// Gear set name for display
 const gearSetName = computed(() => {
     if (!hasGear.value) return ''
 
@@ -160,55 +165,58 @@ const gearSetName = computed(() => {
     return gear?.gearSetName || 'Unknown Set'
 })
 
-// CHANGED: Gear display styling based on gear set using only heroId
+// Gear display styling - DISTINCT COLORS for each gear type
 const gearDisplayClass = computed(() => {
     if (!hasGear.value) return ''
 
     const gear = props.gearData[props.hero.id]
 
-    if (!gear || !gear.gearSet) return 'bg-velaris-amber/20 border-velaris-amber/40'
+    if (!gear || !gear.gearSet) return 'bg-slate-500/10 border-slate-500/30'
 
     const gearSetStyles = {
-        'titans-might': 'bg-red-500/20 border-red-500/40',
-        'fury-of-blood': 'bg-amber-500/20 border-amber-500/40',
-        'glory-of-knight': 'bg-purple-500/20 border-purple-500/40'
+        'titans_might': 'bg-gradient-to-r from-red-500/15 to-rose-500/15 border-red-500/40 shadow-red-500/10',
+        'fury_of_blood': 'bg-gradient-to-r from-orange-500/15 to-amber-500/15 border-orange-500/40 shadow-orange-500/10',
+        'glory_of_knight': 'bg-gradient-to-r from-purple-500/15 to-indigo-500/15 border-purple-500/40 shadow-purple-500/10'
     }
 
-    return gearSetStyles[gear.gearSet] || 'bg-velaris-amber/20 border-velaris-amber/40'
+    return gearSetStyles[gear.gearSet] || 'bg-slate-500/10 border-slate-500/30'
 })
 
-// CHANGED: Gear tooltip using only heroId
-const gearTooltip = computed(() => {
-    if (!props.hero) return 'Configure Gear'
+// Gear icon background color
+const gearIconBackground = computed(() => {
+    if (!hasGear.value) return 'bg-gradient-to-br from-velaris-purple to-velaris-teal'
 
     const gear = props.gearData[props.hero.id]
 
-    if (hasGear.value) {
-        const gearSetName = gear.gearSetName || 'Unknown Set'
-        return `${gearSetName}`
-    }
-
-    return 'Configure Gear'
-})
-
-// CHANGED: Gear indicator styling based on gear set using only heroId
-const gearIndicatorClass = computed(() => {
-    if (!hasGear.value) return ''
-
-    const gear = props.gearData[props.hero.id]
-
-    if (!gear || !gear.gearSet) return 'bg-velaris-amber'
+    if (!gear || !gear.gearSet) return 'bg-gradient-to-br from-slate-500 to-slate-600'
 
     const gearSetColors = {
-        'titans-might': 'bg-red-500',
-        'fury-of-blood': 'bg-amber-500',
-        'glory-of-knight': 'bg-purple-500'
+        'titans_might': 'bg-gradient-to-br from-red-500 to-rose-600',
+        'fury_of_blood': 'bg-gradient-to-br from-orange-500 to-amber-600',
+        'glory_of_knight': 'bg-gradient-to-br from-purple-500 to-indigo-600'
     }
 
-    return gearSetColors[gear.gearSet] || 'bg-velaris-amber'
+    return gearSetColors[gear.gearSet] || 'bg-gradient-to-br from-slate-500 to-slate-600'
 })
 
-// CHANGED: Gear set icon using only heroId
+// Gear text color
+const gearTextColor = computed(() => {
+    if (!hasGear.value) return 'text-foreground'
+
+    const gear = props.gearData[props.hero.id]
+
+    if (!gear || !gear.gearSet) return 'text-foreground'
+
+    const gearSetTextColors = {
+        'titans_might': 'text-red-400',
+        'fury_of_blood': 'text-orange-400',
+        'glory_of_knight': 'text-purple-400'
+    }
+
+    return gearSetTextColors[gear.gearSet] || 'text-foreground'
+})
+
+// Gear set icon
 const gearSetIcon = computed(() => {
     if (!hasGear.value) return Zap
 
@@ -217,9 +225,9 @@ const gearSetIcon = computed(() => {
     if (!gear || !gear.gearSet) return Zap
 
     const gearSetIcons = {
-        'titans-might': Sword,
-        'fury-of-blood': Crown,
-        'glory-of-knight': Zap
+        'titans_might': Sword,      // Attack - Sword
+        'fury_of_blood': Shield,    // Defense - Shield
+        'glory_of_knight': Crown    // Balanced - Crown
     }
 
     return gearSetIcons[gear.gearSet] || Zap
@@ -248,14 +256,19 @@ const factionGradient = computed(() => {
     return gradients[props.hero.faction] || 'bg-gradient-to-br from-velaris-purple to-velaris-teal'
 })
 
+const factionName = computed(() => {
+    if (!props.hero) return ''
+    return props.store.getFactionById(props.hero.faction)?.name || props.hero.faction
+})
+
 const rarityDotClass = computed(() => {
     if (!props.hero) return ''
 
     const classes = {
-        MY: 'bg-red-500',
-        LE: 'bg-yellow-500',
-        EP: 'bg-purple-500',
-        RA: 'bg-blue-500'
+        mythic: 'bg-red-500',
+        legendary: 'bg-yellow-500',
+        epic: 'bg-purple-500',
+        rare: 'bg-blue-500'
     }
     return classes[props.hero.rarity] || 'bg-slate-500'
 })
@@ -263,11 +276,19 @@ const rarityDotClass = computed(() => {
 const displayTags = computed(() => {
     if (!props.hero) return []
 
-    if (props.hero.tagNames) {
+    // First check if tagNames are already stored (denormalized)
+    if (props.hero.tagNames?.length) {
         return props.hero.tagNames
     }
-    // Fallback for raw tag IDs
-    return props.hero.tags || []
+
+    // Otherwise look up tag names from store using tag IDs
+    if (props.hero.tags?.length && props.store) {
+        return props.hero.tags
+            .map(tagId => props.store.getTagById(tagId)?.name || tagId)
+            .filter(Boolean)
+    }
+
+    return []
 })
 
 // Drag and drop event handlers

@@ -82,6 +82,22 @@ export default [
         },
     },
     {
+        path: '/topheroes/queues/user',
+        name: 'TopHeroesQueuesUser',
+        component: () => import('@/pages/topheroes/MyQueues.vue'),
+        meta: {
+            requiresAuth: false,
+            role: null,
+            title: 'Queues',
+            drawerRanking: 0,
+            drawerVisible: false,
+            layout: 'default',
+            description: 'Guides and event walkthroughs for TopHeroes.',
+            badge: '',
+            requiresOverlay: true,
+        },
+    },
+    {
         path: '/topheroes/velaris',
         name: 'TopHeroes - Velaris',
         component: () => import('@/pages/topheroes/velaris/TH_VelarisHome.vue'),

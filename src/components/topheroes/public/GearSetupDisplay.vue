@@ -1,104 +1,85 @@
 <!-- components/topheroes/public/GearSetupDisplay.vue -->
 <template>
-    <div v-if="hasAnyGear" class="space-y-4">
-        <!-- Gear Sets Summary -->
-        <div v-for="gearSet in uniqueGearSets" :key="gearSet.id"
-            class="p-4 bg-gradient-to-br from-velaris-amber/10 to-velaris-amber/5 border border-velaris-amber/20 rounded-lg">
+    <div class="bg-card border border-border rounded-xl p-6">
+        <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
+            <Crown class="h-5 w-5 text-velaris-amber" />
+            Gear Sets
+        </h3>
 
-            <!-- Gear Set Header -->
-            <div class="flex items-center gap-3 mb-4">
-                <div class="h-12 w-12 rounded-full flex items-center justify-center"
-                    :class="getGearSetColor(gearSet.id)">
-                    <component :is="getGearSetIcon(gearSet.id)" class="h-6 w-6 text-white" />
-                </div>
-                <div>
-                    <h4 class="font-semibold">{{ gearSet.name }}</h4>
-                    <p class="text-xs text-foreground/60">{{ gearSet.heroCount }} hero{{ gearSet.heroCount > 1 ? 'es' :
-                        '' }} equipped</p>
-                </div>
-            </div>
+        <div v-if="hasAnyGear" class="space-y-3">
+            <!-- Gear Set Summary -->
+            <div v-for="gearSet in uniqueGearSets" :key="gearSet.id"
+                class="p-3 bg-gradient-to-br from-velaris-amber/10 to-velaris-amber/5 border border-velaris-amber/20 rounded-lg">
 
-            <!-- Tier Bonuses -->
-            <div class="space-y-2">
-                <div v-for="tier in [2, 4, 6]" :key="tier" :class="[
-                    'p-3 rounded-lg border transition-all duration-200',
-                    gearSet.heroCount >= tier
-                        ? 'bg-emerald-500/10 border-emerald-500/30'
-                        : 'bg-foreground/5 border-border/50 opacity-50'
-                ]">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="text-xs font-semibold"
-                            :class="gearSet.heroCount >= tier ? 'text-emerald-400' : 'text-foreground/60'">
-                            {{ tier }}-Piece Set Bonus
-                        </span>
-                        <span v-if="gearSet.heroCount >= tier"
-                            class="px-2 py-0.5 text-xs rounded-full bg-emerald-500/20 text-emerald-400 font-semibold">
-                            Active
-                        </span>
-                        <span v-else class="text-xs text-foreground/40">
-                            {{ gearSet.heroCount }}/{{ tier }}
-                        </span>
+                <!-- Gear Set Header -->
+                <div class="flex items-center gap-2 mb-2">
+                    <div class="h-8 w-8 rounded-lg flex items-center justify-center"
+                        :class="getGearSetColor(gearSet.id)">
+                        <component :is="getGearSetIcon(gearSet.id)" class="h-4 w-4 text-white" />
                     </div>
-                    <div class="text-xs"
-                        :class="gearSet.heroCount >= tier ? 'text-foreground/80' : 'text-foreground/40'">
-                        {{ getGearSetBonus(gearSet.id, tier) }}
+                    <div class="flex-1">
+                        <h4 class="font-semibold text-sm">{{ gearSet.name }}</h4>
+                        <p class="text-xs text-foreground/60">
+                            {{ gearSet.heroCount }} hero{{ gearSet.heroCount > 1 ? 'es' : '' }}
+                        </p>
                     </div>
                 </div>
-            </div>
 
-            <!-- Heroes with this gear -->
-            <div class="mt-4 pt-3 border-t border-border/30">
-                <p class="text-xs text-foreground/60 mb-2">Equipped on:</p>
-                <div class="flex flex-wrap gap-2">
-                    <div v-for="heroName in gearSet.heroes" :key="heroName"
-                        class="px-2 py-1 text-xs rounded-lg bg-foreground/10 text-foreground/70 font-medium">
-                        {{ heroName }}
+                <!-- Gear Description -->
+                <div v-if="gearSet.gearData?.description" class="text-xs text-foreground/60 italic mb-2">
+                    {{ gearSet.gearData.description }}
+                </div>
+
+                <!-- Gear Levels/Tiers -->
+                <div v-if="gearSet.gearData?.levels" class="mt-2 pt-2 border-t border-border/30 space-y-2">
+                    <div v-for="level in gearSet.gearData.levels" :key="level.tier" class="p-2 rounded border"
+                        :class="getGearTierClasses(gearSet.id)">
+                        <div class="font-medium text-xs mb-1" :class="getGearTierTextClass(gearSet.id)">
+                            {{ level.name }}
+                        </div>
+                        <div v-for="stat in level.stats" :key="stat"
+                            class="flex items-center gap-1 text-xs text-foreground/70">
+                            <Zap class="h-2.5 w-2.5 flex-shrink-0" :class="getGearTierIconClass(gearSet.id)" />
+                            <span>{{ stat }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Heroes List -->
+                <div class="mt-2 pt-2 border-t border-border/30">
+                    <p class="text-xs text-foreground/60 mb-1">Equipped on:</p>
+                    <div class="flex flex-wrap gap-1">
+                        <div v-for="heroName in gearSet.heroes" :key="heroName"
+                            class="px-1.5 py-0.5 text-xs rounded bg-foreground/10 text-foreground/70">
+                            {{ heroName }}
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- No Gear Configured -->
-    <div v-else class="text-center py-8">
-        <Settings class="h-12 w-12 mx-auto mb-3 text-foreground/30" />
-        <p class="text-sm text-foreground/60">No gear configured for this queue</p>
+        <!-- No Gear Configured -->
+        <div v-else class="text-center py-6">
+            <Crown class="h-8 w-8 mx-auto mb-2 text-foreground/30" />
+            <p class="text-xs text-foreground/60">No gear configured</p>
+        </div>
     </div>
 </template>
 
 <script setup>
 import { computed } from 'vue'
-import { Settings, Zap, Crown, Sword, Shield } from 'lucide-vue-next'
+import { Crown, Zap, Sword, Shield } from 'lucide-vue-next'
 
 const props = defineProps({
     queue: {
         type: Object,
         required: true
     },
-    heroes: {
-        type: Array,
+    store: {
+        type: Object,
         required: true
     }
 })
-
-// Gear set bonuses database
-const gearSetBonuses = {
-    'titans-might': {
-        2: '+15% Attack Power',
-        4: '+25% Attack Power, +10% Critical Hit Rate',
-        6: '+40% Attack Power, +20% Critical Hit Rate, +15% Penetration'
-    },
-    'fury-of-blood': {
-        2: '+20% Health',
-        4: '+35% Health, +15% Defense',
-        6: '+50% Health, +25% Defense, +20% Damage Reduction'
-    },
-    'glory-of-knight': {
-        2: '+15% Attack Speed',
-        4: '+25% Attack Speed, +10% Critical Damage',
-        6: '+40% Attack Speed, +20% Critical Damage, +15% Lifesteal'
-    }
-}
 
 // Computed
 const gearByHero = computed(() => {
@@ -107,7 +88,7 @@ const gearByHero = computed(() => {
     const result = {}
 
     Object.entries(props.queue.gearData).forEach(([heroId, gearData]) => {
-        const hero = props.heroes.find(h => h.id === heroId)
+        const hero = props.store.getHeroById(heroId)
         if (!hero) return
 
         const heroEntry = props.queue.heroes?.find(h => h.heroId === heroId)
@@ -128,11 +109,15 @@ const uniqueGearSets = computed(() => {
 
     Object.values(gearByHero.value).forEach(({ hero, gear }) => {
         if (!gearSets[gear.gearSet]) {
+            // Get gear data from store
+            const gearData = props.store.getGearById(gear.gearSet)
+
             gearSets[gear.gearSet] = {
                 id: gear.gearSet,
-                name: gear.gearSetName,
+                name: gear.gearSetName || gearData?.name || 'Unknown Gear',
                 heroCount: 0,
-                heroes: []
+                heroes: [],
+                gearData: gearData
             }
         }
         gearSets[gear.gearSet].heroCount++
@@ -147,23 +132,46 @@ const hasAnyGear = computed(() => Object.keys(gearByHero.value).length > 0)
 // Methods
 const getGearSetColor = (gearSet) => {
     const colors = {
-        'titans-might': 'bg-gradient-to-br from-red-500 to-red-600',
-        'fury-of-blood': 'bg-gradient-to-br from-amber-500 to-amber-600',
-        'glory-of-knight': 'bg-gradient-to-br from-purple-500 to-purple-600'
+        'titans_might': 'bg-gradient-to-br from-red-500 to-red-600',
+        'fury_of_blood': 'bg-gradient-to-br from-amber-500 to-amber-600',
+        'glory_of_knight': 'bg-gradient-to-br from-purple-500 to-purple-600'
     }
     return colors[gearSet] || 'bg-gradient-to-br from-velaris-amber to-yellow-600'
 }
 
 const getGearSetIcon = (gearSet) => {
     const icons = {
-        'titans-might': Sword,
-        'fury-of-blood': Shield,
-        'glory-of-knight': Zap
+        'titans_might': Sword,
+        'fury_of_blood': Shield,
+        'glory_of_knight': Zap
     }
     return icons[gearSet] || Crown
 }
 
-const getGearSetBonus = (gearSet, tier) => {
-    return gearSetBonuses[gearSet]?.[tier] || `+${tier * 10}% bonus stats`
+const getGearTierClasses = (gearSet) => {
+    const classes = {
+        'titans_might': 'bg-red-500/5 border-red-500/10',
+        'fury_of_blood': 'bg-amber-500/5 border-amber-500/10',
+        'glory_of_knight': 'bg-purple-500/5 border-purple-500/10'
+    }
+    return classes[gearSet] || 'bg-velaris-amber/5 border-velaris-amber/10'
+}
+
+const getGearTierTextClass = (gearSet) => {
+    const classes = {
+        'titans_might': 'text-red-400',
+        'fury_of_blood': 'text-amber-400',
+        'glory_of_knight': 'text-purple-400'
+    }
+    return classes[gearSet] || 'text-velaris-amber'
+}
+
+const getGearTierIconClass = (gearSet) => {
+    const classes = {
+        'titans_might': 'text-red-400',
+        'fury_of_blood': 'text-amber-400',
+        'glory_of_knight': 'text-purple-400'
+    }
+    return classes[gearSet] || 'text-velaris-amber'
 }
 </script>

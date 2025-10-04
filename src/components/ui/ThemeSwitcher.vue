@@ -1,7 +1,7 @@
 <!-- components/ui/ThemeSwitcher.vue -->
 <template>
     <button @click="toggleTheme"
-        class="fixed top-4 right-4 z-50 p-3 bg-card border border-border rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
+        class="fixed top-3 right-3 z-50 p-3 bg-card border border-border rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
         :title="isDark ? 'Switch to light mode' : 'Switch to dark mode'">
         <component :is="isDark ? Sun : Moon" class="h-5 w-5 text-foreground" />
     </button>

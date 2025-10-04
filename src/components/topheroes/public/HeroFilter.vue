@@ -1,57 +1,57 @@
 <!-- components/topheroes/public/HeroFilter.vue -->
 <template>
-    <div class="space-y-4">
+    <div class="space-y-3">
         <!-- Quick Search -->
         <div class="relative">
             <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground/50" />
             <input v-model="heroSearch" type="search" placeholder="Search heroes..."
-                class="w-full pl-10 pr-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-velaris-purple/50 transition-all text-sm" />
+                class="w-full pl-9 pr-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-velaris-purple/50 transition-all text-sm" />
         </div>
 
         <!-- Faction Tabs -->
-        <div class="flex gap-2 border-b border-border">
+        <div class="flex gap-1 border-b border-border">
             <button v-for="faction in factionTabs" :key="faction.id" @click="activeFaction = faction.id" :class="[
-                'px-4 py-2 text-sm font-medium transition-all border-b-2',
+                'flex-1 px-2 py-2 text-xs font-medium transition-all border-b-2 flex items-center justify-center gap-1',
                 activeFaction === faction.id
                     ? 'border-current ' + faction.color
                     : 'border-transparent text-foreground/60 hover:text-foreground'
             ]">
-                <component :is="faction.icon" class="h-4 w-4 inline mr-2" />
-                {{ faction.name }}
+                <component :is="faction.icon" class="h-3 w-3" />
+                <span class="hidden sm:inline">{{ faction.name }}</span>
             </button>
         </div>
 
         <!-- Hero Grid -->
-        <div class="max-h-96 overflow-y-auto p-4 bg-background rounded-lg border border-border">
-            <div v-if="filteredHeroes.length === 0" class="text-center py-8 text-foreground/60">
-                <Users class="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p class="text-sm">No heroes found</p>
+        <div class="max-h-[500px] overflow-y-auto p-3 bg-background rounded-lg border border-border">
+            <div v-if="filteredHeroes.length === 0" class="text-center py-6 text-foreground/60">
+                <Users class="h-6 w-6 mx-auto mb-2 opacity-50" />
+                <p class="text-xs">No heroes found</p>
             </div>
 
-            <div v-else class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+            <div v-else class="grid grid-cols-3 gap-2">
                 <button v-for="hero in filteredHeroes" :key="hero.id" @click="toggleHero(hero.id)" :class="[
-                    'relative p-3 rounded-lg border-2 transition-all duration-200 text-left',
+                    'relative p-2 rounded-lg border-2 transition-all duration-200 text-left group',
                     isSelected(hero.id)
-                        ? 'border-velaris-purple bg-velaris-purple/10 shadow-lg'
+                        ? 'border-velaris-purple bg-velaris-purple/10 shadow-md'
                         : 'border-border hover:border-velaris-purple/50 bg-card hover:bg-foreground/5'
                 ]">
                     <!-- Selected Checkmark -->
                     <div v-if="isSelected(hero.id)"
-                        class="absolute top-1 right-1 h-5 w-5 bg-velaris-purple rounded-full flex items-center justify-center">
-                        <Check class="h-3 w-3 text-white" />
+                        class="absolute -top-1 -right-1 h-4 w-4 bg-velaris-purple rounded-full flex items-center justify-center shadow-lg">
+                        <Check class="h-2.5 w-2.5 text-white" />
                     </div>
 
                     <!-- Hero Avatar -->
-                    <div class="h-12 w-12 rounded-lg flex items-center justify-center text-white text-sm font-bold mx-auto mb-2"
+                    <div class="h-10 w-10 rounded-md flex items-center justify-center text-white text-xs font-bold mx-auto mb-1.5"
                         :class="getFactionGradient(hero.faction)">
                         {{ hero.name.charAt(0) }}
                     </div>
 
                     <!-- Hero Name -->
                     <div class="text-center">
-                        <p class="text-xs font-medium truncate" :title="hero.name">{{ hero.name }}</p>
-                        <div class="flex items-center justify-center gap-1 mt-1">
-                            <div class="w-2 h-2 rounded-full" :class="getRarityDotClass(hero.rarity)"></div>
+                        <p class="text-[10px] font-medium truncate leading-tight" :title="hero.name">{{ hero.name }}</p>
+                        <div class="flex items-center justify-center mt-1">
+                            <div class="w-1.5 h-1.5 rounded-full" :class="getRarityDotClass(hero.rarity)"></div>
                         </div>
                     </div>
                 </button>
@@ -60,14 +60,14 @@
 
         <!-- Selected Summary -->
         <div v-if="selectedHeroes.length > 0"
-            class="flex items-center justify-between p-3 bg-velaris-purple/10 border border-velaris-purple/30 rounded-lg">
-            <div class="flex items-center gap-2 text-sm">
-                <Users class="h-4 w-4 text-velaris-purple" />
-                <span class="font-medium text-velaris-purple">{{ selectedHeroes.length }} heroes selected</span>
+            class="flex items-center justify-between p-2.5 bg-velaris-purple/10 border border-velaris-purple/30 rounded-lg">
+            <div class="flex items-center gap-2 text-xs">
+                <Users class="h-3.5 w-3.5 text-velaris-purple" />
+                <span class="font-medium text-velaris-purple">{{ selectedHeroes.length }} selected</span>
             </div>
             <button @click="clearAll"
                 class="text-xs text-velaris-purple hover:text-velaris-teal transition-colors font-medium">
-                Clear All
+                Clear
             </button>
         </div>
     </div>
@@ -96,7 +96,7 @@ const activeFaction = ref('all')
 
 // Faction tabs configuration
 const factionTabs = [
-    { id: 'all', name: 'All Heroes', icon: Users, color: 'text-velaris-purple' },
+    { id: 'all', name: 'All', icon: Users, color: 'text-velaris-purple' },
     { id: 'nature', name: 'Nature', icon: Leaf, color: 'text-nature-green' },
     { id: 'horde', name: 'Horde', icon: Flame, color: 'text-horde-red' },
     { id: 'league', name: 'League', icon: Shield, color: 'text-league-blue' }
@@ -121,7 +121,7 @@ const filteredHeroes = computed(() => {
     }
 
     // Sort by rarity then name
-    const rarityOrder = { 'MY': 0, 'LE': 1, 'EP': 2, 'RA': 3 }
+    const rarityOrder = { 'mythic': 0, 'legendary': 1, 'epic': 2, 'rare': 3 }
     return filtered.sort((a, b) => {
         const rarityDiff = rarityOrder[a.rarity] - rarityOrder[b.rarity]
         if (rarityDiff !== 0) return rarityDiff
@@ -157,10 +157,10 @@ const getFactionGradient = (faction) => {
 
 const getRarityDotClass = (rarity) => {
     const classes = {
-        MY: 'bg-red-500',
-        LE: 'bg-yellow-500',
-        EP: 'bg-purple-500',
-        RA: 'bg-blue-500'
+        mythic: 'bg-red-500',
+        legendary: 'bg-yellow-500',
+        epic: 'bg-purple-500',
+        rare: 'bg-blue-500'
     }
     return classes[rarity] || 'bg-slate-500'
 }

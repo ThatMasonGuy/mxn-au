@@ -3,7 +3,7 @@
     <div class="bg-card border border-border rounded-xl p-6">
         <h2 class="text-xl font-semibold mb-6 flex items-center gap-2">
             <MessageSquare class="h-5 w-5 text-velaris-purple" />
-            Comments ({{ comments.length }})
+            Comments ({{ totalCommentsCount }})
         </h2>
 
         <!-- Add Comment Form -->
@@ -105,7 +105,7 @@ const newComment = ref({
 const isLoading = ref(true)
 const isSubmitting = ref(false)
 const showReportModal = ref(false)
-const commentToReport = ref(null)
+const reportData = ref(null) // Changed from commentToReport to reportData
 const selectedReason = ref('')
 const isReporting = ref(false)
 
@@ -119,6 +119,14 @@ const reportReasons = [
 
 // Computed
 const comments = computed(() => publicStore.comments[props.queueId] || [])
+
+const totalCommentsCount = computed(() => {
+    let count = comments.value.length
+    comments.value.forEach(comment => {
+        count += comment.replyCount || 0
+    })
+    return count
+})
 
 const sortedComments = computed(() => {
     return [...comments.value].sort((a, b) => {
@@ -177,29 +185,35 @@ const handleReply = (commentId) => {
     // This will be handled by CommentItem component
 }
 
-const handleReport = (commentId) => {
-    commentToReport.value = commentId
+const handleReport = (data) => {
+    reportData.value = data
     selectedReason.value = ''
     showReportModal.value = true
 }
 
 const closeReportModal = () => {
     showReportModal.value = false
-    commentToReport.value = null
+    reportData.value = null
     selectedReason.value = ''
 }
 
 const submitReport = async () => {
-    if (!selectedReason.value || !commentToReport.value || isReporting.value) return
+    if (!selectedReason.value || !reportData.value || isReporting.value) return
 
     isReporting.value = true
     try {
-        await publicStore.reportComment(props.queueId, commentToReport.value, selectedReason.value)
+        await publicStore.reportComment(
+            props.queueId,
+            reportData.value.id,
+            selectedReason.value,
+            reportData.value.isReply,
+            reportData.value.commentId
+        )
 
         closeReportModal()
 
         // Show success feedback
-        alert('Thank you for your report. We will review this comment.')
+        alert('Thank you for your report. We will review this content.')
     } catch (error) {
         console.error('Failed to report comment:', error)
         alert('Failed to submit report. Please try again.')

@@ -20,7 +20,7 @@
                 {{ hero.name }}
             </p>
             <p class="text-xs text-foreground/60">
-                {{ hero.factionName || factionName }}
+                {{ factionName }}
             </p>
 
             <!-- Tags (max 2) -->
@@ -45,10 +45,13 @@
 
 <script setup>
 import { computed } from 'vue'
-import { Plus, Flame, Leaf, Shield } from 'lucide-vue-next'
 
 const props = defineProps({
     hero: {
+        type: Object,
+        required: true
+    },
+    store: {
         type: Object,
         required: true
     }
@@ -68,10 +71,10 @@ const factionCardClass = computed(() => {
 
 const rarityGlow = computed(() => {
     const glows = {
-        MY: 'hover:shadow-lg hover:shadow-red-500/20',      // Mythic
-        LE: 'hover:shadow-lg hover:shadow-yellow-500/20',   // Legendary
-        EP: 'hover:shadow-lg hover:shadow-purple-500/20',   // Epic
-        RA: 'hover:shadow-lg hover:shadow-blue-500/20'      // Rare
+        mythic: 'hover:shadow-lg hover:shadow-red-500/20',
+        legendary: 'hover:shadow-lg hover:shadow-yellow-500/20',
+        epic: 'hover:shadow-lg hover:shadow-purple-500/20',
+        rare: 'hover:shadow-lg hover:shadow-blue-500/20'
     }
     return glows[props.hero.rarity] || 'hover:shadow-lg'
 })
@@ -87,29 +90,33 @@ const factionGradient = computed(() => {
 
 const rarityDotClass = computed(() => {
     const classes = {
-        MY: 'bg-red-500 shadow-red-500/50',      // Mythic
-        LE: 'bg-yellow-500 shadow-yellow-500/50', // Legendary
-        EP: 'bg-purple-500 shadow-purple-500/50', // Epic
-        RA: 'bg-blue-500 shadow-blue-500/50'     // Rare
+        mythic: 'bg-red-500 shadow-red-500/50',
+        legendary: 'bg-yellow-500 shadow-yellow-500/50',
+        epic: 'bg-purple-500 shadow-purple-500/50',
+        rare: 'bg-blue-500 shadow-blue-500/50'
     }
     return classes[props.hero.rarity] || 'bg-slate-500'
 })
 
 const factionName = computed(() => {
-    const names = {
-        nature: 'Nature',
-        horde: 'Horde',
-        league: 'League'
-    }
-    return names[props.hero.faction] || props.hero.faction
+    // Use store lookup for faction name
+    return props.store.getFactionById(props.hero.faction)?.name || props.hero.faction
 })
 
 const displayTags = computed(() => {
-    if (props.hero.tagNames) {
+    // First check if tagNames are already stored (denormalized)
+    if (props.hero.tagNames?.length) {
         return props.hero.tagNames
     }
-    // Fallback for raw tag IDs
-    return props.hero.tags || []
+
+    // Otherwise look up tag names from store using tag IDs
+    if (props.hero.tags?.length && props.store) {
+        return props.hero.tags
+            .map(tagId => props.store.getTagById(tagId)?.name || tagId)
+            .filter(Boolean)
+    }
+
+    return []
 })
 </script>
 

@@ -176,9 +176,9 @@
                             class="hero-showcase-card group cursor-pointer" :class="[
                                 faction === 'nature' ? 'hero-card-nature' :
                                     faction === 'horde' ? 'hero-card-horde' : 'hero-card-league',
-                                hero.rarity === 'MY' ? 'rarity-mythic' :
-                                    hero.rarity === 'LE' ? 'rarity-legendary' :
-                                        hero.rarity === 'EP' ? 'rarity-epic' : 'rarity-rare'
+                                hero.rarity === 'mythic' ? 'rarity-mythic' :
+                                    hero.rarity === 'legendary' ? 'rarity-legendary' :
+                                        hero.rarity === 'epic' ? 'rarity-epic' : 'rarity-rare'
                             ]" @click="selectHero(hero)">
 
                             <!-- Hero Avatar -->
@@ -252,9 +252,9 @@
                         class="hero-showcase-card group cursor-pointer" :class="[
                             hero.faction === 'nature' ? 'hero-card-nature' :
                                 hero.faction === 'horde' ? 'hero-card-horde' : 'hero-card-league',
-                            hero.rarity === 'MY' ? 'rarity-mythic' :
-                                hero.rarity === 'LE' ? 'rarity-legendary' :
-                                    hero.rarity === 'EP' ? 'rarity-epic' : 'rarity-rare'
+                            hero.rarity === 'mythic' ? 'rarity-mythic' :
+                                hero.rarity === 'legendary' ? 'rarity-legendary' :
+                                    hero.rarity === 'epic' ? 'rarity-epic' : 'rarity-rare'
                         ]" @click="selectHero(hero)">
 
                         <!-- Hero Avatar -->
@@ -823,7 +823,7 @@ const getFilteredHeroesByFaction = (faction) => {
     const factionHeroes = filteredHeroes.value.filter(hero => hero.faction === faction)
 
     // Sort by rarity (Mythic -> Legendary -> Epic -> Rare), then by name
-    const rarityOrder = { 'MY': 0, 'LE': 1, 'EP': 2, 'RA': 3 }
+    const rarityOrder = { 'mythic': 0, 'legendary': 1, 'epic': 2, 'rare': 3 }
 
     return factionHeroes.sort((a, b) => {
         const rarityDiff = rarityOrder[a.rarity] - rarityOrder[b.rarity]
@@ -833,7 +833,7 @@ const getFilteredHeroesByFaction = (faction) => {
 }
 
 const getMixedSortedHeroes = computed(() => {
-    const rarityOrder = { 'MY': 0, 'LE': 1, 'EP': 2, 'RA': 3 }
+    const rarityOrder = { 'mythic': 0, 'legendary': 1, 'epic': 2, 'rare': 3 }
     const factionOrder = { 'league': 0, 'nature': 1, 'horde': 2 }
 
     return filteredHeroes.value.sort((a, b) => {
@@ -867,7 +867,7 @@ const availableHeroes = computed(() => {
     )
 
     // Sort by faction priority (dominant first), then by rarity (Mythic to Rare)
-    const rarityOrder = { 'MY': 0, 'LE': 1, 'EP': 2, 'RA': 3 }
+    const rarityOrder = { 'mythic': 0, 'legendary': 1, 'epic': 2, 'rare': 3 }
 
     return available.sort((a, b) => {
         // First, prioritize dominant faction
@@ -941,40 +941,40 @@ const getFactionGradient = (faction) => {
 
 const getRarityColor = (rarity) => {
     const colors = {
-        MY: 'bg-red-500/15 text-red-400 border-red-500/30',      // Mythic = Red
-        LE: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30',  // Legendary = Yellow
-        EP: 'bg-purple-500/15 text-purple-400 border-purple-500/30',  // Epic = Purple
-        RA: 'bg-blue-500/15 text-blue-400 border-blue-500/30'        // Rare = Blue
+        mythic: 'bg-red-500/15 text-red-400 border-red-500/30',      // Mythic = Red
+        legendary: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30',  // Legendary = Yellow
+        epic: 'bg-purple-500/15 text-purple-400 border-purple-500/30',  // Epic = Purple
+        rare: 'bg-blue-500/15 text-blue-400 border-blue-500/30'        // Rare = Blue
     }
     return colors[rarity] || 'bg-foreground/10 text-foreground border-border'
 }
 
 const getRarityIcon = (rarity) => {
     const icons = {
-        MY: Crown,     // Mythic
-        LE: Star,      // Legendary  
-        EP: Gem,       // Epic
-        RA: Hexagon    // Rare
+        mythic: Crown,     // Mythic
+        legendary: Star,      // Legendary  
+        epic: Gem,       // Epic
+        rare: Hexagon    // Rare
     }
     return icons[rarity] || Star
 }
 
 const getRarityGemClass = (rarity) => {
     const classes = {
-        MY: 'bg-gradient-to-br from-red-500 to-red-600',
-        LE: 'bg-gradient-to-br from-yellow-500 to-yellow-600',
-        EP: 'bg-gradient-to-br from-purple-500 to-purple-600',
-        RA: 'bg-gradient-to-br from-blue-500 to-blue-600'
+        mythic: 'bg-gradient-to-br from-red-500 to-red-600',
+        legendary: 'bg-gradient-to-br from-yellow-500 to-yellow-600',
+        epic: 'bg-gradient-to-br from-purple-500 to-purple-600',
+        rare: 'bg-gradient-to-br from-blue-500 to-blue-600'
     }
     return classes[rarity] || 'bg-gradient-to-br from-slate-500 to-slate-600'
 }
 
 const getRarityBadgeClass = (rarity) => {
     const classes = {
-        MY: 'bg-gradient-to-r from-red-500/20 to-red-600/20 text-red-400 border border-red-500/30',
-        LE: 'bg-gradient-to-r from-yellow-500/20 to-yellow-600/20 text-yellow-400 border border-yellow-500/30',
-        EP: 'bg-gradient-to-r from-purple-500/20 to-purple-600/20 text-purple-400 border border-purple-500/30',
-        RA: 'bg-gradient-to-r from-blue-500/20 to-blue-600/20 text-blue-400 border border-blue-500/30'
+        mythic: 'bg-gradient-to-r from-red-500/20 to-red-600/20 text-red-400 border border-red-500/30',
+        legendary: 'bg-gradient-to-r from-yellow-500/20 to-yellow-600/20 text-yellow-400 border border-yellow-500/30',
+        epic: 'bg-gradient-to-r from-purple-500/20 to-purple-600/20 text-purple-400 border border-purple-500/30',
+        rare: 'bg-gradient-to-r from-blue-500/20 to-blue-600/20 text-blue-400 border border-blue-500/30'
     }
     return classes[rarity] || 'bg-foreground/10 text-foreground border-border'
 }
@@ -999,10 +999,10 @@ const getFactionCardBg = (faction) => {
 
 const getRarityShadow = (rarity) => {
     const shadows = {
-        MY: 'shadow-lg shadow-red-500/20 hover:shadow-xl hover:shadow-red-500/30',
-        LE: 'shadow-lg shadow-yellow-500/20 hover:shadow-xl hover:shadow-yellow-500/30',
-        EP: 'shadow-lg shadow-purple-500/20 hover:shadow-xl hover:shadow-purple-500/30',
-        RA: 'shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/30'
+        mythic: 'shadow-lg shadow-red-500/20 hover:shadow-xl hover:shadow-red-500/30',
+        legendary: 'shadow-lg shadow-yellow-500/20 hover:shadow-xl hover:shadow-yellow-500/30',
+        epic: 'shadow-lg shadow-purple-500/20 hover:shadow-xl hover:shadow-purple-500/30',
+        rare: 'shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/30'
     }
     return shadows[rarity] || 'shadow-lg shadow-foreground/10'
 }
@@ -1087,7 +1087,7 @@ const getFactionBonus = (team) => {
 
 const getTeamPower = (team) => {
     const teamHeroes = Object.values(team).filter(Boolean)
-    const rarityPower = { MY: 1000, LE: 750, EP: 500, RA: 250 }
+    const rarityPower = { mythic: 1000, legendary: 750, epic: 500, rare: 250 }
     return teamHeroes.reduce((total, hero) => total + (rarityPower[hero.rarity] || 0), 0)
 }
 
