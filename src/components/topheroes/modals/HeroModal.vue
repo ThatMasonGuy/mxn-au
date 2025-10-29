@@ -1,41 +1,41 @@
 <!-- components/topheroes/modals/HeroModal.vue -->
 <template>
     <Dialog :open="isOpen" @update:open="handleOpenChange">
-        <DialogContent class="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent class="max-w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto p-4 sm:p-6">
             <DialogHeader>
-                <DialogTitle>
+                <DialogTitle class="text-base sm:text-lg">
                     {{ isEditing ? 'Edit Hero' : 'Create New Hero' }}
                 </DialogTitle>
-                <DialogDescription>
+                <DialogDescription class="text-sm">
                     {{ isEditing ? 'Update hero information' : 'Add a new hero to your collection' }}
                 </DialogDescription>
             </DialogHeader>
 
-            <form @submit.prevent="saveHero" class="space-y-4">
+            <form @submit.prevent="saveHero" class="space-y-3 sm:space-y-4">
                 <!-- Basic Info -->
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div>
-                        <label class="block text-sm font-medium mb-2">Hero Name*</label>
+                        <label class="block text-xs sm:text-sm font-medium mb-1.5 sm:mb-2">Hero Name*</label>
                         <input v-model="heroForm.name" type="text" required
-                            class="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-velaris-purple/50"
+                            class="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-velaris-purple/50"
                             placeholder="e.g., Storm Maiden" />
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium mb-2">Hero ID*</label>
+                        <label class="block text-xs sm:text-sm font-medium mb-1.5 sm:mb-2">Hero ID*</label>
                         <input v-model="heroForm.id" type="text" required :disabled="isEditing"
-                            class="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-velaris-purple/50 disabled:opacity-50"
+                            class="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-velaris-purple/50 disabled:opacity-50"
                             placeholder="e.g., storm_maiden" />
                         <p class="text-xs text-foreground/60 mt-1">Lowercase with underscores</p>
                     </div>
                 </div>
 
                 <!-- Faction and Rarity -->
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div>
-                        <label class="block text-sm font-medium mb-2">Faction*</label>
+                        <label class="block text-xs sm:text-sm font-medium mb-1.5 sm:mb-2">Faction*</label>
                         <select v-model="heroForm.faction" required
-                            class="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-velaris-purple/50">
+                            class="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-velaris-purple/50">
                             <option value="">Select Faction</option>
                             <option v-for="faction in factions" :key="faction.id" :value="faction.id">
                                 {{ faction.name }}
@@ -44,9 +44,9 @@
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium mb-2">Rarity*</label>
+                        <label class="block text-xs sm:text-sm font-medium mb-1.5 sm:mb-2">Rarity*</label>
                         <select v-model="heroForm.rarity" required
-                            class="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-velaris-purple/50">
+                            class="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-velaris-purple/50">
                             <option value="">Select Rarity</option>
                             <option v-for="rarity in rarities" :key="rarity.id" :value="rarity.id">
                                 {{ rarity.name }}
@@ -57,10 +57,11 @@
 
                 <!-- Tags -->
                 <div>
-                    <label class="block text-sm font-medium mb-2">Tags</label>
-                    <div class="grid grid-cols-3 gap-2 max-h-32 overflow-y-auto border border-border rounded-lg p-3">
+                    <label class="block text-xs sm:text-sm font-medium mb-1.5 sm:mb-2">Tags</label>
+                    <div
+                        class="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-32 overflow-y-auto border border-border rounded-lg p-2 sm:p-3">
                         <label v-for="tag in tags" :key="tag.id"
-                            class="flex items-center gap-2 text-sm cursor-pointer hover:bg-foreground/5 p-1 rounded">
+                            class="flex items-center gap-2 text-xs sm:text-sm cursor-pointer hover:bg-foreground/5 p-1 rounded">
                             <input v-model="heroForm.tags" type="checkbox" :value="tag.id"
                                 class="rounded text-velaris-purple focus:ring-velaris-purple/50" />
                             <span class="truncate" :title="tag.desc">{{ tag.name }}</span>
@@ -70,31 +71,32 @@
                 </div>
 
                 <!-- Preview -->
-                <div v-if="heroForm.name && heroForm.faction && heroForm.rarity" class="p-4 bg-foreground/5 rounded-lg">
-                    <h4 class="text-sm font-medium mb-3 text-foreground/70">Preview</h4>
-                    <div class="flex items-center gap-4">
-                        <div class="h-12 w-12 rounded-xl flex items-center justify-center text-white font-bold shadow-lg"
+                <div v-if="heroForm.name && heroForm.faction && heroForm.rarity"
+                    class="p-3 sm:p-4 bg-foreground/5 rounded-lg">
+                    <h4 class="text-xs sm:text-sm font-medium mb-2 sm:mb-3 text-foreground/70">Preview</h4>
+                    <div class="flex items-center gap-3 sm:gap-4">
+                        <div class="h-10 w-10 sm:h-12 sm:w-12 rounded-xl flex items-center justify-center text-white font-bold shadow-lg flex-shrink-0"
                             :class="factionGradient">
                             {{ heroForm.name.charAt(0) }}
                         </div>
-                        <div class="flex-1">
+                        <div class="flex-1 min-w-0">
                             <div class="flex items-center gap-2 mb-1">
-                                <h5 class="font-semibold">{{ heroForm.name }}</h5>
+                                <h5 class="font-semibold text-sm sm:text-base truncate">{{ heroForm.name }}</h5>
                                 <span class="rarity-badge" :class="rarityBadgeClass">
                                     {{ selectedRarity?.name }}
                                 </span>
                             </div>
-                            <div class="flex items-center gap-2 text-sm">
-                                <component :is="factionIcon" class="h-4 w-4" :class="factionColor" />
+                            <div class="flex items-center gap-2 text-xs sm:text-sm">
+                                <component :is="factionIcon" class="h-3.5 w-3.5 sm:h-4 sm:w-4" :class="factionColor" />
                                 <span :class="factionColor">{{ selectedFaction?.name }}</span>
                             </div>
                             <div v-if="selectedTags.length > 0" class="flex flex-wrap gap-1 mt-2">
                                 <span v-for="tag in selectedTags.slice(0, 3)" :key="tag.id"
-                                    class="px-2 py-1 bg-foreground/10 rounded text-xs">
+                                    class="px-2 py-0.5 sm:py-1 bg-foreground/10 rounded text-xs">
                                     {{ tag.name }}
                                 </span>
                                 <span v-if="selectedTags.length > 3"
-                                    class="px-2 py-1 bg-velaris-purple/20 text-velaris-purple rounded text-xs">
+                                    class="px-2 py-0.5 sm:py-1 bg-velaris-purple/20 text-velaris-purple rounded text-xs">
                                     +{{ selectedTags.length - 3 }}
                                 </span>
                             </div>
@@ -103,24 +105,25 @@
                 </div>
 
                 <!-- Validation Errors -->
-                <div v-if="validationErrors.length > 0" class="p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
-                    <h4 class="text-sm font-medium text-red-400 mb-2">Please fix the following:</h4>
-                    <ul class="text-sm text-red-400 space-y-1">
+                <div v-if="validationErrors.length > 0"
+                    class="p-2.5 sm:p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+                    <h4 class="text-xs sm:text-sm font-medium text-red-400 mb-2">Please fix the following:</h4>
+                    <ul class="text-xs sm:text-sm text-red-400 space-y-1">
                         <li v-for="error in validationErrors" :key="error" class="flex items-center gap-2">
-                            <X class="h-3 w-3" />
-                            {{ error }}
+                            <X class="h-3 w-3 flex-shrink-0" />
+                            <span>{{ error }}</span>
                         </li>
                     </ul>
                 </div>
             </form>
 
-            <DialogFooter class="gap-3">
-                <Button type="button" variant="outline" @click="handleClose">
+            <DialogFooter class="gap-2 sm:gap-3 flex-col sm:flex-row mt-4 sm:mt-6">
+                <Button type="button" variant="outline" @click="handleClose" class="w-full sm:w-auto text-sm">
                     Cancel
                 </Button>
                 <Button type="submit" :disabled="!isFormValid || isSaving" @click="saveHero"
-                    class="bg-gradient-to-r from-velaris-purple to-velaris-teal">
-                    <Save class="h-4 w-4 mr-2" />
+                    class="w-full sm:w-auto bg-gradient-to-r from-velaris-purple to-velaris-teal text-sm">
+                    <Save class="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-2" />
                     <span v-if="isSaving">Saving...</span>
                     <span v-else>{{ isEditing ? 'Update Hero' : 'Create Hero' }}</span>
                 </Button>
@@ -317,6 +320,6 @@ const saveHero = async () => {
 
 <style scoped>
 .rarity-badge {
-    @apply inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold backdrop-blur-sm;
+    @apply inline-flex items-center gap-1 px-2 py-0.5 sm:py-1 rounded-full text-xs font-bold backdrop-blur-sm flex-shrink-0;
 }
 </style>

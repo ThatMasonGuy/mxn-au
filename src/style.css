@@ -901,10 +901,639 @@
     --th-surface-primary: 220 25% 9%;
     --th-text-primary: 220 15% 95%;
   }
+
+  /* ===== PROFESSIONAL THEME - Classic (Default) ===== */
+  .theme-professional-classic {
+    /* Clean, professional blue-gray palette */
+    --background: 210 20% 98%;
+    /* Very light blue-gray */
+    --foreground: 215 25% 15%;
+    /* Deep navy text */
+
+    --muted: 210 15% 92%;
+    --muted-foreground: 215 20% 40%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 25% 15%;
+
+    --card: 0 0% 100%;
+    /* Pure white cards */
+    --card-foreground: 215 25% 15%;
+
+    --border: 214 15% 88%;
+    --input: 214 15% 88%;
+
+    --primary: 217 91% 60%;
+    /* Professional blue */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 214 20% 92%;
+    --secondary-foreground: 215 25% 15%;
+
+    --accent: 199 89% 48%;
+    /* Cyan accent */
+    --accent-foreground: 0 0% 100%;
+
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --ring: 217 91% 60%;
+
+    /* Professional specific */
+    --professional-sidebar: 215 25% 15%;
+    --professional-sidebar-hover: 215 25% 20%;
+    --professional-sidebar-active: 217 91% 60%;
+  }
+
+  .dark.theme-professional-classic {
+    --background: 215 28% 12%;
+    --foreground: 210 20% 95%;
+
+    --muted: 215 25% 18%;
+    --muted-foreground: 210 15% 65%;
+
+    --popover: 215 28% 12%;
+    --popover-foreground: 210 20% 95%;
+
+    --card: 215 25% 15%;
+    --card-foreground: 210 20% 95%;
+
+    --border: 215 20% 22%;
+    --input: 215 20% 22%;
+
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 215 25% 18%;
+    --secondary-foreground: 210 20% 95%;
+
+    --accent: 199 89% 48%;
+    --accent-foreground: 0 0% 100%;
+
+    --success: 142 71% 45%;
+    --warning: 38 92% 50%;
+    --destructive: 0 84% 60%;
+
+    --ring: 217 91% 70%;
+
+    --professional-sidebar: 215 30% 10%;
+    --professional-sidebar-hover: 215 25% 15%;
+    --professional-sidebar-active: 217 91% 60%;
+  }
+
+  /* ===== PROFESSIONAL THEME - Modern ===== */
+  .theme-professional-modern {
+    /* Sleek purple and indigo palette */
+    --background: 240 20% 98%;
+    --foreground: 240 25% 12%;
+
+    --muted: 240 15% 93%;
+    --muted-foreground: 240 20% 38%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 25% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 240 25% 12%;
+
+    --border: 240 12% 89%;
+    --input: 240 12% 89%;
+
+    --primary: 262 83% 58%;
+    /* Modern purple */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 240 15% 93%;
+    --secondary-foreground: 240 25% 12%;
+
+    --accent: 221 83% 53%;
+    /* Indigo accent */
+    --accent-foreground: 0 0% 100%;
+
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --ring: 262 83% 58%;
+
+    --professional-sidebar: 240 25% 12%;
+    --professional-sidebar-hover: 240 25% 17%;
+    --professional-sidebar-active: 262 83% 58%;
+  }
+
+  .dark.theme-professional-modern {
+    --background: 240 30% 10%;
+    --foreground: 240 15% 95%;
+
+    --muted: 240 25% 16%;
+    --muted-foreground: 240 15% 65%;
+
+    --popover: 240 30% 10%;
+    --popover-foreground: 240 15% 95%;
+
+    --card: 240 25% 13%;
+    --card-foreground: 240 15% 95%;
+
+    --border: 240 20% 20%;
+    --input: 240 20% 20%;
+
+    --primary: 262 83% 58%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 240 25% 16%;
+    --secondary-foreground: 240 15% 95%;
+
+    --accent: 221 83% 53%;
+    --accent-foreground: 0 0% 100%;
+
+    --success: 142 71% 45%;
+    --warning: 38 92% 50%;
+    --destructive: 0 84% 60%;
+
+    --ring: 262 83% 70%;
+
+    --professional-sidebar: 240 35% 8%;
+    --professional-sidebar-hover: 240 30% 13%;
+    --professional-sidebar-active: 262 83% 58%;
+  }
+
+  /* ===== PROFESSIONAL THEME - Slate ===== */
+  .theme-professional-slate {
+    /* Sophisticated gray palette */
+    --background: 210 10% 97%;
+    --foreground: 215 15% 18%;
+
+    --muted: 210 8% 92%;
+    --muted-foreground: 215 12% 42%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 15% 18%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 215 15% 18%;
+
+    --border: 214 10% 87%;
+    --input: 214 10% 87%;
+
+    --primary: 215 20% 28%;
+    /* Slate primary */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 210 8% 92%;
+    --secondary-foreground: 215 15% 18%;
+
+    --accent: 199 55% 42%;
+    /* Teal accent */
+    --accent-foreground: 0 0% 100%;
+
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --ring: 215 20% 28%;
+
+    --professional-sidebar: 215 20% 18%;
+    --professional-sidebar-hover: 215 18% 24%;
+    --professional-sidebar-active: 199 55% 42%;
+  }
+
+  .dark.theme-professional-slate {
+    --background: 215 18% 11%;
+    --foreground: 210 10% 94%;
+
+    --muted: 215 15% 17%;
+    --muted-foreground: 210 10% 64%;
+
+    --popover: 215 18% 11%;
+    --popover-foreground: 210 10% 94%;
+
+    --card: 215 15% 14%;
+    --card-foreground: 210 10% 94%;
+
+    --border: 215 12% 21%;
+    --input: 215 12% 21%;
+
+    --primary: 215 20% 35%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 215 15% 17%;
+    --secondary-foreground: 210 10% 94%;
+
+    --accent: 199 55% 42%;
+    --accent-foreground: 0 0% 100%;
+
+    --success: 142 71% 45%;
+    --warning: 38 92% 50%;
+    --destructive: 0 84% 60%;
+
+    --ring: 215 20% 45%;
+
+    --professional-sidebar: 215 22% 9%;
+    --professional-sidebar-hover: 215 18% 14%;
+    --professional-sidebar-active: 199 55% 42%;
+  }
+
+  /* ===== PROFESSIONAL THEME - Emerald ===== */
+  .theme-professional-emerald {
+    /* Fresh green and teal palette */
+    --background: 150 20% 97%;
+    --foreground: 160 30% 12%;
+
+    --muted: 150 15% 92%;
+    --muted-foreground: 160 20% 38%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 160 30% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 160 30% 12%;
+
+    --border: 150 12% 88%;
+    --input: 150 12% 88%;
+
+    --primary: 160 84% 39%;
+    /* Emerald primary */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 150 15% 92%;
+    --secondary-foreground: 160 30% 12%;
+
+    --accent: 174 72% 56%;
+    /* Teal accent */
+    --accent-foreground: 0 0% 100%;
+
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --ring: 160 84% 39%;
+
+    --professional-sidebar: 160 35% 10%;
+    --professional-sidebar-hover: 160 30% 15%;
+    --professional-sidebar-active: 160 84% 39%;
+  }
+
+  .dark.theme-professional-emerald {
+    --background: 160 30% 10%;
+    --foreground: 150 15% 94%;
+
+    --muted: 160 25% 16%;
+    --muted-foreground: 150 12% 64%;
+
+    --popover: 160 30% 10%;
+    --popover-foreground: 150 15% 94%;
+
+    --card: 160 25% 13%;
+    --card-foreground: 150 15% 94%;
+
+    --border: 160 20% 20%;
+    --input: 160 20% 20%;
+
+    --primary: 160 84% 39%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 160 25% 16%;
+    --secondary-foreground: 150 15% 94%;
+
+    --accent: 174 72% 56%;
+    --accent-foreground: 0 0% 100%;
+
+    --success: 142 71% 45%;
+    --warning: 38 92% 50%;
+    --destructive: 0 84% 60%;
+
+    --ring: 160 84% 49%;
+
+    --professional-sidebar: 160 35% 8%;
+    --professional-sidebar-hover: 160 30% 13%;
+    --professional-sidebar-active: 160 84% 39%;
+  }
+
+  /* ===== PROFESSIONAL THEME - Coral ===== */
+  .theme-professional-coral {
+    /* Warm and inviting coral palette */
+    --background: 20 25% 97%;
+    --foreground: 20 30% 15%;
+
+    --muted: 20 18% 92%;
+    --muted-foreground: 20 22% 40%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 20 30% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 20 30% 15%;
+
+    --border: 20 15% 88%;
+    --input: 20 15% 88%;
+
+    --primary: 14 90% 53%;
+    /* Coral primary */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 20 18% 92%;
+    --secondary-foreground: 20 30% 15%;
+
+    --accent: 340 82% 52%;
+    /* Rose accent */
+    --accent-foreground: 0 0% 100%;
+
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --ring: 14 90% 53%;
+
+    --professional-sidebar: 20 30% 12%;
+    --professional-sidebar-hover: 20 25% 17%;
+    --professional-sidebar-active: 14 90% 53%;
+  }
+
+  .dark.theme-professional-coral {
+    --background: 20 25% 10%;
+    --foreground: 20 12% 94%;
+
+    --muted: 20 20% 16%;
+    --muted-foreground: 20 12% 64%;
+
+    --popover: 20 25% 10%;
+    --popover-foreground: 20 12% 94%;
+
+    --card: 20 20% 13%;
+    --card-foreground: 20 12% 94%;
+
+    --border: 20 18% 20%;
+    --input: 20 18% 20%;
+
+    --primary: 14 90% 53%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 20 20% 16%;
+    --secondary-foreground: 20 12% 94%;
+
+    --accent: 340 82% 52%;
+    --accent-foreground: 0 0% 100%;
+
+    --success: 142 71% 45%;
+    --warning: 38 92% 50%;
+    --destructive: 0 84% 60%;
+
+    --ring: 14 90% 63%;
+
+    --professional-sidebar: 20 28% 8%;
+    --professional-sidebar-hover: 20 23% 13%;
+    --professional-sidebar-active: 14 90% 53%;
+  }
+
+  /* ===== PROFESSIONAL THEME - Navy ===== */
+  .theme-professional-navy {
+    /* Classic navy and gold palette */
+    --background: 220 25% 97%;
+    --foreground: 220 40% 12%;
+
+    --muted: 220 18% 92%;
+    --muted-foreground: 220 25% 38%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 40% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 40% 12%;
+
+    --border: 220 15% 88%;
+    --input: 220 15% 88%;
+
+    --primary: 220 70% 30%;
+    /* Navy primary */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 18% 92%;
+    --secondary-foreground: 220 40% 12%;
+
+    --accent: 45 93% 47%;
+    /* Gold accent */
+    --accent-foreground: 0 0% 100%;
+
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --ring: 220 70% 30%;
+
+    --professional-sidebar: 220 75% 10%;
+    --professional-sidebar-hover: 220 65% 15%;
+    --professional-sidebar-active: 45 93% 47%;
+  }
+
+  .dark.theme-professional-navy {
+    --background: 220 60% 8%;
+    --foreground: 220 20% 94%;
+
+    --muted: 220 50% 13%;
+    --muted-foreground: 220 18% 64%;
+
+    --popover: 220 60% 8%;
+    --popover-foreground: 220 20% 94%;
+
+    --card: 220 50% 11%;
+    --card-foreground: 220 20% 94%;
+
+    --border: 220 40% 18%;
+    --input: 220 40% 18%;
+
+    --primary: 220 70% 40%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 50% 13%;
+    --secondary-foreground: 220 20% 94%;
+
+    --accent: 45 93% 47%;
+    --accent-foreground: 0 0% 100%;
+
+    --success: 142 71% 45%;
+    --warning: 38 92% 50%;
+    --destructive: 0 84% 60%;
+
+    --ring: 220 70% 50%;
+
+    --professional-sidebar: 220 65% 6%;
+    --professional-sidebar-hover: 220 55% 11%;
+    --professional-sidebar-active: 45 93% 47%;
+  }
 }
 
-/* TopHeroes Component Styles */
+/* Professional Component Styles */
 @layer components {
+
+  /* Professional theme sidebar styling */
+  .professional-sidebar {
+    background: hsl(var(--professional-sidebar));
+  }
+
+  .professional-nav-item {
+    @apply rounded-lg px-3 py-2 text-sm font-medium transition-all;
+    color: hsl(var(--card));
+  }
+
+  .professional-nav-item:hover {
+    background: hsl(var(--professional-sidebar-hover));
+  }
+
+  .professional-nav-item.active {
+    background: hsl(var(--professional-sidebar-active));
+    color: white;
+  }
+
+  /* Professional buttons */
+  .btn-professional-primary {
+    @apply inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white transition-all shadow-sm;
+    background: hsl(var(--primary));
+  }
+
+  .btn-professional-primary:hover {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px hsl(var(--primary) / 0.3);
+  }
+
+  .btn-professional-secondary {
+    @apply inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all border;
+    background: hsl(var(--secondary));
+    color: hsl(var(--secondary-foreground));
+    border-color: hsl(var(--border));
+  }
+
+  .btn-professional-secondary:hover {
+    background: hsl(var(--muted));
+  }
+
+  /* Professional cards */
+  .professional-card {
+    @apply rounded-xl p-6 shadow-sm border transition-all;
+    background: hsl(var(--card));
+    border-color: hsl(var(--border));
+  }
+
+  .professional-card:hover {
+    box-shadow: 0 4px 12px hsl(var(--foreground) / 0.08);
+  }
+
+  .professional-stat-card {
+    @apply rounded-lg p-6 border;
+    background: hsl(var(--card));
+    border-color: hsl(var(--border));
+  }
+
+  /* Professional status badges */
+  .status-badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .status-badge-paid {
+    @apply bg-green-100 text-green-800;
+  }
+
+  .status-badge-pending {
+    @apply bg-orange-100 text-orange-800;
+  }
+
+  .status-badge-overdue {
+    @apply bg-red-100 text-red-800;
+  }
+
+  .status-badge-draft {
+    @apply bg-gray-100 text-gray-800;
+  }
+
+  /* Dark mode status badges */
+  .dark .status-badge-paid {
+    @apply bg-green-900/30 text-green-400;
+  }
+
+  .dark .status-badge-pending {
+    @apply bg-orange-900/30 text-orange-400;
+  }
+
+  .dark .status-badge-overdue {
+    @apply bg-red-900/30 text-red-400;
+  }
+
+  .dark .status-badge-draft {
+    @apply bg-gray-800/50 text-gray-400;
+  }
+
+  /* Professional input styles */
+  .professional-input {
+    @apply w-full px-3 py-2 rounded-lg border transition-all;
+    background: hsl(var(--background));
+    border-color: hsl(var(--input));
+    color: hsl(var(--foreground));
+  }
+
+  .professional-input:focus {
+    outline: none;
+    border-color: hsl(var(--ring));
+    box-shadow: 0 0 0 3px hsl(var(--ring) / 0.1);
+  }
+
+  /* Professional table styles */
+  .professional-table {
+    @apply w-full;
+  }
+
+  .professional-table thead {
+    @apply bg-muted border-b;
+    border-color: hsl(var(--border));
+  }
+
+  .professional-table th {
+    @apply px-6 py-3 text-left text-xs font-medium uppercase tracking-wider;
+    color: hsl(var(--muted-foreground));
+  }
+
+  .professional-table tbody {
+    @apply divide-y;
+    background: hsl(var(--card));
+  }
+
+  .professional-table tbody tr:hover {
+    background: hsl(var(--muted));
+  }
+
+  .professional-table td {
+    @apply px-6 py-4 whitespace-nowrap text-sm;
+  }
 
   /* Theme-specific button variants */
   .theme-topheroes .btn-th-primary {

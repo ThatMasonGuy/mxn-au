@@ -31,7 +31,7 @@
         </div>
 
         <!-- Queue Detail -->
-        <div v-else-if="queue" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 -mt-16">
+        <div v-else-if="queue" class="max-w-[120rem] mx-auto px-4 sm:px-6 lg:px-8 py-8 -mt-16">
             <!-- Back Button -->
             <button @click="router.push('/topheroes/queues')"
                 class="mb-6 flex items-center gap-2 text-foreground/60 hover:text-velaris-purple transition-colors">
@@ -128,7 +128,7 @@
                     <div v-if="queue.createdBy" class="flex items-center gap-2">
                         <User class="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
                         <span class="truncate">Created by <strong class="text-foreground">{{ queue.createdBy
-                                }}</strong></span>
+                        }}</strong></span>
                     </div>
                     <div v-if="queue.fromServer" class="flex items-center gap-2">
                         <Server class="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
@@ -196,19 +196,45 @@
 
                 <!-- Sidebar (Right Side) -->
                 <div class="space-y-6">
-                    <!-- Share Section -->
-                    <div class="bg-card border border-border rounded-xl p-6">
-                        <h3 class="text-lg font-semibold mb-4">Share Queue</h3>
-                        <button @click="copyLink" :disabled="shareOnCooldown"
-                            class="w-full bg-velaris-purple/10 text-velaris-purple hover:bg-velaris-purple/20 border border-velaris-purple/30 transition-all duration-200 font-medium py-3 px-4 rounded-lg text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
-                            <Share2 class="h-4 w-4" />
-                            {{ linkCopied ? 'Copied!' : 'Copy Link' }}
-                        </button>
-                        <div class="mt-3 text-center">
-                            <p class="text-xs text-foreground/60">
-                                Shared {{ queue.shares || 0 }} time{{ (queue.shares || 0) !== 1 ? 's' : '' }}
-                            </p>
+                    <!-- Share Section - Desktop only (in Sidebar) -->
+                    <div
+                        class="hidden lg:block bg-gradient-to-br from-velaris-purple/10 via-velaris-teal/10 to-velaris-purple/10 border border-velaris-purple/20 rounded-xl p-6 shadow-lg">
+                        <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                            <Share2 class="h-5 w-5 text-velaris-purple" />
+                            Share Queue
+                        </h3>
+
+                        <!-- Share Count Highlight -->
+                        <div class="mb-4 text-center">
+                            <div
+                                class="inline-flex flex-col items-center p-4 bg-gradient-to-br from-velaris-purple/20 to-velaris-teal/20 border border-velaris-purple/30 rounded-xl">
+                                <div class="flex items-baseline gap-1">
+                                    <span
+                                        class="text-4xl font-bold bg-gradient-to-r from-velaris-purple to-velaris-teal bg-clip-text text-transparent">
+                                        {{ queue.shares || 0 }}
+                                    </span>
+                                </div>
+                                <p class="text-xs text-foreground/60 mt-1">
+                                    total share{{ (queue.shares || 0) !== 1 ? 's' : '' }}
+                                </p>
+                            </div>
                         </div>
+
+                        <button @click="copyLink" :disabled="shareOnCooldown"
+                            class="group relative w-full bg-gradient-to-r from-velaris-purple to-velaris-teal hover:from-velaris-purple/90 hover:to-velaris-teal/90 text-white transition-all duration-300 font-semibold py-3 px-4 rounded-xl shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden">
+                            <span class="relative z-10 flex items-center justify-center gap-2">
+                                <Share2
+                                    class="h-4 w-4 transition-transform group-hover:scale-110 group-hover:rotate-12" />
+                                {{ linkCopied ? 'Link Copied!' : 'Copy Share Link' }}
+                            </span>
+                            <div v-if="linkCopied"
+                                class="absolute inset-0 bg-gradient-to-r from-green-500 to-emerald-500 animate-pulse">
+                            </div>
+                        </button>
+
+                        <p class="text-xs text-center text-foreground/50 mt-2">
+                            Share this queue with your guild
+                        </p>
                     </div>
 
                     <!-- Team Synergies -->
@@ -229,18 +255,43 @@
 
             <!-- Share Section (mobile only - appears before comments) -->
             <div class="lg:hidden mt-6">
-                <div class="bg-card border border-border rounded-xl p-6">
-                    <h3 class="text-lg font-semibold mb-4">Share Queue</h3>
-                    <button @click="copyLink" :disabled="shareOnCooldown"
-                        class="w-full bg-velaris-purple/10 text-velaris-purple hover:bg-velaris-purple/20 border border-velaris-purple/30 transition-all duration-200 font-medium py-3 px-4 rounded-lg text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
-                        <Share2 class="h-4 w-4" />
-                        {{ linkCopied ? 'Copied!' : 'Copy Link' }}
-                    </button>
-                    <div class="mt-3 text-center">
-                        <p class="text-xs text-foreground/60">
-                            Shared {{ queue.shares || 0 }} time{{ (queue.shares || 0) !== 1 ? 's' : '' }}
-                        </p>
+                <div
+                    class="bg-gradient-to-br from-velaris-purple/10 via-velaris-teal/10 to-velaris-purple/10 border border-velaris-purple/20 rounded-xl p-6 shadow-lg">
+                    <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                        <Share2 class="h-5 w-5 text-velaris-purple" />
+                        Share Queue
+                    </h3>
+
+                    <!-- Share Count Highlight -->
+                    <div class="mb-4 text-center">
+                        <div
+                            class="inline-flex flex-col items-center p-4 bg-gradient-to-br from-velaris-purple/20 to-velaris-teal/20 border border-velaris-purple/30 rounded-xl">
+                            <div class="flex items-baseline gap-1">
+                                <span
+                                    class="text-4xl font-bold bg-gradient-to-r from-velaris-purple to-velaris-teal bg-clip-text text-transparent">
+                                    {{ queue.shares || 0 }}
+                                </span>
+                            </div>
+                            <p class="text-xs text-foreground/60 mt-1">
+                                total share{{ (queue.shares || 0) !== 1 ? 's' : '' }}
+                            </p>
+                        </div>
                     </div>
+
+                    <button @click="copyLink" :disabled="shareOnCooldown"
+                        class="group relative w-full bg-gradient-to-r from-velaris-purple to-velaris-teal hover:from-velaris-purple/90 hover:to-velaris-teal/90 text-white transition-all duration-300 font-semibold py-3 px-4 rounded-xl shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden">
+                        <span class="relative z-10 flex items-center justify-center gap-2">
+                            <Share2 class="h-4 w-4 transition-transform group-hover:scale-110 group-hover:rotate-12" />
+                            {{ linkCopied ? 'Link Copied!' : 'Copy Share Link' }}
+                        </span>
+                        <div v-if="linkCopied"
+                            class="absolute inset-0 bg-gradient-to-r from-green-500 to-emerald-500 animate-pulse">
+                        </div>
+                    </button>
+
+                    <p class="text-xs text-center text-foreground/50 mt-2">
+                        Share this queue with your guild
+                    </p>
                 </div>
             </div>
 
@@ -281,7 +332,7 @@ const error = ref(null)
 const userVote = ref(null)
 const linkCopied = ref(false)
 const shareOnCooldown = ref(false)
-const lastShareTime = ref(0)
+const lastShareIncrement = ref(0)
 
 // Computed
 const queueRating = computed(() => {
@@ -317,11 +368,11 @@ const loadQueue = async () => {
             userVote.value = votes[queueId.value]
         }
 
-        // Load last share time from localStorage
-        const savedShareTimes = localStorage.getItem('topheroes_share_times')
-        if (savedShareTimes) {
-            const shareTimes = JSON.parse(savedShareTimes)
-            lastShareTime.value = shareTimes[queueId.value] || 0
+        // Load last share increment time from localStorage
+        const savedShareIncrements = localStorage.getItem('topheroes_share_increments')
+        if (savedShareIncrements) {
+            const shareIncrements = JSON.parse(savedShareIncrements)
+            lastShareIncrement.value = shareIncrements[queueId.value] || 0
         }
 
     } catch (err) {
@@ -356,43 +407,43 @@ const handleVote = (voteType) => {
 }
 
 const copyLink = async () => {
-    // Check cooldown (1 minute = 60000ms)
-    const now = Date.now()
-    if (now - lastShareTime.value < 60000) {
-        shareOnCooldown.value = true
+    // Disable button for 1 second
+    shareOnCooldown.value = true
+    
+    try {
+        // Always copy to clipboard
         const url = window.location.href
         await navigator.clipboard.writeText(url)
         linkCopied.value = true
+        
+        // Check if 5 seconds have passed since last increment
+        const now = Date.now()
+        const shouldIncrement = now - lastShareIncrement.value >= 5000
+        
+        if (shouldIncrement) {
+            // Increment share counter in backend
+            await publicStore.incrementShares(queueId.value)
+            lastShareIncrement.value = now
+            
+            // Save to localStorage
+            const savedShareTimes = JSON.parse(localStorage.getItem('topheroes_share_increments') || '{}')
+            savedShareTimes[queueId.value] = now
+            localStorage.setItem('topheroes_share_increments', JSON.stringify(savedShareTimes))
+        }
+        
+        // Reset "copied" indicator after 2 seconds
         setTimeout(() => {
             linkCopied.value = false
         }, 2000)
-        return
+        
+    } catch (err) {
+        console.error('Failed to copy link:', err)
+    } finally {
+        // Re-enable button after 1 second
+        setTimeout(() => {
+            shareOnCooldown.value = false
+        }, 1000)
     }
-
-    // Copy to clipboard
-    const url = window.location.href
-    await navigator.clipboard.writeText(url)
-    linkCopied.value = true
-
-    // Update last share time
-    lastShareTime.value = now
-    const savedShareTimes = JSON.parse(localStorage.getItem('topheroes_share_times') || '{}')
-    savedShareTimes[queueId.value] = now
-    localStorage.setItem('topheroes_share_times', JSON.stringify(savedShareTimes))
-
-    // Increment share counter in backend
-    await publicStore.incrementShares(queueId.value)
-
-    // Set cooldown
-    shareOnCooldown.value = true
-
-    setTimeout(() => {
-        linkCopied.value = false
-    }, 2000)
-
-    setTimeout(() => {
-        shareOnCooldown.value = false
-    }, 60000)
 }
 
 const formatDate = (timestamp) => {

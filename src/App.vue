@@ -11,7 +11,13 @@
       <!-- Page Content -->
       <div class="flex-grow">
         <router-view v-slot="{ Component, route }">
-          <component :is="Component" :key="route.fullPath" ref="pageRef" class="min-h-screen w-full" :class="{
+          <!-- Professional Layout Wrapper -->
+          <ProfessionalLayout v-if="layout === 'professional'">
+            <component :is="Component" :key="route.fullPath" ref="pageRef" />
+          </ProfessionalLayout>
+
+          <!-- Default Rendering -->
+          <component v-else :is="Component" :key="route.fullPath" ref="pageRef" class="min-h-screen w-full" :class="{
             'pt-28 pb-32': showTopHeroesOverlay && (layout === 'default' || layout === 'admin')
           }" />
         </router-view>
@@ -32,6 +38,7 @@ import TopHeroesHeader from '@/components/topheroes/TopHeroesHeader.vue'
 import TopHeroesFooter from '@/components/topheroes/TopHeroesFooter.vue'
 import TopHeroesAdminHeader from '@/components/topheroes/admin/TopHeroesAdminHeader.vue'
 import TopHeroesAdminFooter from '@/components/topheroes/admin/TopHeroesAdminFooter.vue'
+import ProfessionalLayout from '@/components/professional/ProfessionalLayout.vue'
 import { ref, computed, watchEffect } from 'vue'
 import { useRoute } from 'vue-router'
 

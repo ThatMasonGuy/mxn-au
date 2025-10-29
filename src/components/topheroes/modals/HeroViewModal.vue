@@ -1,55 +1,56 @@
 <!-- components/topheroes/modals/HeroViewModal.vue -->
 <template>
     <Dialog :open="isOpen" @update:open="handleOpenChange">
-        <DialogContent class="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent class="max-w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
             <DialogHeader>
-                <DialogTitle class="flex items-center gap-3">
-                    <div class="h-10 w-10 rounded-xl flex items-center justify-center text-white font-bold shadow-lg"
+                <DialogTitle class="flex items-center gap-2 sm:gap-3 text-base sm:text-lg">
+                    <div class="h-8 w-8 sm:h-10 sm:w-10 rounded-xl flex items-center justify-center text-white font-bold shadow-lg flex-shrink-0"
                         :class="factionGradient">
                         {{ hero?.name?.charAt(0) || 'H' }}
                     </div>
-                    <span>{{ hero?.name || 'Hero Details' }}</span>
+                    <span class="truncate">{{ hero?.name || 'Hero Details' }}</span>
                 </DialogTitle>
-                <DialogDescription>
+                <DialogDescription class="text-sm">
                     View detailed information about this hero
                 </DialogDescription>
             </DialogHeader>
 
-            <div v-if="hero" class="space-y-6">
+            <div v-if="hero" class="space-y-4 sm:space-y-6">
                 <!-- Hero Image and Basic Info -->
-                <div class="bg-gradient-to-br from-foreground/5 to-foreground/10 rounded-xl p-6">
-                    <div class="flex items-center gap-6">
+                <div class="bg-gradient-to-br from-foreground/5 to-foreground/10 rounded-xl p-4 sm:p-6">
+                    <div class="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6">
                         <!-- Hero Avatar -->
-                        <div class="relative">
-                            <div class="h-24 w-24 rounded-2xl flex items-center justify-center shadow-xl"
+                        <div class="relative flex-shrink-0">
+                            <div class="h-20 w-20 sm:h-24 sm:w-24 rounded-2xl flex items-center justify-center shadow-xl"
                                 :class="factionGradient">
-                                <span class="text-4xl font-bold text-white">
+                                <span class="text-3xl sm:text-4xl font-bold text-white">
                                     {{ hero.name.charAt(0) }}
                                 </span>
                             </div>
                             <div class="absolute -bottom-2 -right-2">
                                 <div class="px-2 py-1 rounded-full shadow-md" :class="rarityBadgeClass">
-                                    <component :is="rarityIcon" class="h-4 w-4" />
+                                    <component :is="rarityIcon" class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                                 </div>
                             </div>
                         </div>
 
                         <!-- Hero Details -->
-                        <div class="flex-1 space-y-3">
+                        <div class="flex-1 space-y-2 sm:space-y-3 text-center sm:text-left min-w-0">
                             <div>
-                                <h3 class="text-2xl font-bold">{{ hero.name }}</h3>
-                                <p class="text-sm text-foreground/60">Hero ID: {{ hero.id }}</p>
+                                <h3 class="text-xl sm:text-2xl font-bold truncate">{{ hero.name }}</h3>
+                                <p class="text-xs sm:text-sm text-foreground/60">Hero ID: {{ hero.id }}</p>
                             </div>
 
-                            <div class="flex items-center gap-4">
+                            <div class="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-4">
                                 <div class="flex items-center gap-2">
-                                    <component :is="factionIcon" class="h-5 w-5" :class="factionColor" />
-                                    <span class="font-medium" :class="factionColor">
+                                    <component :is="factionIcon" class="h-4 w-4 sm:h-5 sm:w-5" :class="factionColor" />
+                                    <span class="font-medium text-sm sm:text-base" :class="factionColor">
                                         {{ selectedFaction?.name || hero.faction }}
                                     </span>
                                 </div>
                                 <div class="px-3 py-1 rounded-full" :class="rarityBadgeClass">
-                                    <span class="text-sm font-bold">{{ selectedRarity?.name || hero.rarity }}</span>
+                                    <span class="text-xs sm:text-sm font-bold">{{ selectedRarity?.name || hero.rarity
+                                        }}</span>
                                 </div>
                             </div>
                         </div>
@@ -58,14 +59,15 @@
 
                 <!-- Tags/Roles -->
                 <div>
-                    <h4 class="text-sm font-medium mb-3 text-foreground/80 flex items-center gap-2">
-                        <Tag class="h-4 w-4 text-velaris-purple" />
+                    <h4 class="text-xs sm:text-sm font-medium mb-2 sm:mb-3 text-foreground/80 flex items-center gap-2">
+                        <Tag class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-velaris-purple" />
                         Roles & Abilities
                     </h4>
                     <div class="flex flex-wrap gap-2">
-                        <span v-if="!selectedTags.length" class="text-foreground/50 italic">No roles assigned</span>
+                        <span v-if="!selectedTags.length" class="text-sm text-foreground/50 italic">No roles
+                            assigned</span>
                         <span v-for="tag in selectedTags" :key="tag.id"
-                            class="px-3 py-1.5 bg-gradient-to-r from-velaris-purple/20 to-velaris-teal/20 border border-velaris-purple/30 rounded-full text-sm font-medium">
+                            class="px-2.5 sm:px-3 py-1 sm:py-1.5 bg-gradient-to-r from-velaris-purple/20 to-velaris-teal/20 border border-velaris-purple/30 rounded-full text-xs sm:text-sm font-medium">
                             {{ tag.name }}
                         </span>
                     </div>
@@ -73,20 +75,21 @@
 
                 <!-- Faction Counter Info -->
                 <div>
-                    <h4 class="text-sm font-medium mb-3 text-foreground/80 flex items-center gap-2">
-                        <Swords class="h-4 w-4 text-velaris-amber" />
+                    <h4 class="text-xs sm:text-sm font-medium mb-2 sm:mb-3 text-foreground/80 flex items-center gap-2">
+                        <Swords class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-velaris-amber" />
                         Faction Advantages
                     </h4>
-                    <div class="grid grid-cols-2 gap-3">
-                        <div class="p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                        <div class="p-2.5 sm:p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
                             <div class="flex items-center gap-2 mb-1">
-                                <TrendingUp class="h-4 w-4 text-green-400" />
-                                <span class="text-sm font-medium text-green-400">Strong Against</span>
+                                <TrendingUp class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-400" />
+                                <span class="text-xs sm:text-sm font-medium text-green-400">Strong Against</span>
                             </div>
                             <div class="flex items-center gap-2">
-                                <component :is="getCounterFactionIcon(hero.faction, 'beats')" class="h-5 w-5"
+                                <component :is="getCounterFactionIcon(hero.faction, 'beats')"
+                                    class="h-4 w-4 sm:h-5 sm:w-5"
                                     :class="getCounterFactionColor(hero.faction, 'beats')" />
-                                <span class="text-sm font-medium">
+                                <span class="text-xs sm:text-sm font-medium truncate">
                                     {{ getCounterFactionName(hero.faction, 'beats') }}
                                 </span>
                             </div>
@@ -95,15 +98,16 @@
                             </p>
                         </div>
 
-                        <div class="p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+                        <div class="p-2.5 sm:p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
                             <div class="flex items-center gap-2 mb-1">
-                                <TrendingDown class="h-4 w-4 text-red-400" />
-                                <span class="text-sm font-medium text-red-400">Weak Against</span>
+                                <TrendingDown class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-400" />
+                                <span class="text-xs sm:text-sm font-medium text-red-400">Weak Against</span>
                             </div>
                             <div class="flex items-center gap-2">
-                                <component :is="getCounterFactionIcon(hero.faction, 'loses_to')" class="h-5 w-5"
+                                <component :is="getCounterFactionIcon(hero.faction, 'loses_to')"
+                                    class="h-4 w-4 sm:h-5 sm:w-5"
                                     :class="getCounterFactionColor(hero.faction, 'loses_to')" />
-                                <span class="text-sm font-medium">
+                                <span class="text-xs sm:text-sm font-medium truncate">
                                     {{ getCounterFactionName(hero.faction, 'loses_to') }}
                                 </span>
                             </div>
@@ -116,19 +120,20 @@
 
                 <!-- Hero Bonds -->
                 <div v-if="heroBonds.length > 0">
-                    <h4 class="text-sm font-medium mb-3 text-foreground/80 flex items-center gap-2">
-                        <Link class="h-4 w-4 text-velaris-teal" />
+                    <h4 class="text-xs sm:text-sm font-medium mb-2 sm:mb-3 text-foreground/80 flex items-center gap-2">
+                        <Link class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-velaris-teal" />
                         Hero Bonds
                     </h4>
-                    <div class="space-y-3">
+                    <div class="space-y-2 sm:space-y-3">
                         <div v-for="bond in heroBonds" :key="bond.id"
-                            class="p-3 bg-gradient-to-r from-velaris-teal/10 to-emerald-500/10 border border-velaris-teal/20 rounded-lg">
-                            <div class="flex items-center gap-2 mb-2">
-                                <Zap class="h-4 w-4 text-velaris-teal" />
-                                <span class="font-medium text-velaris-teal">Bond with {{ formatBondHeroes(bond.heroes,
+                            class="p-2.5 sm:p-3 bg-gradient-to-r from-velaris-teal/10 to-emerald-500/10 border border-velaris-teal/20 rounded-lg">
+                            <div class="flex items-center gap-2 mb-1.5 sm:mb-2">
+                                <Zap class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-velaris-teal" />
+                                <span class="font-medium text-xs sm:text-sm text-velaris-teal">Bond with {{
+                                    formatBondHeroes(bond.heroes,
                                     hero.id) }}</span>
                             </div>
-                            <div class="text-sm text-foreground/70">
+                            <div class="text-xs sm:text-sm text-foreground/70">
                                 {{ formatBondBuffs(bond.buffs) }}
                             </div>
                         </div>
@@ -136,12 +141,13 @@
                 </div>
             </div>
 
-            <DialogFooter class="gap-3">
-                <Button variant="outline" @click="handleClose">
+            <DialogFooter class="gap-2 sm:gap-3 flex-col sm:flex-row mt-4 sm:mt-6">
+                <Button variant="outline" @click="handleClose" class="w-full sm:w-auto text-sm">
                     Close
                 </Button>
-                <Button @click="addToQueue" class="bg-gradient-to-r from-velaris-purple to-velaris-teal">
-                    <Plus class="h-4 w-4 mr-2" />
+                <Button @click="addToQueue"
+                    class="w-full sm:w-auto bg-gradient-to-r from-velaris-purple to-velaris-teal text-sm">
+                    <Plus class="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-2" />
                     Add to Queue
                 </Button>
             </DialogFooter>

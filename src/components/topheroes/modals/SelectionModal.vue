@@ -1,67 +1,68 @@
 <!-- components/topheroes/modals/SelectionModal.vue -->
 <template>
     <Dialog :open="isOpen" @update:open="handleOpenChange">
-        <DialogContent class="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent class="max-w-[95vw] sm:max-w-3xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
             <DialogHeader>
-                <DialogTitle>{{ title }}</DialogTitle>
-                <DialogDescription>
+                <DialogTitle class="text-base sm:text-lg">{{ title }}</DialogTitle>
+                <DialogDescription class="text-sm">
                     {{ description }}
                 </DialogDescription>
             </DialogHeader>
 
-            <div class="space-y-4">
+            <div class="space-y-3 sm:space-y-4">
                 <!-- Search/Filter -->
                 <div class="relative">
                     <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground/50" />
                     <input v-model="searchQuery" type="search" placeholder="Search..."
-                        class="w-full pl-10 pr-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-velaris-purple/50" />
+                        class="w-full pl-10 pr-4 py-2 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-velaris-purple/50" />
                 </div>
 
                 <!-- Current Selection Display -->
                 <div v-if="currentSelection"
-                    class="p-3 bg-velaris-purple/10 border border-velaris-purple/30 rounded-lg">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-3">
+                    class="p-2.5 sm:p-3 bg-velaris-purple/10 border border-velaris-purple/30 rounded-lg">
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-2 sm:gap-3 min-w-0">
                             <div
-                                class="h-8 w-8 rounded-lg bg-gradient-to-br from-velaris-purple to-velaris-teal flex items-center justify-center text-white text-xs font-bold">
+                                class="h-7 w-7 sm:h-8 sm:w-8 rounded-lg bg-gradient-to-br from-velaris-purple to-velaris-teal flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                                 {{ currentSelection.name.charAt(0) }}
                             </div>
-                            <div>
-                                <p class="font-medium">{{ currentSelection.name }}</p>
+                            <div class="min-w-0">
+                                <p class="font-medium text-sm sm:text-base truncate">{{ currentSelection.name }}</p>
                                 <p v-if="currentSelection.type" class="text-xs text-foreground/60 capitalize">
                                     {{ currentSelection.type }}
                                 </p>
                             </div>
                         </div>
                         <button @click="clearSelection"
-                            class="p-2 rounded-lg hover:bg-red-500/20 text-red-400 transition-colors">
-                            <X class="h-4 w-4" />
+                            class="p-1.5 sm:p-2 rounded-lg hover:bg-red-500/20 text-red-400 transition-colors flex-shrink-0">
+                            <X class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         </button>
                     </div>
                 </div>
 
                 <!-- Items Grid -->
-                <div class="space-y-4">
+                <div class="space-y-3 sm:space-y-4">
                     <!-- Group by type if items have types -->
                     <template v-if="groupByType">
                         <div v-for="(typeItems, type) in groupedItems" :key="type" class="space-y-2">
-                            <h4 class="text-sm font-medium text-foreground/70 capitalize flex items-center gap-2">
-                                <component :is="getTypeIcon(type)" class="h-4 w-4" />
+                            <h4
+                                class="text-xs sm:text-sm font-medium text-foreground/70 capitalize flex items-center gap-2">
+                                <component :is="getTypeIcon(type)" class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                                 {{ type }}
                             </h4>
-                            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3">
                                 <button v-for="item in typeItems" :key="item.id" @click="selectItem(item)"
                                     :disabled="isDisabled(item)"
-                                    class="p-3 rounded-lg border-2 transition-all duration-200 text-left"
+                                    class="p-2 sm:p-3 rounded-lg border-2 transition-all duration-200 text-left"
                                     :class="getItemClass(item)">
-                                    <div class="flex items-center gap-2 mb-1">
-                                        <div class="h-6 w-6 rounded flex items-center justify-center text-white text-xs font-bold"
+                                    <div class="flex items-center gap-1.5 sm:gap-2 mb-1">
+                                        <div class="h-5 w-5 sm:h-6 sm:w-6 rounded flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
                                             :class="getRarityGradient(item.rarity)">
                                             {{ item.name.charAt(0) }}
                                         </div>
-                                        <p class="font-medium text-sm truncate">{{ item.name }}</p>
+                                        <p class="font-medium text-xs sm:text-sm truncate">{{ item.name }}</p>
                                     </div>
-                                    <p v-if="item.faction" class="text-xs text-foreground/60 capitalize">
+                                    <p v-if="item.faction" class="text-xs text-foreground/60 capitalize truncate">
                                         {{ item.faction }}
                                     </p>
                                 </button>
@@ -71,21 +72,21 @@
 
                     <!-- Ungrouped display -->
                     <template v-else>
-                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3">
                             <button v-for="item in filteredItems" :key="item.id" @click="selectItem(item)"
-                                class="p-3 rounded-lg border-2 transition-all duration-200 text-left"
+                                class="p-2 sm:p-3 rounded-lg border-2 transition-all duration-200 text-left"
                                 :class="getItemClass(item)">
-                                <div class="flex items-center gap-2 mb-1">
-                                    <div class="h-6 w-6 rounded flex items-center justify-center text-white text-xs font-bold"
+                                <div class="flex items-center gap-1.5 sm:gap-2 mb-1">
+                                    <div class="h-5 w-5 sm:h-6 sm:w-6 rounded flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
                                         :class="getRarityGradient(item.rarity)">
                                         {{ item.name.charAt(0) }}
                                     </div>
-                                    <p class="font-medium text-sm truncate">{{ item.name }}</p>
+                                    <p class="font-medium text-xs sm:text-sm truncate">{{ item.name }}</p>
                                 </div>
-                                <p v-if="item.faction" class="text-xs text-foreground/60 capitalize">
+                                <p v-if="item.faction" class="text-xs text-foreground/60 capitalize truncate">
                                     {{ item.faction }}
                                 </p>
-                                <p v-if="item.type" class="text-xs text-foreground/60 capitalize">
+                                <p v-if="item.type" class="text-xs text-foreground/60 capitalize truncate">
                                     {{ item.type }}
                                 </p>
                             </button>
@@ -94,14 +95,14 @@
                 </div>
 
                 <!-- Empty State -->
-                <div v-if="filteredItems.length === 0" class="text-center py-12 text-foreground/60">
-                    <Library class="h-12 w-12 mx-auto mb-3 opacity-50" />
-                    <p class="text-sm">No items found</p>
+                <div v-if="filteredItems.length === 0" class="text-center py-8 sm:py-12 text-foreground/60">
+                    <Library class="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-2 sm:mb-3 opacity-50" />
+                    <p class="text-xs sm:text-sm">No items found</p>
                 </div>
             </div>
 
-            <DialogFooter>
-                <Button variant="outline" @click="handleClose">
+            <DialogFooter class="mt-4 sm:mt-6">
+                <Button variant="outline" @click="handleClose" class="w-full sm:w-auto text-sm">
                     Close
                 </Button>
             </DialogFooter>

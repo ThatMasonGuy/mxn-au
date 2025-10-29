@@ -5,40 +5,41 @@
             'border-solid border-border/30': hero,
             'border-velaris-purple/60 bg-velaris-purple/15 shadow-xl': isDragOver,
             'hover:border-velaris-purple/30': !hero
-        }" @drop="onDrop" @dragover.prevent="onDragOver" @dragenter.prevent="onDragEnter" @dragleave="onDragLeave"
-        :style="!hero && 'hover:background: rgba(139, 92, 246, 0.08); hover:box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.2), 0 4px 6px -1px rgba(0, 0, 0, 0.1);'">
+        }" @drop="onDrop" @dragover.prevent="onDragOver" @dragenter.prevent="onDragEnter" @dragleave="onDragLeave">
 
         <!-- Occupied Slot -->
         <div v-if="hero"
-            class="h-full p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 bg-card/50 backdrop-blur-sm relative flex flex-col hover:shadow-xl"
+            class="h-full p-2 sm:p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 bg-card/50 backdrop-blur-sm relative flex flex-col hover:shadow-xl"
             :class="factionCardClass" draggable="true" @dragstart="onDragStart" @click="$emit('remove', position)"
             style="animation: slideIn 0.3s ease-out;">
 
             <!-- Main Content Area -->
-            <div class="h-full flex flex-col justify-between gap-3">
+            <div class="h-full flex flex-col justify-between gap-2 sm:gap-3">
                 <!-- Header with avatar and remove button -->
-                <div class="flex items-start gap-3">
-                    <div class="w-12 h-12 rounded-lg flex items-center justify-center text-white text-lg font-bold shadow-md flex-shrink-0"
+                <div class="flex items-start gap-2 sm:gap-3">
+                    <!-- Mobile: Smaller avatar -->
+                    <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center text-white text-base sm:text-lg font-bold shadow-md flex-shrink-0"
                         :class="factionGradient">
                         {{ hero.name.charAt(0) }}
                     </div>
                     <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-2 flex-wrap">
-                            <p class="font-semibold text-base truncate leading-tight">{{ hero.name }}</p>
-                            <div class="w-3 h-3 rounded-full shadow-sm border border-white/50 flex-shrink-0"
+                        <div class="flex items-center gap-1 sm:gap-2 flex-wrap">
+                            <!-- Mobile: Smaller text -->
+                            <p class="font-semibold text-sm sm:text-base truncate leading-tight">{{ hero.name }}</p>
+                            <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full shadow-sm border border-white/50 flex-shrink-0"
                                 :class="rarityDotClass" title="Rarity"></div>
 
-                            <!-- Tags inline -->
+                            <!-- Tags - hide on mobile, show on tablet+ -->
                             <template v-if="displayTags.length > 0">
                                 <span v-for="tag in displayTags.slice(0, 2)" :key="tag"
-                                    class="px-1.5 py-0.5 bg-foreground/10 rounded text-xs leading-none">
+                                    class="hidden sm:inline px-1.5 py-0.5 bg-foreground/10 rounded text-xs leading-none">
                                     {{ tag }}
                                 </span>
                                 <TooltipProvider v-if="displayTags.length > 2">
                                     <Tooltip>
                                         <TooltipTrigger as-child>
                                             <span
-                                                class="px-1.5 py-0.5 bg-velaris-purple/20 text-velaris-purple hover:bg-velaris-purple/30 hover:text-velaris-purple rounded text-xs leading-none cursor-pointer transition-colors">
+                                                class="hidden sm:inline px-1.5 py-0.5 bg-velaris-purple/20 text-velaris-purple hover:bg-velaris-purple/30 hover:text-velaris-purple rounded text-xs leading-none cursor-pointer transition-colors">
                                                 +{{ displayTags.length - 2 }}
                                             </span>
                                         </TooltipTrigger>
@@ -53,12 +54,14 @@
                                 </TooltipProvider>
                             </template>
                         </div>
-                        <p class="text-sm text-foreground/60 mt-1">{{ factionName }}</p>
+                        <!-- Mobile: Smaller faction text -->
+                        <p class="text-xs sm:text-sm text-foreground/60 mt-0.5 sm:mt-1">{{ factionName }}</p>
                     </div>
+                    <!-- Mobile: Smaller remove button -->
                     <button @click.stop="$emit('remove', position)"
-                        class="p-2 rounded-lg transition-all duration-200 hover:bg-red-500/20 text-foreground/60 hover:text-red-400 flex-shrink-0"
+                        class="p-1 sm:p-2 rounded-lg transition-all duration-200 hover:bg-red-500/20 text-foreground/60 hover:text-red-400 flex-shrink-0"
                         title="Remove Hero">
-                        <X class="h-4 w-4" />
+                        <X class="h-3 w-3 sm:h-4 sm:w-4" />
                     </button>
                 </div>
 
@@ -66,42 +69,43 @@
                 <div class="mt-auto">
                     <!-- Has Gear -->
                     <div v-if="hasGear"
-                        class="flex items-center justify-between p-3 rounded-lg border transition-all duration-200"
+                        class="flex items-center justify-between p-2 sm:p-3 rounded-lg border transition-all duration-200"
                         :class="gearDisplayClass">
-                        <div class="flex items-center gap-2 flex-1">
-                            <div class="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
+                        <div class="flex items-center gap-1.5 sm:gap-2 flex-1 min-w-0">
+                            <div class="w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center flex-shrink-0"
                                 :class="gearIconBackground">
-                                <component :is="gearSetIcon" class="h-4 w-4 text-white" />
+                                <component :is="gearSetIcon" class="h-3 w-3 sm:h-4 sm:w-4 text-white" />
                             </div>
                             <div class="flex-1 min-w-0">
-                                <p class="text-sm font-medium truncate leading-tight" :class="gearTextColor">{{
-                                    gearSetName }}</p>
-                                <p class="text-xs text-foreground/60 mt-0.5">Gear Set</p>
+                                <p class="text-xs sm:text-sm font-medium truncate leading-tight" :class="gearTextColor">
+                                    {{ gearSetName
+                                    }}</p>
+                                <p class="text-xs text-foreground/60 mt-0.5 hidden sm:block">Gear Set</p>
                             </div>
                         </div>
                         <button @click.stop="$emit('gear', position)"
-                            class="p-2 rounded-lg transition-all duration-200 hover:bg-white/10 text-foreground/60 hover:text-foreground flex-shrink-0"
+                            class="p-1.5 sm:p-2 rounded-lg transition-all duration-200 hover:bg-white/10 text-foreground/60 hover:text-foreground flex-shrink-0"
                             title="Edit Gear">
-                            <Settings class="h-4 w-4" />
+                            <Settings class="h-3 w-3 sm:h-4 sm:w-4" />
                         </button>
                     </div>
 
-                    <!-- No Gear -->
+                    <!-- No Gear - Mobile: Icon only, Desktop: Text -->
                     <button v-else @click.stop="$emit('gear', position)"
-                        class="w-full p-3 rounded-lg border-2 border-dashed border-border/50 hover:border-velaris-purple/50 transition-all duration-200 flex items-center justify-center text-foreground/60 hover:text-velaris-purple hover:bg-velaris-purple/5 text-sm font-medium">
-                        <Settings class="h-4 w-4 mr-2" />
-                        <span>Configure Gear</span>
+                        class="w-full p-2 sm:p-3 rounded-lg border-2 border-dashed border-border/50 hover:border-velaris-purple/50 transition-all duration-200 flex items-center justify-center text-foreground/60 hover:text-velaris-purple hover:bg-velaris-purple/5 text-xs sm:text-sm font-medium">
+                        <Settings class="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
+                        <span class="hidden sm:inline">Configure Gear</span>
                     </button>
                 </div>
             </div>
         </div>
 
         <!-- Empty Slot -->
-        <div v-else class="h-full flex items-center justify-center p-4">
+        <div v-else class="h-full flex items-center justify-center p-2 sm:p-4">
             <div class="flex flex-col items-center text-center transition-all duration-200">
-                <Users class="h-8 w-8 text-foreground/30 mb-2" />
-                <span class="text-sm font-medium text-foreground/50 mb-1">{{ positionName }}</span>
-                <span class="text-xs text-foreground/30">Drag hero here</span>
+                <Users class="h-6 w-6 sm:h-8 sm:w-8 text-foreground/30 mb-1 sm:mb-2" />
+                <span class="text-xs sm:text-sm font-medium text-foreground/50 mb-0.5 sm:mb-1">{{ positionName }}</span>
+                <span class="text-xs text-foreground/30 hidden sm:inline">Drag hero here</span>
             </div>
         </div>
 
@@ -110,8 +114,8 @@
             class="absolute inset-0 bg-velaris-purple/20 border-2 border-velaris-purple border-dashed rounded-lg flex items-center justify-center backdrop-blur-sm"
             style="animation: pulse 1s ease-in-out infinite;">
             <div class="flex flex-col items-center text-center">
-                <Plus class="h-8 w-8 text-velaris-purple mb-2" />
-                <span class="text-sm font-semibold text-velaris-purple">Drop here</span>
+                <Plus class="h-6 w-6 sm:h-8 sm:w-8 text-velaris-purple mb-1 sm:mb-2" />
+                <span class="text-xs sm:text-sm font-semibold text-velaris-purple">Drop here</span>
             </div>
         </div>
     </div>
@@ -123,26 +127,11 @@ import { Users, Settings, X, Plus, Zap, Crown, Sword, Shield } from 'lucide-vue-
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 const props = defineProps({
-    position: {
-        type: String,
-        required: true
-    },
-    hero: {
-        type: Object,
-        default: null
-    },
-    positionName: {
-        type: String,
-        required: true
-    },
-    gearData: {
-        type: Object,
-        default: () => ({})
-    },
-    store: {
-        type: Object,
-        required: true
-    }
+    position: { type: String, required: true },
+    hero: { type: Object, default: null },
+    positionName: { type: String, required: true },
+    gearData: { type: Object, default: () => ({}) },
+    store: { type: Object, required: true }
 })
 
 const emit = defineEmits(['drop', 'remove', 'gear'])
@@ -150,93 +139,68 @@ const emit = defineEmits(['drop', 'remove', 'gear'])
 const isDragOver = ref(false)
 let dragCounter = 0
 
-// Check if hero has gear configured
 const hasGear = computed(() => {
     if (!props.hero) return false
     const gear = props.gearData[props.hero.id]
     return gear && gear.gearSet && gear.gearSet !== 'none' && gear.gearSet !== ''
 })
 
-// Gear set name for display
 const gearSetName = computed(() => {
     if (!hasGear.value) return ''
-
     const gear = props.gearData[props.hero.id]
     return gear?.gearSetName || 'Unknown Set'
 })
 
-// Gear display styling - DISTINCT COLORS for each gear type
 const gearDisplayClass = computed(() => {
     if (!hasGear.value) return ''
-
     const gear = props.gearData[props.hero.id]
-
     if (!gear || !gear.gearSet) return 'bg-slate-500/10 border-slate-500/30'
-
     const gearSetStyles = {
         'titans_might': 'bg-gradient-to-r from-red-500/15 to-rose-500/15 border-red-500/40 shadow-red-500/10',
         'fury_of_blood': 'bg-gradient-to-r from-orange-500/15 to-amber-500/15 border-orange-500/40 shadow-orange-500/10',
         'glory_of_knight': 'bg-gradient-to-r from-purple-500/15 to-indigo-500/15 border-purple-500/40 shadow-purple-500/10'
     }
-
     return gearSetStyles[gear.gearSet] || 'bg-slate-500/10 border-slate-500/30'
 })
 
-// Gear icon background color
 const gearIconBackground = computed(() => {
     if (!hasGear.value) return 'bg-gradient-to-br from-velaris-purple to-velaris-teal'
-
     const gear = props.gearData[props.hero.id]
-
     if (!gear || !gear.gearSet) return 'bg-gradient-to-br from-slate-500 to-slate-600'
-
     const gearSetColors = {
         'titans_might': 'bg-gradient-to-br from-red-500 to-rose-600',
         'fury_of_blood': 'bg-gradient-to-br from-orange-500 to-amber-600',
         'glory_of_knight': 'bg-gradient-to-br from-purple-500 to-indigo-600'
     }
-
     return gearSetColors[gear.gearSet] || 'bg-gradient-to-br from-slate-500 to-slate-600'
 })
 
-// Gear text color
 const gearTextColor = computed(() => {
     if (!hasGear.value) return 'text-foreground'
-
     const gear = props.gearData[props.hero.id]
-
     if (!gear || !gear.gearSet) return 'text-foreground'
-
     const gearSetTextColors = {
         'titans_might': 'text-red-400',
         'fury_of_blood': 'text-orange-400',
         'glory_of_knight': 'text-purple-400'
     }
-
     return gearSetTextColors[gear.gearSet] || 'text-foreground'
 })
 
-// Gear set icon
 const gearSetIcon = computed(() => {
     if (!hasGear.value) return Zap
-
     const gear = props.gearData[props.hero.id]
-
     if (!gear || !gear.gearSet) return Zap
-
     const gearSetIcons = {
-        'titans_might': Sword,      // Attack - Sword
-        'fury_of_blood': Shield,    // Defense - Shield
-        'glory_of_knight': Crown    // Balanced - Crown
+        'titans_might': Sword,
+        'fury_of_blood': Shield,
+        'glory_of_knight': Crown
     }
-
     return gearSetIcons[gear.gearSet] || Zap
 })
 
-// Computed properties
 const factionCardClass = computed(() => {
     if (!props.hero) return ''
-
     const classes = {
         nature: 'border-nature-green/30 hover:border-nature-green/60 bg-nature-green/5',
         horde: 'border-horde-red/30 hover:border-horde-red/60 bg-horde-red/5',
@@ -247,7 +211,6 @@ const factionCardClass = computed(() => {
 
 const factionGradient = computed(() => {
     if (!props.hero) return 'bg-gradient-to-br from-velaris-purple to-velaris-teal'
-
     const gradients = {
         nature: 'bg-gradient-to-br from-nature-green to-emerald-600',
         horde: 'bg-gradient-to-br from-horde-red to-red-600',
@@ -263,7 +226,6 @@ const factionName = computed(() => {
 
 const rarityDotClass = computed(() => {
     if (!props.hero) return ''
-
     const classes = {
         mythic: 'bg-red-500',
         legendary: 'bg-yellow-500',
@@ -275,23 +237,17 @@ const rarityDotClass = computed(() => {
 
 const displayTags = computed(() => {
     if (!props.hero) return []
-
-    // First check if tagNames are already stored (denormalized)
     if (props.hero.tagNames?.length) {
         return props.hero.tagNames
     }
-
-    // Otherwise look up tag names from store using tag IDs
     if (props.hero.tags?.length && props.store) {
         return props.hero.tags
             .map(tagId => props.store.getTagById(tagId)?.name || tagId)
             .filter(Boolean)
     }
-
     return []
 })
 
-// Drag and drop event handlers
 const onDragOver = (event) => {
     event.preventDefault()
     event.dataTransfer.dropEffect = 'move'
@@ -330,7 +286,6 @@ const onDragStart = (event) => {
 </script>
 
 <style scoped>
-/* Keyframe animations - cannot be done inline */
 @keyframes pulse {
 
     0%,

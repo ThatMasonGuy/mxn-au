@@ -1,78 +1,77 @@
 <!-- components/topheroes/UserHeroCard.vue -->
 <template>
-    <div class="hero-showcase-card group" :class="[
-        cardClasses,
-        rarityClasses
-    ]">
+    <div class="hero-showcase-card group" :class="[cardClasses, rarityClasses]">
 
-        <!-- Hero Avatar -->
-        <div class="relative mb-4 z-[100]">
+        <!-- Hero Avatar - Mobile: Smaller -->
+        <div class="relative mb-3 sm:mb-4 z-[100]">
             <div class="hero-avatar" :class="factionGradient">
                 <div class="w-full h-full rounded-2xl overflow-hidden flex items-center justify-center">
                     <img v-if="heroImageLoaded" :src="heroImageSrc" :alt="hero.name" class="w-full h-full object-cover"
                         @error="heroImageLoaded = false" />
-                    <span v-else class="text-2xl font-bold text-white">
+                    <span v-else class="text-xl sm:text-2xl font-bold text-white">
                         {{ hero.name.charAt(0) }}
                     </span>
                 </div>
-                <div class="absolute -top-2 -right-2">
+                <div class="absolute -top-1.5 -right-1.5 sm:-top-2 sm:-right-2">
                     <div class="rarity-gem" :class="rarityGemClass">
-                        <component :is="rarityIcon" class="h-3 w-3 text-white" />
+                        <component :is="rarityIcon" class="h-2.5 w-2.5 sm:h-3 sm:w-3 text-white" />
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Hero Info -->
-        <div class="space-y-3">
+        <!-- Hero Info - Mobile: Smaller text -->
+        <div class="space-y-2 sm:space-y-3">
             <div class="text-center">
-                <h3 class="font-bold text-lg text-foreground group-hover:text-velaris-purple transition-colors">
+                <h3
+                    class="font-bold text-base sm:text-lg text-foreground group-hover:text-velaris-purple transition-colors">
                     {{ hero.name }}
                 </h3>
-                <div class="flex items-center justify-center gap-2 mt-1">
-                    <component :is="factionIcon" class="h-4 w-4" :class="factionColor" />
-                    <span class="text-sm font-medium" :class="factionColor">
+                <div class="flex items-center justify-center gap-1.5 sm:gap-2 mt-1">
+                    <component :is="factionIcon" class="h-3.5 w-3.5 sm:h-4 sm:w-4" :class="factionColor" />
+                    <span class="text-xs sm:text-sm font-medium" :class="factionColor">
                         {{ store.getFactionById(hero.faction)?.name || hero.faction }}
                     </span>
                 </div>
             </div>
 
-            <!-- Rarity Badge -->
+            <!-- Rarity Badge - Mobile: Smaller -->
             <div class="flex justify-center">
                 <div class="rarity-badge" :class="rarityBadgeClass">
-                    <component :is="rarityIcon" class="h-4 w-4" />
-                    <span class="font-bold text-sm">{{ store.getRarityById(hero.rarity)?.name || hero.rarity }}</span>
+                    <component :is="rarityIcon" class="h-3 w-3 sm:h-4 sm:w-4" />
+                    <span class="font-bold text-xs sm:text-sm">{{ store.getRarityById(hero.rarity)?.name || hero.rarity
+                        }}</span>
                 </div>
             </div>
 
-            <!-- Tags -->
-            <div class="flex flex-wrap gap-1.5 justify-center">
-                <span v-for="(tagName, index) in displayTags" :key="index" class="tag-pill">
+            <!-- Tags - Mobile: Hide if more than 2 -->
+            <div class="flex flex-wrap gap-1 sm:gap-1.5 justify-center">
+                <span v-for="(tagName, index) in displayTags.slice(0, 2)" :key="index" class="tag-pill">
                     {{ tagName }}
                 </span>
-                <span v-if="hero.tags.length > 3" class="tag-pill-more">
-                    +{{ hero.tags.length - 3 }}
+                <span v-if="hero.tags.length > 2" class="tag-pill-more">
+                    +{{ hero.tags.length - 2 }}
                 </span>
             </div>
         </div>
 
-        <!-- Bottom gradient overlay with blur for depth behind buttons -->
+        <!-- Bottom gradient overlay -->
         <div
             class="absolute bottom-0 left-0 right-0 h-80 rounded-b-2xl bg-gradient-to-t from-black/70 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 backdrop-blur-sm">
         </div>
 
-        <!-- Action Buttons -->
+        <!-- Action Buttons - Mobile: Smaller, icon-only option -->
         <div
-            class="absolute inset-x-4 bottom-4 opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all duration-300 z-10">
-            <div class="flex gap-2">
+            class="absolute inset-x-2 bottom-2 sm:inset-x-4 sm:bottom-4 opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all duration-300 z-10">
+            <div class="flex gap-1.5 sm:gap-2">
                 <button @click.stop="$emit('view', hero)"
-                    class="flex-1 bg-gradient-to-r from-velaris-purple/80 to-velaris-teal/80 backdrop-blur-sm text-white font-medium py-2 px-3 rounded-xl shadow-lg hover:shadow-xl hover:from-velaris-purple hover:to-velaris-teal transition-all duration-200 text-sm cursor-pointer">
-                    <Eye class="h-4 w-4 inline mr-1" />
-                    View Details
+                    class="flex-1 bg-gradient-to-r from-velaris-purple/80 to-velaris-teal/80 backdrop-blur-sm text-white font-medium py-1.5 sm:py-2 px-2 sm:px-3 rounded-lg sm:rounded-xl shadow-lg hover:shadow-xl hover:from-velaris-purple hover:to-velaris-teal transition-all duration-200 text-xs sm:text-sm cursor-pointer flex items-center justify-center">
+                    <Eye class="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-1" />
+                    <span class="hidden sm:inline">View</span>
                 </button>
                 <button @click.stop="$emit('add-to-queue', hero)"
-                    class="bg-emerald-500/40 hover:bg-emerald-500/60 backdrop-blur-sm text-emerald-400 border border-emerald-500/50 p-2 rounded-xl transition-all duration-200 cursor-pointer">
-                    <Plus class="h-4 w-4" />
+                    class="bg-emerald-500/40 hover:bg-emerald-500/60 backdrop-blur-sm text-emerald-400 border border-emerald-500/50 p-1.5 sm:p-2 rounded-lg sm:rounded-xl transition-all duration-200 cursor-pointer">
+                    <Plus class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 </button>
             </div>
         </div>
@@ -84,48 +83,30 @@ import { computed, ref, onMounted, watch } from 'vue'
 import { Plus, Eye, Flame, Leaf, Shield, Crown, Star, Gem, Hexagon } from 'lucide-vue-next'
 
 const props = defineProps({
-    hero: {
-        type: Object,
-        required: true
-    },
-    store: {
-        type: Object,
-        required: true
-    }
+    hero: { type: Object, required: true },
+    store: { type: Object, required: true }
 })
 
 const emit = defineEmits(['add-to-queue', 'view'])
 
-// State for image loading
 const heroImageLoaded = ref(false)
 const heroImageSrc = ref('')
 
-// Try to load hero image
 const loadHeroImage = async () => {
     if (!props.hero.id) return
-
     try {
         const imagePath = `/src/assets/images/topheroes/heroes/${props.hero.id}.png`
-        // Try to import the image dynamically
         const imageModule = await import(/* @vite-ignore */ imagePath)
         heroImageSrc.value = imageModule.default || imagePath
         heroImageLoaded.value = true
     } catch (error) {
-        // Image doesn't exist or failed to load, use fallback
         heroImageLoaded.value = false
     }
 }
 
-// Load image on mount and when hero changes
-onMounted(() => {
-    loadHeroImage()
-})
+onMounted(() => { loadHeroImage() })
+watch(() => props.hero.id, () => { loadHeroImage() })
 
-watch(() => props.hero.id, () => {
-    loadHeroImage()
-})
-
-// Computed properties
 const cardClasses = computed(() => {
     const classes = {
         nature: 'hero-card-nature',
@@ -199,26 +180,22 @@ const rarityBadgeClass = computed(() => {
 })
 
 const displayTags = computed(() => {
-    // First check if tagNames are already stored (denormalized)
     if (props.hero.tagNames?.length) {
         return props.hero.tagNames.slice(0, 3)
     }
-
-    // Otherwise look up tag names from store using tag IDs
     if (props.hero.tags?.length && props.store) {
         return props.hero.tags
             .slice(0, 3)
             .map(tagId => props.store.getTagById(tagId)?.name || tagId)
             .filter(Boolean)
     }
-
     return []
 })
 </script>
 
 <style scoped>
 .hero-showcase-card {
-    @apply relative p-6 rounded-2xl border backdrop-blur-sm transition-all duration-300 hover:-translate-y-2 overflow-hidden;
+    @apply relative p-4 sm:p-6 rounded-2xl border backdrop-blur-sm transition-all duration-300 hover:-translate-y-2 overflow-hidden;
 }
 
 .hero-card-nature {
@@ -287,23 +264,23 @@ const displayTags = computed(() => {
 }
 
 .hero-avatar {
-    @apply w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg mx-auto relative transition-all duration-300 group-hover:scale-110 group-hover:shadow-xl;
+    @apply w-12 h-12 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center shadow-lg mx-auto relative transition-all duration-300 group-hover:scale-110 group-hover:shadow-xl;
 }
 
 .rarity-gem {
-    @apply w-6 h-6 rounded-full flex items-center justify-center shadow-md;
+    @apply w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center shadow-md;
 }
 
 .rarity-badge {
-    @apply inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold backdrop-blur-sm;
+    @apply inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full text-xs font-bold backdrop-blur-sm;
 }
 
 .tag-pill {
-    @apply px-2.5 py-1 bg-gradient-to-r from-foreground/10 to-foreground/5 text-foreground/70 rounded-full text-xs font-medium border border-foreground/10 backdrop-blur-sm transition-all duration-200 hover:bg-foreground/15;
+    @apply px-2 py-0.5 sm:px-2.5 sm:py-1 bg-gradient-to-r from-foreground/10 to-foreground/5 text-foreground/70 rounded-full text-xs font-medium border border-foreground/10 backdrop-blur-sm transition-all duration-200 hover:bg-foreground/15;
 }
 
 .tag-pill-more {
-    @apply px-2.5 py-1 bg-gradient-to-r from-velaris-purple/20 to-velaris-teal/20 text-velaris-purple rounded-full text-xs font-bold border border-velaris-purple/30;
+    @apply px-2 py-0.5 sm:px-2.5 sm:py-1 bg-gradient-to-r from-velaris-purple/20 to-velaris-teal/20 text-velaris-purple rounded-full text-xs font-bold border border-velaris-purple/30;
 }
 
 :root {

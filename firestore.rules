@@ -3,36 +3,127 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // ─────────────────────────────────────────────────────────────────────────────
+    //  Helper Functions
+    // ─────────────────────────────────────────────────────────────────────────────
+    function _userRoles() {
+      return request.auth != null
+        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles
+        : null;
+    }
+
+    function _isAdmin() {
+      let roles = _userRoles();
+      return request.auth != null && roles != null && roles.hasAny(['admin', 'topheroesAdmin']);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    //  Users Collection
+    // ─────────────────────────────────────────────────────────────────────────────
     match /users/{userId} {
       allow read: if request.auth != null && request.auth.uid == userId;
       allow write: if request.auth != null && request.auth.uid == userId;
-      allow create: if request.auth != null && request.auth.uid == userId ||
-                     request.auth == null && request.resource.data.keys().hasAll(['firstName', 'lastName', 'userName', 'emailAddress', 'phoneNumber', 'dateOfBirth']);
-      
+
+      // Allow initial unauth'd create if all required fields present,
+      // or normal auth'd self-create.
+      allow create: if (request.auth != null && request.auth.uid == userId) ||
+                    (request.auth == null && request.resource.data.keys().hasAll([
+                      'firstName', 'lastName', 'userName', 'emailAddress', 'phoneNumber', 'dateOfBirth'
+                    ]));
+
       match /dailyChallenges/{document=**} {
-      	allow read: if request.auth != null && request.auth.uid == userId;
+        allow read: if request.auth != null && request.auth.uid == userId;
         allow write: if false;
       }
-      
+
       match /{document=**} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
     }
 
+    // ─────────────────────────────────────────────────────────────────────────────
+    //  Castle Data Collection
+    // ─────────────────────────────────────────────────────────────────────────────
     match /castleData/{document=**} {
       allow read: if true;
-      allow write: if request.auth != null && (
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles.hasAny(['admin', 'topheroesAdmin'])
-      );
+      allow write: if _isAdmin();
     }
 
+    // ─────────────────────────────────────────────────────────────────────────────
+    //  TopHeroes: Queues, Comments, Replies
+    // ─────────────────────────────────────────────────────────────────────────────
+    match /topheroes/general/queues/{queueId} {
+      function _isCreatorForCreate() {
+        return request.auth != null &&
+               request.resource.data.createdByUserId == request.auth.uid;
+      }
+
+      function _isCreator() {
+        return request.auth != null &&
+               resource.data.createdByUserId == request.auth.uid;
+      }
+
+      function _isOnlyStatsUpdate() {
+        let affectedKeys = request.resource.data.diff(resource.data).affectedKeys();
+        return affectedKeys.hasOnly(['upvotes', 'downvotes', 'shares', 'comments', 'commentCount', 'views']);
+      }
+
+      // Anyone can read queues
+      allow read: if true;
+
+      // Create must be by admin OR an auth'd user setting themselves as creator
+      allow create: if _isAdmin() || _isCreatorForCreate();
+
+      // Anyone (including unauth'd users) can update stat fields only
+      allow update: if _isOnlyStatsUpdate();
+
+      // Admins or the creator can fully update/delete the queue
+      allow update: if _isAdmin() || _isCreator();
+      allow delete: if _isAdmin() || _isCreator();
+
+      // Comments collection
+      match /comments/{commentId} {
+        function _isOnlyCommentStatsUpdate() {
+          let affectedKeys = request.resource.data.diff(resource.data).affectedKeys();
+          return affectedKeys.hasOnly(['upvotes', 'downvotes', 'reports', 'replyCount']);
+        }
+
+        // Anyone can read
+        allow read: if true;
+
+        // Anyone (even unauthenticated) can add comments
+        allow create: if true;
+
+        // Anyone can update stat fields only (including adding reports)
+        allow update: if _isOnlyCommentStatsUpdate();
+
+        // Only admins can delete comments
+        allow delete: if _isAdmin();
+
+        // Replies subcollection
+        match /replies/{replyId} {
+          function _isOnlyReplyStatsUpdate() {
+            let affectedKeys = request.resource.data.diff(resource.data).affectedKeys();
+            return affectedKeys.hasOnly(['upvotes', 'downvotes', 'reports']);
+          }
+
+          allow read: if true;
+          allow create: if true;     // Anyone can add replies
+          allow update: if _isOnlyReplyStatsUpdate(); // Anyone can update stats
+          allow delete: if _isAdmin(); // Admins can delete
+        }
+      }
+    }
+
+    // Generic TopHeroes fallback (kept for everything else under /topheroes)
     match /topheroes/{document=**} {
       allow read: if true;
-      allow write: if request.auth != null && (
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles.hasAny(['admin', 'topheroesAdmin'])
-      );
+      allow write: if _isAdmin();
     }
 
+    // ─────────────────────────────────────────────────────────────────────────────
+    //  Other Collections
+    // ─────────────────────────────────────────────────────────────────────────────
     match /translations/{document=**} {
       allow read: if true;
       allow write: if false;
@@ -41,22 +132,23 @@ service cloud.firestore {
     match /dailyChallenges/{document} {
       allow read: if true;
       allow write: if false;
-      
+
       match /stats/{document=**} {
-      	allow read: if true;
+        allow read: if true;
         allow write: if false;
       }
-      
+
       match /solutions/{document=**} {
-      	allow read, write: if false;
+        allow read, write: if false;
       }
     }
-    
+
     match /destiny/{document=**} {
       allow read: if request.auth != null;
       allow write: if false;
     }
 
+    // Catch-all deny
     match /{document=**} {
       allow read, write: if false;
     }

@@ -39,6 +39,22 @@
         { "fieldPath": "status", "order": "ASCENDING" },
         { "fieldPath": "updatedAt", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "queues",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "createdByUserId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "heroes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "rarity", "order": "ASCENDING" },
+        { "fieldPath": "name", "order": "ASCENDING" }
+      ]
     }
   ]
 }
