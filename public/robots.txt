@@ -1,0 +1,54 @@
+# Robots.txt for MXN.au
+# Block crawlers from authentication-required and admin areas
+
+User-agent: *
+
+# Allow public pages
+Allow: /
+Allow: /casino
+Allow: /translate
+Allow: /topheroes
+Allow: /everhomes
+Allow: /minecraft
+Allow: /dnd
+Allow: /devtools$
+Allow: /professional$
+
+# Block all authentication-required sections
+Disallow: /personal
+Disallow: /destiny
+Disallow: /cod/admin
+
+# Block all admin areas
+Disallow: /server
+Disallow: /devtools/upload
+Disallow: /devtools/firestore
+Disallow: /topheroes/admin
+Disallow: /topheroes/velaris/admin
+Disallow: /topheroes/queues/user
+Disallow: /topheroes/tools/rankings/builder
+Disallow: /topheroes/tools/rankings/weights
+Disallow: /topheroes/tools/rankings/migrate
+Disallow: /translate/rebuild
+
+# Block professional authenticated areas
+Disallow: /professional/home
+Disallow: /professional/company
+Disallow: /professional/contacts
+Disallow: /professional/invoices
+Disallow: /professional/settings
+Disallow: /professional/test
+
+# Block everhomes import wizard steps
+Disallow: /everhomes/import/sheets
+Disallow: /everhomes/import/review
+
+# Block utility pages
+Disallow: /login
+Disallow: /ext/login
+Disallow: /unauth
+Disallow: /404
+Disallow: /bg
+
+# Sitemap location
+Sitemap: https://mxn.au/sitemap.xml

@@ -125,14 +125,14 @@ import {
 } from '@heroicons/vue/24/outline'
 import { Gem } from 'lucide-vue-next'
 import ToolCard from '@/components/topheroes/ToolCard.vue'
-import TopHeroes_1 from '@/assets/images/topHeroes/TopHeroes_1.jpg';
+import TopHeroes_1 from '@/assets/images/topHeroes/TopHeroes_1.webp';
 import TopHeroes_2 from '@/assets/images/topHeroes/TopHeroes_2.jpg';
-import TopHeroes_3 from '@/assets/images/topHeroes/TopHeroes_3.jpg';
-import DarkEmpireInvasion from '@/assets/images/topHeroes/DarkEmpireInvasion.jpg';
+import TopHeroes_3 from '@/assets/images/topHeroes/TopHeroes_3.webp';
+import DarkEmpireInvasion from '@/assets/images/topHeroes/DarkEmpireInvasion.webp';
 import TopHeroesBanner from '@/assets/images/topHeroes/TopHeroesBanner.jpg';
 import KingdomDuelsBanner from '@/assets/images/topHeroes/KingdomDuelsBanner.jpg';
 import FortContest from '@/assets/images/topHeroes/FortContest.jpg';
-import StarsImage from '@/assets/images/topHeroes/1stAnniversary.jpg'
+import StarsImage from '@/assets/images/topHeroes/1stAnniversary.webp'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 

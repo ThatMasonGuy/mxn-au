@@ -29,7 +29,7 @@ export const useEventDataStore = defineStore('eventData', () => {
     const activeCastleFilters = ref(['all'])
     const activePowerFilters = ref(['all'])
     const activeDayFilters = ref([])
-    const scoreFilter = ref({ operator: '', value: null })
+    const scoreFilter = ref({ operator: '', value: null, mode: 'total' })
     const itemsPerPage = ref(20)
     const page = ref(1)
     const summaryView = ref(true)
@@ -355,20 +355,38 @@ export const useEventDataStore = defineStore('eventData', () => {
                 if (f === '100M+') return pow >= 100000000
             })
         })
-        if (scoreFilter.value.operator && scoreFilter.value.value) {
+        if (scoreFilter.value.operator && scoreFilter.value.value !== null) {
+            const mode = scoreFilter.value.mode || 'total'
+            const targetValue = scoreFilter.value.value
+            const operator = scoreFilter.value.operator
+
             data = data.filter(p => {
                 const days = activeDayFilters.value.length > 0 ? activeDayFilters.value : ALL_DAYS
-                const totalScore = days.reduce((sum, d) => sum + (p[`Score (D${d})`] || 0), 0)
 
-                switch (scoreFilter.value.operator) {
-                    case 'gte':
-                        return totalScore >= scoreFilter.value.value
-                    case 'lte':
-                        return totalScore <= scoreFilter.value.value
-                    case 'eq':
-                        return totalScore === scoreFilter.value.value
-                    default:
-                        return true
+                if (mode === 'each') {
+                    // Each day mode: ALL selected days must meet the criteria
+                    return days.every(d => {
+                        const dayScore = p[`Score (D${d})`] || 0
+                        switch (operator) {
+                            case 'gte':
+                                return dayScore >= targetValue
+                            case 'lte':
+                                return dayScore <= targetValue
+                            default:
+                                return true
+                        }
+                    })
+                } else {
+                    // Total mode: sum of selected days must meet the criteria
+                    const totalScore = days.reduce((sum, d) => sum + (p[`Score (D${d})`] || 0), 0)
+                    switch (operator) {
+                        case 'gte':
+                            return totalScore >= targetValue
+                        case 'lte':
+                            return totalScore <= targetValue
+                        default:
+                            return true
+                    }
                 }
             })
         }
@@ -513,7 +531,7 @@ export const useEventDataStore = defineStore('eventData', () => {
         activeCastleFilters.value = ['all']
         activePowerFilters.value = ['all']
         activeDayFilters.value = []
-        scoreFilter.value = { operator: '', value: null }
+        scoreFilter.value = { operator: '', value: null, mode: 'total' }
         page.value = 1
     }
 

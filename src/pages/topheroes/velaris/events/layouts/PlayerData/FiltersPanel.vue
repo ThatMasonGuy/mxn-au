@@ -53,7 +53,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import FilterGroup from './FilterGroup.vue'
-import ScoreFilter from './ScoreFilter.vue'
+import ScoreFilter from './ScoreFilterModal.vue'
 
 const props = defineProps({
     activeRoleFilters: Array,

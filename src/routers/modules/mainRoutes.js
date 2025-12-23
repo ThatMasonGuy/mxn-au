@@ -1,7 +1,8 @@
 // src/routers/modules/mainRoutes.js
 import { ROLES } from '@/constants/roles'
 
-import ComingSoon from '@/pages/MXNHome.vue'
+// REMOVED: import ComingSoon from '@/pages/MXNHome.vue'
+// This was loading MXNHome.vue eagerly even though you're using lazy loading below!
 
 export default [
     {
@@ -21,6 +22,70 @@ export default [
         },
     },
     {
+        path: '/bg',
+        name: 'BackgroundPreview',
+        component: () => import('@/components/common/backgrounds/BackgroundPreview.vue'),
+        meta: {
+            requiresAuth: false,
+            role: null,
+            title: 'MXN Home',
+            drawerRanking: null,
+            drawerVisible: false,
+            layout: 'default',
+            description: 'Page under construction.',
+            badge: '',
+            requiresOverlay: false,
+        },
+    },
+    {
+        path: '/qr',
+        name: 'QRGenerator',
+        component: () => import('@/pages/MXNQR.vue'),
+        meta: {
+            requiresAuth: false,
+            role: null,
+            title: 'QR Generator',
+            drawerRanking: null,
+            drawerVisible: false,
+            layout: 'default',
+            description: 'Page under construction.',
+            badge: '',
+            requiresOverlay: false,
+        },
+    },
+    {
+        path: '/cod',
+        name: 'CamoTracker',
+        component: () => import('@/pages/cod/CamoTracker.vue'),
+        meta: {
+            requiresAuth: false,
+            role: null,
+            title: 'MXN COD',
+            drawerRanking: null,
+            drawerVisible: false,
+            layout: 'default',
+            description: 'Page under construction.',
+            badge: '',
+            requiresOverlay: false,
+        },
+    },
+    {
+        path: '/cod/admin',
+        name: 'CODAdmin',
+        component: () => import('@/pages/cod/WeaponAdmin.vue'),
+        meta: {
+            requiresAuth: false,
+            role: null,
+            title: 'MXN COD',
+            drawerRanking: null,
+            drawerVisible: false,
+            layout: 'default',
+            description: 'Page under construction.',
+            badge: '',
+            requiresOverlay: false,
+        },
+    },
+    {
         path: '/daily',
         name: 'MXNDaily',
         component: () => import('@/pages/MXNDaily.vue'),
@@ -28,6 +93,54 @@ export default [
             requiresAuth: false,
             role: null,
             title: 'MXN Daily',
+            drawerRanking: null,
+            drawerVisible: false,
+            layout: 'default',
+            description: 'Page under construction.',
+            badge: '',
+            requiresOverlay: false,
+        },
+    },
+    {
+        path: '/casino',
+        name: 'Casino',
+        component: () => import('@/pages/casino/Casino.vue'),
+        meta: {
+            requiresAuth: false,
+            role: null,
+            title: 'MXN Casino',
+            drawerRanking: null,
+            drawerVisible: false,
+            layout: 'default',
+            description: 'Page under construction.',
+            badge: '',
+            requiresOverlay: false,
+        },
+    },
+    {
+        path: '/casino/blackjack',
+        name: 'Blackjack',
+        component: () => import('@/pages/casino/Blackjack.vue'),
+        meta: {
+            requiresAuth: false,
+            role: null,
+            title: 'MXN Blackjack',
+            drawerRanking: null,
+            drawerVisible: false,
+            layout: 'default',
+            description: 'Page under construction.',
+            badge: '',
+            requiresOverlay: false,
+        },
+    },
+    {
+        path: '/casino/roulette',
+        name: 'Roulette',
+        component: () => import('@/pages/casino/Roulette.vue'),
+        meta: {
+            requiresAuth: false,
+            role: null,
+            title: 'MXN Roulette',
             drawerRanking: null,
             drawerVisible: false,
             layout: 'default',
@@ -105,4 +218,3 @@ export default [
         redirect: '/404',
     }
 ]
-

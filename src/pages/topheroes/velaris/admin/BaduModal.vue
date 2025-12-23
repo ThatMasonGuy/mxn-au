@@ -26,7 +26,7 @@
 
 <script setup>
 import { ref, watch, onMounted } from 'vue'
-import badu from '@/assets/Badu.png' // if needed, add extension (e.g., '@/assets/badu.png')
+import badu from '@/assets/Badu.webp'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 

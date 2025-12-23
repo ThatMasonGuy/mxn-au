@@ -3,6 +3,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { checkRouteAccess } from '@/utils/useRouteGuards'
 import { waitForAuth } from '@/auth'
 import { useMainStore } from '@/stores/useMainStore'
+import { updateMetaTagsEnhanced } from '@/utils/useDynamicMetaTags'
 
 const routeModules = import.meta.glob('./routers/modules/*.js', { eager: true })
 const routes = Object.values(routeModules).flatMap(module => module.default || [])
@@ -30,7 +31,7 @@ router.beforeEach(async (to, from, next) => {
 })
 
 router.afterEach((to, from) => {
-
+    
     if (pageViewDebounce) {
         clearTimeout(pageViewDebounce)
     }

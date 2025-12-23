@@ -1,11 +1,21 @@
 <template>
-    <div class="relative w-full min-h-screen overflow-hidden">
-        <!-- Background Layers -->
-        <div class="absolute inset-0 bg-gradient-upgrade opacity-60 animate-backgroundMove pointer-events-none"
-            :style="gradientStyle" />
+    <div class="relative w-full min-h-screen overflow-hidden bg-gray-950">
+        <!-- Simplified Background Gradient -->
+        <div 
+            class="absolute inset-0 gradient-layer pointer-events-none"
+            :style="gradientStyle" 
+        />
+        
+        <!-- Lighter mist layer without backdrop-filter -->
         <div class="absolute inset-0 mist-layer pointer-events-none" />
-        <div v-for="n in particleCount" :key="n" class="absolute rounded-full animate-float pointer-events-none"
-            :style="[getParticleStyle(), particleColorStyle]" />
+        
+        <!-- Reduced particle count -->
+        <div 
+            v-for="n in particleCount" 
+            :key="n" 
+            class="particle pointer-events-none"
+            :style="getParticleStyle()"
+        />
 
         <!-- Actual Page Content -->
         <div class="relative z-10">
@@ -14,9 +24,8 @@
     </div>
 </template>
 
-
 <script setup>
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
 
 const props = defineProps({
     hue: {
@@ -25,93 +34,85 @@ const props = defineProps({
     },
     particleCount: {
         type: Number,
-        default: 30
+        default: 12 // Reduced from 30
     }
 })
 
-// Generate HSL colors based on the hue
+// Simplified gradient
 const gradientStyle = computed(() => {
     return {
-        background: `linear-gradient(135deg,
-        hsla(${props.hue}, 72%, 60%, 0.2),
-        hsla(${(props.hue + 60) % 360}, 72%, 66%, 0.15),
-        hsla(${(props.hue + 120) % 360}, 72%, 60%, 0.2),
-        hsla(${(props.hue + 60) % 360}, 72%, 66%, 0.15),
-        hsla(${props.hue}, 72%, 60%, 0.2))`
-    }
-})
-
-const particleColorStyle = computed(() => {
-    return {
-        backgroundColor: `hsla(${props.hue}, 72%, 60%, 0.1)`
+        background: `radial-gradient(ellipse at top, 
+            hsla(${props.hue}, 70%, 55%, 0.15) 0%,
+            hsla(${(props.hue + 60) % 360}, 70%, 60%, 0.1) 40%,
+            transparent 80%),
+        radial-gradient(ellipse at bottom right,
+            hsla(${(props.hue + 120) % 360}, 70%, 55%, 0.12) 0%,
+            transparent 60%)`
     }
 })
 
 const getParticleStyle = () => {
-    const size = Math.floor(Math.random() * 4) + 2
+    const size = Math.floor(Math.random() * 3) + 2
     const x = Math.random() * 100
     const y = Math.random() * 100
-    const duration = Math.random() * 40 + 20
-    const delay = Math.random() * 5
+    const duration = Math.random() * 30 + 20
+    const delay = Math.random() * 10
+    
     return {
-        width: `${size}px`,
-        height: `${size}px`,
-        left: `${x}%`,
-        top: `${y}%`,
-        animationDuration: `${duration}s`,
-        animationDelay: `${delay}s`
+        '--size': `${size}px`,
+        '--x': `${x}%`,
+        '--y': `${y}%`,
+        '--duration': `${duration}s`,
+        '--delay': `${delay}s`,
+        '--color': `hsla(${props.hue}, 70%, 60%, 0.08)`
     }
 }
 </script>
 
 <style scoped>
-@keyframes backgroundMove {
-    0% {
-        background-position: 0% 50%;
-    }
-
-    50% {
-        background-position: 100% 50%;
-    }
-
-    100% {
-        background-position: 0% 50%;
-    }
+.gradient-layer {
+    opacity: 0.7;
 }
 
-.animate-backgroundMove {
-    background-size: 600% 600%;
-    animation: backgroundMove 60s ease infinite;
+/* Simplified mist without backdrop-filter */
+.mist-layer {
+    background: radial-gradient(
+        ellipse at 50% 30%, 
+        rgba(255, 255, 255, 0.03) 0%,
+        rgba(255, 255, 255, 0.01) 50%,
+        transparent 80%
+    );
 }
 
-/* Floating particle tweaks */
+.particle {
+    position: absolute;
+    width: var(--size);
+    height: var(--size);
+    left: var(--x);
+    top: var(--y);
+    background-color: var(--color);
+    border-radius: 50%;
+    animation: float var(--duration) linear infinite;
+    animation-delay: var(--delay);
+    will-change: transform, opacity;
+    /* GPU acceleration */
+    transform: translateZ(0);
+}
+
 @keyframes float {
     0% {
-        transform: translateY(0) translateX(0);
+        transform: translateY(0) translateX(0) translateZ(0);
         opacity: 0;
     }
-
     10% {
-        opacity: 0.7;
+        opacity: 0.6;
     }
-
     90% {
-        opacity: 0.5;
+        opacity: 0.3;
     }
-
     100% {
-        transform: translateY(-100vh) translateX(20px);
+        transform: translateY(-100vh) translateX(15px) translateZ(0);
         opacity: 0;
     }
-}
-
-.animate-float {
-    animation: float linear infinite;
-}
-
-/* Slight white mist / fog layer */
-.mist-layer {
-    background: radial-gradient(circle at center, rgba(255, 255, 255, 0.05), transparent 70%);
-    backdrop-filter: blur(60px);
 }
 </style>

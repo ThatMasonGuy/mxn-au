@@ -2,18 +2,21 @@
     <div class="colour-blob-background w-full bg-gradient-to-b from-gray-950 via-gray-900 to-black" ref="bgContainer">
         <!-- Blobs -->
         <div class="blobs-container absolute inset-0 overflow-hidden pointer-events-none">
-            <div v-for="blob in blobs" :key="blob.id" class="blob" :style="{
-                width: `${blob.size}px`,
-                height: `${blob.size}px`,
-                left: `${blob.x}%`,
-                top: `${blob.y}%`,
-                backgroundColor: blob.color,
-                opacity: blob.opacity,
-                filter: `blur(${blob.blur}px)`,
-                animationDuration: `${blob.animationDuration}s`,
-                animationDelay: `${blob.delay}s`,
-                transform: `translate(${blob.offsetX}px, ${blob.offsetY}px)`
-            }"></div>
+            <div 
+                v-for="blob in blobs" 
+                :key="blob.id" 
+                class="blob" 
+                :style="{
+                    '--size': `${blob.size}px`,
+                    '--x': `${blob.x}%`,
+                    '--y': `${blob.y}%`,
+                    '--color': blob.color,
+                    '--opacity': blob.opacity,
+                    '--blur': `${blob.blur}px`,
+                    '--duration': `${blob.animationDuration}s`,
+                    '--delay': `${blob.delay}s`
+                }"
+            ></div>
         </div>
 
         <!-- Page Content -->
@@ -29,14 +32,13 @@ import { ref, onMounted, onUnmounted } from 'vue'
 const props = defineProps({
     blobDensity: {
         type: Number,
-        default: 3 // ← INCREASED from 1 ➔ 3 blobs per 1000px
+        default: 1 // Reduced from 3
     }
 })
 
 const bgContainer = ref(null)
 const blobs = ref([])
-let moveInterval = null
-let resizeObserver = null
+let resizeTimeout = null
 
 const blobColors = [
     '#d946ef', '#8b5cf6', '#6366f1', '#10b981', '#f59e0b'
@@ -46,50 +48,43 @@ const generateBlobs = () => {
     if (!bgContainer.value) return
 
     const containerHeight = bgContainer.value.scrollHeight
-    const actualBlobCount = Math.max(Math.floor((containerHeight / 1000) * props.blobDensity), 12)
+    // Reduced blob count - max 6 blobs
+    const actualBlobCount = Math.min(Math.max(Math.floor((containerHeight / 1000) * props.blobDensity), 3), 6)
 
     blobs.value = Array.from({ length: actualBlobCount }, (_, i) => ({
         id: `blob-${i}`,
         x: Math.random() * 100,
         y: Math.random() * 100,
-        size: Math.random() * 300 + 200, // Make blobs slightly bigger too
+        size: Math.random() * 250 + 150,
         color: blobColors[Math.floor(Math.random() * blobColors.length)],
-        opacity: Math.random() * 0.3 + 0.1,
-        blur: Math.random() * 50 + 30, // Blobs a bit softer
-        animationDuration: Math.random() * 12 + 8,
-        delay: Math.random() * 5,
-        offsetX: 0,
-        offsetY: 0
+        opacity: Math.random() * 0.25 + 0.08,
+        blur: Math.random() * 30 + 15, // Reduced blur significantly (was 30-80, now 15-45)
+        animationDuration: Math.random() * 15 + 10,
+        delay: Math.random() * 5
     }))
 }
 
-const moveBlobs = () => {
-    blobs.value = blobs.value.map(blob => ({
-        ...blob,
-        offsetX: (Math.random() * 20 - 10),
-        offsetY: (Math.random() * 20 - 10)
-    }))
+// Debounced resize handler
+const handleResize = () => {
+    if (resizeTimeout) clearTimeout(resizeTimeout)
+    resizeTimeout = setTimeout(generateBlobs, 300)
 }
 
 onMounted(() => {
     generateBlobs()
 
-    moveInterval = setInterval(moveBlobs, 5000)
-
-    resizeObserver = new ResizeObserver(() => {
-        generateBlobs()
-    })
+    // Use ResizeObserver with debouncing
+    const resizeObserver = new ResizeObserver(handleResize)
     if (bgContainer.value) {
         resizeObserver.observe(bgContainer.value)
     }
-})
 
-onUnmounted(() => {
-    if (moveInterval) clearInterval(moveInterval)
-    if (resizeObserver && bgContainer.value) resizeObserver.disconnect()
+    onUnmounted(() => {
+        if (resizeTimeout) clearTimeout(resizeTimeout)
+        resizeObserver.disconnect()
+    })
 })
 </script>
-
 
 <style scoped>
 .colour-blob-background {
@@ -105,23 +100,30 @@ onUnmounted(() => {
 
 .blob {
     position: absolute;
+    width: var(--size);
+    height: var(--size);
+    left: var(--x);
+    top: var(--y);
+    background-color: var(--color);
+    opacity: var(--opacity);
+    filter: blur(var(--blur));
     border-radius: 50%;
-    animation: pulseBlob var(--duration, 12s) ease-in-out infinite;
-    transition: transform 5s ease-in-out;
+    animation: pulseBlob var(--duration) ease-in-out infinite;
+    animation-delay: var(--delay);
     pointer-events: none;
+    will-change: transform, opacity;
+    /* GPU acceleration */
+    transform: translateZ(0);
 }
 
 @keyframes pulseBlob {
-
-    0%,
-    100% {
-        transform: scale(1) translate(var(--offsetX, 0px), var(--offsetY, 0px));
-        opacity: var(--opacity, 0.2);
+    0%, 100% {
+        transform: scale(1) translateZ(0);
+        opacity: var(--opacity);
     }
-
     50% {
-        transform: scale(1.2) translate(var(--offsetX, 0px), var(--offsetY, 0px));
-        opacity: calc(var(--opacity, 0.2) * 1.5);
+        transform: scale(1.15) translateZ(0);
+        opacity: calc(var(--opacity) * 1.3);
     }
 }
 </style>

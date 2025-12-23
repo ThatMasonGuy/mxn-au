@@ -1,52 +1,82 @@
 <template>
-    <section id="terminal"
-        class="relative w-full px-6 py-20 mx-auto text-white overflow-hidden flex flex-col items-center">
+    <section id="terminal" class="relative w-full px-6 py-32 mx-auto text-white flex flex-col items-center">
 
-        <div class="relative z-10 flex flex-col items-center">
-            <h2
-                class="text-4xl sm:text-5xl font-extrabold text-center bg-gradient-to-r from-fuchsia-400 via-pink-400 to-indigo-400 bg-clip-text text-transparent mb-12 animate-fade-up">
+        <!-- Section Header -->
+        <div class="text-center mb-12 max-w-3xl">
+            <h2 class="text-5xl sm:text-6xl font-extrabold mb-4 bg-gradient-to-r from-emerald-400 via-green-400 to-teal-400 bg-clip-text text-transparent">
                 Ask Mason Anything
             </h2>
+            <p class="text-lg text-white/60">
+                Interactive terminal with command suggestions and autocomplete
+            </p>
+        </div>
 
-            <div
-                class="h-[35vh] min-h-[350px] w-full max-w-4xl flex flex-col rounded-3xl bg-black/50 backdrop-blur-2xl p-6 sm:p-8 border border-emerald-400/20 shadow-[0_0_25px_10px_rgba(34,197,94,0.1)] animate-fade-up space-y-4">
-
-                <!-- Terminal Output -->
-                <div ref="output"
-                    class="flex-1 overflow-y-auto bg-black/70 rounded-xl p-4 text-green-300 font-mono text-sm custom-scrollbar">
-                    <div v-if="showHelpPrompt" class="text-green-300 flex items-center space-x-2">
-                        <span>Try typing <span class="text-green-500">help</span></span>
-                        <span>{{ loadingDots }}</span>
-                    </div>
-                </div>
-
-                <!-- Terminal Input -->
-                <div class="relative">
-                    <div
-                        class="flex items-center space-x-2 bg-black/50 rounded-xl border border-emerald-400/30 backdrop-blur p-3">
-                        <span class="text-emerald-400 font-mono">></span>
-                        <input v-model="command" @keydown.enter="handleCommand" @input="handleInput"
-                            @keydown.space="handleSpace" @keydown.tab.prevent="applySelectedSuggestion"
-                            @keydown.arrow-down.prevent="navigateAutocomplete(1)"
-                            @keydown.arrow-up.prevent="navigateAutocomplete(-1)" type="text"
-                            :placeholder="isFocused ? '' : 'Type a command...'" @focus="isFocused = true"
-                            @blur="isFocused = false"
-                            class="flex-1 bg-transparent text-green-200 font-mono text-base focus:outline-none caret-emerald-400 placeholder-gray-400" />
+        <div class="w-full max-w-5xl">
+            <div class="relative group">
+                <!-- Glow effect -->
+                <div class="absolute -inset-1 bg-gradient-to-r from-emerald-500/20 via-green-500/20 to-teal-500/20 rounded-2xl blur-xl opacity-50 group-hover:opacity-75 transition-opacity duration-500" />
+                
+                <!-- Terminal Container -->
+                <div class="relative min-h-[400px] flex flex-col rounded-2xl bg-black/60 backdrop-blur-xl border border-emerald-500/20 shadow-2xl overflow-hidden">
+                    
+                    <!-- Terminal Header -->
+                    <div class="flex items-center justify-between px-6 py-3 bg-gradient-to-r from-emerald-500/10 to-green-500/10 border-b border-emerald-500/20">
+                        <div class="flex items-center gap-2">
+                            <div class="w-3 h-3 rounded-full bg-red-500/80" />
+                            <div class="w-3 h-3 rounded-full bg-yellow-500/80" />
+                            <div class="w-3 h-3 rounded-full bg-green-500/80" />
+                        </div>
+                        <div class="text-xs text-emerald-400/60 font-mono">mason@mxn.au:~</div>
                     </div>
 
-                    <!-- Autocomplete -->
-                    <div v-if="suggestions.length"
-                        class="absolute w-full bg-black/80 border border-gray-700 mt-2 rounded-md shadow-lg max-h-48 overflow-y-auto z-50">
-                        <div v-for="(suggestion, index) in suggestions" :key="index"
-                            @click="applySuggestion(suggestion)" :class="[
-                                'px-4 py-2 cursor-pointer transition-all',
-                                selectedIndex === index ? 'bg-emerald-600 text-black' : 'hover:bg-white/10'
-                            ]">
-                            {{ suggestion }}
+                    <!-- Terminal Output -->
+                    <div ref="output" class="flex-1 overflow-y-auto p-6 text-emerald-300 font-mono text-sm custom-scrollbar min-h-[300px]">
+                        <div v-if="showHelpPrompt" class="flex items-center gap-2 text-emerald-400/80">
+                            <span>Try typing <span class="text-emerald-300 font-semibold">help</span></span>
+                            <span class="animate-pulse">{{ loadingDots }}</span>
                         </div>
                     </div>
-                </div>
 
+                    <!-- Terminal Input -->
+                    <div class="p-6 pt-0">
+                        <div class="relative">
+                            <div class="flex items-center gap-3 bg-black/40 rounded-xl border border-emerald-500/30 backdrop-blur px-4 py-3 focus-within:border-emerald-400/50 transition-colors">
+                                <span class="text-emerald-400 font-mono font-bold">$</span>
+                                <input 
+                                    v-model="command" 
+                                    @keydown.enter="handleCommand" 
+                                    @input="handleInput"
+                                    @keydown.space="handleSpace" 
+                                    @keydown.tab.prevent="applySelectedSuggestion"
+                                    @keydown.arrow-down.prevent="navigateAutocomplete(1)"
+                                    @keydown.arrow-up.prevent="navigateAutocomplete(-1)" 
+                                    type="text"
+                                    :placeholder="isFocused ? '' : 'Type a command...'" 
+                                    @focus="isFocused = true"
+                                    @blur="isFocused = false"
+                                    class="flex-1 bg-transparent text-emerald-200 font-mono text-base focus:outline-none caret-emerald-400 placeholder-emerald-400/30" 
+                                />
+                            </div>
+
+                            <!-- Autocomplete Dropdown -->
+                            <div v-if="suggestions.length" class="absolute w-full mt-2 bg-black/90 backdrop-blur-xl border border-emerald-500/30 rounded-xl shadow-2xl max-h-48 overflow-y-auto z-50">
+                                <div 
+                                    v-for="(suggestion, index) in suggestions" 
+                                    :key="index"
+                                    @click="applySuggestion(suggestion)" 
+                                    :class="[
+                                        'px-4 py-3 cursor-pointer transition-all font-mono text-sm',
+                                        selectedIndex === index 
+                                            ? 'bg-emerald-500/20 text-emerald-200 border-l-2 border-emerald-400' 
+                                            : 'text-emerald-300/80 hover:bg-emerald-500/10'
+                                    ]">
+                                    {{ suggestion }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
             </div>
         </div>
     </section>
@@ -71,106 +101,36 @@ const {
 } = useTerminal()
 
 const isFocused = ref(false)
-
-// NEW — animated loading dots logic
 const loadingDots = ref('.')
 let dotsInterval
 
 onMounted(() => {
     dotsInterval = setInterval(() => {
-        if (loadingDots.value === '.') {
-            loadingDots.value = '..'
-        } else if (loadingDots.value === '..') {
-            loadingDots.value = '...'
-        } else {
-            loadingDots.value = '.'
-        }
-    }, 500) // every half second
+        loadingDots.value = loadingDots.value.length >= 3 ? '.' : loadingDots.value + '.'
+    }, 500)
 })
 
 onUnmounted(() => {
-    clearInterval(dotsInterval)
+    if (dotsInterval) clearInterval(dotsInterval)
 })
 </script>
 
 <style scoped>
-/* Fading cards up */
-@keyframes fade-in {
-    0% {
-        opacity: 0;
-        transform: translateY(20px) scale(0.95);
-    }
-
-    100% {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-    }
-}
-
-.animate-fade-up {
-    animation: fade-in 0.8s ease forwards;
-}
-
 .custom-scrollbar::-webkit-scrollbar {
-    width: 6px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-    background: rgba(34, 197, 94, 0.4);
-    border-radius: 10px;
+    width: 8px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-    background: transparent;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
 }
 
-/* Animations */
-.terminal-output-line {
-    animation: terminalFade 0.3s ease-out;
-    margin-bottom: 4px;
-    white-space: pre-wrap;
-    word-break: break-word;
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(16, 185, 129, 0.3);
+    border-radius: 4px;
 }
 
-@keyframes terminalFade {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-@keyframes pulse-slow {
-
-    0%,
-    100% {
-        transform: scale(1);
-        opacity: 0.3;
-    }
-
-    50% {
-        transform: scale(1.1);
-        opacity: 0.5;
-    }
-}
-
-.animate-pulse-slow {
-    animation: pulse-slow 8s ease-in-out infinite;
-}
-
-.animate-pulse-slower {
-    animation: pulse-slow 12s ease-in-out infinite;
-}
-
-.delay-2000 {
-    animation-delay: 2s;
-}
-
-.delay-4000 {
-    animation-delay: 4s;
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(16, 185, 129, 0.5);
 }
 </style>

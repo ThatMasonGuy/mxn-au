@@ -34,13 +34,25 @@
 <script setup>
 import { Toaster } from '@/components/ui/toast'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import TopHeroesHeader from '@/components/topheroes/TopHeroesHeader.vue'
-import TopHeroesFooter from '@/components/topheroes/TopHeroesFooter.vue'
-import TopHeroesAdminHeader from '@/components/topheroes/admin/TopHeroesAdminHeader.vue'
-import TopHeroesAdminFooter from '@/components/topheroes/admin/TopHeroesAdminFooter.vue'
-import ProfessionalLayout from '@/components/professional/ProfessionalLayout.vue'
-import { ref, computed, watchEffect } from 'vue'
+import { ref, computed, watchEffect, defineAsyncComponent } from 'vue'
 import { useRoute } from 'vue-router'
+
+// Lazy load layout components - only load when actually needed!
+const TopHeroesHeader = defineAsyncComponent(() => 
+  import('@/components/topheroes/TopHeroesHeader.vue')
+)
+const TopHeroesFooter = defineAsyncComponent(() => 
+  import('@/components/topheroes/TopHeroesFooter.vue')
+)
+const TopHeroesAdminHeader = defineAsyncComponent(() => 
+  import('@/components/topheroes/admin/TopHeroesAdminHeader.vue')
+)
+const TopHeroesAdminFooter = defineAsyncComponent(() => 
+  import('@/components/topheroes/admin/TopHeroesAdminFooter.vue')
+)
+const ProfessionalLayout = defineAsyncComponent(() => 
+  import('@/components/professional/ProfessionalLayout.vue')
+)
 
 const route = useRoute()
 const pageRef = ref(null)
