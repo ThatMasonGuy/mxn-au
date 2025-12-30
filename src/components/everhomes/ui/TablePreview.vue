@@ -25,7 +25,7 @@
                     <input v-model="table.headers[colIndex]"
                         class="w-full bg-gray-800/50 text-sm font-medium text-white px-3 py-1.5 rounded-md border border-gray-600 focus:outline-none focus:border-teal-500 transition"
                         placeholder="Column name" />
-                    <select v-model="table.types[colIndex]"
+                    <select v-model="table.columnTypes[colIndex]"
                         class="mt-1 w-full bg-gray-800/30 text-xs text-gray-300 rounded-md border border-gray-600 px-2 py-1 focus:outline-none focus:border-teal-500">
                         <option value="string">Text</option>
                         <option value="number">Number</option>
@@ -57,7 +57,6 @@ import {
     XCircleIcon,
     RectangleGroupIcon
 } from '@heroicons/vue/24/solid'
-import SmartInput from '@/components/everhomes/ui/SmartInput.vue'
 
 const props = defineProps({
     table: {
@@ -68,9 +67,14 @@ const props = defineProps({
     sheetName: String
 })
 
-if (!props.table.types || props.table.types.length !== props.table.headers.length) {
-    props.table.types = props.table.headers.map(() => 'string')
+// Ensure columnTypes exists and matches headers length
+if (!props.table.columnTypes || props.table.columnTypes.length !== props.table.headers.length) {
+    props.table.columnTypes = props.table.headers.map(() => 'string')
 }
 
 const headers = props.table.headers
+
+function toggleExclude() {
+    props.table.excluded = !props.table.excluded
+}
 </script>

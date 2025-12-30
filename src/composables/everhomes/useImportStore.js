@@ -1,5 +1,10 @@
 // @/composables/everhomes/useImportStore.js
+// DEPRECATED: Use useImportWizardStore from '@/stores/useImportWizardStore' instead
+// This file is kept for reference only and will be removed in a future update
 import { ref } from 'vue'
+
+console.warn('[DEPRECATED] useImportStore is deprecated. Use useImportWizardStore from @/stores/useImportWizardStore instead.')
+
 const file = ref(null)
 const parsedSheets = ref([])
 
@@ -24,8 +29,9 @@ const sheets = ref([
         selected: true,
         tables: [
             {
+                tableName: 'New Builds',
                 headers: ['Location', 'Design Category', 'Price'],
-                types: ['string', 'string', 'currency'],
+                columnTypes: ['string', 'string', 'currency'],
                 preview: [
                     ['NSW Metro', 'Improved Liveability', '$342.00'],
                     ['VIC Regional', 'Robust', '$512.00'],

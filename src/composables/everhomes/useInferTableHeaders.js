@@ -1,3 +1,5 @@
+import * as XLSX from 'xlsx'
+
 export function inferTableHeaders(matrix, offset) {
     const headerCandidates = []
     const maxHeaderRows = 3

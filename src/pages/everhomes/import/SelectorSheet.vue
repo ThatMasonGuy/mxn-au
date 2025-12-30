@@ -13,14 +13,14 @@
             </p>
 
             <!-- Empty state -->
-            <div v-if="parsedSheets.length === 0" class="text-center text-sm text-gray-400 py-12">
+            <div v-if="store.parsedSheets.length === 0" class="text-center text-sm text-gray-400 py-12">
                 <FolderIcon class="h-10 w-10 mx-auto mb-2 text-gray-600" />
                 No sheets were detected in this file.
             </div>
 
             <!-- Sheet cards -->
             <TransitionGroup name="fade-slide" appear tag="div" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div v-for="sheet in parsedSheets" :key="sheet.name" tabindex="0"
+                <div v-for="sheet in store.parsedSheets" :key="sheet.name" tabindex="0"
                     class="group border rounded-xl p-5 transition cursor-pointer outline-none" :class="[
                         sheet.selected ? 'border-teal-400 bg-gray-800/60' : 'border-gray-600 bg-gray-800/30',
                         'hover:border-teal-300 hover:shadow-md'
@@ -70,7 +70,7 @@
 <script setup>
 import { computed, onMounted } from 'vue'
 import LayoutComponent from '@/components/everhomes/layouts/LayoutComponent.vue'
-import { useImportStore } from '@/composables/everhomes/useImportStore'
+import { useImportWizardStore } from '@/stores/useImportWizardStore'
 import {
     FolderIcon,
     ExclamationTriangleIcon,
@@ -78,21 +78,21 @@ import {
 } from '@heroicons/vue/24/solid'
 import { useRouter } from 'vue-router'
 
-const { parsedSheets } = useImportStore()
+const store = useImportWizardStore()
 const router = useRouter()
 
-const selectedCount = computed(() => parsedSheets.value.filter(s => s.selected).length)
+const selectedCount = computed(() => store.parsedSheets.filter(s => s.selected).length)
 
 function toggleSheet(parsedSheets) {
     parsedSheets.selected = !parsedSheets.selected
 }
 
 async function goToNextStep() {
-	router.push({ name: 'TableReview' })
+    router.push({ name: 'TableReview' })
 }
 
 onMounted(() => {
-  console.log(parsedSheets.value)
+    console.log(store.parsedSheets)
 })
 </script>
 

@@ -18,6 +18,20 @@ export default [
         },
     },
     {
+      path: '/server/dashboard',
+      name: 'Server Dashboard',
+      component: () => import('@/pages/server/ServerDashboard.vue'),
+      meta: {
+        requiresAuth: true, // Important!
+        role: null,
+        title: 'SSH Dashboard',
+        drawerRanking: 1,
+        drawerVisible: true,
+        layout: 'admin',
+      },
+    },
+    /*
+    {
       path: '/server/discord',
       name: 'Discord Server',
       component: () => import('@/pages/server/DiscordServer.vue'),
@@ -33,7 +47,6 @@ export default [
           requiresOverlay: false,
       },
   },
-    /*
     {
       path: '/server/old',
       alias: '/Server/Old',

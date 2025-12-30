@@ -130,13 +130,13 @@ import {
     CloudArrowUpIcon
 } from '@heroicons/vue/24/solid'
 import { useRouter } from 'vue-router'
-import { useImportStore } from '@/composables/everhomes/useImportStore'
+import { useImportWizardStore } from '@/stores/useImportWizardStore'
 import { useSpreadsheetParser } from '@/composables/everhomes/useSpreadsheetParser'
 import { useTableExtractor } from '@/composables/everhomes/useTableExtractor'
 
 const { parseSpreadsheet } = useSpreadsheetParser()
 const { extractTablesFromWorkbook, enrichParsedSheets } = useTableExtractor()
-const { file: importFile, setParsedSheets } = useImportStore()
+const store = useImportWizardStore()
 const router = useRouter()
 
 const file = ref(null)
@@ -193,7 +193,7 @@ function handleDragLeave() { isDraggingOver.value = false }
 
 async function processFile(selectedFile) {
     file.value = selectedFile
-    importFile.value = selectedFile
+    store.setFile(selectedFile)
     isLoading.value = true
     progress.value = 0
     error.value = null
@@ -226,12 +226,13 @@ async function processFile(selectedFile) {
 
         // 5. Enrich and store
         const enriched = enrichParsedSheets(parsed, extractedTables)
-        setParsedSheets(enriched)
+        store.setParsedSheets(enriched)
         progress.value = 100
 
     } catch (err) {
         error.value = err.message || 'Failed to parse file'
         file.value = null
+        store.setFile(null)
     } finally {
         isLoading.value = false
         cancelParse = null
@@ -243,6 +244,8 @@ async function processFile(selectedFile) {
 function resetFile() {
     if (isLoading.value && cancelParse) cancelParse()
     file.value = null
+    store.setFile(null)
+    store.resetParsedSheets()
     isLoading.value = false
     progress.value = 0
     error.value = null

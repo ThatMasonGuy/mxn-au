@@ -11,7 +11,7 @@
                     <span>server</span>
                 </h1>
 
-                <button class="rounded-md border border-emerald-400/70 px-4 py-1 text-sm font-mono tracking-wider transition
+                <button @click="openDashboard" class="rounded-md border border-emerald-400/70 px-4 py-1 text-sm font-mono tracking-wider transition
                    hover:bg-emerald-400/10 focus:outline-none focus:ring-2 focus:ring-emerald-400/70">
                     [ LOGIN ]
                 </button>
@@ -33,7 +33,7 @@
                         Self-hosted. Shell-centric. Overkill (in the best possible way).
                     </p>
 
-                    <button class="group relative inline-flex items-center overflow-hidden rounded-md border border-emerald-500 px-6 py-2
+                    <button @click="openDashboard" class="group relative inline-flex items-center overflow-hidden rounded-md border border-emerald-500 px-6 py-2
                      font-mono tracking-wider transition hover:text-gray-900">
                         <span class="absolute inset-0 -z-10 translate-y-full bg-emerald-400 transition-transform duration-300
                        group-hover:translate-y-0"></span>
@@ -104,7 +104,7 @@
                     <p class="text-xs text-gray-400">Access your server administration panel</p>
                 </div>
 
-                <button class="rounded-md border border-emerald-400/70 px-6 py-2 font-mono tracking-wider transition
+                <button @click="openDashboard" class="rounded-md border border-emerald-400/70 px-6 py-2 font-mono tracking-wider transition
                    hover:bg-emerald-400/10 focus:outline-none focus:ring-2 focus:ring-emerald-400/70">
                     [ LAUNCH PANEL ]
                 </button>
@@ -125,6 +125,13 @@ import {
     KeyIcon
 } from '@heroicons/vue/24/outline'
 import ToolCard from '@/components/server/ToolCard.vue'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
+
+const openDashboard = () => {
+  router.push('/server/dashboard')
+}
 
 const tools = [
     {

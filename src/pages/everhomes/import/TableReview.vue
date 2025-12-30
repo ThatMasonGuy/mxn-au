@@ -41,7 +41,7 @@
 <script setup>
 import LayoutComponent from '@/components/everhomes/layouts/LayoutComponent.vue'
 import TablePreview from '@/components/everhomes/ui/TablePreview.vue'
-import { useImportStore } from '@/composables/everhomes/useImportStore'
+import { useImportWizardStore } from '@/stores/useImportWizardStore'
 import { useRouter } from 'vue-router'
 
 import {
@@ -49,10 +49,10 @@ import {
     TableCellsIcon
 } from '@heroicons/vue/24/solid'
 
-const { parsedSheets } = useImportStore()
+const store = useImportWizardStore()
 const router = useRouter()
 
-const selectedSheets = parsedSheets.value.filter(s => s.selected)
+const selectedSheets = store.parsedSheets.filter(s => s.selected)
 
 function goToNextStep() {
     router.push({ name: 'DatasetSummary' })

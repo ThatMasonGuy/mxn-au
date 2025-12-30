@@ -73,10 +73,9 @@ import {
     ExclamationTriangleIcon,
     CheckCircleIcon
 } from '@heroicons/vue/24/solid'
-import { useRouter } from 'vue-router'
 
 const store = useImportWizardStore()
-const router = useRouter()
+const emit = defineEmits(['next'])
 
 const selectedCount = computed(() => store.parsedSheets.filter(s => s.selected).length)
 
@@ -84,19 +83,13 @@ function toggleSheet(parsedSheets) {
     parsedSheets.selected = !parsedSheets.selected
 }
 
-async function goToNextStep() {
-    router.push({ name: 'TableReview' })
+function emitNext() {
+    emit('next')
 }
 
 onMounted(() => {
     console.log(store.parsedSheets)
 })
-
-function emitNext() {
-    emit('next')
-}
-
-const emit = defineEmits(['next'])
 </script>
 
 <style scoped>

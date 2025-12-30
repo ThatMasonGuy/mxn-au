@@ -22,6 +22,16 @@ export default [
         },
     },
     {
+        path: '/core-defense',
+        name: 'CoreDefense',
+        component: () => import('@/pages/CoreDefense.vue'),
+        meta: {
+            requiresAuth: false,
+            title: 'Core Defense',
+            layout: 'default',
+        },
+    },
+    {
         path: '/bg',
         name: 'BackgroundPreview',
         component: () => import('@/components/common/backgrounds/BackgroundPreview.vue'),
