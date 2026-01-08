@@ -19,12 +19,25 @@ export default [
     },
     {
       path: '/server/dashboard',
-      name: 'Server Dashboard',
+      name: 'Server Terminal',
       component: () => import('@/pages/server/ServerDashboard.vue'),
       meta: {
         requiresAuth: true, // Important!
         role: null,
         title: 'SSH Dashboard',
+        drawerRanking: 1,
+        drawerVisible: true,
+        layout: 'admin',
+      },
+    },
+    {
+      path: '/server/admin',
+      name: 'Server Admin',
+      component: () => import('@/pages/server/ServerAdmin.vue'),
+      meta: {
+        requiresAuth: true, // Important!
+        role: ROLES.SERVER_ADMIN,
+        title: 'SSH Admin',
         drawerRanking: 1,
         drawerVisible: true,
         layout: 'admin',

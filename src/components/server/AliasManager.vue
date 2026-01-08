@@ -257,7 +257,7 @@ import {
   DocumentDuplicateIcon
 } from '@heroicons/vue/24/outline'
 import { useAliases } from '@/composables/useAliases'
-import { useToast } from '@/composables/useToast'
+import { toast } from 'vue-sonner'
 
 const {
   aliases,
@@ -270,8 +270,6 @@ const {
   getSetupCommand,
   getDefaultAliases
 } = useAliases()
-
-const { success: showSuccess } = useToast()
 
 // State
 const showAddModal = ref(false)
@@ -360,7 +358,7 @@ const performDelete = async () => {
 const copyAlias = async (alias) => {
   try {
     await navigator.clipboard.writeText(alias.command)
-    showSuccess(`Copied: ${alias.name}`)
+    toast.success(`Copied: ${alias.name}`)
   } catch (error) {
     console.error('Failed to copy:', error)
   }
@@ -369,7 +367,7 @@ const copyAlias = async (alias) => {
 const copySetupCommand = async () => {
   try {
     await navigator.clipboard.writeText(setupCommand.value)
-    showSuccess('Setup command copied!')
+    toast.success('Setup command copied!')
   } catch (error) {
     console.error('Failed to copy:', error)
   }
@@ -378,7 +376,7 @@ const copySetupCommand = async () => {
 const copyScript = async () => {
   try {
     await navigator.clipboard.writeText(aliasScript.value)
-    showSuccess('Full script copied!')
+    toast.success('Full script copied!')
   } catch (error) {
     console.error('Failed to copy:', error)
   }

@@ -37,10 +37,8 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { Terminal } from 'xterm'
 import { FitAddon } from 'xterm-addon-fit'
 import { WebLinksAddon } from 'xterm-addon-web-links'
-import { useToast } from '@/composables/useToast'
+import { toast } from 'vue-sonner'
 import 'xterm/css/xterm.css'
-
-const { success: showSuccess } = useToast()
 
 const terminalRef = ref(null)
 const terminal = ref(null)
@@ -49,6 +47,8 @@ const currentLine = ref('')
 const commandHistory = ref([])
 const historyIndex = ref(-1)
 const currentPath = ref('~')
+let keyHandlerDisposable = null
+let resizeObserver = null
 
 // Fake file system for demo
 const fileSystem = {
@@ -76,16 +76,30 @@ const fileSystem = {
 }
 
 onMounted(() => {
+  if (terminal.value) {
+    return
+  }
   initTerminal()
 })
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
+
+  if (resizeObserver) {
+    resizeObserver.disconnect()
+    resizeObserver = null
+  }
+
+  if (keyHandlerDisposable) {
+    keyHandlerDisposable.dispose()
+    keyHandlerDisposable = null
+  }
+
   if (terminal.value) {
     try {
       terminal.value.dispose()
     } catch (e) {
-      console.log('Terminal already disposed')
+      // Terminal already disposed
     }
   }
 })
@@ -125,14 +139,27 @@ const initTerminal = () => {
   terminal.value.loadAddon(new WebLinksAddon())
 
   terminal.value.open(terminalRef.value)
-  fitAddon.value.fit()
+
+  // Fit terminal to container - delay to ensure DOM is ready
+  setTimeout(() => {
+    fitAddon.value.fit()
+  }, 0)
 
   window.addEventListener('resize', handleResize)
+
+  // Watch for container size changes
+  resizeObserver = new ResizeObserver(() => {
+    handleResize()
+  })
+  resizeObserver.observe(terminalRef.value)
 
   terminal.value.onData(handleTerminalData)
 
   // Handle keyboard events for copy/paste
-  terminal.value.attachCustomKeyEventHandler(handleKeyEvent)
+  if (keyHandlerDisposable) {
+    keyHandlerDisposable.dispose()
+  }
+  keyHandlerDisposable = terminal.value.attachCustomKeyEventHandler(handleKeyEvent)
 
   // Welcome message
   terminal.value.writeln('\x1b[1;33m╔══════════════════════════════════════════╗\x1b[0m')
@@ -229,51 +256,51 @@ const handleTerminalData = (data) => {
 }
 
 const handleKeyEvent = (event) => {
-  // Ctrl+C
-  if (event.ctrlKey && event.key === 'c') {
-    const selection = terminal.value.getSelection()
-    if (selection) {
-      // Copy selected text
-      navigator.clipboard.writeText(selection).then(() => {
-        showSuccess('Copied to clipboard')
-      })
-      return false // Prevent default
-    } else {
-      // Send interrupt signal (Ctrl+C) - handled in onData as \x03
-      return true // Let it go through
-    }
+  // ONLY handle keydown events, ignore keyup
+  if (event.type !== 'keydown') {
+    return true
   }
 
-  // Ctrl+V - Paste
-  if (event.ctrlKey && event.key === 'v') {
+  // Ctrl+Shift+C - Force copy (uppercase C with shift)
+  if (event.ctrlKey && event.shiftKey && event.key === 'C') {
+    const selection = terminal.value.getSelection()
+    if (selection) {
+      navigator.clipboard.writeText(selection)
+    }
+    return false
+  }
+
+  // Ctrl+Shift+V - Force paste (uppercase V with shift)
+  if (event.ctrlKey && event.shiftKey && event.key === 'V') {
+    event.preventDefault()
+    event.stopPropagation()
+
     navigator.clipboard.readText().then(text => {
-      // Type out the pasted text
-      text.split('').forEach(char => {
-        currentLine.value += char
-        terminal.value.write(char)
-      })
+      currentLine.value += text
+      terminal.value.write(text)
     })
     return false
   }
 
-  // Ctrl+Shift+C - Force copy
-  if (event.ctrlKey && event.shiftKey && event.key === 'C') {
+  // Ctrl+C without shift (lowercase c)
+  if (event.ctrlKey && !event.shiftKey && event.key === 'c') {
     const selection = terminal.value.getSelection()
     if (selection) {
-      navigator.clipboard.writeText(selection).then(() => {
-        showSuccess('Copied to clipboard')
-      })
+      navigator.clipboard.writeText(selection)
+      return false
+    } else {
+      return true
     }
-    return false
   }
 
-  // Ctrl+Shift+V - Force paste
-  if (event.ctrlKey && event.shiftKey && event.key === 'V') {
+  // Ctrl+V without shift (lowercase v)
+  if (event.ctrlKey && !event.shiftKey && event.key === 'v') {
+    event.preventDefault()
+    event.stopPropagation()
+
     navigator.clipboard.readText().then(text => {
-      text.split('').forEach(char => {
-        currentLine.value += char
-        terminal.value.write(char)
-      })
+      currentLine.value += text
+      terminal.value.write(text)
     })
     return false
   }
@@ -490,8 +517,14 @@ const clearTerminal = () => {
   writePrompt()
 }
 
+let resizeTimeout = null
 const handleResize = () => {
-  fitAddon.value?.fit()
+  if (resizeTimeout) {
+    clearTimeout(resizeTimeout)
+  }
+  resizeTimeout = setTimeout(() => {
+    fitAddon.value?.fit()
+  }, 100)
 }
 </script>
 
@@ -515,12 +548,23 @@ const handleResize = () => {
   padding: 12px 16px;
   background: rgba(245, 158, 11, 0.05);
   border-bottom: 1px solid rgba(245, 158, 11, 0.2);
+  flex-shrink: 0;
 }
 
 .demo-display {
   flex: 1;
-  padding: 16px;
   overflow: hidden;
   min-height: 0;
+  position: relative;
+}
+
+/* Override xterm default padding to prevent overflow */
+.demo-display :deep(.xterm) {
+  padding: 8px;
+  height: 100% !important;
+}
+
+.demo-display :deep(.xterm-viewport) {
+  overflow-y: auto !important;
 }
 </style>

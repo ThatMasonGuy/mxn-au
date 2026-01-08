@@ -52,7 +52,7 @@
                     — no hosting, no fees, no limits.
                 </p>
                 <div class="flex flex-wrap justify-center gap-4">
-                    <button
+                    <button @click="$router.push('/minecraft/setup')" 
                         class="minecraft-button px-8 py-3 bg-green-600 hover:bg-green-500 transition-colors duration-300 text-white font-bold shadow-lg border-b-4 border-green-800">
                         Get Started
                     </button>

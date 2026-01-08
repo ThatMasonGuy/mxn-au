@@ -62,24 +62,18 @@
     </button>
 
     <!-- File Editor Modal -->
-    <FileEditor
-      :is-open="showFileEditor"
-      :filename="editingFile.name"
-      :filepath="editingFile.path"
-      :initial-content="editingFile.content"
-      :is-new="editingFile.isNew"
-      @close="showFileEditor = false"
-      @save="handleFileSave"
-    />
+    <FileEditor :is-open="showFileEditor" :filename="editingFile.name" :filepath="editingFile.path"
+      :initial-content="editingFile.content" :is-new="editingFile.isNew" @close="handleEditorClose"
+      @save="handleFileSave" />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { Terminal } from 'xterm'
 import { FitAddon } from 'xterm-addon-fit'
 import { WebLinksAddon } from 'xterm-addon-web-links'
-import { useToast } from '@/composables/useToast'
+import { toast } from 'vue-sonner'
 import { getAuth } from 'firebase/auth'
 import FileEditor from '@/components/server/FileEditor.vue'
 import 'xterm/css/xterm.css'
@@ -95,8 +89,6 @@ const props = defineProps({
 
 const emit = defineEmits(['commandExecuted', 'disconnected', 'pathChanged'])
 
-const { success: showSuccess } = useToast()
-
 // Refs
 const terminalRef = ref(null)
 const terminal = ref(null)
@@ -106,6 +98,8 @@ const connected = ref(false)
 const showHistory = ref(false)
 const commandHistory = ref([])
 const currentPath = ref('~')
+let keyHandlerDisposable = null
+let resizeObserver = null
 
 // File Editor state
 const showFileEditor = ref(false)
@@ -116,11 +110,11 @@ const editingFile = ref({
   isNew: false
 })
 
-// Track current line being typed for command detection
-const currentCommandLine = ref('')
-
 // Terminal setup
 onMounted(() => {
+  if (terminal.value) {
+    return
+  }
   initTerminal()
 
   if (props.autoConnect) {
@@ -172,16 +166,29 @@ const initTerminal = () => {
 
   // Open terminal
   terminal.value.open(terminalRef.value)
-  fitAddon.value.fit()
+
+  // Fit terminal to container - delay to ensure DOM is ready
+  setTimeout(() => {
+    fitAddon.value.fit()
+  }, 0)
 
   // Handle resize
   window.addEventListener('resize', handleResize)
+
+  // Watch for container size changes
+  resizeObserver = new ResizeObserver(() => {
+    handleResize()
+  })
+  resizeObserver.observe(terminalRef.value)
 
   // Handle terminal data (user input)
   terminal.value.onData(handleTerminalData)
 
   // Handle paste
-  terminal.value.attachCustomKeyEventHandler(handleKeyEvent)
+  if (keyHandlerDisposable) {
+    keyHandlerDisposable.dispose()
+  }
+  keyHandlerDisposable = terminal.value.attachCustomKeyEventHandler(handleKeyEvent)
 
   // Welcome message
   terminal.value.writeln('\x1b[1;32m╔══════════════════════════════════════════╗\x1b[0m')
@@ -208,7 +215,7 @@ const connect = async () => {
   const wsUrl = import.meta.env.VITE_SSH_WS_URL || 'ws://localhost:3001'
 
   ws.value = new WebSocket(wsUrl)
-  
+
   // ADD KEEPALIVE
   let keepAliveInterval = null
 
@@ -232,15 +239,25 @@ const connect = async () => {
         ws.value.close()
         return
       }
-      
+
       const token = await auth.currentUser.getIdToken()
-      setTimeout(() => handleResize(), 500)
-      
+
+      const terminalInfo = {
+        term: 'xterm-256color',
+        cols: terminal.value.cols || 80,
+        rows: terminal.value.rows || 24
+      }
+
+      // Send auth with terminal info
       ws.value.send(JSON.stringify({
         type: 'auth',
         serverId: props.serverId,
-        token: token
+        token: token,
+        terminalInfo: terminalInfo
       }))
+
+      // Send resize after auth
+      setTimeout(() => handleResize(), 500)
     } catch (error) {
       terminal.value.writeln('\x1b[31m✗ Failed to get auth token\x1b[0m')
       console.error('Auth token error:', error)
@@ -257,14 +274,16 @@ const connect = async () => {
     } else if (data.type === 'error') {
       terminal.value.writeln(`\x1b[31m✗ ${data.message}\x1b[0m`)
     } else if (data.type === 'file-content') {
-      // File read successfully (or new file)
+      // [New File] if new
       if (data.isNew) {
-        terminal.value.writeln(`\x1b[33m[New File]\x1b[0m`)
+        terminal.value.writeln('[New File]')
       }
+      // Open the editor
       openFileEditor(data.filename, data.filepath, data.content, data.isNew)
     } else if (data.type === 'file-saved') {
-      terminal.value.writeln(`\x1b[32m✓ File saved: ${data.filepath}\x1b[0m`)
-      showSuccess('File saved!')
+      // "File saved: {expanded name}"
+      terminal.value.writeln(`File saved: ${data.filepath}`)
+      toast.success('File saved!')
     } else if (data.type === 'file-error') {
       terminal.value.writeln(`\x1b[31m✗ File error: ${data.message}\x1b[0m`)
     } else if (data.type === 'pong') {
@@ -301,44 +320,48 @@ const handleTerminalData = (data) => {
     return
   }
 
-  // Track the command being typed
+  // Intercept Enter key to check for edit command
   if (data === '\r' || data === '\n') {
-    // Command submitted - check if it's an edit command
-    const trimmed = currentCommandLine.value.trim()
-    const editMatch = trimmed.match(/^edit\s+(.+)$/)
-    
-    if (editMatch) {
-      const filename = editMatch[1].trim()
-      
-      // Send the enter key to complete the command (will show "command not found")
-      ws.value.send(JSON.stringify({
-        type: 'input',
-        data: data
-      }))
-      
-      // Wait a tiny bit for the error message, then open editor
-      setTimeout(() => {
+    // Get the current line from terminal buffer
+    const buffer = terminal.value.buffer.active
+    const cursorY = buffer.cursorY
+    const line = buffer.getLine(cursorY)
+
+    if (line) {
+      // Extract text from the line
+      let lineText = ''
+      for (let i = 0; i < line.length; i++) {
+        const cell = line.getCell(i)
+        if (cell) {
+          lineText += cell.getChars()
+        }
+      }
+
+      // Clean up the line text (remove prompt)
+      // Match common prompts: user@host:path$ or user@host:path#
+      const cleanText = lineText.replace(/^.*[$#>]\s*/, '').trim()
+
+      // Check if it's an edit command
+      const editMatch = cleanText.match(/^edit\s+(.+)$/)
+
+      if (editMatch) {
+        const filename = editMatch[1].trim()
+
+        // Write newline
+        terminal.value.write('\r\n')
+
+        // DON'T send Ctrl+C yet - the incomplete command will sit on the server
+        // We'll send Ctrl+C when the editor closes to clear it
+
+        // Request file immediately (no delay needed)
         handleEditCommand(filename)
-      }, 50)
-      
-      currentCommandLine.value = ''
-      return
+
+        return  // Don't send the Enter key!
+      }
     }
-    
-    // Regular command
-    currentCommandLine.value = ''
-  } else if (data === '\x7f') {
-    // Backspace
-    currentCommandLine.value = currentCommandLine.value.slice(0, -1)
-  } else if (data.charCodeAt(0) >= 32 && data.charCodeAt(0) <= 126) {
-    // Printable character
-    currentCommandLine.value += data
-  } else if (data === '\x03') {
-    // Ctrl+C - clear current line
-    currentCommandLine.value = ''
   }
 
-  // Send input to backend
+  // Send all input to backend (for non-edit commands)
   ws.value.send(JSON.stringify({
     type: 'input',
     data: data
@@ -346,29 +369,25 @@ const handleTerminalData = (data) => {
 }
 
 const handleKeyEvent = (event) => {
-  // Ctrl+C
-  if (event.ctrlKey && event.key === 'c') {
-    const selection = terminal.value.getSelection()
-    if (selection) {
-      // Copy selected text
-      navigator.clipboard.writeText(selection).then(() => {
-        showSuccess('Copied to clipboard')
-      })
-      return false // Prevent default
-    } else {
-      // Send interrupt signal (Ctrl+C)
-      if (connected.value && ws.value) {
-        ws.value.send(JSON.stringify({
-          type: 'input',
-          data: '\x03' // Ctrl+C
-        }))
-      }
-      return false
-    }
+  // ONLY handle keydown events, ignore keyup
+  if (event.type !== 'keydown') {
+    return true
   }
 
-  // Ctrl+V - Paste
-  if (event.ctrlKey && event.key === 'v') {
+  // Ctrl+Shift+C - Force copy (uppercase C with shift)
+  if (event.ctrlKey && event.shiftKey && event.key === 'C') {
+    const selection = terminal.value.getSelection()
+    if (selection) {
+      navigator.clipboard.writeText(selection)
+    }
+    return false
+  }
+
+  // Ctrl+Shift+V - Force paste (uppercase V with shift)
+  if (event.ctrlKey && event.shiftKey && event.key === 'V') {
+    event.preventDefault()
+    event.stopPropagation()
+
     navigator.clipboard.readText().then(text => {
       if (connected.value && ws.value) {
         ws.value.send(JSON.stringify({
@@ -380,19 +399,28 @@ const handleKeyEvent = (event) => {
     return false
   }
 
-  // Ctrl+Shift+C - Force copy
-  if (event.ctrlKey && event.shiftKey && event.key === 'C') {
+  // Ctrl+C without shift (lowercase c)
+  if (event.ctrlKey && !event.shiftKey && event.key === 'c') {
     const selection = terminal.value.getSelection()
     if (selection) {
-      navigator.clipboard.writeText(selection).then(() => {
-        showSuccess('Copied to clipboard')
-      })
+      navigator.clipboard.writeText(selection)
+      return false
+    } else {
+      if (connected.value && ws.value) {
+        ws.value.send(JSON.stringify({
+          type: 'input',
+          data: '\x03'
+        }))
+      }
+      return false
     }
-    return false
   }
 
-  // Ctrl+Shift+V - Force paste
-  if (event.ctrlKey && event.shiftKey && event.key === 'V') {
+  // Ctrl+V without shift (lowercase v)
+  if (event.ctrlKey && !event.shiftKey && event.key === 'v') {
+    event.preventDefault()
+    event.stopPropagation()
+
     navigator.clipboard.readText().then(text => {
       if (connected.value && ws.value) {
         ws.value.send(JSON.stringify({
@@ -431,33 +459,53 @@ const clearTerminal = () => {
   terminal.value.clear()
 }
 
+let resizeTimeout = null
 const handleResize = () => {
   if (!fitAddon.value || !terminal.value) return
-  
-  fitAddon.value.fit()
 
-  // Send resize to backend IMMEDIATELY
-  if (connected.value && ws.value && ws.value.readyState === WebSocket.OPEN) {
-    const dimensions = {
-      cols: terminal.value.cols,
-      rows: terminal.value.rows
-    }
-
-    ws.value.send(JSON.stringify({
-      type: 'resize',
-      ...dimensions
-    }))
+  // Clear any pending resize
+  if (resizeTimeout) {
+    clearTimeout(resizeTimeout)
   }
+
+  // Debounce the fit and backend notification
+  resizeTimeout = setTimeout(() => {
+    fitAddon.value.fit()
+
+    // Send resize to backend
+    if (connected.value && ws.value && ws.value.readyState === WebSocket.OPEN) {
+      const dimensions = {
+        cols: terminal.value.cols,
+        rows: terminal.value.rows
+      }
+
+      ws.value.send(JSON.stringify({
+        type: 'resize',
+        ...dimensions
+      }))
+    }
+  }, 100)
 }
 
 const extractPath = (output) => {
+  // Strip ANSI escape sequences (colors, formatting)
+  // Pattern: \x1b[...m or \u001b[...m
+  const cleanOutput = output.replace(/\x1b\[[0-9;]*m/g, '')
+
+  // Debug: Show cleaned output
+  if (output.includes('ssh-portal-backend') || output.includes('$')) {
+    console.log('📂 [Path] Clean output:', JSON.stringify(cleanOutput.substring(0, 100)))
+  }
+
   // Try to extract path from common prompt patterns
   // e.g., "user@host:/path/to/dir$"
-  const pathMatch = output.match(/:\s*([~\/][\w\/.-]*)\s*[$#>]/)
+  const pathMatch = cleanOutput.match(/:\s*([~\/][\w\/.-]*)\s*[$#>]/)
   if (pathMatch) {
     const newPath = pathMatch[1]
+    console.log('📂 [Path] ✅ Detected:', newPath)
     if (newPath !== currentPath.value) {
       currentPath.value = newPath
+      console.log('📂 [Path] ✅ Updated to:', newPath)
       emit('pathChanged', newPath)
     }
   }
@@ -469,9 +517,10 @@ const handleEditCommand = (filename) => {
     terminal.value.writeln('\x1b[31m✗ Not connected\x1b[0m')
     return
   }
-  
-  terminal.value.writeln(`\x1b[36mOpening ${filename} in editor...\x1b[0m`)
-  
+
+  console.log('📝 [Edit] Filename:', filename)
+  console.log('📝 [Edit] Current Path:', currentPath.value)
+
   // Request file content from backend
   ws.value.send(JSON.stringify({
     type: 'read-file',
@@ -481,6 +530,9 @@ const handleEditCommand = (filename) => {
 }
 
 const openFileEditor = (filename, filepath, content, isNew = false) => {
+  // "Opened {name} in editor"
+  terminal.value.writeln(`Opened ${filename} in editor`)
+
   editingFile.value = {
     name: filename,
     path: filepath,
@@ -490,25 +542,57 @@ const openFileEditor = (filename, filepath, content, isNew = false) => {
   showFileEditor.value = true
 }
 
+const handleEditorClose = () => {
+  // Close editor
+  showFileEditor.value = false
+
+  // Send Ctrl^C to server
+  if (connected.value && ws.value) {
+    ws.value.send(JSON.stringify({
+      type: 'input',
+      data: '\x03'
+    }))
+  }
+
+  // Wait for Ctrl^C to process, then focus
+  setTimeout(() => {
+    // Terminal input selected
+    if (terminal.value) {
+      terminal.value.focus()
+    }
+  }, 100)
+}
+
 const handleFileSave = async ({ filepath, content }) => {
   if (!connected.value || !ws.value) {
     terminal.value.writeln('\x1b[31m✗ Not connected\x1b[0m')
     return
   }
-  
+
   // Send file save request to backend
   ws.value.send(JSON.stringify({
     type: 'write-file',
     filepath: filepath,
     content: content
   }))
-  
-  // Close editor
-  showFileEditor.value = false
+
+  // DON'T close editor - user might want to keep editing
+  // Only Esc or clicking the red close button will close it
 }
 
 const cleanup = () => {
   window.removeEventListener('resize', handleResize)
+
+  if (resizeObserver) {
+    resizeObserver.disconnect()
+    resizeObserver = null
+  }
+
+  if (keyHandlerDisposable) {
+    keyHandlerDisposable.dispose()
+    keyHandlerDisposable = null
+  }
+
   disconnect()
   terminal.value?.dispose()
 }
@@ -549,13 +633,24 @@ defineExpose({
   padding: 12px 16px;
   background: rgba(255, 255, 255, 0.02);
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  flex-shrink: 0;
 }
 
 .terminal-display {
   flex: 1;
-  padding: 16px;
   overflow: hidden;
   min-height: 0;
+  position: relative;
+}
+
+/* Override xterm default padding to prevent overflow */
+.terminal-display :deep(.xterm) {
+  padding: 8px;
+  height: 100% !important;
+}
+
+.terminal-display :deep(.xterm-viewport) {
+  overflow-y: auto !important;
 }
 
 .history-sidebar {

@@ -1,7 +1,7 @@
 // @/composables/useAliases.js
-import { collection, doc, setDoc, getDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore'
-import { useFirestore } from '@/composables/useFirestore'
-import { useAuth } from '@/composables/useAuth'
+import { doc, getDoc, setDoc, arrayUnion, arrayRemove } from 'firebase/firestore'
+import { firestore } from '@/firebase'
+import { useMainStore } from '@/stores/useMainStore'
 import { ref } from 'vue'
 
 /**
@@ -9,8 +9,7 @@ import { ref } from 'vue'
  * Manages custom bash aliases that sync across servers
  */
 export const useAliases = () => {
-  const { user } = useAuth()
-  const db = useFirestore()
+  const mainStore = useMainStore()
   
   const aliases = ref([])
   const loading = ref(false)
@@ -19,7 +18,10 @@ export const useAliases = () => {
    * Get user's aliases document reference
    */
   const getAliasesRef = () => {
-    return doc(db, 'users', user.value.uid, 'settings', 'aliases')
+    if (!mainStore.user?.uid) {
+      throw new Error('User not authenticated')
+    }
+    return doc(firestore, 'users', mainStore.user.uid, 'settings', 'aliases')
   }
   
   /**

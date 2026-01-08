@@ -176,9 +176,6 @@
         </div>
       </transition>
     </Teleport>
-
-    <!-- Toast Notifications -->
-    <ToastContainer />
   </div>
 </template>
 
@@ -198,8 +195,7 @@ import Terminal from '@/components/server/Terminal.vue'
 import DemoTerminal from '@/components/server/DemoTerminal.vue'
 import ServerManager from '@/components/server/ServerManager.vue'
 import AliasManager from '@/components/server/AliasManager.vue'
-import ToastContainer from '@/components/server/ToastContainer.vue'
-import { useAuth } from '@/composables/useAuth'
+import { useMainStore } from '@/stores/useMainStore'
 
 // State
 const currentServer = ref(null)
@@ -218,8 +214,8 @@ const terminalRef = ref(null)
 const paletteInput = ref(null)
 
 // User
-const { user } = useAuth()
-const userName = computed(() => user.value?.email?.split('@')[0] || 'Guest')
+const mainStore = useMainStore()
+const userName = computed(() => mainStore.user?.email?.split('@')[0] || 'Guest')
 
 // Quick commands (customizable per server)
 const quickCommands = ref([
@@ -308,7 +304,7 @@ const handleServerSelected = (server) => {
   currentServer.value = server
   terminalConnected.value = false
   stopSessionTimer()
-  
+
   // Give the Terminal component time to mount and initialize
   nextTick(() => {
     setTimeout(() => {

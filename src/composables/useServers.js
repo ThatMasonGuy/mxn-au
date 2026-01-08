@@ -1,14 +1,17 @@
 // composables/useServers.js
-import { collection, addDoc, updateDoc, deleteDoc, doc, getDocs, query, where, orderBy } from 'firebase/firestore'
+import { collection, addDoc, updateDoc, deleteDoc, doc, getDocs, query, orderBy } from 'firebase/firestore'
 import { firestore } from '@/firebase'
-import { useAuth } from '@/composables/useAuth'
+import { useMainStore } from '@/stores/useMainStore'
 import { encryptCredential, decryptCredential } from '@/utils/crypto'
 
 export const useServers = () => {
-    const { user } = useAuth()
+    const mainStore = useMainStore()
 
     const getUserServersRef = () => {
-        return collection(firestore, 'users', user.value.uid, 'servers')
+        if (!mainStore.user?.uid) {
+            throw new Error('User not authenticated')
+        }
+        return collection(firestore, 'users', mainStore.user.uid, 'servers')
     }
 
     const addServer = async (serverData) => {
@@ -22,13 +25,19 @@ export const useServers = () => {
     }
 
     const updateServer = async (serverId, updates) => {
-        const serverRef = doc(firestore, 'users', user.value.uid, 'servers', serverId)
+        if (!mainStore.user?.uid) {
+            throw new Error('User not authenticated')
+        }
+        const serverRef = doc(firestore, 'users', mainStore.user.uid, 'servers', serverId)
         updates.updatedAt = new Date()
         return await updateDoc(serverRef, updates)
     }
 
     const deleteServer = async (serverId) => {
-        const serverRef = doc(firestore, 'users', user.value.uid, 'servers', serverId)
+        if (!mainStore.user?.uid) {
+            throw new Error('User not authenticated')
+        }
+        const serverRef = doc(firestore, 'users', mainStore.user.uid, 'servers', serverId)
         return await deleteDoc(serverRef)
     }
 
