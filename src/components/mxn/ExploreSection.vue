@@ -15,6 +15,15 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 max-w-7xl w-full">
 
             <ToolCard 
+                :icon="Bot" 
+                title="Discord Bots"
+                desc="Discord bots for all occasions, from realtime translation to daily games."
+                link="/discord" 
+                :image="DiscordBot_image" 
+                badge="New!" 
+            />
+
+            <ToolCard 
                 :icon="Languages" 
                 title="Translate"
                 desc="AI-powered web translator for real-time language conversion. Free & open to all."
@@ -24,12 +33,20 @@
             />
 
             <ToolCard 
+                :icon="Server" 
+                title="Server"
+                desc="Web based SSH terminal, connect to your servers, maintain custom commands with ease" 
+                link="/server"
+                :image="Server_image" 
+                badge="New!" 
+            />
+
+            <ToolCard 
                 :icon="Grid" 
                 title="Daily Games"
                 desc="AI-powered daily games like wordle, connections, flagle and more."
                 link="/daily" 
-                :image="Daily_Image" 
-                badge="New!" 
+                :image="Daily_image" 
             />
 
             <ToolCard 
@@ -38,7 +55,6 @@
                 desc="AI-powered challenge optimiser for Destiny 2. Plan, optimise, and track your progress."
                 link="/destiny" 
                 :image="Destiny2_image" 
-                badge="New!" 
             />
 
             <ToolCard 
@@ -73,21 +89,12 @@
                 :image="Minecraft_image" 
                 badge="Coming Soon" 
             />
-
-            <ToolCard 
-                :icon="Server" 
-                title="Server"
-                desc="Manage web servers, deploy projects, and control files/plugins. All-in-one admin." 
-                link="/server"
-                :image="Server_image" 
-                badge="Coming Soon" 
-            />
         </div>
     </section>
 </template>
 
 <script setup>
-import { Wrench, Puzzle, Box, Server, Languages, User, Crosshair, Grid } from 'lucide-vue-next'
+import { Wrench, Puzzle, Box, Server, Languages, User, Crosshair, Grid, Bot } from 'lucide-vue-next'
 import ToolCard from '@/components/topheroes/ToolCard.vue'
 
 import TopHeroes_image from '@/assets/images/topHeroes/TopHeroes_2.jpg';
@@ -95,7 +102,8 @@ import DevTools_image from '@/assets/images/mxn/DevTools_Image.jpg';
 import Minecraft_image from '@/assets/images/mxn/Minecraft_Image.jpg';
 import Server_image from '@/assets/images/mxn/Server_Image.jpg';
 import Translate_image from '@/assets/images/mxn/Translate_Image.jpg';
+import DiscordBot_image from '@/assets/images/mxn/DiscordBot_Image.jpg';
 import Personal_image from '@/assets/images/mxn/Personal_Image.webp';
 import Destiny2_image from '@/assets/images/mxn/Destiny2_Image.jpg';
-import Daily_Image from '@/assets/images/mxn/Daily_Image.webp';
+import Daily_image from '@/assets/images/mxn/Daily_Image.webp';
 </script>

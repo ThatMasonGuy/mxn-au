@@ -1,12 +1,29 @@
 <template>
     <div class="min-h-screen bg-gradient-to-br from-zinc-900 via-violet-950 to-zinc-900">
+        <!-- Navigation Bar -->
+        <nav
+            class="fixed top-0 left-0 right-0 z-50 px-8 py-4 bg-zinc-900/80 backdrop-blur-xl border-b border-zinc-800/50">
+            <div class="max-w-7xl mx-auto flex items-center justify-between">
+                <router-link to="/translate/bot" class="flex items-center gap-2 text-white font-bold text-xl">
+                    <Languages class="h-6 w-6 text-violet-400" />
+                    <span>MXNTranslate</span>
+                </router-link>
+
+                <router-link to="/translate/bot/dashboard"
+                    class="px-6 py-2.5 bg-gradient-to-r from-violet-600 to-fuchsia-600 rounded-lg font-semibold text-white hover:from-violet-700 hover:to-fuchsia-700 transition-all flex items-center gap-2">
+                    <Settings class="h-4 w-4" />
+                    Manage Bot
+                </router-link>
+            </div>
+        </nav>
+
         <!-- Noise texture overlay -->
         <div class="fixed inset-0 opacity-20 mix-blend-soft-light pointer-events-none"
             style="background-image: url('data:image/svg+xml,%3Csvg width=%22100%22 height=%22100%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noise%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.9%22 /%3E%3C/filter%3E%3Crect width=%22100%22 height=%22100%22 filter=%22url(%23noise)%22 opacity=%220.4%22/%3E%3C/svg%3E')">
         </div>
 
         <!-- Hero Section - Full Width -->
-        <section class="relative px-8 pt-20 pb-24 overflow-hidden">
+        <section class="relative px-8 pt-28 pb-24 overflow-hidden">
             <div class="absolute inset-0 bg-gradient-to-b from-transparent via-violet-500/5 to-transparent"></div>
 
             <div class="max-w-7xl mx-auto relative z-10">
@@ -216,7 +233,7 @@
                         <div
                             class="relative p-6 bg-emerald-500/5 border border-emerald-500/20 rounded-2xl backdrop-blur">
                             <div class="text-3xl lg:text-4xl font-black text-emerald-400 mb-2">{{ store.formattedWords
-                                }}</div>
+                            }}</div>
                             <div class="text-zinc-400">Words Translated</div>
                         </div>
                     </div>
@@ -770,15 +787,24 @@
                     Free forever. No subscriptions. No auth walls. Just translate.
                 </p>
 
-                <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
                     <a href="https://discord.com/oauth2/authorize?client_id=1360582974277550090" target="_blank"
                         class="group relative px-10 py-5 bg-gradient-to-r from-violet-600 to-fuchsia-600 rounded-2xl font-bold text-white text-lg overflow-hidden transition-all hover:scale-105 inline-flex items-center justify-center gap-3">
                         <Bot class="h-6 w-6" />
-                        <span>Add to Discord Now</span>
+                        <span>Add to Discord</span>
                         <div
                             class="absolute inset-0 bg-gradient-to-r from-violet-700 to-fuchsia-700 translate-y-full group-hover:translate-y-0 transition-transform">
                         </div>
                     </a>
+
+                    <div class="flex items-center gap-3">
+                        <span class="text-zinc-500">or</span>
+                        <router-link to="/translate/bot/dashboard"
+                            class="px-8 py-4 bg-white/5 backdrop-blur border border-white/10 rounded-xl font-semibold text-white hover:bg-white/10 transition-all flex items-center gap-2">
+                            <Settings class="h-5 w-5" />
+                            Already added? Login to manage
+                        </router-link>
+                    </div>
                 </div>
 
                 <div class="mt-8 flex items-center justify-center gap-6">

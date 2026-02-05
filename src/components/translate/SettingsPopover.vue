@@ -96,6 +96,81 @@
 
                 <Separator class="bg-white/10" />
 
+                <!-- Translation Model -->
+                <section class="space-y-3">
+                    <div class="flex items-center gap-2">
+                        <div class="w-2 h-2 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500" />
+                        <h4 class="text-sm font-semibold text-white/90">Translation Model</h4>
+                    </div>
+
+                    <div class="flex items-start gap-3 p-3 rounded-2xl bg-white/5 border border-white/10">
+                        <div class="p-1.5 rounded-lg bg-white/10">
+                            <SlidersVertical class="w-4 h-4" />
+                        </div>
+                        <p class="text-xs text-white/70 leading-relaxed">
+                            Choose which AI service powers your translations. 
+                            <span class="text-white/90 font-medium">OpenAI</span> provides contextual translations with accuracy metrics, 
+                            while <span class="text-white/90 font-medium">DeepL</span> offers specialized translation quality.
+                        </p>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <button
+                            @click="store.selectedModel = 'openai'"
+                            :class="[
+                                'flex flex-col items-center gap-2 p-3 rounded-2xl border-2 transition-all',
+                                store.selectedModel === 'openai'
+                                    ? 'bg-violet-500/20 border-violet-500 shadow-lg shadow-violet-500/20'
+                                    : 'bg-white/5 border-white/10 hover:border-white/20'
+                            ]">
+                            <div class="text-2xl">🤖</div>
+                            <div class="text-center">
+                                <div class="text-sm font-semibold text-white/90">OpenAI</div>
+                                <div class="text-xs text-white/60">GPT-4o Mini</div>
+                            </div>
+                        </button>
+
+                        <button
+                            @click="store.selectedModel = 'deepl'"
+                            :class="[
+                                'flex flex-col items-center gap-2 p-3 rounded-2xl border-2 transition-all',
+                                store.selectedModel === 'deepl'
+                                    ? 'bg-blue-500/20 border-blue-500 shadow-lg shadow-blue-500/20'
+                                    : 'bg-white/5 border-white/10 hover:border-white/20'
+                            ]">
+                            <div class="text-2xl">🌐</div>
+                            <div class="text-center">
+                                <div class="text-sm font-semibold text-white/90">DeepL</div>
+                                <div class="text-xs text-white/60">Specialized</div>
+                            </div>
+                        </button>
+                    </div>
+
+                    <!-- Show info based on selected model -->
+                    <div v-if="store.selectedModel === 'openai'" 
+                         class="flex items-start gap-3 p-3 rounded-2xl bg-violet-500/10 border border-violet-400/20">
+                        <div class="p-1.5 rounded-lg bg-violet-500/20">
+                            <AlertCircle class="w-4 h-4 text-violet-300" />
+                        </div>
+                        <p class="text-xs text-violet-200 leading-relaxed">
+                            OpenAI provides contextual translations with retranslation accuracy metrics. Uses your API key.
+                        </p>
+                    </div>
+
+                    <div v-if="store.selectedModel === 'deepl'" 
+                         class="flex items-start gap-3 p-3 rounded-2xl bg-blue-500/10 border border-blue-400/20">
+                        <div class="p-1.5 rounded-lg bg-blue-500/20">
+                            <AlertCircle class="w-4 h-4 text-blue-300" />
+                        </div>
+                        <div class="text-xs text-blue-200 leading-relaxed">
+                            <p class="mb-2">DeepL uses server-side authentication and provides specialized high-quality translations.</p>
+                            <p class="text-blue-300/80">Note: DeepL doesn't support Arabic, Hindi, Thai, or Vietnamese. These will fall back to OpenAI.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <Separator class="bg-white/10" />
+
                 <!-- Preferences -->
                 <section class="space-y-4">
                     <div class="flex items-center gap-2">
@@ -122,6 +197,33 @@
                                 <div class="text-xs text-white/50">Access on any device once logged in</div>
                             </div>
                             <Switch v-model:checked="store.syncHistory" />
+                        </div>
+                    </div>
+                </section>
+
+                <Separator class="bg-white/10" />
+
+                <!-- Emergency Reset -->
+                <section class="space-y-3">
+                    <div class="flex items-center gap-2">
+                        <div class="w-2 h-2 rounded-full bg-gradient-to-r from-red-500 to-orange-500" />
+                        <h4 class="text-sm font-semibold text-white/90">Troubleshooting</h4>
+                    </div>
+
+                    <div class="flex items-start gap-3 p-3 rounded-2xl bg-white/5 border border-white/10">
+                        <div class="p-1.5 rounded-lg bg-white/10">
+                            <ShieldCheck class="w-4 h-4" />
+                        </div>
+                        <div class="flex-1">
+                            <p class="text-xs text-white/70 leading-relaxed mb-3">
+                                If the translator gets stuck in a "Translating..." state, use this button to force reset it.
+                            </p>
+                            <Button 
+                                variant="outline" 
+                                class="w-full bg-red-500/10 hover:bg-red-500/20 text-red-300 border-red-400/20"
+                                @click="handleForceReset">
+                                Force Reset Translator
+                            </Button>
                         </div>
                     </div>
                 </section>
@@ -158,7 +260,7 @@ import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
-import { Settings, SlidersVertical, Coffee, KeyRound, ShieldCheck, Sparkles, LogIn } from 'lucide-vue-next'
+import { Settings, SlidersVertical, Coffee, KeyRound, ShieldCheck, Sparkles, LogIn, AlertCircle } from 'lucide-vue-next'
 
 const store = useTranslateStore()
 const main = useMainStore()
@@ -168,4 +270,7 @@ const isLoggedIn = computed(() => !!main.user)
 
 const clearKey = () => { store.apiKey = '' }
 const goLogin = () => { open.value = false; router.push('/login') }
+const handleForceReset = () => {
+    store.forceResetTranslator()
+}
 </script>

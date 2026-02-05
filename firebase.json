@@ -41,6 +41,21 @@
         "region": "australia-southeast1"
       },
       {
+        "source": "/retranslate/post",
+        "function": "retranslate",
+        "region": "australia-southeast1"
+      },
+      {
+        "source": "/log/post",
+        "function": "logTranslation",
+        "region": "australia-southeast1"
+      },
+      {
+        "source": "/markBad/post",
+        "function": "markTranslationBad",
+        "region": "australia-southeast1"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }

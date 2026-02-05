@@ -63,6 +63,11 @@ service cloud.firestore {
       }
     }
 
+    match /discord_users/{discordId} {
+      // Only backend functions access this (they have admin privileges)
+      allow read, write: if false;
+    }
+
     // ─────────────────────────────────────────────────────────────────────────────
     //  Castle Data Collection
     // ─────────────────────────────────────────────────────────────────────────────

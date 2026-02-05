@@ -1,12 +1,13 @@
 import { onRequest } from "firebase-functions/v2/https";
-import { PubSub } from "@google-cloud/pubsub";
+import { defineSecret } from "firebase-functions/params";
 import { TranslationCache } from "../services/translationCache.mjs";
 import { OpenAIService } from "../services/openaiService.mjs";
+import { DeeplService } from "../services/deeplService.mjs";
 import { PlatformDetector } from "../utils/platformDetector.mjs";
 import { WebHandler } from "../handlers/webHandler.mjs";
 import { DiscordHandler } from "../handlers/discordHandler.mjs";
 
-const pubsub = new PubSub();
+const DEEPL_API_KEY = defineSecret("DEEPL_API_KEY");
 
 // Cache version - increment this to invalidate old cache
 const CACHE_VERSION = "v1";
@@ -18,6 +19,7 @@ export const aiTranslate = onRequest(
     memory: "1GiB",
     maxInstances: 1,
     cors: true,
+    secrets: [DEEPL_API_KEY],
   },
   async (req, res) => {
     res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -39,13 +41,13 @@ export const aiTranslate = onRequest(
 
     try {
       // ---- PREP: Extract body fields needed for cache in parallel ----
-      const { content, fromLang, targetLang } = req.body;
+      const { content, fromLang, targetLang, model = 'openai' } = req.body;
       const cache = new TranslationCache(CACHE_VERSION);
 
       // ---- PARALLELIZE: Platform detection (with token check) & cache lookup ----
       const [platformInfo, cacheResult] = await Promise.all([
         PlatformDetector.detect(req),
-        cache.get(content, fromLang, targetLang),
+        cache.get(content, fromLang, targetLang, model), // Include model in cache key
       ]);
 
       // ---- Handler selection after platformInfo is available ----
@@ -70,52 +72,68 @@ export const aiTranslate = onRequest(
         // Fire-and-forget async hit count update
         cache.updateHitCount(cacheResult.id).catch(console.error);
       } else {
-        // ---- Cache miss, call OpenAI, then save ----
-        const openai = new OpenAIService(validation.apiKey);
-        translationResult = await openai.translate(
+        // ---- Cache miss, call appropriate translation service ----
+        let translationService;
+        let actualModel = model; // Track which model we actually use
+
+        if (model === 'deepl') {
+          const deeplKey = DEEPL_API_KEY.value();
+          const deeplService = new DeeplService(deeplKey);
+
+          // Check if DeepL supports both languages
+          const deeplSupported = ['en', 'es', 'fr', 'de', 'it', 'pt', 'ja', 'ko', 'zh', 'ru', 'tr', 'nl', 'sv', 'no', 'da', 'fi', 'pl', 'cs', 'hu'];
+          const supportsFromLang = deeplSupported.includes(validation.fromLang);
+          const supportsToLang = deeplSupported.includes(validation.targetLang);
+
+          if (!supportsFromLang || !supportsToLang) {
+            // Fall back to OpenAI for unsupported languages
+            console.log(`DeepL doesn't support ${validation.fromLang}->${validation.targetLang}, using OpenAI`);
+            translationService = new OpenAIService(validation.apiKey);
+            actualModel = 'openai';
+          } else {
+            translationService = deeplService;
+          }
+        } else {
+          // Default to OpenAI
+          translationService = new OpenAIService(validation.apiKey);
+        }
+
+        translationResult = await translationService.translate(
           validation.content,
           validation.fromLang,
           validation.targetLang
         );
         translationResult.version = CACHE_VERSION;
-        cache.save(translationResult).catch(console.error);
+        translationResult.model = actualModel; // Store which model was actually used
+
+        // Save to cache and capture the ID
+        const savedCacheId = await cache.save(translationResult, actualModel).catch(err => {
+          console.error("Cache save error:", err);
+          return null;
+        });
+
+        // Add the cache ID to the result so frontend can mark it as bad
+        translationResult.id = savedCacheId;
       }
 
-      // ---- Publish stats event (non-blocking) ----
-      const statsEvent = {
-        platform: platformInfo.platform,
-        platformInfo,
-        translationData: translationResult,
-        cached,
-        responseTime: Date.now() - startTime,
-        timestamp: Date.now(),
-        version: CACHE_VERSION,
-      };
-      pubsub
-        .topic("translation-stats")
-        .publishMessage({ json: statsEvent })
-        .catch((err) => console.error("Failed to publish stats:", err));
-
-      // ---- Return the response immediately ----
+      // ---- Return the response immediately (no pub/sub blocking) ----
       return res.status(cached ? 200 : 201).json({
         ...translationResult,
         cached,
+        cacheId: translationResult.id,
         responseTime: Date.now() - startTime,
+        platform: platformInfo.platform,
+        // Include minimal metadata for client-side logging
+        logData: {
+          platform: platformInfo.platform,
+          platformInfo,
+          cached,
+          version: CACHE_VERSION,
+        }
       });
     } catch (error) {
-      // ---- Error handling, including pubsub ----
+      // ---- Error handling ----
       console.error("Translation error:", error);
-      pubsub
-        .topic("translation-errors")
-        .publishMessage({
-          json: {
-            error: error.message,
-            stack: error.stack,
-            timestamp: Date.now(),
-            request: req.body,
-          },
-        })
-        .catch(console.error);
 
       return res.status(500).json({
         error: "Translation failed",

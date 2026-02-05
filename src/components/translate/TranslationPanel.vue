@@ -20,7 +20,7 @@
                             <h1
                                 class="text-2xl font-bold bg-gradient-to-r from-white to-purple-100 bg-clip-text text-transparent">
                                 AI Translator</h1>
-                            <p class="text-purple-100 text-xs opacity-90">Built by Mason, Powered by OpenAI</p>
+                            <p class="text-purple-100 text-xs opacity-90">Built by Mason • Powered by OpenAI & DeepL</p>
                         </div>
                     </div>
                     <!-- Settings Popover -->
@@ -30,6 +30,19 @@
 
             <!-- Translation Interface -->
             <div class="pt-4 px-4 sm:p-6 flex-grow flex flex-col border-t border-white/10">
+                <!-- DeepL Language Warning -->
+                <div v-if="showDeeplWarning" 
+                     class="mb-4 flex items-start gap-3 p-3 rounded-2xl bg-amber-500/10 border border-amber-400/20">
+                    <div class="p-1.5 rounded-lg bg-amber-500/20 flex-shrink-0">
+                        <svg class="w-4 h-4 text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    </div>
+                    <p class="text-xs text-amber-200 leading-relaxed">
+                        DeepL doesn't support this language pair. Falling back to OpenAI for this translation.
+                    </p>
+                </div>
+
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 flex-grow">
                     <!-- Left Side (Source/Target Language) -->
                     <div class="space-y-2 flex flex-col min-h-[300px] lg:min-h-0">
@@ -242,8 +255,8 @@
                     </div>
                 </div>
 
-                <!-- Retranslation Section (unchanged logic, visual polish kept) -->
-                <div v-if="store.retranslatedText" :class="[
+                <!-- Retranslation Section (shows while loading or when data available) -->
+                <div v-if="store.retranslatedText || store.isRetranslating" :class="[
                     'mt-4 mb-4 md:mb-0 p-3 sm:p-4 rounded-2xl backdrop-blur-sm animate-fade-in',
                     store.accuracyPercentage > 80
                         ? 'bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-500/20'
@@ -317,7 +330,10 @@
 
                         <transition name="fade">
                             <div v-if="!roundTripCollapsed" class="flex items-center justify-between flex-wrap gap-2">
-                                <span :class="[
+                                <span v-if="store.isRetranslating && !store.retranslatedText" class="text-xs px-2 py-1 rounded-full whitespace-nowrap text-white/60 bg-white/5">
+                                    Loading...
+                                </span>
+                                <span v-else :class="[
                                     'text-xs px-2 py-1 rounded-full whitespace-nowrap',
                                     store.accuracyPercentage > 80
                                         ? 'text-green-400/80 bg-green-500/10'
@@ -329,7 +345,7 @@
                                 ]">
                                     {{ store.retranslatedText.length }} chars
                                 </span>
-                                <button @click="copyToClipboard(store.retranslatedText)" :class="[
+                                <button v-if="store.retranslatedText" @click="copyToClipboard(store.retranslatedText)" :class="[
                                     'text-xs transition-colors duration-200 flex items-center space-x-1 px-2 py-1 rounded-lg flex-shrink-0',
                                     store.accuracyPercentage > 80
                                         ? 'text-green-400 hover:text-green-300 hover:bg-green-500/10'
@@ -360,7 +376,10 @@
                                         ? 'bg-orange-500/5 border-orange-500/10'
                                         : 'bg-red-500/5 border-red-500/10',
                         ]">
-                            <div :class="[
+                            <div v-if="store.isRetranslating && !store.retranslatedText" class="text-sm text-white/60 italic">
+                                Calculating retranslation and accuracy...
+                            </div>
+                            <div v-else :class="[
                                 'text-sm leading-relaxed break-words',
                                 store.accuracyPercentage > 80
                                     ? 'text-green-100'
@@ -410,7 +429,10 @@
                                 <div :style="{ width: store.accuracyPercentage + '%' }" :class="store.accuracyBarClass"
                                     class="h-full transition-all duration-500" />
                             </div>
-                            <span :class="[
+                            <span v-if="store.isRetranslating" class="text-xs text-white/60 whitespace-nowrap">
+                                Calculating...
+                            </span>
+                            <span v-else :class="[
                                 'text-xs font-semibold whitespace-nowrap',
                                 store.accuracyPercentage > 80
                                     ? 'text-green-400/80'
@@ -429,7 +451,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import SettingsPopover from '@/components/translate/SettingsPopover.vue'
 import { useTranslateStore } from '@/stores/useTranslateStore'
 import { useToast } from '@/components/ui/toast/use-toast'
@@ -455,24 +477,46 @@ const copyToClipboard = (text) =>
 
 const onTranslate = async (side) => {
     const dest = side === 'left' ? 'right' : 'left'
-    const res = await store.translate(side)
-    // Keep track of destination so status icons render on the correct panel
-    lastResult.value = res ? { ...res, dest } : null
+    
+    // Create a timeout promise that rejects after 10 seconds
+    const timeout = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Translation timeout')), 10000)
+    )
+    
+    try {
+        // Race between the actual translation and the timeout
+        const res = await Promise.race([store.translate(side), timeout])
+        
+        // Keep track of destination so status icons render on the correct panel
+        lastResult.value = res ? { ...res, dest } : null
 
-    if (res?.ok) {
-        showGlowSide.value = dest
-        setTimeout(() => (showGlowSide.value = null), 900)
+        if (res?.ok) {
+            showGlowSide.value = dest
+            setTimeout(() => (showGlowSide.value = null), 900)
+        }
+    } catch (error) {
+        // Timeout or other error occurred
+        store.isTranslating = false // Force reset the loading state
+        toast({
+            title: 'Error',
+            description: 'Translation timed out. Please try again.',
+            variant: 'destructive'
+        })
     }
 }
 
-const markBad = () => {
-    // UI-only for now; backend invalidation will be wired later
-    toast({
-        title: 'Flagged',
-        description: 'Marked as bad. This translation will be refreshed next time.',
-        duration: 2500
-    })
+const markBad = async () => {
+    await store.markTranslationBad()
 }
+
+// Check if current language pair is unsupported by DeepL
+const deeplSupportedLanguages = ['en', 'es', 'fr', 'de', 'it', 'pt', 'ja', 'ko', 'zh', 'ru', 'tr', 'nl', 'sv', 'no', 'da', 'fi', 'pl', 'cs', 'hu']
+const showDeeplWarning = computed(() => {
+    if (store.selectedModel !== 'deepl') return false
+    const fromSupported = deeplSupportedLanguages.includes(store.fromLanguage)
+    const toSupported = deeplSupportedLanguages.includes(store.selectedLanguage)
+    return !fromSupported || !toSupported
+})
 </script>
 
 <style scoped>

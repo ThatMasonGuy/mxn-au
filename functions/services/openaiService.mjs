@@ -1,6 +1,6 @@
 import fetch from "node-fetch";
 
-const OPENAI_MODEL = "gpt-4o";
+const OPENAI_MODEL = "gpt-4o-mini";
 
 const languageNames = {
     es: "Spanish",
@@ -69,7 +69,7 @@ Output rules:
                 ],
                 response_format: { type: "json_object" },
                 max_tokens: 4000,
-                temperature: 0.1,
+                temperature: 0.3,
             }),
         });
 
