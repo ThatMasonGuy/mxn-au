@@ -13,6 +13,10 @@ node_modules
 dist
 dist-ssr
 *.local
+.firebase
+.idx
+.vscode
+package-lock.json
 
 # Editor directories and files
 .vscode/*
