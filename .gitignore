@@ -16,7 +16,6 @@ dist-ssr
 .firebase
 .idx
 .vscode
-package-lock.json
 
 # Editor directories and files
 .vscode/*
