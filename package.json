@@ -31,7 +31,7 @@
     "@radix-icons/vue": "^1.0.0",
     "@vueuse/core": "^10.11.1",
     "@vvo/tzdb": "^6.183.0",
-    "axios": "^1.10.0",
+    "axios": "^1.13.5",
     "chart.js": "^4.4.9",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
