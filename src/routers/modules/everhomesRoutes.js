@@ -119,5 +119,22 @@ export default [
             badge: 'Beta',
             requiresOverlay: false,
         },
+    },
+    {
+        path: '/everhomes/inspection-checklist',
+        alias: ['/everhomes/inspection'],
+        name: 'Everhomes | Inspection Checklist',
+        component: () => import('@/pages/everhomes/tools/InspectionChecklist.vue'),
+        meta: {
+            requiresAuth: false,
+            role: null,
+            title: 'Inspection Checklist',
+            drawerRanking: 1,
+            drawerVisible: false,
+            layout: 'default',
+            description: 'Walk through property rooms and capture photos for each area.',
+            badge: 'New',
+            requiresOverlay: false,
+        },
     }
 ]
