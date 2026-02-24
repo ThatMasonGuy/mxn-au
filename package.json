@@ -79,7 +79,7 @@
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.16",
-    "@vitejs/plugin-vue": "^5.0.4",
+    "@vitejs/plugin-vue": "^6.0.4",
     "autoprefixer": "^10.4.19",
     "postcss": "^8.4.38",
     "rollup-plugin-visualizer": "^5.12.0",
