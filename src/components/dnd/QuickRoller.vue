@@ -302,6 +302,7 @@ const formatTime = (timestamp) => {
 </script>
 
 <style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&display=swap');
 /* Fantasy Card */
 .fantasy-card {
   background: 
@@ -632,6 +633,4 @@ const formatTime = (timestamp) => {
 .scrollbar-thin::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(180deg, rgba(251, 191, 36, 0.5) 0%, rgba(120, 53, 15, 0.5) 100%);
 }
-
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&display=swap');
 </style>

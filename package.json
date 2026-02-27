@@ -44,6 +44,8 @@
     "echarts": "^5.6.0",
     "embla-carousel-vue": "^8.0.2",
     "firebase": "^10.11.1",
+    "firebase-admin": "^13.7.0",
+    "firebase-functions": "^7.0.6",
     "flag-icons": "^7.3.2",
     "html2canvas": "^1.4.1",
     "i18n-iso-countries": "^7.14.0",

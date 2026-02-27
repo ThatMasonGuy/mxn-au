@@ -15,10 +15,11 @@ export { processTranslationStats } from './api/processTranslationStats.mjs';
 export { processTranslationErrors } from './api/processTranslationErrors.mjs';
 
 // Journal & Destiny API functions
-export { handleJournalChat } from './api/handleJournalChat.mjs';
-export { startBungieOAuth, bungieOAuthCallback } from './api/oauth.mjs';
-export { getChallenges } from './api/getChallenges.mjs';
-export { aiSuggest } from './api/aiSuggest.mjs';
+// export { handleJournalChat } from './api/handleJournalChat.mjs';
+// export { startBungieOAuth, bungieOAuthCallback } from './api/oauth.mjs';
+// export { getChallenges } from './api/getChallenges.mjs';
+// export { aiSuggest } from './api/aiSuggest.mjs';
+
 // export { rebuildTranslationStats } from './api/rebuildTranslationStats.mjs';
 
 // Daily Games functions
@@ -41,3 +42,6 @@ export { updateBotConfig } from './api/updateBotConfig.mjs';
 export { getServerChannels } from './api/getServerChannels.mjs';
 export { getServerRoles } from './api/getServerRoles.mjs';
 export { createAutoTranslatePair } from './api/createAutoTranslatePair.mjs';
+
+// Everhomes Functions
+export { generateInspectionReport } from './everhomes/generateInspectionReport.mjs';

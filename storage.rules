@@ -1,10 +1,37 @@
 rules_version = '2';
 
-// Craft rules based on data in your Firestore database
-// allow write: if firestore.get(
-//    /databases/(default)/documents/users/$(request.auth.uid)).data.isAdmin;
 service firebase.storage {
   match /b/{bucket}/o {
+
+    // ============================
+    // Inspection Photos
+    // ============================
+    match /inspections/{inspectionId}/photos/{filename} {
+
+      // Upload only: image files under 15MB
+      allow write: if request.resource.size < 15 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+
+      // Anyone can read and delete
+      allow read, delete: if true;
+    }
+
+    // ============================
+    // Handover Photos
+    // ============================
+    match /handovers/{inspectionId}/photos/{filename} {
+
+      // Upload only: image files under 15MB
+      allow write: if request.resource.size < 15 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+
+      // Anyone can read and delete
+      allow read, delete: if true;
+    }
+
+    // ============================
+    // Everything Else Locked
+    // ============================
     match /{allPaths=**} {
       allow read, write: if false;
     }

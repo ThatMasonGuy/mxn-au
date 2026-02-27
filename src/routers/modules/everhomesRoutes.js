@@ -136,5 +136,22 @@ export default [
             badge: 'New',
             requiresOverlay: false,
         },
+    },
+    {
+        path: '/everhomes/handover-checklist',
+        alias: ['/everhomes/handover'],
+        name: 'Everhomes | Handover Checklist',
+        component: () => import('@/pages/everhomes/tools/HandoverChecklist.vue'),
+        meta: {
+            requiresAuth: false,
+            role: null,
+            title: 'Handover Checklist',
+            drawerRanking: 1,
+            drawerVisible: false,
+            layout: 'default',
+            description: 'Walk through property rooms and capture photos for each area.',
+            badge: 'New',
+            requiresOverlay: false,
+        },
     }
 ]

@@ -1,6 +1,7 @@
 <!-- Shared Fantasy Styles Component -->
 <!-- Import this in each component that needs fantasy styling -->
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&display=swap');
 /* Reusable Fantasy Classes */
 .fantasy-card {
   background: 
@@ -172,6 +173,4 @@
   font-family: 'Cinzel', Georgia, serif;
   letter-spacing: 0.05em;
 }
-
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&display=swap');
 </style>

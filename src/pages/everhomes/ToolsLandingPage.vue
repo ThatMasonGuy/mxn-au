@@ -120,7 +120,8 @@ import {
     CloudArrowUpIcon,
     ClipboardDocumentCheckIcon,
     ArrowRightIcon,
-    MagnifyingGlassIcon
+    MagnifyingGlassIcon,
+    ClipboardDocumentListIcon
 } from '@heroicons/vue/24/solid'
 
 const searchQuery = ref('')
@@ -202,7 +203,17 @@ const tools = [
         colorHex: '#14b8a6',
         badges: [{ label: 'New!', type: 'new', glow: true }],
         tags: ['Inspection', 'SDA']
-    }
+    },
+    {
+        id: 'handover-checklist',
+        title: 'Handover Checklist',
+        byline: 'SDA dwelling suitability review for handovers and annual compliance',
+        link: '/everhomes/handover-checklist',
+        icon: ClipboardDocumentListIcon,
+        colorHex: '#0d9488',
+        badges: [{ label: 'New!', type: 'new', glow: true }],
+        tags: ['Inspection', 'SDA']
+    },
 ]
 
 const filteredTools = computed(() => {

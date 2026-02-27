@@ -194,6 +194,7 @@ onMounted(loadData);
 </script>
 
 <style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&display=swap');
 /* Fantasy Background */
 .fantasy-bg {
   background: 
@@ -497,7 +498,4 @@ onMounted(loadData);
     filter: drop-shadow(0 0 20px rgba(251, 191, 36, 0.6));
   }
 }
-
-/* Import Fantasy Font */
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&display=swap');
 </style>
