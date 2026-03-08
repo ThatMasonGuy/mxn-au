@@ -14,7 +14,6 @@ export const HANDOVER_ITEMS = {
         {
             group: 'SDA Compliance',
             items: [
-                { id: 'sdaCategory', label: 'SDA Design Category or Building Type — Unchanged / Confirmed' },
                 { id: 'sdaSuitability', label: 'Suitability of Dwelling to be Used as SDA' },
                 { id: 'sdaCount', label: 'Number of SDA Dwellings on Parcel of Land', type: 'number', placeholder: 'e.g. 2' },
                 { id: 'roomSize', label: 'Size or Usability of All Rooms in Dwelling' },
