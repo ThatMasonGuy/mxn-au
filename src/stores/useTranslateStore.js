@@ -27,8 +27,10 @@ export const useTranslateStore = defineStore('translate', () => {
     // --- Translation Result State ---
     const accuracy = ref(null)
     const accuracyRating = ref(null)
+    const isRetranslating = ref(false) // Loading state for async retranslation
     const lastOriginalText = ref('')
     const lastTranslationDirection = ref('left')
+    const lastCacheId = ref(null) // Track cache ID for marking bad
     const leftText = ref('')
     const rightText = ref('')
     const retranslatedText = ref('')
@@ -65,6 +67,7 @@ export const useTranslateStore = defineStore('translate', () => {
     const fromLanguage = ref('en')
     const autoCopy = ref(false)
     const syncHistory = ref(true)
+    const selectedModel = ref('openai') // 'openai' or 'deepl'
 
     // --- History State ---
     const recentTranslations = ref([])
@@ -134,25 +137,23 @@ export const useTranslateStore = defineStore('translate', () => {
         }
     }
 
-    // --- Token Refresh Helper (FIXED: Less aggressive, no forced logout) ---
+    // --- Token Refresh Helper (Only refresh when needed) ---
     const getValidToken = async () => {
         if (!mainStore.user) return null
 
         try {
-            // Force token refresh to ensure it's valid
-            const token = await auth.currentUser?.getIdToken(true)
+            // Try to use cached token first (false = don't force refresh)
+            const token = await auth.currentUser?.getIdToken(false)
             return token
         } catch (error) {
-            console.error('Failed to refresh token:', error)
-            // Try to re-authenticate once more
+            console.error('Failed to get token:', error)
+            // Only if cached token fails, try to force refresh
             if (auth.currentUser) {
                 try {
                     await auth.currentUser.reload()
-                    return await auth.currentUser.getIdToken(true)
+                    return await auth.currentUser.getIdToken(true) // Force refresh as fallback
                 } catch (retryError) {
                     console.error('Token refresh retry failed:', retryError)
-                    // FIXED: Don't force logout - just return null and let the app continue without auth
-                    console.warn('Continuing without authentication for this request')
                     return null
                 }
             }
@@ -338,6 +339,8 @@ export const useTranslateStore = defineStore('translate', () => {
 
     // --- Methods ---
     const translate = async (fromSide = 'left') => {
+        const PERF_START = performance.now() // Track from very beginning
+
         const isLeftToRight = fromSide === 'left'
         const inputText = isLeftToRight ? leftText.value : rightText.value
         const fromLang = isLeftToRight ? fromLanguage.value : selectedLanguage.value
@@ -362,20 +365,26 @@ export const useTranslateStore = defineStore('translate', () => {
         lastOriginalText.value = inputText
         lastTranslationDirection.value = fromSide
 
-        let apiTimeMs = 0
-        let serverTimeMs = null
-        let openAiTimeMs = null
-        let triedWithAuth = false
-        let triedWithoutAuth = false
+        // Timeout promise (30 seconds)
+        const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('Translation timed out after 30 seconds')), 30000)
+        })
 
-        try {
+        // Actual translation promise
+        const translationPromise = (async () => {
+            let apiTimeMs = 0
+            let serverTimeMs = null
+            let openAiTimeMs = null
+            let triedWithAuth = false
+            let triedWithoutAuth = false
+
             // Try with auth first if user is logged in
             if (mainStore.user && !triedWithAuth) {
                 try {
                     console.log('Attempting translation with authentication...')
                     const result = await attemptTranslation(inputText, fromLang, toLang, finalKey, true)
                     if (result.success) {
-                        return handleSuccessfulTranslation(result, isLeftToRight)
+                        return handleSuccessfulTranslation(result, isLeftToRight, PERF_START)
                     }
                     triedWithAuth = true
                     console.log('Auth translation failed, trying without auth...')
@@ -391,7 +400,7 @@ export const useTranslateStore = defineStore('translate', () => {
                     console.log('Attempting translation without authentication...')
                     const result = await attemptTranslation(inputText, fromLang, toLang, finalKey, false)
                     if (result.success) {
-                        return handleSuccessfulTranslation(result, isLeftToRight)
+                        return handleSuccessfulTranslation(result, isLeftToRight, PERF_START)
                     }
                     triedWithoutAuth = true
                 } catch (error) {
@@ -411,8 +420,30 @@ export const useTranslateStore = defineStore('translate', () => {
             accuracyRating.value = null
 
             return { ok: false, apiTimeMs, serverTimeMs, openAiTimeMs, error: errorMsg }
+        })()
 
+        try {
+            // Race the translation against the timeout
+            return await Promise.race([translationPromise, timeoutPromise])
+        } catch (error) {
+            console.error('Translation error:', error)
+
+            // Handle timeout specifically
+            if (error.message.includes('timed out')) {
+                showToast('error', 'Translation timed out. Use the reset button in settings if stuck.', { duration: 5000 })
+            } else {
+                showToast('error', error.message || 'Translation failed')
+            }
+
+            // Clean up on error
+            retranslatedText.value = ''
+            lastOriginalText.value = ''
+            accuracy.value = null
+            accuracyRating.value = null
+
+            return { ok: false, error: error.message, apiTimeMs: 0 }
         } finally {
+            // CRITICAL: Always reset isTranslating, no matter what
             isTranslating.value = false
         }
     }
@@ -441,7 +472,8 @@ export const useTranslateStore = defineStore('translate', () => {
             body: JSON.stringify({
                 content: inputText,
                 fromLang,
-                targetLang: toLang
+                targetLang: toLang,
+                model: selectedModel.value // Use direct ref, not store.selectedModel
             })
         })
         const apiTimeMs = Math.round(performance.now() - apiStart)
@@ -463,12 +495,18 @@ export const useTranslateStore = defineStore('translate', () => {
     }
 
     // Helper function to handle successful translation
-    const handleSuccessfulTranslation = (result, isLeftToRight) => {
+    const handleSuccessfulTranslation = (result, isLeftToRight, perfStart) => {
         const { data, apiTimeMs, serverTimeMs, openAiTimeMs } = result
 
         const outputText = data.translated || data.outputText || ''
         accuracy.value = typeof data.accuracy === 'number' ? data.accuracy : null
         accuracyRating.value = data.accuracyRating || null
+        lastCacheId.value = data.cacheId || null // Store cache ID for marking bad
+
+        // Debug logging
+        if (!lastCacheId.value) {
+            console.warn('No cacheId returned from translation:', data)
+        }
 
         // Set the translated text
         if (isLeftToRight) {
@@ -478,6 +516,106 @@ export const useTranslateStore = defineStore('translate', () => {
         }
 
         retranslatedText.value = data.retranslated || ''
+
+        // === PERFORMANCE LOGGING ===
+        const initialResponseTime = Math.round(performance.now() - perfStart)
+        const perfLog = {
+            model: data.modelUsed || 'unknown',
+            cached: data.cached || false,
+            clientRequestTime: apiTimeMs,
+            serverResponseTime: serverTimeMs,
+            openAiTime: openAiTimeMs,
+            translationLength: data.inputText?.length || 0,
+            wordCount: data.wordCount || 0
+        }
+
+        console.group(`🚀 Translation Performance [${perfLog.model.toUpperCase()}${perfLog.cached ? ' - CACHED' : ''}]`)
+        console.log('📊 Input:', `${perfLog.wordCount} words, ${perfLog.translationLength} chars`)
+        console.log('⏱️  Client → Server:', `${perfLog.clientRequestTime}ms`)
+        console.log('⚡ Server Processing:', `${perfLog.serverResponseTime}ms`)
+        if (perfLog.openAiTime) console.log('🤖 API Time:', `${perfLog.openAiTime}ms`)
+        console.log('📦 Cached:', perfLog.cached ? '✅ Yes' : '❌ No')
+
+        // Check if retranslation is needed (DeepL async retranslation)
+        // Only fire if: 1) needsRetranslation flag is set, 2) NOT a cache hit (cache has retranslation already)
+        if (data.needsRetranslation && data.translated && !data.cached && !data.retranslated) {
+            isRetranslating.value = true
+            const retranslateStartTime = performance.now()
+
+            console.log('🔄 Fetching retranslation...')
+            console.log('⏱️  Initial Response Time:', `${initialResponseTime}ms`)
+
+            // Fire async retranslation request
+            fetch('/retranslate/post', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    translatedText: data.translated,
+                    fromLang: data.sourceLang,
+                    targetLang: data.targetLang,
+                    originalText: data.inputText,
+                    cacheId: lastCacheId.value // Include for cache update
+                })
+            })
+                .then(resp => resp.json())
+                .then(retranslateResult => {
+                    const retranslateTime = Math.round(performance.now() - retranslateStartTime)
+
+                    // Update accuracy metrics
+                    retranslatedText.value = retranslateResult.retranslated || ''
+                    accuracy.value = retranslateResult.accuracy
+                    accuracyRating.value = retranslateResult.accuracyRating
+                    isRetranslating.value = false
+
+                    console.log('✅ Retranslation Time:', `${retranslateTime}ms`)
+                    console.log('🎯 Accuracy:', `${retranslateResult.accuracyRating} (${Math.round(retranslateResult.accuracy * 100)}%)`)
+
+                    const totalTime = Math.round(performance.now() - perfStart)
+                    console.log('⏱️  TOTAL TIME (start to accuracy):', `${totalTime}ms`)
+                    console.groupEnd()
+                })
+                .catch(err => {
+                    const retranslateTime = Math.round(performance.now() - retranslateStartTime)
+                    console.warn('❌ Retranslation failed:', err)
+                    console.log('⏱️  Failed after:', `${retranslateTime}ms`)
+                    console.groupEnd()
+
+                    isRetranslating.value = false
+                    // Set default values on failure
+                    accuracy.value = null
+                    accuracyRating.value = 'Unknown'
+                })
+        } else {
+            // No retranslation needed, log total immediately
+            const totalTime = Math.round(performance.now() - perfStart)
+            console.log('⏱️  TOTAL TIME:', `${totalTime}ms`)
+            console.groupEnd()
+        }
+
+        // Fire-and-forget async logging (non-blocking)
+        if (data.logData) {
+            fetch('/log/post', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    translationData: {
+                        inputText: data.inputText,
+                        sourceLang: data.sourceLang,
+                        targetLang: data.targetLang,
+                        translated: data.translated,
+                        modelUsed: data.modelUsed,
+                        tokenUsage: data.tokenUsage,
+                        wordCount: data.wordCount,
+                        charCount: data.charCount,
+                    },
+                    cached: data.cached,
+                    responseTime: apiTimeMs,
+                    platform: data.logData.platform,
+                    platformInfo: data.logData.platformInfo,
+                    version: data.logData.version,
+                })
+            }).catch(err => console.warn('Logging failed (non-critical):', err))
+        }
 
         // Auto-copy silently if enabled
         if (autoCopy.value && outputText) {
@@ -913,11 +1051,59 @@ export const useTranslateStore = defineStore('translate', () => {
     const toggleSettings = () => { settingsOpen.value = !settingsOpen.value }
     const toggleShowApiKey = () => { showApiKey.value = !showApiKey.value }
 
+    // Force reset the translator state (emergency escape hatch)
+    const forceResetTranslator = () => {
+        isTranslating.value = false
+        retranslatedText.value = ''
+        lastOriginalText.value = ''
+        accuracy.value = null
+        accuracyRating.value = null
+        showToast('success', 'Translator state has been reset')
+    }
+
+    const markTranslationBad = async () => {
+        if (!lastCacheId.value) {
+            showToast('error', 'No translation to mark as bad')
+            return { ok: false, error: 'No cache ID' }
+        }
+
+        try {
+            const resp = await fetch('/markBad/post', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    cacheId: lastCacheId.value
+                })
+            })
+
+            if (!resp.ok) {
+                const err = await resp.json().catch(() => ({}))
+                throw new Error(err?.error || 'Failed to mark translation as bad')
+            }
+
+            showToast('success', 'Translation marked as bad. It will be regenerated next time.')
+
+            // Clear the current translation state to encourage regeneration
+            retranslatedText.value = ''
+            accuracy.value = null
+            accuracyRating.value = null
+            lastCacheId.value = null
+
+            return { ok: true }
+        } catch (error) {
+            console.error('Mark bad error:', error)
+            showToast('error', error.message || 'Failed to mark translation as bad')
+            return { ok: false, error: error.message }
+        }
+    }
+
     return {
         // State
-        settingsOpen, showApiKey, isTranslating, accuracy, accuracyRating,
-        lastOriginalText, lastTranslationDirection, leftText, rightText, retranslatedText,
-        apiKey, selectedLanguage, fromLanguage, autoCopy, syncHistory,
+        settingsOpen, showApiKey, isTranslating, isRetranslating, accuracy, accuracyRating,
+        lastOriginalText, lastTranslationDirection, leftText, rightText, retranslatedText, lastCacheId,
+        apiKey, selectedLanguage, fromLanguage, autoCopy, syncHistory, selectedModel,
         recentTranslations, userHistory, history, discordChannelsByGuild,
 
         // Global Stats State
@@ -947,13 +1133,13 @@ export const useTranslateStore = defineStore('translate', () => {
         flagClass, highlightDifferences, translate, copyToClipboard,
         clearHistory, deleteHistoryItem, formatTimeAgo,
         initializeAllListeners, cleanupAllListeners,
-        toggleSettings, toggleShowApiKey,
+        toggleSettings, toggleShowApiKey, forceResetTranslator, markTranslationBad,
 
         // Toast API (callable from anywhere)
         showToast,
     }
 }, {
     persist: {
-        paths: ['apiKey', 'selectedLanguage', 'fromLanguage', 'autoCopy', 'recentTranslations', 'syncHistory']
+        paths: ['apiKey', 'selectedLanguage', 'fromLanguage', 'autoCopy', 'recentTranslations', 'syncHistory', 'selectedModel']
     }
 })

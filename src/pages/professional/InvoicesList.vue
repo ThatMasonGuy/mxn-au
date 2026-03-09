@@ -1,140 +1,164 @@
 <template>
-  <div class="p-8 bg-gray-950 min-h-screen">
+  <div class="p-4 sm:p-6 lg:p-8 min-h-screen bg-gray-50 dark:bg-gray-900">
     <!-- Header -->
-    <div class="flex items-center justify-between mb-8">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
       <div>
-        <h1 class="text-3xl font-bold text-white mb-2">Invoices</h1>
-        <p class="text-gray-400">Generate and manage your invoices.</p>
+        <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">Invoices</h1>
+        <p class="text-sm text-gray-600 dark:text-gray-400">Generate and manage your invoices.</p>
       </div>
-      <router-link to="/professional/invoices/new"
-        class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20 hover:shadow-blue-600/40">
-        <Plus :size="20" />
+      <router-link to="/professional/invoices/new" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium self-start sm:self-auto">
+        <Plus :size="16" />
         New Invoice
       </router-link>
     </div>
 
-    <!-- Search and Filters -->
-    <div class="bg-gray-900 rounded-xl shadow-xl border border-gray-800 p-4 mb-6">
-      <div class="flex gap-4">
-        <div class="flex-1 relative">
-          <Search :size="20" class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-          <Input v-model="searchQuery" placeholder="Search invoices..."
-            class="pl-10 bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500/20" />
-        </div>
-        <Select v-model="filterStatus">
-          <SelectTrigger
-            class="w-48 bg-gray-800 border-gray-700 text-white focus:border-blue-500 focus:ring-blue-500/20">
-            <SelectValue placeholder="All Status" />
-          </SelectTrigger>
-          <SelectContent class="bg-gray-800 border-gray-700 text-white">
-            <SelectItem value="all" class="focus:bg-gray-700">All Status</SelectItem>
-            <SelectItem value="draft" class="focus:bg-gray-700">Draft</SelectItem>
-            <SelectItem value="pending" class="focus:bg-gray-700">Pending</SelectItem>
-            <SelectItem value="paid" class="focus:bg-gray-700">Paid</SelectItem>
-            <SelectItem value="overdue" class="focus:bg-gray-700">Overdue</SelectItem>
-          </SelectContent>
-        </Select>
+    <!-- Summary Bar -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+      <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+        <p class="text-xs text-gray-500 dark:text-gray-400">Total Invoiced</p>
+        <p class="text-lg font-bold text-gray-900 dark:text-gray-100">{{ currencySymbol }}{{ formatCurrency(totalInvoiced) }}</p>
+      </div>
+      <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+        <p class="text-xs text-gray-500 dark:text-gray-400">Paid</p>
+        <p class="text-lg font-bold text-emerald-600 dark:text-emerald-400">{{ currencySymbol }}{{ formatCurrency(totalPaid) }}</p>
+      </div>
+      <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+        <p class="text-xs text-gray-500 dark:text-gray-400">Outstanding</p>
+        <p class="text-lg font-bold text-orange-600 dark:text-orange-400">{{ currencySymbol }}{{ formatCurrency(totalOutstanding) }}</p>
+      </div>
+      <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+        <p class="text-xs text-gray-500 dark:text-gray-400">Overdue</p>
+        <p class="text-lg font-bold" :class="overdueCount > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-gray-100'">{{ overdueCount }}</p>
       </div>
     </div>
 
-    <!-- Invoices List -->
-    <div class="bg-gray-900 rounded-xl shadow-xl border border-gray-800 overflow-hidden">
-      <!-- Loading State -->
-      <div v-if="loading" class="p-12 text-center">
-        <Loader2 :size="48" class="animate-spin text-gray-600 mx-auto mb-4" />
-        <p class="text-gray-500">Loading invoices...</p>
-      </div>
-
-      <!-- Empty State -->
-      <div v-else-if="filteredInvoices.length === 0" class="p-12 text-center">
-        <div class="w-16 h-16 rounded-full bg-gray-800 flex items-center justify-center mx-auto mb-4">
-          <FileText :size="32" class="text-gray-600" />
+    <!-- Filters -->
+    <div class="flex flex-col sm:flex-row gap-3 mb-5">
+      <div class="flex-1">
+        <div class="relative">
+          <Search :size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="Search invoices..."
+            class="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400"
+          />
         </div>
-        <h3 class="text-lg font-semibold text-white mb-2">
-          {{ searchQuery || filterStatus !== 'all' ? 'No invoices found' : 'No invoices yet' }}
-        </h3>
-        <p class="text-gray-500 mb-6">
-          {{ searchQuery || filterStatus !== 'all'
-            ? 'Try adjusting your search or filters'
-            : 'Create your first invoice to get started'
-          }}
-        </p>
-        <router-link v-if="!searchQuery && filterStatus === 'all'" to="/professional/invoices/new"
-          class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20">
-          <Plus :size="20" />
-          New Invoice
-        </router-link>
       </div>
+      <select
+        v-model="filterStatus"
+        class="px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+      >
+        <option value="">All Statuses</option>
+        <option value="draft">Draft</option>
+        <option value="pending">Pending</option>
+        <option value="sent">Sent</option>
+        <option value="paid">Paid</option>
+        <option value="overdue">Overdue</option>
+        <option value="cancelled">Cancelled</option>
+      </select>
+    </div>
 
-      <!-- Invoices Table -->
-      <div v-else class="overflow-x-auto">
-        <table class="w-full">
-          <thead class="bg-gray-800/50 border-b border-gray-800">
-            <tr>
-              <th class="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                Invoice #
-              </th>
-              <th class="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                Client
-              </th>
-              <th class="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                Date
-              </th>
-              <th class="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                Due Date
-              </th>
-              <th class="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                Amount
-              </th>
-              <th class="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                Status
-              </th>
-              <th class="px-6 py-4 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                Actions
-              </th>
+    <!-- Empty State -->
+    <div v-if="filteredInvoices.length === 0" class="text-center py-16">
+      <FileText :size="48" class="mx-auto mb-3 text-gray-300 dark:text-gray-600" />
+      <p class="text-gray-500 dark:text-gray-400 mb-1">{{ searchQuery || filterStatus ? 'No matching invoices' : 'No invoices yet' }}</p>
+      <router-link v-if="!searchQuery && !filterStatus" to="/professional/invoices/new" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">
+        Create your first invoice
+      </router-link>
+    </div>
+
+    <!-- Mobile Cards -->
+    <div v-else class="sm:hidden space-y-3">
+      <div
+        v-for="invoice in paginatedInvoices"
+        :key="invoice.id"
+        class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 cursor-pointer"
+        @click="$router.push(`/professional/invoices/${invoice.id}`)"
+      >
+        <div class="flex items-start justify-between mb-2">
+          <div class="min-w-0 flex-1">
+            <p class="font-medium text-gray-900 dark:text-gray-100">{{ invoice.invoiceNumber || 'Draft' }}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ invoice.clientName }}</p>
+          </div>
+          <div class="text-right ml-3">
+            <p class="font-bold text-gray-900 dark:text-gray-100">{{ currencySymbol }}{{ formatCurrency(invoice.total) }}</p>
+            <span class="inline-block text-xs px-1.5 py-0.5 rounded-full font-medium mt-0.5" :class="statusClass(invoice.status)">
+              {{ invoice.status }}
+            </span>
+          </div>
+        </div>
+        <div class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 pt-2 border-t border-gray-100 dark:border-gray-700">
+          <span>{{ formatDate(invoice.invoiceDate) }}</span>
+          <span :class="isInvoiceOverdue(invoice) ? 'text-red-500 font-medium' : ''">
+            Due: {{ formatDate(invoice.dueDate) }}
+          </span>
+        </div>
+        <div class="flex justify-end gap-3 mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+          <button
+            v-if="invoice.status === 'draft'"
+            @click.stop="$router.push(`/professional/invoices/${invoice.id}/edit`)"
+            class="text-xs text-blue-600 dark:text-blue-400"
+          >Edit</button>
+          <button @click.stop="confirmDelete(invoice)" class="text-xs text-red-500">Delete</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Desktop Table -->
+    <div v-if="filteredInvoices.length > 0" class="hidden sm:block bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+              <th class="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-400">Invoice</th>
+              <th class="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-400">Client</th>
+              <th class="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-400">Date</th>
+              <th class="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-400">Due</th>
+              <th class="text-right px-4 py-3 font-medium text-gray-600 dark:text-gray-400">Amount</th>
+              <th class="text-center px-4 py-3 font-medium text-gray-600 dark:text-gray-400">Status</th>
+              <th class="text-right px-4 py-3 font-medium text-gray-600 dark:text-gray-400"></th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-gray-800">
-            <tr v-for="invoice in paginatedInvoices" :key="invoice.id"
-              class="hover:bg-gray-800/50 cursor-pointer transition-colors group" @click="viewInvoice(invoice.id)">
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="font-medium text-white">{{ invoice.invoiceNumber }}</div>
+          <tbody>
+            <tr
+              v-for="invoice in paginatedInvoices"
+              :key="invoice.id"
+              class="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors"
+              @click="$router.push(`/professional/invoices/${invoice.id}`)"
+            >
+              <td class="px-4 py-3 font-medium text-gray-900 dark:text-gray-100 whitespace-nowrap">
+                {{ invoice.invoiceNumber || 'Draft' }}
               </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm text-gray-300">{{ invoice.clientName }}</div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                {{ formatDate(invoice.invoiceDate) }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+              <td class="px-4 py-3 text-gray-700 dark:text-gray-300">{{ invoice.clientName }}</td>
+              <td class="px-4 py-3 text-gray-500 dark:text-gray-400 whitespace-nowrap">{{ formatDate(invoice.invoiceDate) }}</td>
+              <td class="px-4 py-3 whitespace-nowrap" :class="isInvoiceOverdue(invoice) ? 'text-red-500 font-medium' : 'text-gray-500 dark:text-gray-400'">
                 {{ formatDate(invoice.dueDate) }}
               </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="font-semibold text-white">${{ formatCurrency(invoice.total) }}</div>
+              <td class="px-4 py-3 text-right font-semibold text-gray-900 dark:text-gray-100 whitespace-nowrap">
+                {{ currencySymbol }}{{ formatCurrency(invoice.total) }}
               </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span class="inline-flex px-2.5 py-1 text-xs font-medium rounded-full border"
-                  :class="getStatusClass(invoice.status)">
+              <td class="px-4 py-3 text-center">
+                <span class="inline-flex text-xs px-2 py-0.5 rounded-full font-medium" :class="statusClass(invoice.status)">
                   {{ invoice.status }}
                 </span>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                  @click.stop>
-                  <button @click="viewInvoice(invoice.id)"
-                    class="p-2 text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-all"
-                    title="View">
-                    <Eye :size="16" />
+              <td class="px-4 py-3 text-right" @click.stop>
+                <div class="flex items-center justify-end gap-1">
+                  <button
+                    v-if="invoice.status === 'draft'"
+                    @click="$router.push(`/professional/invoices/${invoice.id}/edit`)"
+                    class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-blue-600 transition-colors"
+                    title="Edit"
+                  >
+                    <Pencil :size="14" />
                   </button>
-                  <button v-if="invoice.status === 'draft'" @click="editInvoice(invoice.id)"
-                    class="p-2 text-gray-400 hover:text-green-400 hover:bg-green-500/10 rounded-lg transition-all"
-                    title="Edit">
-                    <Pencil :size="16" />
-                  </button>
-                  <button @click="confirmDelete(invoice)"
-                    class="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
-                    title="Delete">
-                    <Trash2 :size="16" />
+                  <button
+                    @click="confirmDelete(invoice)"
+                    class="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-500 transition-colors"
+                    title="Delete"
+                  >
+                    <Trash2 :size="14" />
                   </button>
                 </div>
               </td>
@@ -142,196 +166,139 @@
           </tbody>
         </table>
       </div>
+    </div>
 
-      <!-- Pagination -->
-      <div v-if="totalPages > 1"
-        class="px-6 py-4 border-t border-gray-800 flex items-center justify-between bg-gray-800/30">
-        <p class="text-sm text-gray-400">
-          Showing {{ startIndex + 1 }} to {{ Math.min(endIndex, filteredInvoices.length) }} of {{
-            filteredInvoices.length }} invoices
-        </p>
-        <div class="flex gap-2">
-          <button @click="currentPage--" :disabled="currentPage === 1"
-            class="px-3 py-1.5 border border-gray-700 text-gray-400 rounded-lg hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-            Previous
-          </button>
-          <button @click="currentPage++" :disabled="currentPage === totalPages"
-            class="px-3 py-1.5 border border-gray-700 text-gray-400 rounded-lg hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-            Next
-          </button>
-        </div>
+    <!-- Pagination -->
+    <div v-if="totalPages > 1" class="flex items-center justify-between mt-4 px-1">
+      <p class="text-xs text-gray-500 dark:text-gray-400">
+        {{ (currentPage - 1) * perPage + 1 }}–{{ Math.min(currentPage * perPage, filteredInvoices.length) }} of {{ filteredInvoices.length }}
+      </p>
+      <div class="flex gap-1">
+        <button @click="currentPage = Math.max(1, currentPage - 1)" :disabled="currentPage === 1" class="px-3 py-1.5 text-sm rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40 text-gray-700 dark:text-gray-300">Prev</button>
+        <button @click="currentPage = Math.min(totalPages, currentPage + 1)" :disabled="currentPage === totalPages" class="px-3 py-1.5 text-sm rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40 text-gray-700 dark:text-gray-300">Next</button>
       </div>
     </div>
 
-    <!-- Delete Confirmation Dialog -->
-    <AlertDialog :open="deleteDialog.open" @update:open="deleteDialog.open = $event">
-      <AlertDialogContent class="bg-gray-900 border-gray-800 text-white">
-        <AlertDialogHeader>
-          <AlertDialogTitle class="text-white">Delete Invoice</AlertDialogTitle>
-          <AlertDialogDescription class="text-gray-400">
-            Are you sure you want to delete invoice <strong class="text-white">{{ deleteDialog.invoice?.invoiceNumber
-              }}</strong>? This action cannot be undone.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel class="bg-gray-800 border-gray-700 text-white hover:bg-gray-700">Cancel</AlertDialogCancel>
-          <AlertDialogAction @click="handleDelete" class="bg-red-600 hover:bg-red-700 text-white">
-            Delete
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <!-- Delete Confirmation -->
+    <Teleport to="body">
+      <Transition name="fade">
+        <div v-if="deleteTarget" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @click.self="deleteTarget = null">
+          <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-sm w-full p-6">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Delete Invoice</h3>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-5">
+              Delete invoice <strong>{{ deleteTarget.invoiceNumber }}</strong>? This cannot be undone.
+            </p>
+            <div class="flex justify-end gap-3">
+              <button @click="deleteTarget = null" class="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300">Cancel</button>
+              <button @click="handleDelete" class="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700">Delete</button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import { useMainStore } from '@/stores/useMainStore'
 import { useProfessionalStore } from '@/stores/useProfessionalStore'
-import { Input } from '@/components/ui/input'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
 import { useToast } from '@/components/ui/toast'
-import { Plus, Search, FileText, Eye, Pencil, Trash2, Loader2 } from 'lucide-vue-next'
+import {
+  Plus, Search, FileText, Pencil, Trash2
+} from 'lucide-vue-next'
 
-const router = useRouter()
 const mainStore = useMainStore()
 const professionalStore = useProfessionalStore()
 const { toast } = useToast()
 
-const loading = ref(false)
 const searchQuery = ref('')
-const filterStatus = ref('all')
+const filterStatus = ref('')
 const currentPage = ref(1)
-const itemsPerPage = 10
+const perPage = 15
+const deleteTarget = ref(null)
 
-const deleteDialog = ref({
-  open: false,
-  invoice: null
-})
-
-onMounted(async () => {
-  if (mainStore.user?.uid) {
-    loading.value = true
-    try {
-      await professionalStore.fetchInvoices(mainStore.user.uid)
-    } catch (error) {
-      console.error('Error loading invoices:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to load invoices',
-        variant: 'destructive'
-      })
-    } finally {
-      loading.value = false
-    }
-  }
-})
+const currencySymbol = computed(() => professionalStore.settings.currencySymbol || '$')
 
 const filteredInvoices = computed(() => {
-  let invoices = professionalStore.sortedInvoices
+  let list = [...professionalStore.sortedInvoices]
 
-  if (filterStatus.value !== 'all') {
-    invoices = invoices.filter(inv => inv.status === filterStatus.value)
+  if (filterStatus.value) {
+    list = list.filter(inv => inv.status === filterStatus.value)
   }
 
   if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    invoices = invoices.filter(inv =>
-      inv.invoiceNumber?.toLowerCase().includes(query) ||
-      inv.clientName?.toLowerCase().includes(query)
+    const q = searchQuery.value.toLowerCase()
+    list = list.filter(inv =>
+      (inv.invoiceNumber || '').toLowerCase().includes(q) ||
+      (inv.clientName || '').toLowerCase().includes(q)
     )
   }
 
-  return invoices
+  return list
 })
 
-const totalPages = computed(() => Math.ceil(filteredInvoices.value.length / itemsPerPage))
-const startIndex = computed(() => (currentPage.value - 1) * itemsPerPage)
-const endIndex = computed(() => startIndex.value + itemsPerPage)
-const paginatedInvoices = computed(() =>
-  filteredInvoices.value.slice(startIndex.value, endIndex.value)
-)
+const totalInvoiced = computed(() => filteredInvoices.value.reduce((s, i) => s + (i.total || 0), 0))
+const totalPaid = computed(() => filteredInvoices.value.filter(i => i.status === 'paid').reduce((s, i) => s + (i.total || 0), 0))
+const totalOutstanding = computed(() => filteredInvoices.value.filter(i => ['pending', 'sent', 'overdue'].includes(i.status)).reduce((s, i) => s + (i.total || 0), 0))
+const overdueCount = computed(() => filteredInvoices.value.filter(i => i.status === 'overdue').length)
 
-watch([searchQuery, filterStatus], () => {
-  currentPage.value = 1
+const totalPages = computed(() => Math.ceil(filteredInvoices.value.length / perPage))
+const paginatedInvoices = computed(() => {
+  const start = (currentPage.value - 1) * perPage
+  return filteredInvoices.value.slice(start, start + perPage)
 })
+
+watch([searchQuery, filterStatus], () => { currentPage.value = 1 })
+
+function isInvoiceOverdue(invoice) {
+  if (invoice.status === 'overdue') return true
+  if (invoice.status === 'paid' || invoice.status === 'cancelled' || invoice.status === 'draft') return false
+  return invoice.dueDate && new Date(invoice.dueDate) < new Date()
+}
+
+function statusClass(status) {
+  const map = {
+    draft: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
+    pending: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-400',
+    sent: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400',
+    paid: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400',
+    overdue: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400',
+    cancelled: 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400',
+  }
+  return map[status] || map.draft
+}
+
+function confirmDelete(invoice) { deleteTarget.value = invoice }
+
+async function handleDelete() {
+  if (!deleteTarget.value || !mainStore.user?.uid) return
+  try {
+    await professionalStore.deleteInvoice(mainStore.user.uid, deleteTarget.value.id)
+    toast({ title: 'Deleted', description: 'Invoice deleted' })
+  } catch (error) {
+    toast({ title: 'Error', description: 'Failed to delete invoice', variant: 'destructive' })
+  }
+  deleteTarget.value = null
+}
 
 function formatDate(date) {
   if (!date) return '—'
-  try {
-    const d = new Date(date)
-    return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
-  } catch {
-    return '—'
-  }
+  try { return new Date(date).toLocaleDateString('en-AU', { year: 'numeric', month: 'short', day: 'numeric' }) } catch { return '—' }
 }
 
 function formatCurrency(value) {
-  return Number(value || 0).toLocaleString('en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  })
+  return Number(value || 0).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-function getStatusClass(status) {
-  const classes = {
-    paid: 'bg-green-500/20 text-green-400 border-green-500/30',
-    pending: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
-    overdue: 'bg-red-500/20 text-red-400 border-red-500/30',
-    draft: 'bg-gray-500/20 text-gray-400 border-gray-500/30'
+onMounted(async () => {
+  if (mainStore.user?.uid) {
+    await professionalStore.fetchInvoices(mainStore.user.uid)
   }
-  return classes[status] || classes.draft
-}
-
-function viewInvoice(id) {
-  router.push(`/professional/invoices/${id}`)
-}
-
-function editInvoice(id) {
-  router.push(`/professional/invoices/${id}/edit`)
-}
-
-function confirmDelete(invoice) {
-  deleteDialog.value = {
-    open: true,
-    invoice
-  }
-}
-
-async function handleDelete() {
-  if (!mainStore.user?.uid || !deleteDialog.value.invoice) return
-
-  try {
-    await professionalStore.deleteInvoice(mainStore.user.uid, deleteDialog.value.invoice.id)
-    toast({
-      title: 'Success',
-      description: 'Invoice deleted successfully'
-    })
-    deleteDialog.value = { open: false, invoice: null }
-  } catch (error) {
-    console.error('Error deleting invoice:', error)
-    toast({
-      title: 'Error',
-      description: 'Failed to delete invoice',
-      variant: 'destructive'
-    })
-  }
-}
+})
 </script>
+
+<style scoped>
+.fade-enter-active, .fade-leave-active { transition: opacity 0.15s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+</style>

@@ -182,6 +182,22 @@ export default [
         },
     },
     {
+        path: '/topheroes/tools/traits',
+        name: 'TraitTrade',
+        component: () => import('@/pages/topheroes/TraitTrade.vue'),
+        meta: {
+            requiresAuth: false,
+            role: null,
+            title: 'Trait Trader',
+            drawerRanking: 2,
+            drawerVisible: true,
+            layout: 'default',
+            description: 'Find similar traits and trade them.',
+            badge: '',
+            requiresOverlay: true,
+        },
+    },
+    {
         path: '/topheroes/tools/rankings',
         redirect: '/topheroes/tools/rankings/builder'
     },

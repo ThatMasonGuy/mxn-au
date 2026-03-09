@@ -63,6 +63,11 @@ service cloud.firestore {
       }
     }
 
+    match /discord_users/{discordId} {
+      // Only backend functions access this (they have admin privileges)
+      allow read, write: if false;
+    }
+
     // ─────────────────────────────────────────────────────────────────────────────
     //  Castle Data Collection
     // ─────────────────────────────────────────────────────────────────────────────
@@ -208,6 +213,33 @@ service cloud.firestore {
     match /destiny/{document=**} {
       allow read: if request.auth != null;
       allow write: if false;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    //  EverHomes: Inspection Reports
+    // ─────────────────────────────────────────────────────────────────────────────
+    match /inspections/{inspectionId} {
+      // Client creates the doc and listens to it for status updates.
+      // The Cloud Function (Admin SDK) handles all subsequent writes.
+      allow create: if request.resource.data.keys().hasAll([
+        'propertyAddress', 'inspectionDate', 'inspectorName', 'inspectorEmail', 'status'
+      ]);
+      allow read: if true;
+
+      // No client updates or deletes — function handles those via Admin SDK
+      allow update, delete: if false;
+    }
+
+    match /handovers/{inspectionId} {
+      // Client creates the doc and listens to it for status updates.
+      // The Cloud Function (Admin SDK) handles all subsequent writes.
+      allow create: if request.resource.data.keys().hasAll([
+        'propertyAddress', 'inspectionDate', 'inspectorName', 'inspectorEmail', 'status'
+      ]);
+      allow read: if true;
+
+      // No client updates or deletes — function handles those via Admin SDK
+      allow update, delete: if false;
     }
 
     // Catch-all deny

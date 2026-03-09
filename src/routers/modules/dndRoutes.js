@@ -33,4 +33,20 @@ export default [
             requiresOverlay: false,
         },
     },
+    {
+        path: '/dm',
+        name: 'DMDashboard',
+        component: () => import('@/pages/dnd/DMDashboard.vue'),
+        meta: {
+            requiresAuth: false,
+            role: null,
+            title: 'Dungeons & Dragons',
+            drawerRanking: 3,
+            drawerVisible: true,
+            layout: 'default',
+            description: 'A dungeons and dragons player app.',
+            badge: 'Beta',
+            requiresOverlay: false,
+        },
+    },
 ]

@@ -32,6 +32,22 @@ export default [
         },
     },
     {
+        path: '/satisfactory',
+        name: 'Satisfactory',
+        component: () => import('@/pages/satisfactory/SatisfactorySchematic.vue'),
+        meta: {
+            requiresAuth: false,
+            role: null,
+            title: 'Satisfactory',
+            drawerRanking: null,
+            drawerVisible: false,
+            layout: 'default',
+            description: 'Page under construction.',
+            badge: '',
+            requiresOverlay: false,
+        },
+    },
+    {
         path: '/bg',
         name: 'BackgroundPreview',
         component: () => import('@/components/common/backgrounds/BackgroundPreview.vue'),

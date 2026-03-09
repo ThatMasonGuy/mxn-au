@@ -1,0 +1,2006 @@
+{
+  "factions": [
+    {
+      "id": "league",
+      "name": "League",
+      "beats": "nature",
+      "loses_to": "horde",
+      "buff_percent": 30
+    },
+    {
+      "id": "nature",
+      "name": "Nature",
+      "beats": "horde",
+      "loses_to": "league",
+      "buff_percent": 30
+    },
+    {
+      "id": "horde",
+      "name": "Horde",
+      "beats": "league",
+      "loses_to": "nature",
+      "buff_percent": 30
+    },
+    {
+      "id": "all",
+      "name": "All",
+      "beats": "",
+      "loses_to": "",
+      "buff_percent": 0
+    }
+  ],
+  "rarities": [
+    {
+      "id": "mythic",
+      "name": "Mythic"
+    },
+    {
+      "id": "legendary",
+      "name": "Legendary"
+    },
+    {
+      "id": "epic",
+      "name": "Epic"
+    },
+    {
+      "id": "rare",
+      "name": "Rare"
+    },
+    {
+      "id": "uncommon",
+      "name": "Uncommon"
+    }
+  ],
+  "tags": [
+    {
+      "id": "damage_dealer",
+      "name": "Damage Dealer",
+      "description": "Excels at dealing damage (+3% final damage)."
+    },
+    {
+      "id": "healer",
+      "name": "Healer",
+      "description": "Provides healing support (+5% healing)."
+    },
+    {
+      "id": "supporter",
+      "name": "Supporter",
+      "description": "Strategic support (+5% max HP to team)."
+    },
+    {
+      "id": "tank",
+      "name": "Tank",
+      "description": "Front row defense (-5% damage taken)."
+    },
+    {
+      "id": "burst_damage",
+      "name": "Burst Damage",
+      "description": "Specializes in short-period high skill damage."
+    },
+    {
+      "id": "sustained",
+      "name": "Sustained",
+      "description": "Sustained combat and special effects."
+    },
+    {
+      "id": "buff",
+      "name": "Buff",
+      "description": "Can provide buffs to teammates."
+    },
+    {
+      "id": "debuff",
+      "name": "Debuff",
+      "description": "Can inflict debuffs on enemies."
+    },
+    {
+      "id": "control",
+      "name": "Control",
+      "description": "Can control or disable enemies."
+    },
+    {
+      "id": "summon",
+      "name": "Summon",
+      "description": "Can summon units."
+    },
+    {
+      "id": "multi_target",
+      "name": "Multi-target",
+      "description": "Deals AoE/multi-target damage."
+    },
+    {
+      "id": "single_target",
+      "name": "Single-target",
+      "description": "Specializes in single-target damage."
+    }
+  ],
+  "faction_auras": [
+    {
+      "faction_count": 4,
+      "hero_rarity": [
+        "legendary",
+        "mythic"
+      ],
+      "buffs": [
+        {
+          "stat": "atk",
+          "type": "percent",
+          "value": 15,
+          "applies_to": "all"
+        },
+        {
+          "stat": "hp",
+          "type": "percent",
+          "value": 15,
+          "applies_to": "all"
+        }
+      ],
+      "counter_reduction": {
+        "affected": "faction_heroes_only",
+        "original_counter": 30,
+        "reduction": 5,
+        "result_counter": 25
+      }
+    },
+    {
+      "faction_count": 5,
+      "hero_rarity": [
+        "legendary",
+        "mythic"
+      ],
+      "buffs": [
+        {
+          "stat": "atk",
+          "type": "percent",
+          "value": 25,
+          "applies_to": "all"
+        },
+        {
+          "stat": "hp",
+          "type": "percent",
+          "value": 25,
+          "applies_to": "all"
+        }
+      ],
+      "counter_reduction": {
+        "affected": "faction_heroes_only",
+        "original_counter": 30,
+        "reduction": 10,
+        "result_counter": 20
+      }
+    },
+    {
+      "faction_count": 6,
+      "hero_rarity": [
+        "legendary",
+        "mythic"
+      ],
+      "buffs": [
+        {
+          "stat": "atk",
+          "type": "percent",
+          "value": 35,
+          "applies_to": "all"
+        },
+        {
+          "stat": "hp",
+          "type": "percent",
+          "value": 35,
+          "applies_to": "all"
+        }
+      ],
+      "counter_reduction": {
+        "affected": "faction_heroes_only",
+        "original_counter": 30,
+        "reduction": 20,
+        "result_counter": 10
+      }
+    }
+  ],
+  "hero_bonds": [
+    {
+      "heroes": [
+        "astrologer",
+        "adjudicator",
+        "paragon"
+      ],
+      "buffs": [
+        {
+          "stat": "atk",
+          "type": "percent",
+          "value": 10
+        }
+      ]
+    },
+    {
+      "heroes": [
+        "wilderness_hunter",
+        "soulmancer",
+        "desert_prince"
+      ],
+      "buffs": [
+        {
+          "stat": "atk",
+          "type": "percent",
+          "value": 10
+        }
+      ]
+    },
+    {
+      "heroes": [
+        "sage",
+        "forest_maiden",
+        "pixie"
+      ],
+      "buffs": [
+        {
+          "stat": "atk",
+          "type": "percent",
+          "value": 10
+        }
+      ]
+    },
+    {
+      "heroes": [
+        "desert_prince",
+        "storm_maiden",
+        "witch"
+      ],
+      "buffs": [
+        {
+          "stat": "atk",
+          "type": "percent",
+          "value": 15
+        }
+      ]
+    },
+    {
+      "heroes": [
+        "storm_maiden",
+        "wukong"
+      ],
+      "buffs": [
+        {
+          "stat": "atk",
+          "type": "percent",
+          "value": 9
+        }
+      ]
+    },
+    {
+      "heroes": [
+        "storm_maiden",
+        "beastmaster"
+      ],
+      "buffs": [
+        {
+          "stat": "atk",
+          "type": "percent",
+          "value": 9
+        }
+      ]
+    },
+    {
+      "heroes": [
+        "wukong",
+        "beastmaster"
+      ],
+      "buffs": [
+        {
+          "stat": "atk",
+          "type": "percent",
+          "value": 9
+        }
+      ]
+    },
+    {
+      "heroes": [
+        "storm_maiden",
+        "wukong",
+        "beastmaster"
+      ],
+      "buffs": [
+        {
+          "stat": "atk",
+          "type": "percent",
+          "value": 15
+        }
+      ]
+    },
+    {
+      "heroes": [
+        "rose_princess",
+        "adjudicator"
+      ],
+      "buffs": [
+        {
+          "stat": "atk",
+          "type": "percent",
+          "value": 9
+        }
+      ]
+    },
+    {
+      "heroes": [
+        "rose_princess",
+        "artificer"
+      ],
+      "buffs": [
+        {
+          "stat": "atk",
+          "type": "percent",
+          "value": 9
+        }
+      ]
+    },
+    {
+      "heroes": [
+        "artificer",
+        "adjudicator"
+      ],
+      "buffs": [
+        {
+          "stat": "atk",
+          "type": "percent",
+          "value": 9
+        }
+      ]
+    },
+    {
+      "heroes": [
+        "rose_princess",
+        "artificer",
+        "adjudicator"
+      ],
+      "buffs": [
+        {
+          "stat": "atk",
+          "type": "percent",
+          "value": 15
+        }
+      ]
+    },
+    {
+      "heroes": [
+        "paragon",
+        "pixie",
+        "desert_prince"
+      ],
+      "buffs": [
+        {
+          "stat": "atk",
+          "type": "percent",
+          "value": 15
+        }
+      ]
+    },
+    {
+      "heroes": [
+        "pyromancer",
+        "secret_keeper",
+        "nun"
+      ],
+      "buffs": [
+        {
+          "stat": "dmg_red",
+          "type": "percent",
+          "value": 10
+        }
+      ]
+    },
+    {
+      "heroes": [
+        "swordmaster",
+        "wilderness_hunter",
+        "warlock"
+      ],
+      "buffs": [
+        {
+          "stat": "dmg_red",
+          "type": "percent",
+          "value": 10
+        }
+      ]
+    },
+    {
+      "heroes": [
+        "druid",
+        "treeguard",
+        "windwalker"
+      ],
+      "buffs": [
+        {
+          "stat": "dmg_red",
+          "type": "percent",
+          "value": 10
+        }
+      ]
+    },
+    {
+      "heroes": [
+        "paragon",
+        "rose_princess",
+        "bishop"
+      ],
+      "buffs": [
+        {
+          "stat": "dmg_red",
+          "type": "percent",
+          "value": 15
+        }
+      ]
+    },
+    {
+      "heroes": [
+        "pixie",
+        "monk",
+        "tidecaller"
+      ],
+      "buffs": [
+        {
+          "stat": "dmg_red",
+          "type": "percent",
+          "value": 15
+        }
+      ]
+    },
+    {
+      "heroes": [
+        "ne_zha",
+        "monk"
+      ],
+      "buffs": [
+        {
+          "stat": "dmg_red",
+          "type": "percent",
+          "value": 9
+        }
+      ]
+    },
+    {
+      "heroes": [
+        "ne_zha",
+        "petalis"
+      ],
+      "buffs": [
+        {
+          "stat": "dmg_red",
+          "type": "percent",
+          "value": 9
+        }
+      ]
+    },
+    {
+      "heroes": [
+        "petalis",
+        "monk"
+      ],
+      "buffs": [
+        {
+          "stat": "dmg_red",
+          "type": "percent",
+          "value": 9
+        }
+      ]
+    },
+    {
+      "heroes": [
+        "ne_zha",
+        "monk",
+        "petalis"
+      ],
+      "buffs": [
+        {
+          "stat": "dmg_red",
+          "type": "percent",
+          "value": 15
+        }
+      ]
+    },
+    {
+      "heroes": [
+        "hostess",
+        "bard"
+      ],
+      "buffs": [
+        {
+          "stat": "hlth",
+          "type": "percent",
+          "value": 5
+        }
+      ]
+    },
+    {
+      "heroes": [
+        "barbarian",
+        "wilderness_hunter"
+      ],
+      "buffs": [
+        {
+          "stat": "hlth",
+          "type": "percent",
+          "value": 5
+        }
+      ]
+    },
+    {
+      "heroes": [
+        "watcher",
+        "treeguard"
+      ],
+      "buffs": [
+        {
+          "stat": "hlth",
+          "type": "percent",
+          "value": 5
+        }
+      ]
+    }
+  ],
+  "traits": [
+    {
+      "id": "attack",
+      "name": "Hero Attack",
+      "description": "Attack of Hero",
+      "increase": {
+        "rare": "1%",
+        "epic": "3.33%",
+        "legendary": "6%",
+        "mythic": "6%"
+      },
+      "max_level": "30"
+    },
+    {
+      "id": "hp",
+      "name": "Hero HP I",
+      "description": "Hero HP",
+      "increase": {
+        "rare": "1%",
+        "epic": "3.33%",
+        "legendary": "6%",
+        "mythic": "6%"
+      },
+      "max_level": "30"
+    },
+    {
+      "id": "hp2",
+      "name": "Hero HP II",
+      "description": "Hero HP",
+      "increase": {
+        "rare": "1%",
+        "epic": "3.33%",
+        "legendary": "6%",
+        "mythic": "6%"
+      },
+      "max_level": "30"
+    },
+    {
+      "id": "drain",
+      "name": "Bloodthirsty",
+      "description": "HP Drain",
+      "increase": {
+        "rare": "0%",
+        "epic": "0.33%",
+        "legendary": "0.66%",
+        "mythic": "0.66%"
+      },
+      "max_level": "30"
+    },
+    {
+      "id": "crit_resist",
+      "name": "Resistance Research",
+      "description": "Critical Resistance",
+      "increase": {
+        "rare": "0%",
+        "epic": "0%",
+        "legendary": "1%",
+        "mythic": "1%"
+      },
+      "max_level": "30"
+    },
+        {
+      "id": "crit_dmg",
+      "name": "Critical Damage Research",
+      "description": "Critical Damage",
+      "increase": {
+        "rare": "0%",
+        "epic": "0%",
+        "legendary": "2%",
+        "mythic": "2%"
+      },
+      "max_level": "30"
+    },
+    {
+      "id": "block",
+      "name": "Block Research",
+      "description": "Block",
+      "increase": {
+        "rare": "0%",
+        "epic": "0%",
+        "legendary": "1%",
+        "mythic": "1%"
+      },
+      "max_level": "30"
+    },
+    {
+      "id": "healing",
+      "name": "Healing Enhancement",
+      "description": "Hero Healing Rate",
+      "increase": {
+        "rare": "0%",
+        "epic": "0%",
+        "legendary": "1%",
+        "mythic": "1%"
+      },
+      "max_level": "30"
+    },
+    {
+      "id": "const_speed",
+      "name": "Fast Construction",
+      "description": "Contruction Speed Increase",
+      "increase": {
+        "rare": "0%",
+        "epic": "0%",
+        "legendary": "1.33%",
+        "mythic": "1.33%"
+      },
+      "max_level": "30"
+    },
+    {
+      "id": "skill_dmg_red",
+      "name": "Arcane Offset",
+      "description": "Skill Damage Reduction",
+      "increase": {
+        "rare": "0%",
+        "epic": "0%",
+        "legendary": "1.66%",
+        "mythic": "1.66%"
+      },
+      "max_level": "30"
+    },
+    {
+      "id": "skill_dmg_enhance",
+      "name": "Arcane Enhancement",
+      "description": "Amplify Damage of the Skill",
+      "increase": {
+        "rare": "0%",
+        "epic": "0%",
+        "legendary": "1.66%",
+        "mythic": "1.66%"
+      },
+      "max_level": "30"
+    },
+    {
+      "id": "march_speed",
+      "name": "Marching Technique",
+      "description": "PvP March Speed",
+      "increase": {
+        "rare": "0%",
+        "epic": "0%",
+        "legendary": "1.66%",
+        "mythic": "1.66%"
+      },
+      "max_level": "30"
+    },
+    {
+      "id": "timber_gather",
+      "name": "Timber Gathering",
+      "description": "Timber Gathering Speed",
+      "increase": {
+        "rare": "1%",
+        "epic": "1%",
+        "legendary": "1.66%",
+        "mythic": "1.66%"
+      },
+      "max_level": "30"
+    },
+    {
+      "id": "plunder_cap",
+      "name": "Resource Plundering",
+      "description": "Daily Timber and Stone Plunder Cap",
+      "increase": {
+        "rare": "0%",
+        "epic": "0%",
+        "legendary": "12,000",
+        "mythic": "12,000"
+      },
+      "max_level": "30"
+    },
+    {
+      "id": "ruby_gather",
+      "name": "Ruby Gathering",
+      "description": "Ruby Gathering Speed",
+      "increase": {
+        "rare": "1%",
+        "epic": "1%",
+        "legendary": "1%",
+        "mythic": "1%"
+      },
+      "max_level": "30"
+    },
+    {
+      "id": "healing_speed",
+      "name": "Fast Healing",
+      "description": "Healing Speed",
+      "increase": {
+        "rare": "1%",
+        "epic": "1%",
+        "legendary": "1%",
+        "mythic": "1%"
+      },
+      "max_level": "30"
+    },
+    {
+      "id": "training_speed",
+      "name": "Fast Training",
+      "description": "Soldier Training Speed",
+      "increase": {
+        "rare": "1%",
+        "epic": "1%",
+        "legendary": "1%",
+        "mythic": "1%"
+      },
+      "max_level": "30"
+    },
+    {
+      "id": "soldier_hp",
+      "name": "Offensive Strategy",
+      "description": "HP of All Soldiers",
+      "increase": {
+        "rare": "9%",
+        "epic": "9%",
+        "legendary": "9%",
+        "mythic": "9%"
+      },
+      "max_level": "30"
+    },
+    {
+      "id": "stone_gather",
+      "name": "Stone Gathering",
+      "description": "Stone Gathering Speed",
+      "increase": {
+        "rare": "1%",
+        "epic": "1%",
+        "legendary": "1%",
+        "mythic": "1%"
+      },
+      "max_level": "30"
+    },
+    {
+      "id": "research_speed",
+      "name": "Fast Research",
+      "description": "Tech Research Speed",
+      "increase": {
+        "rare": "1%",
+        "epic": "1%",
+        "legendary": "1%",
+        "mythic": "1%"
+      },
+      "max_level": "30"
+    }
+  ],
+  "heroes": [
+    {
+      "id": "pyromancer",
+      "name": "Pyromancer",
+      "rarity": "legendary",
+      "faction": "league",
+      "tags": [
+        "damage_dealer",
+        "burst_damage",
+        "multi_target"
+      ],
+      "traits": {
+        "1": "attack",
+        "2": "hp",
+        "3": "drain",
+        "4": "hp2"
+      }
+    },
+    {
+      "id": "nun",
+      "name": "Nun",
+      "rarity": "legendary",
+      "faction": "league",
+      "tags": [
+        "healer",
+        "buff",
+        "single_target"
+      ],
+      "traits": {
+        "1": "attack",
+        "2": "hp",
+        "3": "healing",
+        "4": "hp2"
+      }
+    },
+    {
+      "id": "adjudicator",
+      "name": "Adjudicator",
+      "rarity": "legendary",
+      "faction": "league",
+      "tags": [
+        "tank",
+        "sustained",
+        "buff"
+      ],
+      "traits": {
+        "1": "attack",
+        "2": "hp",
+        "3": "block",
+        "4": "hp2"
+      }
+    },
+    {
+      "id": "rose_princess",
+      "name": "Rose Princess",
+      "rarity": "mythic",
+      "faction": "league",
+      "tags": [
+        "tank",
+        "burst_damage",
+        "control"
+      ],
+      "traits": {
+        "1": "attack",
+        "2": "hp",
+        "3": "crit_resist",
+        "4": "hp2"
+      }
+    },
+    {
+      "id": "paragon",
+      "name": "Paragon",
+      "rarity": "mythic",
+      "faction": "league",
+      "tags": [
+        "damage_dealer",
+        "burst_damage",
+        "multi_target"
+      ],
+      "traits": {
+        "1": "attack",
+        "2": "hp",
+        "3": "drain",
+        "4": "hp2"
+      }
+    },
+    {
+      "id": "bishop",
+      "name": "Bishop",
+      "rarity": "mythic",
+      "faction": "league",
+      "tags": [
+        "damage_dealer",
+        "burst_damage",
+        "control"
+      ],
+      "traits": {
+        "1": "attack",
+        "2": "hp",
+        "3": "drain",
+        "4": "hp2"
+      }
+    },
+    {
+      "id": "wukong",
+      "name": "Wukong",
+      "rarity": "mythic",
+      "faction": "horde",
+      "tags": [
+        "damage_dealer",
+        "control",
+        "summon"
+      ],
+      "traits": {
+        "1": "attack",
+        "2": "hp",
+        "3": "drain",
+        "4": "hp2"
+      }
+    },
+    {
+      "id": "tidecaller",
+      "name": "Tidecaller",
+      "rarity": "mythic",
+      "faction": "nature",
+      "tags": [
+        "damage_dealer",
+        "summon",
+        "control"
+      ],
+      "traits": {
+        "1": "attack",
+        "2": "hp",
+        "3": "skill_dmg_red",
+        "4": "hp2"
+      }
+    },
+    {
+      "id": "desert_prince",
+      "name": "Desert Prince",
+      "rarity": "mythic",
+      "faction": "horde",
+      "tags": [
+        "tank",
+        "sustained",
+        "multi_target"
+      ],
+      "traits": {
+        "1": "attack",
+        "2": "hp",
+        "3": "skill_dmg_red",
+        "4": "hp2"
+      }
+    },
+    {
+      "id": "beastmaster",
+      "name": "Beastmaster",
+      "rarity": "mythic",
+      "faction": "horde",
+      "tags": [
+        "tank",
+        "control",
+        "buff"
+      ],
+      "traits": {
+        "1": "attack",
+        "2": "hp",
+        "3": "skill_dmg_red",
+        "4": "hp2"
+      }
+    },
+    {
+      "id": "witch",
+      "name": "Witch",
+      "rarity": "mythic",
+      "faction": "horde",
+      "tags": [
+        "healer",
+        "sustained",
+        "control"
+      ],
+      "traits": {
+        "1": "attack",
+        "2": "hp",
+        "3": "crit_resist",
+        "4": "hp2"
+      }
+    },
+    {
+      "id": "storm_maiden",
+      "name": "Storm Maiden",
+      "rarity": "mythic",
+      "faction": "horde",
+      "tags": [
+        "damage_dealer",
+        "sustained",
+        "multi_target"
+      ],
+      "traits": {
+        "1": "attack",
+        "2": "hp",
+        "3": "drain",
+        "4": "hp2"
+      }
+    },
+    {
+      "id": "treeguard",
+      "name": "Treeguard",
+      "rarity": "legendary",
+      "faction": "nature",
+      "tags": [
+        "tank",
+        "sustained",
+        "buff"
+      ],
+      "traits": {
+        "1": "attack",
+        "2": "hp",
+        "3": "timber_gather",
+        "4": "hp2"
+      }
+    },
+    {
+      "id": "soulmancer",
+      "name": "Soulmancer",
+      "rarity": "legendary",
+      "faction": "horde",
+      "tags": [
+        "supporter",
+        "buff",
+        "multi_target"
+      ],
+      "traits": {
+        "1": "attack",
+        "2": "hp",
+        "3": "crit_resist",
+        "4": "hp2"
+      }
+    },
+    {
+      "id": "secret_keeper",
+      "name": "Secret Keeper",
+      "rarity": "legendary",
+      "faction": "league",
+      "tags": [
+        "tank",
+        "control",
+        "buff"
+      ],
+      "traits": {
+        "1": "attack",
+        "2": "hp",
+        "3": "march_speed",
+        "4": "hp2"
+      }
+    },
+    {
+      "id": "artificer",
+      "name": "Artificer",
+      "rarity": "mythic",
+      "faction": "league",
+      "tags": [
+        "supporter",
+        "buff",
+        "control"
+      ],
+      "traits": {
+        "1": "attack",
+        "2": "hp",
+        "3": "crit_resist",
+        "4": "hp2"
+      }
+    },
+    {
+      "id": "warlock",
+      "name": "Warlock",
+      "rarity": "legendary",
+      "faction": "horde",
+      "tags": [
+        "supporter",
+        "buff",
+        "debuff"
+      ],
+      "traits": {
+        "1": "attack",
+        "2": "hp",
+        "3": "resource_plunder",
+        "4": "hp2"
+      }
+    },
+    {
+      "id": "monk",
+      "name": "Monk",
+      "rarity": "mythic",
+      "faction": "nature",
+      "tags": [
+        "tank",
+        "sustained",
+        "buff"
+      ],
+      "traits": {
+        "1": "attack",
+        "2": "hp",
+        "3": "crit_resist",
+        "4": "hp2"
+      }
+    },
+    {
+      "id": "ne_zha",
+      "name": "Ne Zha",
+      "rarity": "mythic",
+      "faction": "nature",
+      "tags": [
+        "tank",
+        "burst_damage",
+        "control"
+      ],
+      "traits": {
+        "1": "attack",
+        "2": "hp",
+        "3": "drain",
+        "4": "hp2"
+      }
+    },
+    {
+      "id": "petalis",
+      "name": "Petalis",
+      "rarity": "mythic",
+      "faction": "nature",
+      "tags": [
+        "supporter",
+        "control",
+        "buff"
+      ],
+      "traits": {
+        "1": "attack",
+        "2": "hp",
+        "3": "crit_resist",
+        "4": "hp2"
+      }
+    },
+    {
+      "id": "druid",
+      "name": "Druid",
+      "rarity": "legendary",
+      "faction": "nature",
+      "tags": [
+        "healer",
+        "buff",
+        "summon"
+      ],
+      "traits": {
+        "1": "attack",
+        "2": "hp",
+        "3": "healing",
+        "4": "hp2"
+      }
+    },
+    {
+      "id": "astrologer",
+      "name": "Astrologer",
+      "rarity": "legendary",
+      "faction": "league",
+      "tags": [
+        "damage_dealer",
+        "burst_damage",
+        "single_target"
+      ],
+      "traits": {
+        "1": "attack",
+        "2": "hp",
+        "3": "",
+        "4": "hp2"
+      }
+    },
+    {
+      "id": "windwalker",
+      "name": "Windwalker",
+      "rarity": "legendary",
+      "faction": "nature",
+      "tags": [
+        "damage_dealer",
+        "burst_damage",
+        "single_target"
+      ],
+      "traits": {
+        "1": "attack",
+        "2": "hp",
+        "3": "skill_dmg_enhance",
+        "4": "hp2"
+      }
+    },
+    {
+      "id": "sage",
+      "name": "Sage",
+      "rarity": "legendary",
+      "faction": "nature",
+      "tags": [
+        "tank",
+        "sustained",
+        "debuff"
+      ],
+      "traits": {
+        "1": "attack",
+        "2": "hp",
+        "3": "skill_dmg_red",
+        "4": "hp2"
+      }
+    },
+    {
+      "id": "forest_maiden",
+      "name": "Forest Maiden",
+      "rarity": "legendary",
+      "faction": "nature",
+      "tags": [
+        "supporter",
+        "control",
+        "summon"
+      ],
+      "traits": {
+        "1": "attack",
+        "2": "hp",
+        "3": "skill_dmg_enhance",
+        "4": "hp2"
+      }
+    },
+    {
+      "id": "shaman",
+      "name": "Shaman",
+      "rarity": "legendary",
+      "faction": "horde",
+      "tags": [
+        "healer",
+        "sustained",
+        "multi_target"
+      ],
+      "traits": {
+        "1": "attack",
+        "2": "hp",
+        "3": "research_speed",
+        "4": "hp2"
+      }
+    },
+    {
+      "id": "swordmaster",
+      "name": "Swordmaster",
+      "rarity": "legendary",
+      "faction": "horde",
+      "tags": [
+        "tank",
+        "sustained",
+        "multi_target"
+      ],
+      "traits": {
+        "1": "attack",
+        "2": "hp",
+        "3": "",
+        "4": "hp2"
+      }
+    },
+    {
+      "id": "wilderness_hunter",
+      "name": "Wilderness Hunter",
+      "rarity": "legendary",
+      "faction": "horde",
+      "tags": [
+        "damage_dealer",
+        "sustained",
+        "buff"
+      ],
+      "traits": {
+        "1": "attack",
+        "2": "hp",
+        "3": "crit_dmg",
+        "4": "hp2"
+      }
+    },
+    {
+      "id": "barbarian",
+      "name": "Barbarian",
+      "rarity": "legendary",
+      "faction": "horde",
+      "tags": [
+        "tank",
+        "control",
+        "debuff"
+      ],
+      "traits": {
+        "1": "attack",
+        "2": "hp",
+        "3": "",
+        "4": "hp2"
+      }
+    },
+    {
+      "id": "headhunter",
+      "name": "Headhunter",
+      "rarity": "legendary",
+      "faction": "horde",
+      "tags": [
+        "damage_dealer",
+        "burst_damage",
+        "control"
+      ],
+      "traits": {
+        "1": "attack",
+        "2": "hp",
+        "3": "",
+        "4": "hp2"
+      }
+    },
+    {
+      "id": "hostess",
+      "name": "Hostess",
+      "rarity": "legendary",
+      "faction": "league",
+      "tags": [
+        "tank",
+        "control",
+        "multi_target"
+      ],
+      "traits": {
+        "1": "attack",
+        "2": "hp",
+        "3": "training_speed",
+        "4": "hp2"
+      }
+    },
+    {
+      "id": "pixie",
+      "name": "Pixie",
+      "rarity": "legendary",
+      "faction": "nature",
+      "tags": [
+        "damage_dealer",
+        "burst_damage",
+        "control"
+      ],
+      "traits": {
+        "1": "attack",
+        "2": "hp",
+        "3": "skill_dmg_enhance",
+        "4": "hp2"
+      }
+    },
+    {
+      "id": "stonemason",
+      "name": "Stonemason",
+      "rarity": "legendary",
+      "faction": "nature",
+      "tags": [
+        "damage_dealer",
+        "control",
+        "multi_target"
+      ],
+      "traits": {
+        "1": "attack",
+        "2": "hp",
+        "3": "",
+        "4": "hp2"
+      }
+    },
+    {
+      "id": "bard",
+      "name": "Bard",
+      "rarity": "legendary",
+      "faction": "league",
+      "tags": [
+        "supporter",
+        "buff",
+        "multi_target"
+      ],
+      "traits": {
+        "1": "attack",
+        "2": "hp",
+        "3": "const_speed",
+        "4": "hp2"
+      }
+    },
+    {
+      "id": "ranger",
+      "name": "Ranger",
+      "rarity": "epic",
+      "faction": "league",
+      "tags": [
+        "damage_dealer",
+        "buff"
+      ],
+      "traits": {
+        "1": "attack",
+        "2": "hp",
+        "3": "ruby_gather",
+        "4": "hp2"
+      }
+    },
+    {
+      "id": "knight",
+      "name": "Knight",
+      "rarity": "epic",
+      "faction": "league",
+      "tags": [
+        "tank",
+        "control"
+      ],
+      "traits": {
+        "1": "attack",
+        "2": "hp",
+        "3": "training_speed",
+        "4": "hp2"
+      }
+    },
+    {
+      "id": "rogue",
+      "name": "Rogue",
+      "rarity": "epic",
+      "faction": "horde",
+      "tags": [
+        "damage_dealer",
+        "debuff"
+      ],
+      "traits": {
+        "1": "attack",
+        "2": "hp",
+        "3": "stone_gather",
+        "4": "hp2"
+      }
+    },
+    {
+      "id": "brawler",
+      "name": "Brawler",
+      "rarity": "epic",
+      "faction": "horde",
+      "tags": [
+        "damage_dealer",
+        "sustained"
+      ],
+      "traits": {
+        "1": "attack",
+        "2": "hp",
+        "3": "research_speed",
+        "4": "hp2"
+      }
+    },
+    {
+      "id": "minister",
+      "name": "Minister",
+      "rarity": "epic",
+      "faction": "league",
+      "tags": [
+        "healer",
+        "buff"
+      ],
+      "traits": {
+        "1": "attack",
+        "2": "hp",
+        "3": "healing_speed",
+        "4": "hp"
+      }
+    },
+    {
+      "id": "priestess",
+      "name": "Priestess",
+      "rarity": "epic",
+      "faction": "nature",
+      "tags": [
+        "damage_dealer",
+        "summon"
+      ],
+      "traits": {
+        "1": "attack",
+        "2": "hp",
+        "3": "healing_speed",
+        "4": "hp"
+      }
+    },
+    {
+      "id": "dancer",
+      "name": "Dancer",
+      "rarity": "epic",
+      "faction": "nature",
+      "tags": [
+        "supporter",
+        "buff"
+      ],
+      "traits": {
+        "1": "attack",
+        "2": "hp",
+        "3": "healing_speed",
+        "4": "hp"
+      }
+    },
+    {
+      "id": "outlaw",
+      "name": "Outlaw",
+      "rarity": "epic",
+      "faction": "horde",
+      "tags": [
+        "supporter",
+        "debuff"
+      ],
+      "traits": {
+        "1": "attack",
+        "2": "hp",
+        "3": "timber_gather",
+        "4": "hp"
+      }
+    },
+    {
+      "id": "watcher",
+      "name": "Watcher",
+      "rarity": "legendary",
+      "faction": "nature",
+      "tags": [
+        "damage_dealer",
+        "burst_damage",
+        "debuff"
+      ],
+      "traits": {
+        "1": "attack",
+        "2": "hp",
+        "3": "",
+        "4": "hp"
+      }
+    },
+    {
+      "id": "warrior",
+      "name": "Warrior",
+      "rarity": "rare",
+      "faction": "league",
+      "tags": [
+        "damage_dealer",
+        "sustained"
+      ],
+      "traits": {
+        "1": "attack",
+        "2": "hp",
+        "3": "soldier_hp",
+        "4": "hp"
+      }
+    },
+    {
+      "id": "wizard",
+      "name": "Wizard",
+      "rarity": "rare",
+      "faction": "league",
+      "tags": [
+        "damage_dealer",
+        "multi_target"
+      ],
+      "traits": {
+        "1": "attack",
+        "2": "hp",
+        "3": "soldier_hp",
+        "4": "hp"
+      }
+    },
+    {
+      "id": "guard",
+      "name": "Guard",
+      "rarity": "rare",
+      "faction": "horde",
+      "tags": [
+        "tank",
+        "control"
+      ],
+      "traits": {
+        "1": "attack",
+        "2": "hp",
+        "3": "soldier_hp",
+        "4": "hp"
+      }
+    },
+    {
+      "id": "blacksmith",
+      "name": "Blacksmith",
+      "rarity": "rare",
+      "faction": "horde",
+      "tags": [
+        "supporter",
+        "buff"
+      ],
+      "traits": {
+        "1": "attack",
+        "2": "hp",
+        "3": "soldier_hp",
+        "4": "hp"
+      }
+    },
+    {
+      "id": "pharmacist",
+      "name": "Pharmacist",
+      "rarity": "rare",
+      "faction": "nature",
+      "tags": [
+        "healer",
+        "multi_target"
+      ],
+      "traits": {
+        "1": "attack",
+        "2": "hp",
+        "3": "soldier_hp",
+        "4": "hp"
+      }
+    },
+    {
+      "id": "archer",
+      "name": "Archer",
+      "rarity": "rare",
+      "faction": "nature",
+      "tags": [
+        "damage_dealer",
+        "multi_target"
+      ],
+      "traits": {
+        "1": "attack",
+        "2": "hp",
+        "3": "soldier_hp",
+        "4": "hp"
+      }
+    }
+  ],
+  "gear": {
+    "titans_might": {
+      "name": "Titan's Might",
+      "description": "Focused on raw attack power and damage amplification",
+      "levels": [
+        {
+          "tier": "1",
+          "name": "4-Piece Set",
+          "stats": [
+            "Gear Attack +20%",
+            "Damage Increase +3%"
+          ]
+        },
+        {
+          "tier": "2",
+          "name": "Level 40",
+          "stats": [
+            "Gear Attack +80%",
+            "Damage Increase +6%"
+          ]
+        },
+        {
+          "tier": "3",
+          "name": "Mythic",
+          "stats": [
+            "Gear Attack +160%",
+            "Damage Increase +12%"
+          ]
+        }
+      ]
+    },
+    "fury_of_blood": {
+      "name": "Fury of Blood",
+      "description": "Defensive set focused on HP and damage reduction",
+      "levels": [
+        {
+          "tier": "1",
+          "name": "4-Piece Set",
+          "stats": [
+            "Gear HP +40%",
+            "Damage Reduction +3%"
+          ]
+        },
+        {
+          "tier": "2",
+          "name": "Level 40",
+          "stats": [
+            "Gear HP +160%",
+            "Damage Reduction +6%"
+          ]
+        },
+        {
+          "tier": "3",
+          "name": "Mythic",
+          "stats": [
+            "Gear HP +480%",
+            "Damage Reduction +12%"
+          ]
+        }
+      ]
+    },
+    "glory_of_knight": {
+      "name": "Glory of the Knight",
+      "description": "Balanced set with skill amplification",
+      "levels": [
+        {
+          "tier": "1",
+          "name": "4-Piece Set",
+          "stats": [
+            "Gear Attack +10%",
+            "Gear HP +20%",
+            "Skill Damage +4%"
+          ]
+        },
+        {
+          "tier": "2",
+          "name": "Level 40",
+          "stats": [
+            "Gear Attack +40%",
+            "Gear HP +80%",
+            "Skill Damage +8%"
+          ]
+        },
+        {
+          "tier": "3",
+          "name": "Mythic",
+          "stats": [
+            "Gear Attack +80%",
+            "Gear HP +240%",
+            "Skill Damage +16%"
+          ]
+        }
+      ]
+    }
+  },
+  "relics": [
+    {
+      "id": "dukes_signet_ring",
+      "name": "Duke's Signet Ring",
+      "type": "damage",
+      "rarity": "legendary"
+    },
+    {
+      "id": "eternal_wings",
+      "name": "Eternal Wings",
+      "type": "defense",
+      "rarity": "legendary"
+    },
+    {
+      "id": "scale_of_injustice",
+      "name": "Scale of Injustice",
+      "type": "utility",
+      "rarity": "legendary"
+    },
+    {
+      "id": "persecution",
+      "name": "Persecution",
+      "type": "damage",
+      "rarity": "legendary"
+    },
+    {
+      "id": "royalty",
+      "name": "Royalty",
+      "type": "defense",
+      "rarity": "legendary"
+    },
+    {
+      "id": "marshals_warhorn",
+      "name": "Marshal's Warhorn",
+      "type": "utility",
+      "rarity": "epic"
+    },
+    {
+      "id": "frost_diadem",
+      "name": "Frost Diadem",
+      "type": "damage",
+      "rarity": "legendary"
+    },
+    {
+      "id": "philosophers_rune",
+      "name": "Philosopher's Rune",
+      "type": "defense",
+      "rarity": "epic"
+    },
+    {
+      "id": "eye_of_fear",
+      "name": "Eye of Fear",
+      "type": "utility",
+      "rarity": "epic"
+    },
+    {
+      "id": "terra_orb",
+      "name": "Terra Orb",
+      "type": "damage",
+      "rarity": "epic"
+    },
+    {
+      "id": "heros_amulet",
+      "name": "Hero's Amulet",
+      "type": "defense",
+      "rarity": "rare"
+    },
+    {
+      "id": "war_flag",
+      "name": "War Flag",
+      "type": "utility",
+      "rarity": "legendary"
+    },
+    {
+      "id": "vowkeeper",
+      "name": "Vowkeeper",
+      "type": "defense",
+      "rarity": "epic"
+    },
+    {
+      "id": "venom_fang",
+      "name": "Venom Fang",
+      "type": "damage",
+      "rarity": "epic"
+    },
+    {
+      "id": "electric_frog",
+      "name": "Electric Frog",
+      "type": "damage",
+      "rarity": "epic"
+    },
+    {
+      "id": "elixir_bottle",
+      "name": "Elixir Bottle",
+      "type": "defense",
+      "rarity": "rare"
+    },
+    {
+      "id": "balance_brooch",
+      "name": "Balance Brooch",
+      "type": "damage",
+      "rarity": "rare"
+    },
+    {
+      "id": "mighty_gold",
+      "name": "Mighty Gold",
+      "type": "utility",
+      "rarity": "legendary"
+    },
+    {
+      "id": "anti_magic_handcuffs",
+      "name": "Anti-Magic Handcuffs",
+      "type": "defense",
+      "rarity": "legendary"
+    },
+    {
+      "id": "moonstone",
+      "name": "Moonstone",
+      "type": "defense",
+      "rarity": "legendary"
+    },
+    {
+      "id": "petrification_staff",
+      "name": "Petrification Staff",
+      "type": "damage",
+      "rarity": "legendary"
+    },
+    {
+      "id": "sacred_scroll",
+      "name": "Sacred Scroll",
+      "type": "utility",
+      "rarity": "legendary"
+    },
+    {
+      "id": "dragonheart",
+      "name": "Dragonheart",
+      "type": "defense",
+      "rarity": "legendary"
+    },
+    {
+      "id": "soul_guard_orb",
+      "name": "Soul Guard Orb",
+      "type": "defense",
+      "rarity": "legendary"
+    },
+    {
+      "id": "feather_of_the_pact",
+      "name": "Feather of the Pact",
+      "type": "utility",
+      "rarity": "legendary"
+    }
+  ],
+  "pets": [
+    {
+      "id": "slime",
+      "name": "Slime",
+      "rarity": "uncommon",
+      "faction": "all"
+    },
+    {
+      "id": "bunnie",
+      "name": "Bunnie",
+      "rarity": "uncommon",
+      "faction": "all"
+    },
+    {
+      "id": "grubbie",
+      "name": "Grubbie",
+      "rarity": "uncommon",
+      "faction": "all"
+    },
+    {
+      "id": "zappy",
+      "name": "Zappy",
+      "rarity": "rare",
+      "faction": "league"
+    },
+    {
+      "id": "cubbly",
+      "name": "Cubbly",
+      "rarity": "rare",
+      "faction": "nature"
+    },
+    {
+      "id": "howli",
+      "name": "Howli",
+      "rarity": "rare",
+      "faction": "horde"
+    },
+    {
+      "id": "eggy",
+      "name": "Eggy",
+      "rarity": "rare",
+      "faction": "league"
+    },
+    {
+      "id": "cactini",
+      "name": "Cactini",
+      "rarity": "rare",
+      "faction": "nature"
+    },
+    {
+      "id": "snowpal",
+      "name": "Snowpal",
+      "rarity": "rare",
+      "faction": "nature"
+    },
+    {
+      "id": "flicker_kit",
+      "name": "Flicker Kit",
+      "rarity": "rare",
+      "faction": "horde"
+    },
+    {
+      "id": "sproutfang",
+      "name": "Sproutfang",
+      "rarity": "rare",
+      "faction": "nature"
+    },
+    {
+      "id": "tiggy",
+      "name": "Tiggy",
+      "rarity": "rare",
+      "faction": "horde"
+    },
+    {
+      "id": "candiboo",
+      "name": "Candiboo",
+      "rarity": "rare",
+      "faction": "league"
+    }
+  ],
+  "skins": [
+    {
+      "id": "dessert_knight",
+      "name": "Dessert Knight",
+      "rarity": "legendary"
+    },
+    {
+      "id": "heavy_cavalry",
+      "name": "Heavy Cavalry",
+      "rarity": "legendary"
+    },
+    {
+      "id": "divine_spirit",
+      "name": "Divine Spirit",
+      "rarity": "legendary"
+    },
+    {
+      "id": "tree_spirit",
+      "name": "Tree Spirit",
+      "rarity": "legendary"
+    },
+    {
+      "id": "skeleton_soldier",
+      "name": "Skeleton Soldier",
+      "rarity": "legendary"
+    },
+    {
+      "id": "brave_fighter",
+      "name": "Brave Fighter",
+      "rarity": "legendary"
+    },
+    {
+      "id": "siege_vehicle",
+      "name": "Siege Vehicle",
+      "rarity": "legendary"
+    },
+    {
+      "id": "honor_guard",
+      "name": "Honor Guard",
+      "rarity": "legendary"
+    },
+    {
+      "id": "bearskin_warrior",
+      "name": "Bearskin Warrior",
+      "rarity": "epic"
+    },
+    {
+      "id": "samurai",
+      "name": "Samurai",
+      "rarity": "epic"
+    },
+    {
+      "id": "logistics_follower",
+      "name": "Logistics Follower",
+      "rarity": "epic"
+    },
+    {
+      "id": "elegant_butler",
+      "name": "Elegant Butler",
+      "rarity": "epic"
+    },
+    {
+      "id": "drum_corps",
+      "name": "Drum Corps",
+      "rarity": "epic"
+    },
+    {
+      "id": "shield_soldier",
+      "name": "Shield Soldier",
+      "rarity": "rare"
+    },
+    {
+      "id": "cavalry",
+      "name": "Cavalry",
+      "rarity": "rare"
+    }
+  ]
+}
