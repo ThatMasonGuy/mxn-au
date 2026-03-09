@@ -158,6 +158,12 @@
             </div>
 
             <template v-else>
+                <!-- Image compression warning -->
+                <div class="mb-4 flex items-start gap-3 px-4 py-3 bg-amber-500/10 border border-amber-500/25 rounded-2xl">
+                    <AlertTriangle class="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                    <p class="text-xs text-amber-300/90 font-medium leading-relaxed">Images uploaded through this checklist will be <span class="font-bold text-amber-200">compressed</span>. Please ensure you take marketing photos separately.</p>
+                </div>
+
                 <!-- Header + progress -->
                 <div class="mb-5">
                     <div class="flex items-center justify-between mb-2">
@@ -633,7 +639,7 @@
                             class="relative z-10 w-full sm:w-[460px] bg-slate-900 border border-slate-700 sm:rounded-2xl rounded-t-2xl shadow-2xl p-5 max-h-[90dvh] overflow-y-auto">
                             <div class="flex items-center justify-between mb-5">
                                 <div>
-                                    <h2 class="text-white font-extrabold text-base">Add Photo</h2>
+                                    <h2 class="text-white font-extrabold text-base">{{ photoModal.queue.length > 0 ? `Label Photo ${photoModal.queueIndex + 1} of ${photoModal.queue.length}` : 'Add Photo' }}</h2>
                                     <p class="text-slate-400 text-xs mt-0.5">{{ photoModal.roomLabel }}</p>
                                 </div>
                                 <button @click="closePhotoModal"
@@ -641,53 +647,89 @@
                                     <X class="w-4 h-4 text-slate-400" />
                                 </button>
                             </div>
-                            <div v-if="photoModal.preview"
-                                class="mb-4 relative rounded-xl overflow-hidden aspect-video bg-slate-800">
-                                <img :src="photoModal.preview" alt="Preview" class="w-full h-full object-contain" />
-                                <button @click="photoModal.preview = null"
-                                    class="absolute top-2 right-2 w-7 h-7 bg-black/60 rounded-full flex items-center justify-center hover:bg-black/80 transition-colors">
-                                    <X class="w-3.5 h-3.5 text-white" />
-                                </button>
-                            </div>
-                            <div v-if="!photoModal.preview" class="grid grid-cols-2 gap-3 mb-4">
-                                <button @click="cameraInputRef?.click()"
-                                    class="flex flex-col items-center justify-center gap-2 py-6 rounded-xl border-2 border-slate-700 hover:border-violet-500/60 hover:bg-violet-500/5 transition-colors group">
-                                    <Camera
-                                        class="w-6 h-6 text-slate-400 group-hover:text-violet-400 transition-colors" />
-                                    <span
-                                        class="text-xs font-bold text-slate-400 group-hover:text-violet-400 transition-colors">Take
-                                        Photo</span>
-                                </button>
-                                <button @click="fileInputRef?.click()"
-                                    class="flex flex-col items-center justify-center gap-2 py-6 rounded-xl border-2 border-slate-700 hover:border-violet-500/60 hover:bg-violet-500/5 transition-colors group">
-                                    <ImageIcon
-                                        class="w-6 h-6 text-slate-400 group-hover:text-violet-400 transition-colors" />
-                                    <span
-                                        class="text-xs font-bold text-slate-400 group-hover:text-violet-400 transition-colors">Choose
-                                        from Gallery</span>
-                                </button>
-                            </div>
-                            <input ref="cameraInputRef" type="file" accept="image/*" capture="environment"
-                                class="hidden" @change="handleFileSelect" />
-                            <input ref="fileInputRef" type="file" accept="image/*" class="hidden"
-                                @change="handleFileSelect" />
-                            <div v-if="photoModal.preview" class="mb-5">
-                                <label
-                                    class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5">Caption
-                                    <span class="normal-case font-medium tracking-normal text-slate-500">—
-                                        optional</span></label>
-                                <input v-model="photoModal.caption" type="text"
-                                    placeholder="e.g. Crack in wall near window"
-                                    class="w-full bg-slate-800/60 border border-slate-700 text-white placeholder-slate-500 text-base sm:text-sm rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-violet-500 transition" />
-                            </div>
-                            <div class="flex gap-3">
-                                <button @click="closePhotoModal"
-                                    class="flex-1 py-2.5 rounded-xl border-2 border-slate-700 text-slate-400 hover:text-white hover:border-slate-600 text-sm font-bold transition-colors">Cancel</button>
-                                <button v-if="photoModal.preview" @click="confirmPhoto"
-                                    class="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white text-sm font-bold transition-all shadow-lg shadow-violet-500/20">
-                                    Add Photo
-                                </button>
-                            </div>
+
+                            <!-- Queue mode: stepping through selected photos -->
+                            <template v-if="photoModal.queue.length > 0">
+                                <div class="mb-4 relative rounded-xl overflow-hidden aspect-video bg-slate-800">
+                                    <img :src="photoModal.queue[photoModal.queueIndex]?.preview" alt="Preview" class="w-full h-full object-contain" />
+                                </div>
+                                <!-- Progress dots -->
+                                <div v-if="photoModal.queue.length > 1" class="flex items-center justify-center gap-1.5 mb-4">
+                                    <div v-for="(_, qi) in photoModal.queue" :key="qi"
+                                        class="w-2 h-2 rounded-full transition-colors"
+                                        :class="qi === photoModal.queueIndex ? 'bg-violet-400' : qi < photoModal.queueIndex ? 'bg-violet-600' : 'bg-slate-700'" />
+                                </div>
+                                <div class="mb-5">
+                                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5">Caption
+                                        <span class="normal-case font-medium tracking-normal text-slate-500">— optional</span></label>
+                                    <input v-model="photoModal.queue[photoModal.queueIndex].caption" type="text"
+                                        placeholder="e.g. Crack in wall near window"
+                                        class="w-full bg-slate-800/60 border border-slate-700 text-white placeholder-slate-500 text-base sm:text-sm rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-violet-500 transition" />
+                                </div>
+                                <div class="flex gap-3">
+                                    <button @click="closePhotoModal"
+                                        class="flex-1 py-2.5 rounded-xl border-2 border-slate-700 text-slate-400 hover:text-white hover:border-slate-600 text-sm font-bold transition-colors">Cancel</button>
+                                    <button v-if="photoModal.queueIndex < photoModal.queue.length - 1" @click="nextInQueue"
+                                        class="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white text-sm font-bold transition-all shadow-lg shadow-violet-500/20">
+                                        Next Photo
+                                    </button>
+                                    <button v-else @click="confirmPhotoQueue"
+                                        class="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white text-sm font-bold transition-all shadow-lg shadow-violet-500/20">
+                                        {{ photoModal.queue.length === 1 ? 'Add Photo' : `Add ${photoModal.queue.length} Photos` }}
+                                    </button>
+                                </div>
+                            </template>
+
+                            <!-- Initial mode: pick source -->
+                            <template v-else>
+                                <div v-if="photoModal.preview"
+                                    class="mb-4 relative rounded-xl overflow-hidden aspect-video bg-slate-800">
+                                    <img :src="photoModal.preview" alt="Preview" class="w-full h-full object-contain" />
+                                    <button @click="photoModal.preview = null; photoModal.rawFile = null"
+                                        class="absolute top-2 right-2 w-7 h-7 bg-black/60 rounded-full flex items-center justify-center hover:bg-black/80 transition-colors">
+                                        <X class="w-3.5 h-3.5 text-white" />
+                                    </button>
+                                </div>
+                                <div v-if="!photoModal.preview" class="grid grid-cols-2 gap-3 mb-4">
+                                    <button @click="triggerCameraInput"
+                                        class="flex flex-col items-center justify-center gap-2 py-6 rounded-xl border-2 border-slate-700 hover:border-violet-500/60 hover:bg-violet-500/5 transition-colors group">
+                                        <Camera
+                                            class="w-6 h-6 text-slate-400 group-hover:text-violet-400 transition-colors" />
+                                        <span
+                                            class="text-xs font-bold text-slate-400 group-hover:text-violet-400 transition-colors">Take
+                                            Photo</span>
+                                    </button>
+                                    <button @click="triggerFileInput"
+                                        class="flex flex-col items-center justify-center gap-2 py-6 rounded-xl border-2 border-slate-700 hover:border-violet-500/60 hover:bg-violet-500/5 transition-colors group">
+                                        <ImageIcon
+                                            class="w-6 h-6 text-slate-400 group-hover:text-violet-400 transition-colors" />
+                                        <span
+                                            class="text-xs font-bold text-slate-400 group-hover:text-violet-400 transition-colors">Choose
+                                            from Gallery</span>
+                                    </button>
+                                </div>
+                                <input ref="cameraInputRef" :key="'cam-' + inputKey" type="file" accept="image/*" capture="environment"
+                                    class="hidden" @change="handleCameraSelect" />
+                                <input ref="fileInputRef" :key="'file-' + inputKey" type="file" accept="image/*" multiple
+                                    class="hidden" @change="handleFileSelect" />
+                                <div v-if="photoModal.preview" class="mb-5">
+                                    <label
+                                        class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5">Caption
+                                        <span class="normal-case font-medium tracking-normal text-slate-500">—
+                                            optional</span></label>
+                                    <input v-model="photoModal.caption" type="text"
+                                        placeholder="e.g. Crack in wall near window"
+                                        class="w-full bg-slate-800/60 border border-slate-700 text-white placeholder-slate-500 text-base sm:text-sm rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-violet-500 transition" />
+                                </div>
+                                <div class="flex gap-3">
+                                    <button @click="closePhotoModal"
+                                        class="flex-1 py-2.5 rounded-xl border-2 border-slate-700 text-slate-400 hover:text-white hover:border-slate-600 text-sm font-bold transition-colors">Cancel</button>
+                                    <button v-if="photoModal.preview" @click="confirmPhoto"
+                                        class="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white text-sm font-bold transition-all shadow-lg shadow-violet-500/20">
+                                        Add Photo
+                                    </button>
+                                </div>
+                            </template>
                         </div>
                     </Transition>
                 </div>
@@ -1315,23 +1357,110 @@ onUnmounted(() => firestoreUnsub?.())
 
 const cameraInputRef = ref(null)
 const fileInputRef = ref(null)
-const photoModal = reactive({ open: false, roomIdx: null, roomLabel: '', preview: null, rawFile: null, caption: '' })
+const inputKey = ref(0)
+const photoModal = reactive({ open: false, roomIdx: null, roomLabel: '', preview: null, rawFile: null, caption: '', queue: [], queueIndex: 0 })
 
 function openPhotoModal(idx) {
-    Object.assign(photoModal, { open: true, roomIdx: idx, roomLabel: checklistRooms.value[idx]?.label ?? '', preview: null, rawFile: null, caption: '' })
+    Object.assign(photoModal, { open: true, roomIdx: idx, roomLabel: checklistRooms.value[idx]?.label ?? '', preview: null, rawFile: null, caption: '', queue: [], queueIndex: 0 })
 }
 function closePhotoModal() {
-    Object.assign(photoModal, { open: false, roomIdx: null, roomLabel: '', preview: null, rawFile: null, caption: '' })
+    Object.assign(photoModal, { open: false, roomIdx: null, roomLabel: '', preview: null, rawFile: null, caption: '', queue: [], queueIndex: 0 })
 }
 
-function handleFileSelect(event) {
+function triggerCameraInput() {
+    inputKey.value++
+    setTimeout(() => cameraInputRef.value?.click(), 0)
+}
+function triggerFileInput() {
+    inputKey.value++
+    setTimeout(() => fileInputRef.value?.click(), 0)
+}
+
+// Camera: single photo, goes straight to single-photo preview
+function handleCameraSelect(event) {
     const file = event.target.files?.[0]
     if (!file) return
     photoModal.rawFile = file
     const reader = new FileReader()
     reader.onload = e => { photoModal.preview = e.target.result }
     reader.readAsDataURL(file)
-    event.target.value = ''
+}
+
+// Gallery: supports multiple selection — enters queue mode if >1
+function handleFileSelect(event) {
+    const files = Array.from(event.target.files ?? [])
+    if (!files.length) return
+
+    if (files.length === 1) {
+        // Single file — use the simple preview flow
+        photoModal.rawFile = files[0]
+        const reader = new FileReader()
+        reader.onload = e => { photoModal.preview = e.target.result }
+        reader.readAsDataURL(files[0])
+        return
+    }
+
+    // Multiple files — build a queue and enter label-stepping mode
+    const queue = []
+    let loaded = 0
+    files.forEach((file, i) => {
+        const entry = reactive({ file, preview: null, caption: '' })
+        queue.push(entry)
+        const reader = new FileReader()
+        reader.onload = e => {
+            entry.preview = e.target.result
+            loaded++
+            // Once all previews are loaded, show the queue
+            if (loaded === files.length) {
+                photoModal.queue = queue
+                photoModal.queueIndex = 0
+            }
+        }
+        reader.readAsDataURL(file)
+    })
+}
+
+function nextInQueue() {
+    if (photoModal.queueIndex < photoModal.queue.length - 1) {
+        photoModal.queueIndex++
+    }
+}
+
+async function confirmPhotoQueue() {
+    if (photoModal.roomIdx === null || !photoModal.queue.length) return
+    const room = checklistRooms.value[photoModal.roomIdx]
+    if (!room || !inspectionData[room.id]) return
+    const roomId = room.id
+    const queue = [...photoModal.queue]
+
+    closePhotoModal()
+
+    for (const item of queue) {
+        const photoEntry = reactive({
+            previewUrl: item.preview,
+            thumbUrl: null,
+            url: null,
+            storagePath: null,
+            caption: item.caption,
+            uploadStatus: 'uploading',
+        })
+        inspectionData[roomId].photos.push(photoEntry)
+
+        if (inspectionData[roomId].status === 'unchecked') {
+            inspectionData[roomId].status = 'ok'
+        }
+
+        // Upload in background
+        try {
+            const { url, storagePath } = await uploadPhotoToStorage(item.file, roomId)
+            photoEntry.url = url
+            photoEntry.thumbUrl = url
+            photoEntry.storagePath = storagePath
+            photoEntry.uploadStatus = 'done'
+        } catch {
+            photoEntry.uploadStatus = 'failed'
+        }
+    }
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
