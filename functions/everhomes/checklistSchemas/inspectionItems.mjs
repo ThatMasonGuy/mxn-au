@@ -21,18 +21,40 @@ export const _common = [
 ];
 
 export const CHECKLIST_ITEMS = {
+    general: [
+        {
+            group: 'Safety & Compliance', items: [
+                { id: 'smokeAlarms', label: 'Smoke Alarms — Present & Functional' },
+                { id: 'fireSafety', label: 'Fire Safety Equipment — Extinguisher / Blanket' },
+                { id: 'fireSafetyType', label: 'Fire Safety — Equipment Type', type: 'text' },
+                { id: 'fireSafetyLocation', label: 'Fire Safety — Equipment Location', type: 'text' },
+                { id: 'fireSafetyDate', label: 'Fire Safety — Last Service Date', type: 'text' },
+                { id: 'upsBattery', label: 'UPS / Battery Backup — Present & Functional' },
+                { id: 'upsBatteryLocation', label: 'UPS / Battery Backup — Location', type: 'text' },
+                { id: 'upsBatteryDate', label: 'UPS / Battery Backup — Last Service Date', type: 'text' },
+            ]
+        },
+        {
+            group: 'Meter Readings', items: [
+                { id: 'waterMeter', label: 'Water Meter Reading', type: 'text' },
+                { id: 'nmiReading', label: 'National Metering Identifier (NMI)', type: 'text' },
+            ]
+        },
+    ],
     bedroom: [
         ..._common,
         {
             group: 'Bedroom Fixtures', items: [
                 { id: 'wardrobe', label: 'Wardrobe / Robe' },
                 { id: 'blinds', label: 'Window Coverings / Blinds' },
+                { id: 'aircon', label: 'Air Conditioning Unit' },
+                { id: 'fan', label: 'Ceiling / Standing Fan' },
             ]
         },
         {
             group: 'SDA / Accessibility', sda: true, items: [
                 { id: 'duress', label: 'Emergency Call / Duress Button' },
-                { id: 'grabRail', label: 'Grab Rail (if applicable)' },
+                { id: 'grabRail', label: 'Grab Rail' },
                 { id: 'hoist', label: 'Ceiling Hoist / Tracking' },
             ]
         },
@@ -47,6 +69,7 @@ export const CHECKLIST_ITEMS = {
                 { id: 'shower', label: 'Shower / Bath — Taps, Drain' },
                 { id: 'exhaust', label: 'Exhaust Fan' },
                 { id: 'mirror', label: 'Mirror / Cabinet' },
+                { id: 'towelRail', label: 'Towel Rail(s)' },
             ]
         },
         {
@@ -70,6 +93,7 @@ export const CHECKLIST_ITEMS = {
                 { id: 'shower', label: 'Shower / Bath — Taps, Drain' },
                 { id: 'exhaust', label: 'Exhaust Fan' },
                 { id: 'mirror', label: 'Mirror / Cabinet' },
+                { id: 'towelRail', label: 'Towel Rail(s)' },
             ]
         },
         {
@@ -89,6 +113,8 @@ export const CHECKLIST_ITEMS = {
             group: 'Living Room', items: [
                 { id: 'blinds', label: 'Window Coverings / Blinds' },
                 { id: 'tv', label: 'TV Aerial / Data Outlet' },
+                { id: 'aircon', label: 'Air Conditioning Unit' },
+                { id: 'fan', label: 'Ceiling / Standing Fan' },
             ]
         },
         {
@@ -117,7 +143,7 @@ export const CHECKLIST_ITEMS = {
                 { id: 'rangehood', label: 'Rangehood / Exhaust — Functional' },
                 { id: 'cabinets', label: 'Cabinets & Drawers' },
                 { id: 'fridge', label: 'Fridge Space / Connections' },
-                { id: 'dishwasher', label: 'Dishwasher (if applicable)' },
+                { id: 'dishwasher', label: 'Dishwasher' },
             ]
         },
         {
@@ -155,12 +181,17 @@ export const CHECKLIST_ITEMS = {
     ],
     garage: [
         {
+            group: 'Structure', items: [
+                { id: 'walls', label: 'Walls' },
+                { id: 'ceiling', label: 'Ceiling' },
+                { id: 'floor', label: 'Floor — Cracks, Oil Stains' },
+            ]
+        },
+        {
             group: 'Garage / Carport', items: [
                 { id: 'door', label: 'Door — Opens/Closes, Auto Reverse' },
                 { id: 'remote', label: 'Remote / Key Pad Access' },
                 { id: 'lighting', label: 'Lighting' },
-                { id: 'floor', label: 'Floor — Cracks, Oil Stains' },
-                { id: 'walls', label: 'Walls' },
             ]
         },
         {
@@ -183,7 +214,7 @@ export const CHECKLIST_ITEMS = {
         {
             group: 'SDA / Accessibility', sda: true, items: [
                 { id: 'nonSlip', label: 'Non-Slip Surface' },
-                { id: 'ramp', label: 'Ramp / Level Access (if applicable)' },
+                { id: 'ramp', label: 'Ramp / Level Access' },
                 { id: 'threshold', label: 'Accessible Threshold (≤12mm)' },
             ]
         },
@@ -206,6 +237,13 @@ export const CHECKLIST_ITEMS = {
     ],
     storage: [
         {
+            group: 'Structure', items: [
+                { id: 'walls', label: 'Walls' },
+                { id: 'ceiling', label: 'Ceiling' },
+                { id: 'floor', label: 'Floor' },
+            ]
+        },
+        {
             group: 'Storage', items: [
                 { id: 'door', label: 'Door / Access — Functional, Locks' },
                 { id: 'interior', label: 'Interior — Clean, Dry, No Pests' },
@@ -215,12 +253,18 @@ export const CHECKLIST_ITEMS = {
     ],
     entry: [
         {
-            group: 'Entry / Foyer', items: [
+            group: 'Structure', items: [
+                { id: 'walls', label: 'Walls' },
+                { id: 'ceiling', label: 'Ceiling' },
                 { id: 'floor', label: 'Floor / Mat Area' },
+            ]
+        },
+        {
+            group: 'Entry / Hallway', items: [
                 { id: 'lighting', label: 'Lighting' },
                 { id: 'frontDoor', label: 'Front Door — Lock, Handle, Seal' },
                 { id: 'intercom', label: 'Doorbell / Intercom' },
-                { id: 'keySafe', label: 'Key Safe / Lockbox (if applicable)' },
+                { id: 'keySafe', label: 'Key Safe / Lockbox' },
             ]
         },
         {
@@ -247,8 +291,6 @@ export const CHECKLIST_ITEMS = {
                 { id: 'ceiling', label: 'Ceiling' },
                 { id: 'lighting', label: 'Lighting' },
                 { id: 'exits', label: 'Emergency Exits — Clear & Signposted' },
-                { id: 'fire', label: 'Fire Extinguisher / Hydrant Accessible' },
-                { id: 'smoke', label: 'Smoke Alarms — Present & Functional' },
             ]
         },
         {

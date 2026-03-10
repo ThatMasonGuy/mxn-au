@@ -1,21 +1,45 @@
 <template>
     <LayoutComponent :header="true" :footer="true">
 
+        <!-- ── Top bar ──────────────────────────────────────────────────── -->
+        <div class="bg-slate-900 border-b border-slate-800">
+            <div class="max-w-4xl mx-auto px-4 sm:px-6 h-10 flex items-center gap-3">
+                <span class="text-xs font-black tracking-wider text-violet-400 uppercase">Everhomes</span>
+                <span class="text-slate-700">|</span>
+                <span class="text-xs font-semibold text-slate-400">Property Inspection</span>
+            </div>
+        </div>
+
         <!-- ══════════════════════════════════════════════════════════════ -->
         <!--  STEP 1 — PROPERTY SETUP                                       -->
         <!-- ══════════════════════════════════════════════════════════════ -->
         <div class="">
-            <div class="bg-gradient-to-r from-violet-700 to-fuchsia-600 px-4 sm:px-6 lg:px-8 pt-20 pb-10 sm:pt-24">
+            <div class="bg-gradient-to-r from-violet-700 to-fuchsia-600 px-4 sm:px-6 lg:px-8 pt-8 pb-10">
                 <div class="max-w-4xl mx-auto">
                     <h1 class="text-2xl sm:text-3xl font-black text-white tracking-tight uppercase">Set Up Your Property
                     </h1>
-                    <p class="text-violet-200 text-sm mt-1 font-medium">Configure each room — ensuites are linked to
-                        their bedroom.</p>
+                    <p class="text-violet-200 text-sm mt-1 font-medium">Configure rooms, select areas, and choose the
+                        report type.</p>
                 </div>
             </div>
 
             <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 -mt-5 pb-8">
                 <div class="bg-white rounded-2xl shadow-xl shadow-black/15 overflow-hidden">
+
+                    <!-- Report type selector -->
+                    <div class="bg-violet-50 border-b border-violet-100 px-5 py-4">
+                        <p class="text-[0.65rem] font-black text-violet-600 uppercase tracking-widest mb-2.5">Report
+                            Type</p>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            <button v-for="rt in REPORT_TYPES" :key="rt.key" @click="reportSubtype = rt.key"
+                                class="px-3 py-2.5 rounded-xl border-2 text-sm font-bold text-left transition-all duration-150"
+                                :class="reportSubtype === rt.key
+                                    ? 'bg-violet-600 border-violet-600 text-white shadow-sm'
+                                    : 'bg-white border-slate-200 text-slate-600 hover:border-violet-300'">
+                                {{ rt.label }}
+                            </button>
+                        </div>
+                    </div>
 
                     <!-- Address + date + housing officer -->
                     <div class="bg-slate-50 border-b border-slate-200 px-5 py-4 space-y-3">
@@ -30,33 +54,38 @@
                                 <p v-if="setupErrors.address" class="text-rose-500 text-[0.65rem] font-bold mt-1">
                                     Property address is required</p>
                             </div>
-                            <div class="min-w-0">
+                            <div class="min-w-0 overflow-hidden">
                                 <label
                                     class="block text-[0.65rem] font-black text-violet-600 uppercase tracking-widest mb-1">Inspection
                                     Date</label>
                                 <input v-model="inspectionDate" type="date"
-                                    class="w-full min-w-0 bg-white border border-slate-200 text-slate-800 text-base sm:text-sm font-medium rounded-xl px-3.5 py-2 focus:outline-none focus:ring-2 focus:ring-violet-400 transition" />
+                                    class="w-full max-w-full min-w-0 bg-white border border-slate-200 text-slate-800 text-base sm:text-sm font-medium rounded-xl px-3.5 py-2 focus:outline-none focus:ring-2 focus:ring-violet-400 transition appearance-none" />
                             </div>
                         </div>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
                                 <label
-                                    class="block text-[0.65rem] font-black text-violet-600 uppercase tracking-widest mb-1">Housing
-                                    Officer Name</label>
+                                    class="block text-[0.65rem] font-black text-violet-600 uppercase tracking-widest mb-1">Everhomes
+                                    Staff Name</label>
                                 <input v-model="inspectorName" type="text" placeholder="Jane Smith"
                                     class="w-full bg-white border text-slate-800 placeholder-slate-400 text-base sm:text-sm font-medium rounded-xl px-3.5 py-2 focus:outline-none focus:ring-2 focus:ring-violet-400 transition"
                                     :class="setupErrors.name ? 'border-rose-400 ring-1 ring-rose-400' : 'border-slate-200'" />
-                                <p v-if="setupErrors.name" class="text-rose-500 text-[0.65rem] font-bold mt-1">Housing
-                                    officer name is required</p>
+                                <p v-if="setupErrors.name" class="text-rose-500 text-[0.65rem] font-bold mt-1">Staff
+                                    name is required</p>
                             </div>
                             <div>
                                 <label
-                                    class="block text-[0.65rem] font-black text-violet-600 uppercase tracking-widest mb-1">Housing
-                                    Officer Email</label>
-                                <input v-model="inspectorEmail" type="email" placeholder="officer@everhomes.com.au"
-                                    class="w-full bg-white border border-slate-200 text-slate-800 placeholder-slate-400 text-base sm:text-sm font-medium rounded-xl px-3.5 py-2 focus:outline-none focus:ring-2 focus:ring-violet-400 transition" />
+                                    class="block text-[0.65rem] font-black text-violet-600 uppercase tracking-widest mb-1">Everhomes
+                                    Staff Email</label>
+                                <input v-model="inspectorEmail" type="email" placeholder="name@everhomes.com.au"
+                                    class="w-full bg-white border text-slate-800 placeholder-slate-400 text-base sm:text-sm font-medium rounded-xl px-3.5 py-2 focus:outline-none focus:ring-2 focus:ring-violet-400 transition"
+                                    :class="setupErrors.email ? 'border-rose-400 ring-1 ring-rose-400' : 'border-slate-200'" />
+                                <p v-if="setupErrors.email" class="text-rose-500 text-[0.65rem] font-bold mt-1">Staff
+                                    email is required</p>
                             </div>
                         </div>
+                        <p class="text-[0.6rem] text-slate-400 -mt-1">This is the person completing the form. These
+                            details appear on the report and signature page.</p>
                     </div>
 
                     <div class="px-5 py-6 space-y-8">
@@ -116,18 +145,36 @@
                             </div>
                         </div>
 
-                        <!-- Additional areas -->
+                        <!-- Core sections (always included) -->
                         <div>
-                            <p class="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Additional Areas
+                            <p class="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Core Sections
                             </p>
+                            <p class="text-[0.68rem] text-slate-400 font-medium mb-3">Always included in every
+                                inspection</p>
+                            <div class="flex flex-wrap gap-2">
+                                <div v-for="s in CORE_SECTIONS" :key="s.key"
+                                    class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold text-white border-transparent shadow-sm"
+                                    :style="{ backgroundColor: s.color }">
+                                    <Check class="w-3 h-3 opacity-60" />
+                                    {{ s.label }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Optional areas -->
+                        <div>
+                            <p class="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Optional Areas
+                            </p>
+                            <p class="text-[0.68rem] text-slate-400 font-medium mb-3">Add any that apply to this
+                                property</p>
                             <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                                <button v-for="area in ADDITIONAL_AREAS" :key="area.key" @click="toggleArea(area.key)"
+                                <button v-for="area in OPTIONAL_AREAS" :key="area.key" @click="toggleOptional(area.key)"
                                     class="flex items-center gap-2.5 px-3.5 py-3 rounded-xl text-sm font-semibold text-left transition-all duration-150 border"
-                                    :class="selectedAreas.has(area.key) ? 'text-white border-transparent shadow-sm' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'"
-                                    :style="selectedAreas.has(area.key) ? { backgroundColor: area.color } : {}">
+                                    :class="selectedOptional.has(area.key) ? 'text-white border-transparent shadow-sm' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'"
+                                    :style="selectedOptional.has(area.key) ? { backgroundColor: area.color } : {}">
                                     <div class="w-4 h-4 rounded border-2 flex items-center justify-center shrink-0"
-                                        :class="selectedAreas.has(area.key) ? 'bg-white/25 border-white/60' : 'border-slate-300'">
-                                        <Check v-if="selectedAreas.has(area.key)" class="w-2.5 h-2.5 text-white" />
+                                        :class="selectedOptional.has(area.key) ? 'bg-white/25 border-white/60' : 'border-slate-300'">
+                                        <Check v-if="selectedOptional.has(area.key)" class="w-2.5 h-2.5 text-white" />
                                     </div>
                                     {{ area.label }}
                                 </button>
@@ -159,9 +206,52 @@
 
             <template v-else>
                 <!-- Image compression warning -->
-                <div class="mb-4 flex items-start gap-3 px-4 py-3 bg-amber-500/10 border border-amber-500/25 rounded-2xl">
+                <div
+                    class="mb-4 flex items-start gap-3 px-4 py-3 bg-amber-500/10 border border-amber-500/25 rounded-2xl">
                     <AlertTriangle class="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-                    <p class="text-xs text-amber-300/90 font-medium leading-relaxed">Images uploaded through this checklist will be <span class="font-bold text-amber-200">compressed</span>. Please ensure you take marketing photos separately.</p>
+                    <p class="text-xs text-amber-300/90 font-medium leading-relaxed">Images uploaded through this
+                        checklist will be <span class="font-bold text-amber-200">compressed</span>. Please ensure you
+                        take marketing photos separately.</p>
+                </div>
+
+                <!-- Status legend -->
+                <div class="mb-4 px-4 py-3 bg-slate-800/50 border border-slate-700/50 rounded-2xl">
+                    <p class="text-[0.65rem] font-black text-slate-500 uppercase tracking-widest mb-2.5">Status Guide
+                    </p>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-2">
+                        <div class="flex items-start gap-2">
+                            <CheckCircle class="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-px" />
+                            <div class="-mt-2">
+                                <span class="text-xs font-bold text-emerald-400 leading-none">Good</span>
+                                <p class="text-[0.6rem] text-slate-500 leading-tight mt-0.5">Item is in acceptable
+                                    condition</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-2">
+                            <AlertTriangle class="w-3.5 h-3.5 text-amber-400 shrink-0 mt-px" />
+                            <div class="-mt-2">
+                                <span class="text-xs font-bold text-amber-400 leading-none">Attention</span>
+                                <p class="text-[0.6rem] text-slate-500 leading-tight mt-0.5">Minor issue — note for
+                                    follow-up</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-2">
+                            <XCircle class="w-3.5 h-3.5 text-rose-400 shrink-0 mt-px" />
+                            <div class="-mt-2">
+                                <span class="text-xs font-bold text-rose-400 leading-none">Issue</span>
+                                <p class="text-[0.6rem] text-slate-500 leading-tight mt-0.5">Requires action or repair
+                                </p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-2">
+                            <MinusCircle class="w-3.5 h-3.5 text-slate-400 shrink-0 mt-px" />
+                            <div class="-mt-2">
+                                <span class="text-xs font-bold text-slate-400 leading-none">N/A</span>
+                                <p class="text-[0.6rem] text-slate-500 leading-tight mt-0.5">Not applicable to this
+                                    property</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Header + progress -->
@@ -280,35 +370,50 @@
                                                     class="text-[0.55rem] font-black uppercase tracking-wider text-violet-400 bg-violet-500/15 border border-violet-500/25 px-1.5 py-0.5 rounded-full">SDA</span>
                                                 <span
                                                     class="text-[0.6rem] font-black text-slate-600 uppercase tracking-wider">{{
-                                                    group.group }}</span>
+                                                        group.group }}</span>
                                             </div>
                                             <!-- Items -->
                                             <div class="space-y-0.5">
                                                 <div v-for="item in group.items" :key="item.id"
                                                     class="flex items-center gap-2 px-2.5 py-1.5 rounded-lg transition-colors duration-150"
-                                                    :class="itemRowClass(inspectionData[room.id].items?.[item.id])">
-                                                    <!-- Item label -->
-                                                    <span
-                                                        class="flex-1 text-xs font-medium leading-tight transition-colors duration-150"
-                                                        :class="[
-                                                            item.sda ? 'text-slate-300' : 'text-slate-400',
-                                                            inspectionData[room.id].items?.[item.id] === 'na' ? 'line-through opacity-50' : '',
-                                                            inspectionData[room.id].items?.[item.id] === 'issue' ? '!text-rose-300' : '',
-                                                        ]">
-                                                        {{ item.label }}
-                                                    </span>
-                                                    <!-- Status mini-buttons -->
-                                                    <div class="flex items-center gap-0.5 shrink-0">
-                                                        <button v-for="s in ITEM_STATUS_OPTIONS" :key="s.value"
-                                                            @click="setItemStatus(room.id, item.id, s.value)"
-                                                            :title="s.label"
-                                                            class="w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-100 border"
-                                                            :class="inspectionData[room.id].items?.[item.id] === s.value
-                                                                ? s.activeClass
-                                                                : 'border-slate-700/60 text-slate-600 hover:border-slate-600 hover:text-slate-400 bg-transparent'">
-                                                            <component :is="s.icon" class="w-3.5 h-3.5" />
-                                                        </button>
-                                                    </div>
+                                                    :class="item.type ? '' : itemRowClass(inspectionData[room.id].items?.[item.id])">
+
+                                                    <!-- INPUT-TYPE ITEM (text/number) -->
+                                                    <template v-if="item.type">
+                                                        <span
+                                                            class="flex-1 text-xs font-medium leading-tight text-slate-400">{{
+                                                                item.label }}</span>
+                                                        <input :type="item.type === 'number' ? 'number' : 'text'"
+                                                            :value="inspectionData[room.id].inputs?.[item.id] ?? ''"
+                                                            @input="setItemInput(room.id, item.id, $event.target.value)"
+                                                            :placeholder="item.placeholder || ''"
+                                                            class="w-36 shrink-0 bg-slate-800/60 border border-slate-700 text-white placeholder-slate-600 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-violet-500 transition" />
+                                                    </template>
+
+                                                    <!-- STATUS-CHECK ITEM (ok/attention/issue/na) -->
+                                                    <template v-else>
+                                                        <span
+                                                            class="flex-1 text-xs font-medium leading-tight transition-colors duration-150"
+                                                            :class="[
+                                                                item.sda ? 'text-slate-300' : 'text-slate-400',
+                                                                inspectionData[room.id].items?.[item.id] === 'na' ? 'line-through opacity-50' : '',
+                                                                inspectionData[room.id].items?.[item.id] === 'issue' ? '!text-rose-300' : '',
+                                                            ]">
+                                                            {{ item.label }}
+                                                        </span>
+                                                        <!-- Status mini-buttons -->
+                                                        <div class="flex items-center gap-0.5 shrink-0">
+                                                            <button v-for="s in ITEM_STATUS_OPTIONS" :key="s.value"
+                                                                @click="setItemStatus(room.id, item.id, s.value)"
+                                                                :title="s.label"
+                                                                class="w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-100 border"
+                                                                :class="inspectionData[room.id].items?.[item.id] === s.value
+                                                                    ? s.activeClass
+                                                                    : 'border-slate-700/60 text-slate-600 hover:border-slate-600 hover:text-slate-400 bg-transparent'">
+                                                                <component :is="s.icon" class="w-3.5 h-3.5" />
+                                                            </button>
+                                                        </div>
+                                                    </template>
                                                 </div>
                                             </div>
                                         </div>
@@ -357,10 +462,13 @@
                                                 <!-- Failed overlay -->
                                                 <div v-else-if="photo.uploadStatus === 'failed'"
                                                     class="absolute inset-0 bg-rose-900/80 flex flex-col items-center justify-center gap-1.5 p-1">
-                                                    <WifiOff class="w-4 h-4 text-rose-300" />
+                                                    <AlertTriangle class="w-4 h-4 text-rose-300" />
+                                                    <span
+                                                        class="text-[9px] font-bold text-rose-200 text-center leading-tight">Upload
+                                                        failed</span>
                                                     <button @click.stop="retryPhotoUpload(room.id, pIdx)"
                                                         class="text-[10px] font-black text-white bg-rose-500 rounded-lg px-2 py-1 hover:bg-rose-400 transition-colors">
-                                                        Retry
+                                                        Tap to Retry
                                                     </button>
                                                 </div>
 
@@ -463,6 +571,10 @@
                                         this
                                         page.</p>
                                 </div>
+                                <button v-if="submitModal.canFlush" @click="flushAndCheck"
+                                    class="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white font-bold text-sm transition-colors">
+                                    <RefreshCw class="w-4 h-4" />Check Status
+                                </button>
                             </div>
 
                             <!-- Done state -->
@@ -610,9 +722,8 @@
                             <Trash2 class="w-6 h-6 text-rose-400" />
                         </div>
                         <h3 class="text-white font-black text-base mb-1">Clear Checklist?</h3>
-                        <p class="text-slate-400 text-sm mb-5">All inspection data, statuses, notes, and photos will be
-                            removed.
-                            Property setup stays.</p>
+                        <p class="text-slate-400 text-sm mb-5">All inspection data, statuses, notes, property setup, and
+                            photos will be removed.</p>
                         <div class="flex gap-3">
                             <button @click="confirmClear.open = false"
                                 class="flex-1 py-2.5 rounded-xl border-2 border-slate-700 text-slate-400 hover:text-white hover:border-slate-600 text-sm font-bold transition-colors">Cancel</button>
@@ -639,7 +750,10 @@
                             class="relative z-10 w-full sm:w-[460px] bg-slate-900 border border-slate-700 sm:rounded-2xl rounded-t-2xl shadow-2xl p-5 max-h-[90dvh] overflow-y-auto">
                             <div class="flex items-center justify-between mb-5">
                                 <div>
-                                    <h2 class="text-white font-extrabold text-base">{{ photoModal.queue.length > 0 ? `Label Photo ${photoModal.queueIndex + 1} of ${photoModal.queue.length}` : 'Add Photo' }}</h2>
+                                    <h2 class="text-white font-extrabold text-base">{{ photoModal.queue.length > 0 ?
+                                        `Label
+                                        Photo ${photoModal.queueIndex + 1} of ${photoModal.queue.length}` : 'Add Photo'
+                                    }}</h2>
                                     <p class="text-slate-400 text-xs mt-0.5">{{ photoModal.roomLabel }}</p>
                                 </div>
                                 <button @click="closePhotoModal"
@@ -651,17 +765,21 @@
                             <!-- Queue mode: stepping through selected photos -->
                             <template v-if="photoModal.queue.length > 0">
                                 <div class="mb-4 relative rounded-xl overflow-hidden aspect-video bg-slate-800">
-                                    <img :src="photoModal.queue[photoModal.queueIndex]?.preview" alt="Preview" class="w-full h-full object-contain" />
+                                    <img :src="photoModal.queue[photoModal.queueIndex]?.preview" alt="Preview"
+                                        class="w-full h-full object-contain" />
                                 </div>
                                 <!-- Progress dots -->
-                                <div v-if="photoModal.queue.length > 1" class="flex items-center justify-center gap-1.5 mb-4">
+                                <div v-if="photoModal.queue.length > 1"
+                                    class="flex items-center justify-center gap-1.5 mb-4">
                                     <div v-for="(_, qi) in photoModal.queue" :key="qi"
                                         class="w-2 h-2 rounded-full transition-colors"
                                         :class="qi === photoModal.queueIndex ? 'bg-violet-400' : qi < photoModal.queueIndex ? 'bg-violet-600' : 'bg-slate-700'" />
                                 </div>
                                 <div class="mb-5">
-                                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5">Caption
-                                        <span class="normal-case font-medium tracking-normal text-slate-500">— optional</span></label>
+                                    <label
+                                        class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5">Caption
+                                        <span class="normal-case font-medium tracking-normal text-slate-500">—
+                                            optional</span></label>
                                     <input v-model="photoModal.queue[photoModal.queueIndex].caption" type="text"
                                         placeholder="e.g. Crack in wall near window"
                                         class="w-full bg-slate-800/60 border border-slate-700 text-white placeholder-slate-500 text-base sm:text-sm rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-violet-500 transition" />
@@ -669,13 +787,15 @@
                                 <div class="flex gap-3">
                                     <button @click="closePhotoModal"
                                         class="flex-1 py-2.5 rounded-xl border-2 border-slate-700 text-slate-400 hover:text-white hover:border-slate-600 text-sm font-bold transition-colors">Cancel</button>
-                                    <button v-if="photoModal.queueIndex < photoModal.queue.length - 1" @click="nextInQueue"
+                                    <button v-if="photoModal.queueIndex < photoModal.queue.length - 1"
+                                        @click="nextInQueue"
                                         class="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white text-sm font-bold transition-all shadow-lg shadow-violet-500/20">
                                         Next Photo
                                     </button>
                                     <button v-else @click="confirmPhotoQueue"
                                         class="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white text-sm font-bold transition-all shadow-lg shadow-violet-500/20">
-                                        {{ photoModal.queue.length === 1 ? 'Add Photo' : `Add ${photoModal.queue.length} Photos` }}
+                                        {{ photoModal.queue.length === 1 ? 'Add Photo' : `Add ${photoModal.queue.length}
+                                        Photos` }}
                                     </button>
                                 </div>
                             </template>
@@ -708,10 +828,10 @@
                                             from Gallery</span>
                                     </button>
                                 </div>
-                                <input ref="cameraInputRef" :key="'cam-' + inputKey" type="file" accept="image/*" capture="environment"
-                                    class="hidden" @change="handleCameraSelect" />
-                                <input ref="fileInputRef" :key="'file-' + inputKey" type="file" accept="image/*" multiple
-                                    class="hidden" @change="handleFileSelect" />
+                                <input ref="cameraInputRef" :key="'cam-' + inputKey" type="file" accept="image/*"
+                                    capture="environment" class="hidden" @change="handleCameraSelect" />
+                                <input ref="fileInputRef" :key="'file-' + inputKey" type="file" accept="image/*"
+                                    multiple class="hidden" @change="handleFileSelect" />
                                 <div v-if="photoModal.preview" class="mb-5">
                                     <label
                                         class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5">Caption
@@ -746,7 +866,7 @@ import LayoutComponent from '@/components/everhomes/layouts/LayoutComponent.vue'
 // Firebase — adjust these imports to match your actual client firebase config exports
 import { storage, firestore } from '@/firebase'
 import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
-import { doc, setDoc, updateDoc, onSnapshot, serverTimestamp } from 'firebase/firestore'
+import { doc, setDoc, updateDoc, onSnapshot, getDoc, serverTimestamp } from 'firebase/firestore'
 
 import {
     ClipboardCheck, ChevronDown, Plus, X, Camera,
@@ -754,7 +874,8 @@ import {
     XCircle, MinusCircle, Moon, ShieldCheck, Bath,
     Check, Tv, UtensilsCrossed, Flame, Sparkles,
     Building2, Truck, Sun, Archive, Monitor, Wrench,
-    Home, Trees, Send, Trash2, Save, WifiOff, FileText,
+    Home, Trees, Send, Trash2, Save, FileText,
+    RefreshCw,
 } from 'lucide-vue-next'
 import { CHECKLIST_ITEMS, _common, getChecklistGroups } from '@/data/inspectionItems.js'
 
@@ -766,6 +887,7 @@ const REPORT_TYPE = 'inspection'
 const FUNCTIONS_URL = import.meta.env.VITE_FUNCTIONS_URL ?? ''
 
 const ROOM_META = {
+    general: { icon: ClipboardCheck, gradient: 'linear-gradient(135deg,#059669,#10B981)' },
     bedroom: { icon: Moon, gradient: 'linear-gradient(135deg,#7C3AED,#A855F7)' },
     ensuite: { icon: Bath, gradient: 'linear-gradient(135deg,#0891B2,#22D3EE)' },
     bathroom: { icon: Sparkles, gradient: 'linear-gradient(135deg,#0284C7,#38BDF8)' },
@@ -783,19 +905,31 @@ const ROOM_META = {
     driveway: { icon: Truck, gradient: 'linear-gradient(135deg,#475569,#94A3B8)' },
 }
 
-const ADDITIONAL_AREAS = [
+const REPORT_TYPES = [
+    { key: 'entry', label: 'Entry Report' },
+    { key: 'routine', label: 'Routine Inspection' },
+    { key: 'exit', label: 'Exit Report' },
+    { key: 'event', label: 'Event Response' },
+]
+
+// Core sections — always included, not toggleable (like handover)
+const CORE_SECTIONS = [
+    { key: 'entry', label: 'Entry / Hallway', color: '#EA580C' },
     { key: 'living', label: 'Living Room', color: '#D97706' },
-    { key: 'dining', label: 'Dining Room', color: '#B45309' },
     { key: 'kitchen', label: 'Kitchen', color: '#C2410C' },
+]
+
+// Optional areas — one group, common ones listed first
+const OPTIONAL_AREAS = [
+    { key: 'dining', label: 'Dining Room', color: '#B45309' },
     { key: 'laundry', label: 'Laundry', color: '#0D9488' },
+    { key: 'driveway', label: 'Driveway', color: '#64748B' },
     { key: 'study', label: 'Study / Office', color: '#4F46E5' },
     { key: 'garage', label: 'Garage / Carport', color: '#475569' },
     { key: 'outdoor', label: 'Patio / Balcony', color: '#0891B2' },
     { key: 'garden', label: 'Garden / Lawn', color: '#15803D' },
-    { key: 'driveway', label: 'Driveway', color: '#64748B' },
     { key: 'common', label: 'Common Area', color: '#7C3AED' },
     { key: 'storage', label: 'Storage', color: '#6B7280' },
-    { key: 'entry', label: 'Entry / Foyer', color: '#EA580C' },
 ]
 
 const STATUS_OPTIONS = [
@@ -814,9 +948,9 @@ const ITEM_STATUS_OPTIONS = [
 ]
 
 
-// All item IDs for a given room type (flat)
+// All status-checkable item IDs for a given room type (excludes input-type items)
 function getItemIds(type) {
-    return getChecklistGroups(type).flatMap(g => g.items.map(i => i.id))
+    return getChecklistGroups(type).flatMap(g => g.items.filter(i => !i.type).map(i => i.id))
 }
 
 // ─── Setup state ────────────────────────────────────────────────────────────
@@ -834,11 +968,12 @@ const bedrooms = reactive([
     { id: _id++, name: '', hasEnsuite: false, isOOA: true },
 ])
 
-const selectedAreas = reactive(new Set(['living', 'dining', 'kitchen', 'laundry']))
+const selectedOptional = reactive(new Set(['dining', 'laundry']))
+const reportSubtype = ref('routine')
 
 function addBedroom() { bedrooms.push({ id: _id++, name: '', hasEnsuite: false, isOOA: false }) }
 function removeBedroom() { if (bedrooms.length > 1) bedrooms.pop() }
-function toggleArea(key) { selectedAreas.has(key) ? selectedAreas.delete(key) : selectedAreas.add(key) }
+function toggleOptional(key) { selectedOptional.has(key) ? selectedOptional.delete(key) : selectedOptional.add(key) }
 
 // ─── Checklist state ────────────────────────────────────────────────────────
 
@@ -851,6 +986,8 @@ const openRooms = ref(new Set())
 //   status: 'unchecked'|'ok'|'attention'|'issue'|'na'
 //   notes: string
 //   photos: [{ previewUrl, thumbUrl, url, storagePath, caption, uploadStatus: 'uploading'|'done'|'failed'|'skipped' }]
+//   items: { [id]: status }        — status-checkable items
+//   inputs: { [id]: string|number } — text/number input items
 // }
 const inspectionData = reactive({})
 
@@ -858,7 +995,7 @@ function ensureInspectionEntry(id, type) {
     if (!inspectionData[id]) {
         const items = {}
         getItemIds(type).forEach(itemId => { items[itemId] = 'unchecked' })
-        inspectionData[id] = { status: 'unchecked', notes: '', photos: [], items }
+        inspectionData[id] = { status: 'unchecked', notes: '', photos: [], items, inputs: {} }
     }
 }
 
@@ -867,6 +1004,26 @@ function startInspection() {
     const newId = crypto.randomUUID()
     inspectionId.value = newId
 
+    function addArea(key, label) {
+        const aId = `area-${key}`
+        rooms.push({ id: aId, type: key, label, isOOA: false, isEnsuite: false })
+        ensureInspectionEntry(aId, key)
+    }
+
+    // ── Walk-through order ─────────────────────────────────────────
+    // 1. Driveway (if selected) — arrive at property
+    if (selectedOptional.has('driveway')) addArea('driveway', 'Driveway')
+
+    // 2. Core sections — always included
+    for (const s of CORE_SECTIONS) addArea(s.key, s.label)
+
+    // 3. Optional areas (excl. driveway — already placed first)
+    for (const area of OPTIONAL_AREAS) {
+        if (area.key === 'driveway') continue
+        if (selectedOptional.has(area.key)) addArea(area.key, area.label)
+    }
+
+    // 4. Bedrooms + ensuites
     bedrooms.forEach((bed, i) => {
         const bId = `bed-${bed.id}`
         rooms.push({ id: bId, type: 'bedroom', label: bed.name.trim() || `Bedroom ${i + 1}`, isOOA: bed.isOOA, isEnsuite: false })
@@ -879,19 +1036,15 @@ function startInspection() {
         }
     })
 
+    // 5. Standalone bathrooms
     for (let i = 0; i < bathrooms.value; i++) {
         const bId = `bath-${i}`
         rooms.push({ id: bId, type: 'bathroom', label: bathrooms.value > 1 ? `Bathroom ${i + 1}` : 'Bathroom', isOOA: false, isEnsuite: false })
         ensureInspectionEntry(bId, 'bathroom')
     }
 
-    for (const area of ADDITIONAL_AREAS) {
-        if (selectedAreas.has(area.key)) {
-            const aId = `area-${area.key}`
-            rooms.push({ id: aId, type: area.key, label: area.label, isOOA: false, isEnsuite: false })
-            ensureInspectionEntry(aId, area.key)
-        }
-    }
+    // 6. General Property — always last
+    addArea('general', 'General Property')
 
     checklistRooms.value = rooms
     openRooms.value = new Set([0])
@@ -915,11 +1068,19 @@ async function uploadPhotoToStorage(file, roomId) {
     const fileRef = storageRef(storage, path)
 
     const MAX_ATTEMPTS = 3
+    const UPLOAD_TIMEOUT_MS = 30_000 // 30s per attempt
     let lastError
 
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
         try {
-            await uploadBytes(fileRef, file, { contentType: file.type || 'image/jpeg' })
+            await Promise.race([
+                (async () => {
+                    await uploadBytes(fileRef, file, { contentType: file.type || 'image/jpeg' })
+                })(),
+                new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error('Upload timed out')), UPLOAD_TIMEOUT_MS)
+                ),
+            ])
             const url = await getDownloadURL(fileRef)
             return { url, storagePath: path }
         } catch (err) {
@@ -965,10 +1126,6 @@ async function confirmPhoto() {
         uploadStatus: 'uploading',
     })
     inspectionData[roomId].photos.push(photoEntry)
-
-    if (inspectionData[roomId].status === 'unchecked') {
-        inspectionData[roomId].status = 'ok'
-    }
 
     closePhotoModal()
 
@@ -1032,11 +1189,26 @@ function toggleRoom(idx) {
 
 // ─── Progress ────────────────────────────────────────────────────────────────
 
+// A room is "complete" when every status-checkable item has been set (not 'unchecked')
+function isRoomComplete(roomId) {
+    const items = inspectionData[roomId]?.items ?? {}
+    const values = Object.values(items)
+    return values.length > 0 && values.every(v => v !== 'unchecked')
+}
+
 const inspectedCount = computed(() =>
-    checklistRooms.value.filter(r => inspectionData[r.id]?.status !== 'unchecked').length
+    checklistRooms.value.filter(r => isRoomComplete(r.id)).length
 )
 const uninspectedCount = computed(() =>
-    checklistRooms.value.filter(r => inspectionData[r.id]?.status === 'unchecked').length
+    checklistRooms.value.filter(r => !isRoomComplete(r.id)).length
+)
+const incompleteRooms = computed(() =>
+    checklistRooms.value.filter(r => {
+        const items = inspectionData[r.id]?.items ?? {}
+        const values = Object.values(items)
+        const checked = values.filter(v => v !== 'unchecked').length
+        return checked > 0 && checked < values.length
+    })
 )
 const progressPercent = computed(() => {
     if (!checklistRooms.value.length) return 0
@@ -1067,6 +1239,12 @@ function setItemStatus(roomId, itemId, value) {
     recomputeRoomStatus(roomId)
 }
 
+function setItemInput(roomId, itemId, value) {
+    if (!inspectionData[roomId]) return
+    if (!inspectionData[roomId].inputs) inspectionData[roomId].inputs = {}
+    inspectionData[roomId].inputs[itemId] = value
+}
+
 // Returns true when every explicitly-set item is N/A (manual override needed)
 function roomIsAllNA(roomId) {
     const items = inspectionData[roomId]?.items ?? {}
@@ -1094,12 +1272,13 @@ function recomputeRoomStatus(roomId) {
 
 // ─── Validation ───────────────────────────────────────────────────────────────
 
-const setupErrors = reactive({ address: false, name: false })
+const setupErrors = reactive({ address: false, name: false, email: false })
 
 function validateSetup() {
     setupErrors.address = !propertyAddress.value.trim()
     setupErrors.name = !inspectorName.value.trim()
-    return !setupErrors.address && !setupErrors.name
+    setupErrors.email = !inspectorEmail.value.trim()
+    return !setupErrors.address && !setupErrors.name && !setupErrors.email
 }
 
 function tryStartInspection() {
@@ -1129,9 +1308,12 @@ const submitModal = reactive({
     error: null,
     statusMessage: 'Generating report…',
     pdfUrl: null,
+    canFlush: false,
 })
 
 let firestoreUnsub = null
+let submitTimeoutId = null
+const SUBMIT_TIMEOUT_MS = 120_000 // 2 minutes
 
 const submitStats = computed(() => {
     const total = checklistRooms.value.length
@@ -1166,13 +1348,21 @@ function openSubmit() {
     submitModal.done = false
     submitModal.error = null
     submitModal.pdfUrl = null
+    submitModal.canFlush = false
 }
 
 async function confirmSubmit() {
     if (hasAnyUploading.value) return
 
+    // ── Network gate ───────────────────────────────────────────────
+    if (!navigator.onLine) {
+        submitModal.error = 'You appear to be offline. Please check your internet connection and try again.'
+        return
+    }
+
     submitModal.loading = true
     submitModal.error = null
+    submitModal.canFlush = false
     submitModal.statusMessage = 'Generating report…'
 
     // Create the Firestore doc so we can listen to it
@@ -1180,36 +1370,62 @@ async function confirmSubmit() {
     inspectionId.value = id
 
     const docRef = doc(firestore, `${REPORT_TYPE}s`, id)
-    await setDoc(docRef, {
-        status: 'pending',
-        propertyAddress: propertyAddress.value,
-        inspectionDate: inspectionDate.value,
-        inspectorName: inspectorName.value,
-        inspectorEmail: inspectorEmail.value,
-        createdAt: serverTimestamp(),
-    })
 
-    // Listen for status updates from the function
+    // Try creating the Firestore doc — may already exist from a previous attempt
+    try {
+        await setDoc(docRef, {
+            status: 'pending',
+            propertyAddress: propertyAddress.value,
+            inspectionDate: inspectionDate.value,
+            inspectorName: inspectorName.value,
+            inspectorEmail: inspectorEmail.value,
+            createdAt: serverTimestamp(),
+        })
+    } catch (err) {
+        // If the doc already exists from a previous attempt (rules deny update),
+        // that's fine — we'll just re-send the HTTP request below.
+        const isPermDenied = err?.code === 'permission-denied' || err?.message?.includes('PERMISSION_DENIED')
+        if (!isPermDenied) {
+            submitModal.loading = false
+            submitModal.error = `Failed to create report record: ${err.message}`
+            return
+        }
+    }
+
+    // ── Listen for status updates ──────────────────────────────────
+    // includeMetadataChanges lets us distinguish cache vs server snapshots
     if (firestoreUnsub) firestoreUnsub()
-    firestoreUnsub = onSnapshot(docRef, snap => {
+    firestoreUnsub = onSnapshot(docRef, { includeMetadataChanges: true }, snap => {
         const data = snap.data()
         if (!data) return
+
+        // Ignore cache-only reads while still pending — we need the real server state
+        if (snap.metadata.fromCache && data.status === 'pending') return
+
         if (data.status === 'processing') {
             submitModal.statusMessage = 'Building PDF and packaging photos…'
+            // Reset timeout — the function is actively working
+            clearSubmitTimeout()
+            startSubmitTimeout()
         } else if (data.status === 'complete') {
+            clearSubmitTimeout()
             firestoreUnsub?.()
             submitModal.loading = false
             submitModal.done = true
             submitModal.pdfUrl = data.pdfUrl ?? null
             clearCache()
         } else if (data.status === 'failed') {
+            clearSubmitTimeout()
             firestoreUnsub?.()
             submitModal.loading = false
             submitModal.error = data.error ?? 'The report generation failed. Please try again.'
         }
     })
 
-    // Build the payload — only include uploaded photos (done or skipped)
+    // ── Start timeout ──────────────────────────────────────────────
+    startSubmitTimeout()
+
+    // ── Build the payload ──────────────────────────────────────────
     const rooms = checklistRooms.value.map(room => ({
         id: room.id,
         type: room.type,
@@ -1219,17 +1435,24 @@ async function confirmSubmit() {
         status: inspectionData[room.id]?.status ?? 'unchecked',
         notes: inspectionData[room.id]?.notes ?? '',
         items: inspectionData[room.id]?.items ?? {},
+        inputs: inspectionData[room.id]?.inputs ?? {},
         photos: (inspectionData[room.id]?.photos ?? [])
             .filter(p => p.uploadStatus === 'done' && p.url)
             .map(p => ({ url: p.url, caption: p.caption, storagePath: p.storagePath })),
     }))
 
+    // ── Send to cloud function ─────────────────────────────────────
     try {
+        const controller = new AbortController()
+        const fetchTimeout = setTimeout(() => controller.abort(), 60_000) // 60s fetch timeout
+
         const response = await fetch(`${FUNCTIONS_URL}/generateInspectionReport`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            signal: controller.signal,
             body: JSON.stringify({
                 reportType: REPORT_TYPE,
+                reportSubtype: reportSubtype.value,
                 inspectionId: id,
                 propertyAddress: propertyAddress.value,
                 inspectionDate: inspectionDate.value,
@@ -1238,6 +1461,7 @@ async function confirmSubmit() {
                 rooms,
             }),
         })
+        clearTimeout(fetchTimeout)
 
         if (!response.ok) {
             const err = await response.json().catch(() => ({}))
@@ -1245,9 +1469,78 @@ async function confirmSubmit() {
         }
         // Success — Firestore listener handles the rest
     } catch (err) {
-        firestoreUnsub?.()
-        submitModal.loading = false
-        submitModal.error = err.message
+        // DON'T kill the listener — the function may still complete server-side.
+        // Show an actionable message instead of a dead error.
+        if (err.name === 'AbortError') {
+            submitModal.statusMessage = 'The request is taking a while — the report may still be generating.'
+        } else {
+            submitModal.statusMessage = 'The request may not have reached the server.'
+        }
+        submitModal.canFlush = true
+        // Keep loading=true, keep listener alive — the function might still finish
+    }
+}
+
+// ─── Submit timeout & flush ──────────────────────────────────────────────────
+
+function startSubmitTimeout() {
+    clearSubmitTimeout()
+    submitTimeoutId = setTimeout(() => {
+        submitModal.canFlush = true
+        submitModal.statusMessage = 'This is taking longer than expected.'
+    }, SUBMIT_TIMEOUT_MS)
+}
+
+function clearSubmitTimeout() {
+    if (submitTimeoutId) {
+        clearTimeout(submitTimeoutId)
+        submitTimeoutId = null
+    }
+}
+
+// "Check Status" — forces a server read to see if the report actually completed
+async function flushAndCheck() {
+    submitModal.statusMessage = 'Checking report status…'
+    submitModal.canFlush = false
+
+    try {
+        const docRef = doc(firestore, `${REPORT_TYPE}s`, inspectionId.value)
+        const snap = await getDoc(docRef)
+        const data = snap.data()
+
+        if (!data) {
+            // Doc never made it to the server — allow full retry with a new ID
+            submitModal.loading = false
+            submitModal.error = 'Report record not found on the server. Your inspection data is safe — please try submitting again.'
+            inspectionId.value = crypto.randomUUID()
+            return
+        }
+
+        if (data.status === 'complete') {
+            clearSubmitTimeout()
+            firestoreUnsub?.()
+            submitModal.loading = false
+            submitModal.done = true
+            submitModal.pdfUrl = data.pdfUrl ?? null
+            clearCache()
+        } else if (data.status === 'failed') {
+            clearSubmitTimeout()
+            firestoreUnsub?.()
+            submitModal.loading = false
+            submitModal.error = data.error ?? 'Report generation failed. Your data is safe — please try again.'
+        } else if (data.status === 'processing') {
+            submitModal.statusMessage = 'Report is still being generated. Please wait…'
+            startSubmitTimeout()
+        } else {
+            // Still 'pending' — the HTTP request likely never reached the server
+            submitModal.loading = false
+            submitModal.error = 'The report request may not have reached the server. Please check your connection and try again.'
+            // Generate a new ID so the next attempt can create a fresh doc
+            inspectionId.value = crypto.randomUUID()
+        }
+    } catch (err) {
+        submitModal.statusMessage = `Unable to check status. Please check your internet connection.`
+        submitModal.canFlush = true
     }
 }
 
@@ -1260,6 +1553,15 @@ function clearChecklist() {
     Object.keys(inspectionData).forEach(k => delete inspectionData[k])
     openRooms.value = new Set()
     inspectionId.value = null
+    // Reset form builder to defaults
+    propertyAddress.value = ''
+    inspectionDate.value = new Date().toISOString().split('T')[0]
+    inspectorName.value = ''
+    inspectorEmail.value = ''
+    bathrooms.value = 1
+    bedrooms.splice(0, bedrooms.length, { id: ++_id, name: '', hasEnsuite: true, isOOA: false }, { id: ++_id, name: '', hasEnsuite: true, isOOA: false }, { id: ++_id, name: '', hasEnsuite: false, isOOA: true })
+    selectedOptional.clear();['dining', 'laundry'].forEach(k => selectedOptional.add(k))
+    reportSubtype.value = 'routine'
     confirmClear.open = false
     clearCache()
 }
@@ -1278,7 +1580,8 @@ function saveToCache() {
             inspectorEmail: inspectorEmail.value,
             bathrooms: bathrooms.value,
             bedrooms: bedrooms.map(b => ({ ...b })),
-            selectedAreas: [...selectedAreas],
+            selectedOptional: [...selectedOptional],
+            reportSubtype: reportSubtype.value,
             inspectionId: inspectionId.value,
             checklistRooms: checklistRooms.value,
             inspectionData: Object.fromEntries(
@@ -1288,6 +1591,7 @@ function saveToCache() {
                         status: v.status,
                         notes: v.notes,
                         items: v.items ?? {},
+                        inputs: v.inputs ?? {},
                         // Only persist photos that have a Storage URL
                         photos: (v.photos ?? [])
                             .filter(p => p.url)
@@ -1321,18 +1625,28 @@ function loadFromCache() {
             bedrooms.splice(0, bedrooms.length, ...data.bedrooms)
             _id = Math.max(...data.bedrooms.map(b => b.id ?? 0)) + 1
         }
-        if (Array.isArray(data.selectedAreas)) {
-            selectedAreas.clear()
-            data.selectedAreas.forEach(k => selectedAreas.add(k))
+        if (Array.isArray(data.selectedOptional)) {
+            selectedOptional.clear()
+            data.selectedOptional.forEach(k => selectedOptional.add(k))
         }
+        // Legacy cache compatibility: migrate old selectedAreas
+        if (Array.isArray(data.selectedAreas) && !data.selectedOptional) {
+            selectedOptional.clear()
+            const optKeys = new Set(OPTIONAL_AREAS.map(a => a.key))
+            for (const k of data.selectedAreas) {
+                if (optKeys.has(k)) selectedOptional.add(k)
+            }
+        }
+        if (data.reportSubtype) reportSubtype.value = data.reportSubtype
         if (Array.isArray(data.checklistRooms) && data.checklistRooms.length) {
             checklistRooms.value = data.checklistRooms
         }
         if (data.inspectionData && typeof data.inspectionData === 'object') {
             Object.assign(inspectionData, data.inspectionData)
-            // Ensure items exist on restored entries (handles cache from before this feature)
+            // Ensure items and inputs exist on restored entries (handles cache from before this feature)
             for (const [roomId, entry] of Object.entries(inspectionData)) {
                 if (!entry.items) entry.items = {}
+                if (!entry.inputs) entry.inputs = {}
             }
         }
     } catch { /* corrupt cache — ignore */ }
@@ -1346,12 +1660,13 @@ function debouncedSave() {
 
 watch([propertyAddress, inspectionDate, inspectorName, inspectorEmail, bathrooms], debouncedSave)
 watch(() => bedrooms.map(b => ({ ...b })), debouncedSave, { deep: true })
-watch(() => [...selectedAreas], debouncedSave)
+watch(() => [...selectedOptional], debouncedSave)
+watch(reportSubtype, debouncedSave)
 watch(checklistRooms, debouncedSave, { deep: true })
 watch(inspectionData, debouncedSave, { deep: true })
 
 onMounted(loadFromCache)
-onUnmounted(() => firestoreUnsub?.())
+onUnmounted(() => { firestoreUnsub?.(); clearSubmitTimeout() })
 
 // ─── Photo modal ──────────────────────────────────────────────────────────────
 
@@ -1446,10 +1761,6 @@ async function confirmPhotoQueue() {
         })
         inspectionData[roomId].photos.push(photoEntry)
 
-        if (inspectionData[roomId].status === 'unchecked') {
-            inspectionData[roomId].status = 'ok'
-        }
-
         // Upload in background
         try {
             const { url, storagePath } = await uploadPhotoToStorage(item.file, roomId)
@@ -1485,5 +1796,14 @@ function formatDate(dateStr) {
     select {
         font-size: 16px !important;
     }
+}
+
+/* Constrain native date picker on mobile — prevents overflow */
+input[type="date"] {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 </style>

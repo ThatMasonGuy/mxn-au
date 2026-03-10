@@ -1,11 +1,20 @@
 <template>
     <LayoutComponent :header="true" :footer="true">
 
+        <!-- ── Top bar ──────────────────────────────────────────────────── -->
+        <div class="bg-slate-900 border-b border-slate-800">
+            <div class="max-w-4xl mx-auto px-4 sm:px-6 h-10 flex items-center gap-3">
+                <span class="text-xs font-black tracking-wider text-teal-400 uppercase">Everhomes</span>
+                <span class="text-slate-700">|</span>
+                <span class="text-xs font-semibold text-slate-400">Handover Review</span>
+            </div>
+        </div>
+
         <!-- ══════════════════════════════════════════════════════════════ -->
         <!--  STEP 1 — SETUP                                                 -->
         <!-- ══════════════════════════════════════════════════════════════ -->
         <div class="">
-            <div class="bg-gradient-to-r from-teal-700 to-emerald-600 px-4 sm:px-6 lg:px-8 pt-20 pb-10 sm:pt-24">
+            <div class="bg-gradient-to-r from-teal-700 to-emerald-600 px-4 sm:px-6 lg:px-8 pt-8 pb-10">
                 <div class="max-w-4xl mx-auto">
                     <h1 class="text-2xl sm:text-3xl font-black text-white tracking-tight uppercase">Handover / Annual
                         Review</h1>
@@ -30,33 +39,38 @@
                                 <p v-if="setupErrors.address" class="text-rose-500 text-[0.65rem] font-bold mt-1">
                                     Property address is required</p>
                             </div>
-                            <div class="min-w-0">
+                            <div class="min-w-0 overflow-hidden">
                                 <label
                                     class="block text-[0.65rem] font-black text-teal-600 uppercase tracking-widest mb-1">Review
                                     Date</label>
                                 <input v-model="inspectionDate" type="date"
-                                    class="w-full min-w-0 bg-white border border-slate-200 text-slate-800 text-base sm:text-sm font-medium rounded-xl px-3.5 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400 transition" />
+                                    class="w-full max-w-full min-w-0 bg-white border border-slate-200 text-slate-800 text-base sm:text-sm font-medium rounded-xl px-3.5 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400 transition appearance-none" />
                             </div>
                         </div>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
                                 <label
-                                    class="block text-[0.65rem] font-black text-teal-600 uppercase tracking-widest mb-1">Housing
-                                    Officer Name</label>
+                                    class="block text-[0.65rem] font-black text-teal-600 uppercase tracking-widest mb-1">Everhomes
+                                    Staff Name</label>
                                 <input v-model="inspectorName" type="text" placeholder="Jane Smith"
                                     class="w-full bg-white border text-slate-800 placeholder-slate-400 text-base sm:text-sm font-medium rounded-xl px-3.5 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400 transition"
                                     :class="setupErrors.name ? 'border-rose-400 ring-1 ring-rose-400' : 'border-slate-200'" />
-                                <p v-if="setupErrors.name" class="text-rose-500 text-[0.65rem] font-bold mt-1">Housing
-                                    officer name is required</p>
+                                <p v-if="setupErrors.name" class="text-rose-500 text-[0.65rem] font-bold mt-1">Staff
+                                    name is required</p>
                             </div>
                             <div>
                                 <label
-                                    class="block text-[0.65rem] font-black text-teal-600 uppercase tracking-widest mb-1">Housing
-                                    Officer Email</label>
-                                <input v-model="inspectorEmail" type="email" placeholder="officer@everhomes.com.au"
-                                    class="w-full bg-white border border-slate-200 text-slate-800 placeholder-slate-400 text-base sm:text-sm font-medium rounded-xl px-3.5 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400 transition" />
+                                    class="block text-[0.65rem] font-black text-teal-600 uppercase tracking-widest mb-1">Everhomes
+                                    Staff Email</label>
+                                <input v-model="inspectorEmail" type="email" placeholder="name@everhomes.com.au"
+                                    class="w-full bg-white border text-slate-800 placeholder-slate-400 text-base sm:text-sm font-medium rounded-xl px-3.5 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400 transition"
+                                    :class="setupErrors.email ? 'border-rose-400 ring-1 ring-rose-400' : 'border-slate-200'" />
+                                <p v-if="setupErrors.email" class="text-rose-500 text-[0.65rem] font-bold mt-1">Staff
+                                    email is required</p>
                             </div>
                         </div>
+                        <p class="text-[0.6rem] text-slate-400 -mt-1">This is the person completing the form. These
+                            details appear on the report and signature page.</p>
                     </div>
 
                     <div class="px-5 py-6 space-y-6">
@@ -75,7 +89,7 @@
                                         : { borderColor: '#1e293b', color: '#64748b' }">
                                     <span class="text-sm font-black">{{ pt.key }}</span>
                                     <span class="text-[0.65rem] font-medium leading-tight opacity-80">{{ pt.label
-                                    }}</span>
+                                        }}</span>
                                     <div class="flex flex-wrap gap-1 mt-0.5">
                                         <span v-for="cat in pt.includes" :key="cat"
                                             class="text-[0.55rem] font-black px-1.5 py-0.5 rounded-md uppercase"
@@ -149,9 +163,12 @@
 
             <template v-else>
                 <!-- Image compression warning -->
-                <div class="mb-4 flex items-start gap-3 px-4 py-3 bg-amber-500/10 border border-amber-500/25 rounded-2xl">
+                <div
+                    class="mb-4 flex items-start gap-3 px-4 py-3 bg-amber-500/10 border border-amber-500/25 rounded-2xl">
                     <AlertTriangle class="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-                    <p class="text-xs text-amber-300/90 font-medium leading-relaxed">Images uploaded through this checklist will be <span class="font-bold text-amber-200">compressed</span>. Please ensure you take marketing photos separately.</p>
+                    <p class="text-xs text-amber-300/90 font-medium leading-relaxed">Images uploaded through this
+                        checklist will be <span class="font-bold text-amber-200">compressed</span>. Please ensure you
+                        take marketing photos separately.</p>
                 </div>
 
                 <!-- Header + progress -->
@@ -359,17 +376,22 @@
                                                 <!-- Failed overlay -->
                                                 <div v-else-if="photo.uploadStatus === 'failed'"
                                                     class="absolute inset-0 bg-rose-900/80 flex flex-col items-center justify-center gap-1.5 p-1">
-                                                    <WifiOff class="w-4 h-4 text-rose-300" />
+                                                    <AlertTriangle class="w-4 h-4 text-rose-300" />
+                                                    <span
+                                                        class="text-[9px] font-bold text-rose-200 text-center leading-tight">Upload
+                                                        failed</span>
                                                     <button @click.stop="retryPhotoUpload(section.id, pIdx)"
                                                         class="text-[10px] font-black text-white bg-rose-500 rounded-lg px-2 py-1 hover:bg-rose-400 transition-colors">
-                                                        Retry
+                                                        Tap to Retry
                                                     </button>
                                                 </div>
                                                 <!-- Skipped overlay -->
                                                 <div v-else-if="photo.uploadStatus === 'skipped'"
                                                     class="absolute inset-0 bg-amber-900/70 flex flex-col items-center justify-center gap-1 p-1">
                                                     <AlertTriangle class="w-4 h-4 text-amber-300" />
-                                                    <span class="text-[9px] text-amber-200 font-bold text-center leading-tight">Send manually</span>
+                                                    <span
+                                                        class="text-[9px] text-amber-200 font-bold text-center leading-tight">Send
+                                                        manually</span>
                                                 </div>
                                                 <!-- Remove button -->
                                                 <button v-if="photo.uploadStatus !== 'uploading'"
@@ -379,14 +401,16 @@
                                                 </button>
                                             </div>
                                             <p v-if="photo.caption && photo.uploadStatus === 'done'"
-                                                class="text-[10px] text-slate-500 font-medium leading-tight px-0.5 truncate">{{
+                                                class="text-[10px] text-slate-500 font-medium leading-tight px-0.5 truncate">
+                                                {{
                                                     photo.caption
                                                 }}</p>
                                         </div>
                                         <!-- Big square + button for adding more photos -->
                                         <button @click="openPhotoModal(idx)"
                                             class="aspect-square rounded-xl border-2 border-dashed border-slate-700 hover:border-teal-500/60 hover:bg-teal-500/5 flex items-center justify-center transition-colors group">
-                                            <Plus class="w-5 h-5 text-slate-600 group-hover:text-teal-400 transition-colors" />
+                                            <Plus
+                                                class="w-5 h-5 text-slate-600 group-hover:text-teal-400 transition-colors" />
                                         </button>
                                     </div>
 
@@ -459,6 +483,10 @@
                                         this
                                         page.</p>
                                 </div>
+                                <button v-if="submitModal.canFlush" @click="flushAndCheck"
+                                    class="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white font-bold text-sm transition-colors">
+                                    <RefreshCw class="w-4 h-4" />Check Status
+                                </button>
                             </div>
 
                             <!-- Done -->
@@ -512,7 +540,7 @@
                                     <div>
                                         <h3 class="text-white font-black text-base">Submit Handover Review</h3>
                                         <p class="text-slate-400 text-xs mt-0.5">{{ propertyAddress || 'Address not set'
-                                        }} · {{ formatDate(inspectionDate) }}</p>
+                                            }} · {{ formatDate(inspectionDate) }}</p>
                                     </div>
                                     <button @click="submitModal.open = false"
                                         class="w-8 h-8 flex items-center justify-center rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 transition-colors shrink-0">
@@ -525,7 +553,7 @@
                                         class="flex flex-col items-center gap-1 py-3 rounded-xl border"
                                         :style="{ borderColor: stat.color + '40', background: stat.color + '0D' }">
                                         <span class="text-lg font-black" :style="{ color: stat.color }">{{ stat.count
-                                        }}</span>
+                                            }}</span>
                                         <span
                                             class="text-[0.6rem] font-bold text-slate-500 text-center leading-tight">{{
                                                 stat.label }}</span>
@@ -629,7 +657,10 @@
                             class="relative z-10 w-full sm:w-[460px] bg-slate-900 border border-slate-700 sm:rounded-2xl rounded-t-2xl shadow-2xl p-5 max-h-[90dvh] overflow-y-auto">
                             <div class="flex items-center justify-between mb-5">
                                 <div>
-                                    <h2 class="text-white font-extrabold text-base">{{ photoModal.queue.length > 0 ? `Label Photo ${photoModal.queueIndex + 1} of ${photoModal.queue.length}` : 'Add Photo' }}</h2>
+                                    <h2 class="text-white font-extrabold text-base">{{ photoModal.queue.length > 0 ?
+                                        `Label
+                                        Photo ${photoModal.queueIndex + 1} of ${photoModal.queue.length}` : 'Add Photo'
+                                        }}</h2>
                                     <p class="text-slate-400 text-xs mt-0.5">{{ photoModal.sectionLabel }}</p>
                                 </div>
                                 <button @click="closePhotoModal"
@@ -641,17 +672,21 @@
                             <!-- Queue mode: stepping through selected photos -->
                             <template v-if="photoModal.queue.length > 0">
                                 <div class="mb-4 relative rounded-xl overflow-hidden aspect-video bg-slate-800">
-                                    <img :src="photoModal.queue[photoModal.queueIndex]?.preview" alt="Preview" class="w-full h-full object-contain" />
+                                    <img :src="photoModal.queue[photoModal.queueIndex]?.preview" alt="Preview"
+                                        class="w-full h-full object-contain" />
                                 </div>
                                 <!-- Progress dots -->
-                                <div v-if="photoModal.queue.length > 1" class="flex items-center justify-center gap-1.5 mb-4">
+                                <div v-if="photoModal.queue.length > 1"
+                                    class="flex items-center justify-center gap-1.5 mb-4">
                                     <div v-for="(_, qi) in photoModal.queue" :key="qi"
                                         class="w-2 h-2 rounded-full transition-colors"
                                         :class="qi === photoModal.queueIndex ? 'bg-teal-400' : qi < photoModal.queueIndex ? 'bg-teal-600' : 'bg-slate-700'" />
                                 </div>
                                 <div class="mb-5">
-                                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5">Caption
-                                        <span class="normal-case font-medium tracking-normal text-slate-500">— optional</span></label>
+                                    <label
+                                        class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5">Caption
+                                        <span class="normal-case font-medium tracking-normal text-slate-500">—
+                                            optional</span></label>
                                     <input v-model="photoModal.queue[photoModal.queueIndex].caption" type="text"
                                         placeholder="e.g. Damaged grab rail in shower"
                                         class="w-full bg-slate-800/60 border border-slate-700 text-white placeholder-slate-500 text-base sm:text-sm rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-teal-500 transition" />
@@ -659,13 +694,15 @@
                                 <div class="flex gap-3">
                                     <button @click="closePhotoModal"
                                         class="flex-1 py-2.5 rounded-xl border-2 border-slate-700 text-slate-400 hover:text-white hover:border-slate-600 text-sm font-bold transition-colors">Cancel</button>
-                                    <button v-if="photoModal.queueIndex < photoModal.queue.length - 1" @click="nextInQueue"
+                                    <button v-if="photoModal.queueIndex < photoModal.queue.length - 1"
+                                        @click="nextInQueue"
                                         class="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white text-sm font-bold transition-all shadow-lg shadow-teal-500/20">
                                         Next Photo
                                     </button>
                                     <button v-else @click="confirmPhotoQueue"
                                         class="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white text-sm font-bold transition-all shadow-lg shadow-teal-500/20">
-                                        {{ photoModal.queue.length === 1 ? 'Add Photo' : `Add ${photoModal.queue.length} Photos` }}
+                                        {{ photoModal.queue.length === 1 ? 'Add Photo' : `Add ${photoModal.queue.length}
+                                        Photos` }}
                                     </button>
                                 </div>
                             </template>
@@ -698,10 +735,10 @@
                                             from Gallery</span>
                                     </button>
                                 </div>
-                                <input ref="cameraInputRef" :key="'cam-' + inputKey" type="file" accept="image/*" capture="environment"
-                                    class="hidden" @change="handleCameraSelect" />
-                                <input ref="fileInputRef" :key="'file-' + inputKey" type="file" accept="image/*" multiple
-                                    class="hidden" @change="handleFileSelect" />
+                                <input ref="cameraInputRef" :key="'cam-' + inputKey" type="file" accept="image/*"
+                                    capture="environment" class="hidden" @change="handleCameraSelect" />
+                                <input ref="fileInputRef" :key="'file-' + inputKey" type="file" accept="image/*"
+                                    multiple class="hidden" @change="handleFileSelect" />
                                 <div v-if="photoModal.preview" class="mb-5">
                                     <label
                                         class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5">Caption
@@ -735,7 +772,7 @@ import LayoutComponent from '@/components/everhomes/layouts/LayoutComponent.vue'
 
 import { storage, firestore } from '@/firebase'
 import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
-import { doc, setDoc, onSnapshot, serverTimestamp } from 'firebase/firestore'
+import { doc, setDoc, onSnapshot, getDoc, serverTimestamp } from 'firebase/firestore'
 
 import {
     ClipboardCheck, ChevronDown, Plus, X, Camera,
@@ -743,7 +780,8 @@ import {
     XCircle, MinusCircle, Check, Send, Trash2, Save,
     FileText, Home, Rows3, AppWindow, Droplets, UtensilsCrossed,
     Wrench, BedDouble, Sofa, MoveUp, TreePine, ParkingSquare,
-    DoorOpen, Columns, SquareSplitVertical, ShieldAlert, WifiOff,
+    DoorOpen, Columns, SquareSplitVertical, ShieldAlert,
+    RefreshCw,
 } from 'lucide-vue-next'
 import { HANDOVER_ITEMS, getHandoverGroups } from '@/data/handoverItems.js'
 
@@ -810,7 +848,7 @@ const propertyAddress = ref('')
 const inspectionDate = ref(new Date().toISOString().split('T')[0])
 const inspectorName = ref('')
 const inspectorEmail = ref('')
-const setupErrors = reactive({ address: false, name: false, propertyType: false })
+const setupErrors = reactive({ address: false, name: false, email: false, propertyType: false })
 
 const selectedOptional = reactive(new Set())
 const propertyType = ref(null)
@@ -822,8 +860,9 @@ function toggleSection(key) {
 function validateSetup() {
     setupErrors.address = !propertyAddress.value.trim()
     setupErrors.name = !inspectorName.value.trim()
+    setupErrors.email = !inspectorEmail.value.trim()
     setupErrors.propertyType = !propertyType.value
-    return !setupErrors.address && !setupErrors.name && !setupErrors.propertyType
+    return !setupErrors.address && !setupErrors.name && !setupErrors.email && !setupErrors.propertyType
 }
 
 function tryStartHandover() {
@@ -1026,11 +1065,26 @@ function toggleSection2(idx) {
 
 // ─── Progress ────────────────────────────────────────────────────────────────
 
+// A section is "complete" when every status-checkable item has been set (not 'unchecked')
+function isSectionComplete(sectionId) {
+    const items = checklistData[sectionId]?.items ?? {}
+    const values = Object.values(items)
+    return values.length > 0 && values.every(v => v !== 'unchecked')
+}
+
 const inspectedCount = computed(() =>
-    checklistSections.value.filter(s => checklistData[s.id]?.status !== 'unchecked').length
+    checklistSections.value.filter(s => isSectionComplete(s.id)).length
 )
 const uninspectedCount = computed(() =>
-    checklistSections.value.filter(s => checklistData[s.id]?.status === 'unchecked').length
+    checklistSections.value.filter(s => !isSectionComplete(s.id)).length
+)
+const incompleteSections = computed(() =>
+    checklistSections.value.filter(s => {
+        const items = checklistData[s.id]?.items ?? {}
+        const values = Object.values(items)
+        const checked = values.filter(v => v !== 'unchecked').length
+        return checked > 0 && checked < values.length
+    })
 )
 const progressPercent = computed(() => {
     if (!checklistSections.value.length) return 0
@@ -1051,10 +1105,18 @@ async function uploadPhotoToStorage(file, sectionId) {
     const path = `${REPORT_TYPE}s/${handoverId.value}/photos/${sectionId}_${Date.now()}.${ext}`
     const fileRef = storageRef(storage, path)
     const MAX_ATTEMPTS = 3
+    const UPLOAD_TIMEOUT_MS = 30_000 // 30s per attempt
     let lastError
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
         try {
-            await uploadBytes(fileRef, file, { contentType: file.type || 'image/jpeg' })
+            await Promise.race([
+                (async () => {
+                    await uploadBytes(fileRef, file, { contentType: file.type || 'image/jpeg' })
+                })(),
+                new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error('Upload timed out')), UPLOAD_TIMEOUT_MS)
+                ),
+            ])
             const url = await getDownloadURL(fileRef)
             return { url, storagePath: path }
         } catch (err) {
@@ -1159,10 +1221,6 @@ async function confirmPhotoQueue() {
         })
         checklistData[sectionId].photos.push(photoEntry)
 
-        if (checklistData[sectionId].status === 'unchecked') {
-            checklistData[sectionId].status = 'ok'
-        }
-
         try {
             const { url, storagePath } = await uploadPhotoToStorage(item.file, sectionId)
             photoEntry.url = url
@@ -1187,10 +1245,6 @@ async function confirmPhoto() {
 
     const photoEntry = reactive({ previewUrl, thumbUrl: null, url: null, storagePath: null, caption, uploadStatus: 'uploading' })
     checklistData[sectionId].photos.push(photoEntry)
-
-    if (checklistData[sectionId].status === 'unchecked') {
-        checklistData[sectionId].status = 'ok'
-    }
 
     closePhotoModal()
 
@@ -1239,7 +1293,7 @@ const hasAnyUploading = computed(() =>
 
 // ─── Submit ───────────────────────────────────────────────────────────────────
 
-const submitModal = reactive({ open: false, loading: false, done: false, error: null, pdfUrl: null, statusMessage: '' })
+const submitModal = reactive({ open: false, loading: false, done: false, error: null, pdfUrl: null, statusMessage: '', canFlush: false })
 
 const submitStats = computed(() => {
     let ok = 0, attention = 0, issues = 0, total = 0
@@ -1280,49 +1334,83 @@ function openSubmit() {
     submitModal.done = false
     submitModal.error = null
     submitModal.pdfUrl = null
+    submitModal.canFlush = false
 }
 
 let firestoreUnsub = null
+let submitTimeoutId = null
+const SUBMIT_TIMEOUT_MS = 120_000
 
 async function confirmSubmit() {
     if (hasAnyUploading.value) return
 
+    // ── Network gate ───────────────────────────────────────────────
+    if (!navigator.onLine) {
+        submitModal.error = 'You appear to be offline. Please check your internet connection and try again.'
+        return
+    }
+
     submitModal.loading = true
     submitModal.error = null
+    submitModal.canFlush = false
     submitModal.statusMessage = 'Generating report…'
 
     const id = handoverId.value ?? crypto.randomUUID()
     handoverId.value = id
 
     const docRef = doc(firestore, `${REPORT_TYPE}s`, id)
-    await setDoc(docRef, {
-        status: 'pending',
-        propertyAddress: propertyAddress.value,
-        inspectionDate: inspectionDate.value,
-        inspectorName: inspectorName.value,
-        inspectorEmail: inspectorEmail.value,
-        createdAt: serverTimestamp(),
-    })
 
+    // Try creating the Firestore doc — may already exist from a previous attempt
+    try {
+        await setDoc(docRef, {
+            status: 'pending',
+            propertyAddress: propertyAddress.value,
+            inspectionDate: inspectionDate.value,
+            inspectorName: inspectorName.value,
+            inspectorEmail: inspectorEmail.value,
+            createdAt: serverTimestamp(),
+        })
+    } catch (err) {
+        const isPermDenied = err?.code === 'permission-denied' || err?.message?.includes('PERMISSION_DENIED')
+        if (!isPermDenied) {
+            submitModal.loading = false
+            submitModal.error = `Failed to create report record: ${err.message}`
+            return
+        }
+    }
+
+    // ── Listen for status updates ──────────────────────────────────
     if (firestoreUnsub) firestoreUnsub()
-    firestoreUnsub = onSnapshot(docRef, snap => {
+    firestoreUnsub = onSnapshot(docRef, { includeMetadataChanges: true }, snap => {
         const data = snap.data()
         if (!data) return
+
+        // Ignore cache-only reads while still pending
+        if (snap.metadata.fromCache && data.status === 'pending') return
+
         if (data.status === 'processing') {
             submitModal.statusMessage = 'Building PDF and packaging photos…'
+            clearSubmitTimeout()
+            startSubmitTimeout()
         } else if (data.status === 'complete') {
+            clearSubmitTimeout()
             firestoreUnsub?.()
             submitModal.loading = false
             submitModal.done = true
             submitModal.pdfUrl = data.pdfUrl ?? null
             clearCache()
         } else if (data.status === 'failed') {
+            clearSubmitTimeout()
             firestoreUnsub?.()
             submitModal.loading = false
             submitModal.error = data.error ?? 'Report generation failed. Please try again.'
         }
     })
 
+    // ── Start timeout ──────────────────────────────────────────────
+    startSubmitTimeout()
+
+    // ── Build the payload ──────────────────────────────────────────
     const rooms = checklistSections.value.map(section => ({
         id: section.id,
         type: section.type,
@@ -1338,10 +1426,15 @@ async function confirmSubmit() {
             .map(p => ({ url: p.url, caption: p.caption, storagePath: p.storagePath })),
     }))
 
+    // ── Send to cloud function ─────────────────────────────────────
     try {
+        const controller = new AbortController()
+        const fetchTimeout = setTimeout(() => controller.abort(), 60_000)
+
         const response = await fetch(`${FUNCTIONS_URL}/generateInspectionReport`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            signal: controller.signal,
             body: JSON.stringify({
                 reportType: REPORT_TYPE,
                 inspectionId: id,
@@ -1352,15 +1445,79 @@ async function confirmSubmit() {
                 rooms,
             }),
         })
+        clearTimeout(fetchTimeout)
 
         if (!response.ok) {
             const err = await response.json().catch(() => ({}))
             throw new Error(err.details ?? err.error ?? `HTTP ${response.status}`)
         }
     } catch (err) {
-        firestoreUnsub?.()
-        submitModal.loading = false
-        submitModal.error = err.message
+        // DON'T kill the listener — the function may still complete server-side
+        if (err.name === 'AbortError') {
+            submitModal.statusMessage = 'The request is taking a while — the report may still be generating.'
+        } else {
+            submitModal.statusMessage = 'The request may not have reached the server.'
+        }
+        submitModal.canFlush = true
+    }
+}
+
+// ─── Submit timeout & flush ──────────────────────────────────────────────────
+
+function startSubmitTimeout() {
+    clearSubmitTimeout()
+    submitTimeoutId = setTimeout(() => {
+        submitModal.canFlush = true
+        submitModal.statusMessage = 'This is taking longer than expected.'
+    }, SUBMIT_TIMEOUT_MS)
+}
+
+function clearSubmitTimeout() {
+    if (submitTimeoutId) {
+        clearTimeout(submitTimeoutId)
+        submitTimeoutId = null
+    }
+}
+
+async function flushAndCheck() {
+    submitModal.statusMessage = 'Checking report status…'
+    submitModal.canFlush = false
+
+    try {
+        const docRef = doc(firestore, `${REPORT_TYPE}s`, handoverId.value)
+        const snap = await getDoc(docRef)
+        const data = snap.data()
+
+        if (!data) {
+            submitModal.loading = false
+            submitModal.error = 'Report record not found on the server. Your data is safe — please try submitting again.'
+            handoverId.value = crypto.randomUUID()
+            return
+        }
+
+        if (data.status === 'complete') {
+            clearSubmitTimeout()
+            firestoreUnsub?.()
+            submitModal.loading = false
+            submitModal.done = true
+            submitModal.pdfUrl = data.pdfUrl ?? null
+            clearCache()
+        } else if (data.status === 'failed') {
+            clearSubmitTimeout()
+            firestoreUnsub?.()
+            submitModal.loading = false
+            submitModal.error = data.error ?? 'Report generation failed. Your data is safe — please try again.'
+        } else if (data.status === 'processing') {
+            submitModal.statusMessage = 'Report is still being generated. Please wait…'
+            startSubmitTimeout()
+        } else {
+            submitModal.loading = false
+            submitModal.error = 'The report request may not have reached the server. Please check your connection and try again.'
+            handoverId.value = crypto.randomUUID()
+        }
+    } catch (err) {
+        submitModal.statusMessage = `Unable to check status. Please check your internet connection.`
+        submitModal.canFlush = true
     }
 }
 
@@ -1373,6 +1530,13 @@ function clearChecklist() {
     Object.keys(checklistData).forEach(k => delete checklistData[k])
     openSections.value = new Set()
     handoverId.value = null
+    // Reset form builder to defaults
+    propertyAddress.value = ''
+    inspectionDate.value = new Date().toISOString().split('T')[0]
+    inspectorName.value = ''
+    inspectorEmail.value = ''
+    propertyType.value = null
+    selectedOptional.clear()
     confirmClear.open = false
     clearCache()
 }
@@ -1456,7 +1620,7 @@ watch(checklistSections, debouncedSave, { deep: true })
 watch(checklistData, debouncedSave, { deep: true })
 
 onMounted(loadFromCache)
-onUnmounted(() => firestoreUnsub?.())
+onUnmounted(() => { firestoreUnsub?.(); clearSubmitTimeout() })
 </script>
 
 <style>
@@ -1465,8 +1629,17 @@ onUnmounted(() => firestoreUnsub?.())
     input[type="text"],
     input[type="email"],
     input[type="date"],
+    input[type="number"],
     textarea {
         font-size: 16px !important;
     }
+}
+
+input[type="date"] {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 </style>
