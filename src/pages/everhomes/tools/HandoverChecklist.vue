@@ -89,7 +89,7 @@
                                         : { borderColor: '#1e293b', color: '#64748b' }">
                                     <span class="text-sm font-black">{{ pt.key }}</span>
                                     <span class="text-[0.65rem] font-medium leading-tight opacity-80">{{ pt.label
-                                        }}</span>
+                                    }}</span>
                                     <div class="flex flex-wrap gap-1 mt-0.5">
                                         <span v-for="cat in pt.includes" :key="cat"
                                             class="text-[0.55rem] font-black px-1.5 py-0.5 rounded-md uppercase"
@@ -166,9 +166,9 @@
                 <div
                     class="mb-4 flex items-start gap-3 px-4 py-3 bg-amber-500/10 border border-amber-500/25 rounded-2xl">
                     <AlertTriangle class="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-                    <p class="text-xs text-amber-300/90 font-medium leading-relaxed">Images uploaded through this
-                        checklist will be <span class="font-bold text-amber-200">compressed</span>. Please ensure you
-                        take marketing photos separately.</p>
+                    <p class="text-xs text-amber-300/90 font-medium leading-relaxed">Section photos are <span
+                            class="font-bold text-amber-200">compressed</span> for the report. Use the Marketing Photos
+                        section at the bottom for uncompressed hero shots.</p>
                 </div>
 
                 <!-- Header + progress -->
@@ -399,6 +399,12 @@
                                                     class="absolute top-1 right-1 w-5 h-5 bg-black/70 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-rose-500/70">
                                                     <X class="w-3 h-3 text-white" />
                                                 </button>
+                                                <!-- Edit caption -->
+                                                <button v-if="photo.uploadStatus === 'done'"
+                                                    @click.stop="openCaptionEdit(section.id, pIdx)"
+                                                    class="absolute top-1 left-1 w-5 h-5 bg-black/70 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <Pencil class="w-2.5 h-2.5 text-white" />
+                                                </button>
                                             </div>
                                             <p v-if="photo.caption && photo.uploadStatus === 'done'"
                                                 class="text-[10px] text-slate-500 font-medium leading-tight px-0.5 truncate">
@@ -434,6 +440,68 @@
                                 </div>
                             </div>
                         </Transition>
+                    </div>
+                </div>
+
+                <!-- ── Marketing Photos Section (Core) ────────────────── -->
+                <div
+                    class="mt-6 bg-gradient-to-b from-teal-900/20 to-slate-900/50 border border-teal-500/20 rounded-2xl overflow-hidden">
+                    <div class="px-5 py-4 border-b border-teal-500/15 bg-teal-500/5">
+                        <div class="flex items-center gap-2.5 mb-1">
+                            <Images class="w-4 h-4 text-teal-400" />
+                            <h3 class="text-sm font-black text-white">Marketing Photos</h3>
+                        </div>
+                        <p class="text-[0.65rem] text-slate-400 leading-relaxed">Hero shots for marketing and listing
+                            purposes. Uploaded
+                            <span class="font-bold text-teal-300">uncompressed</span> — not included in the compliance
+                            report.
+                        </p>
+                    </div>
+                    <div class="px-5 py-4 space-y-3">
+                        <div v-for="slot in MARKETING_SLOTS" :key="slot.key"
+                            class="bg-slate-800/60 border border-slate-700/50 rounded-xl p-3">
+                            <div class="flex items-center justify-between mb-2">
+                                <div>
+                                    <p class="text-xs font-bold text-white">{{ slot.label }}</p>
+                                    <p class="text-[0.6rem] text-slate-500 mt-0.5">{{ slot.hint }}</p>
+                                </div>
+                                <label
+                                    class="flex items-center gap-1 text-xs font-bold text-teal-400 hover:text-teal-300 px-2 py-1 rounded-lg hover:bg-teal-500/10 transition-colors cursor-pointer">
+                                    <Plus class="w-3.5 h-3.5" />Add
+                                    <input type="file" accept="image/*" multiple class="hidden"
+                                        @change="handleMarketingUpload(slot.key, $event)" />
+                                </label>
+                            </div>
+                            <div v-if="(marketingPhotos[slot.key] ?? []).length"
+                                class="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                                <div v-for="(photo, mpIdx) in marketingPhotos[slot.key]" :key="mpIdx"
+                                    class="relative group aspect-square rounded-xl overflow-hidden border-2"
+                                    :class="photo.uploadStatus === 'uploading' ? 'border-teal-500/60' : photo.uploadStatus === 'failed' ? 'border-rose-500/60' : 'border-slate-700/60'">
+                                    <img :src="photo.thumbUrl || photo.previewUrl" alt=""
+                                        class="w-full h-full object-cover" />
+                                    <div v-if="photo.uploadStatus === 'uploading'"
+                                        class="absolute inset-0 bg-black/60 flex flex-col items-center justify-center gap-1">
+                                        <div
+                                            class="w-5 h-5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                                        <span class="text-white text-[10px] font-bold">Uploading…</span>
+                                    </div>
+                                    <div v-else-if="photo.uploadStatus === 'failed'"
+                                        class="absolute inset-0 bg-rose-900/80 flex flex-col items-center justify-center gap-1 p-1">
+                                        <AlertTriangle class="w-4 h-4 text-rose-300" />
+                                        <span class="text-[9px] font-bold text-rose-200">Failed</span>
+                                    </div>
+                                    <button v-if="photo.uploadStatus !== 'uploading'"
+                                        @click.stop="removeMarketingPhoto(slot.key, mpIdx)"
+                                        class="absolute top-1 right-1 w-5 h-5 bg-black/70 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <X class="w-3 h-3 text-white" />
+                                    </button>
+                                </div>
+                            </div>
+                            <div v-else
+                                class="flex items-center justify-center h-16 rounded-xl border-2 border-dashed border-slate-700/50 text-slate-600 text-xs font-medium">
+                                No photos yet
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -540,7 +608,7 @@
                                     <div>
                                         <h3 class="text-white font-black text-base">Submit Handover Review</h3>
                                         <p class="text-slate-400 text-xs mt-0.5">{{ propertyAddress || 'Address not set'
-                                            }} · {{ formatDate(inspectionDate) }}</p>
+                                        }} · {{ formatDate(inspectionDate) }}</p>
                                     </div>
                                     <button @click="submitModal.open = false"
                                         class="w-8 h-8 flex items-center justify-center rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 transition-colors shrink-0">
@@ -553,7 +621,7 @@
                                         class="flex flex-col items-center gap-1 py-3 rounded-xl border"
                                         :style="{ borderColor: stat.color + '40', background: stat.color + '0D' }">
                                         <span class="text-lg font-black" :style="{ color: stat.color }">{{ stat.count
-                                            }}</span>
+                                        }}</span>
                                         <span
                                             class="text-[0.6rem] font-bold text-slate-500 text-center leading-tight">{{
                                                 stat.label }}</span>
@@ -599,12 +667,46 @@
                                         uninspectedCount !== 1 ? 's' : '' }} still unchecked — you can still submit.</p>
                                 </div>
 
+                                <!-- ── Signature Section ─────────────────────── -->
+                                <div class="mx-5 mt-5 border border-slate-700 rounded-xl overflow-hidden">
+                                    <div class="bg-slate-800/50 px-4 py-3 border-b border-slate-700">
+                                        <p class="text-xs font-black text-slate-400 uppercase tracking-widest">Staff
+                                            Signature</p>
+                                    </div>
+                                    <div class="px-4 py-4 space-y-3">
+                                        <div class="flex items-center justify-between text-xs">
+                                            <span class="text-slate-400">{{ inspectorName || 'Staff name not set'
+                                                }}</span>
+                                            <span class="text-slate-500">{{ formatDate(inspectionDate) }}</span>
+                                        </div>
+                                        <div class="relative bg-white rounded-xl overflow-hidden"
+                                            style="touch-action: none;">
+                                            <canvas ref="staffSigCanvasRef" class="w-full" style="height: 140px;" />
+                                            <button @click="clearStaffSignature"
+                                                class="absolute top-2 right-2 px-2 py-1 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-600 text-[10px] font-bold transition-colors">
+                                                Clear
+                                            </button>
+                                        </div>
+                                        <label class="flex items-start gap-2.5 cursor-pointer select-none">
+                                            <input type="checkbox" v-model="signatureState.agreementChecked"
+                                                class="mt-0.5 w-4 h-4 rounded border-slate-600 bg-slate-800 text-teal-500 focus:ring-teal-500 focus:ring-offset-0 shrink-0" />
+                                            <span class="text-[0.65rem] text-slate-400 leading-relaxed">
+                                                I, <span class="font-bold text-white">{{ inspectorName || '___'
+                                                    }}</span>, confirm that this handover review was completed on <span
+                                                    class="font-bold text-white">{{ formatDate(inspectionDate) || '___'
+                                                    }}</span> and that the information recorded is accurate to the best
+                                                of my knowledge.
+                                            </span>
+                                        </label>
+                                    </div>
+                                </div>
+
                                 <div class="flex gap-3 px-5 py-5">
                                     <button @click="submitModal.open = false"
                                         class="flex-1 py-2.5 rounded-xl border-2 border-slate-700 text-slate-400 hover:text-white hover:border-slate-600 text-sm font-bold transition-colors">
                                         Back
                                     </button>
-                                    <button @click="confirmSubmit" :disabled="hasAnyUploading"
+                                    <button @click="confirmSubmit" :disabled="hasAnyUploading || !canSubmit"
                                         class="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-black transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2">
                                         <Send class="w-4 h-4" />Confirm &amp; Submit
                                     </button>
@@ -660,7 +762,7 @@
                                     <h2 class="text-white font-extrabold text-base">{{ photoModal.queue.length > 0 ?
                                         `Label
                                         Photo ${photoModal.queueIndex + 1} of ${photoModal.queue.length}` : 'Add Photo'
-                                        }}</h2>
+                                    }}</h2>
                                     <p class="text-slate-400 text-xs mt-0.5">{{ photoModal.sectionLabel }}</p>
                                 </div>
                                 <button @click="closePhotoModal"
@@ -763,11 +865,37 @@
             </Transition>
         </Teleport>
 
+        <!-- ── Caption Edit Modal ─────────────────────────────────────── -->
+        <Teleport to="body">
+            <Transition enter-active-class="transition duration-200 ease-out"
+                leave-active-class="transition duration-150 ease-in" enter-from-class="opacity-0"
+                enter-to-class="opacity-100" leave-from-class="opacity-100" leave-to-class="opacity-0">
+                <div v-if="captionEdit.open" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+                    <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" @click="closeCaptionEdit" />
+                    <div
+                        class="relative z-10 w-full sm:w-[400px] bg-slate-900 border border-slate-700 sm:rounded-2xl rounded-t-2xl shadow-2xl p-5">
+                        <h3 class="text-white font-black text-base mb-4">Edit Caption</h3>
+                        <input v-model="captionEdit.caption" type="text" placeholder="e.g. Damaged grab rail in shower"
+                            class="w-full bg-slate-800/60 border border-slate-700 text-white placeholder-slate-500 text-base sm:text-sm rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-teal-500 transition mb-4"
+                            @keydown.enter="saveCaptionEdit" />
+                        <div class="flex gap-3">
+                            <button @click="closeCaptionEdit"
+                                class="flex-1 py-2.5 rounded-xl border-2 border-slate-700 text-slate-400 hover:text-white hover:border-slate-600 text-sm font-bold transition-colors">Cancel</button>
+                            <button @click="saveCaptionEdit"
+                                class="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white text-sm font-bold transition-all">
+                                Save
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </Transition>
+        </Teleport>
+
     </LayoutComponent>
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import LayoutComponent from '@/components/everhomes/layouts/LayoutComponent.vue'
 
 import { storage, firestore } from '@/firebase'
@@ -781,9 +909,10 @@ import {
     FileText, Home, Rows3, AppWindow, Droplets, UtensilsCrossed,
     Wrench, BedDouble, Sofa, MoveUp, TreePine, ParkingSquare,
     DoorOpen, Columns, SquareSplitVertical, ShieldAlert,
-    RefreshCw,
+    RefreshCw, Pencil, Images,
 } from 'lucide-vue-next'
 import { HANDOVER_ITEMS, getHandoverGroups } from '@/data/handoverItems.js'
+import SignaturePad from 'signature_pad'
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -842,6 +971,16 @@ const ITEM_STATUS_OPTIONS = [
     { value: 'na', label: 'N/A', icon: MinusCircle, activeClass: 'bg-slate-700/80 border-slate-500/80 text-slate-400' },
 ]
 
+const MARKETING_SLOTS = [
+    { key: 'frontExterior', label: 'Front Exterior', hint: 'Full front view of the property from the street' },
+    { key: 'kitchenWide', label: 'Kitchen Wide', hint: 'Wide-angle shot showing the full kitchen' },
+    { key: 'livingArea', label: 'Living Area', hint: 'Main living space — open and well-lit' },
+    { key: 'mainBedroom', label: 'Main Bedroom', hint: 'Primary bedroom — bed area and window' },
+    { key: 'bathroom', label: 'Bathroom', hint: 'Main bathroom — clean and bright' },
+    { key: 'outdoorGarden', label: 'Outdoor / Garden', hint: 'Backyard, patio, or balcony area' },
+    { key: 'streetView', label: 'Street View', hint: 'Property from across the street with surroundings' },
+]
+
 // ─── Setup state ─────────────────────────────────────────────────────────────
 
 const propertyAddress = ref('')
@@ -852,6 +991,7 @@ const setupErrors = reactive({ address: false, name: false, email: false, proper
 
 const selectedOptional = reactive(new Set())
 const propertyType = ref(null)
+const marketingPhotos = reactive({})  // { [slotKey]: [{ previewUrl, thumbUrl, url, storagePath, uploadStatus }] }
 
 function toggleSection(key) {
     selectedOptional.has(key) ? selectedOptional.delete(key) : selectedOptional.add(key)
@@ -961,8 +1101,8 @@ function recomputeSectionStatus(sectionId) {
 
 function sectionIsAllNA(sectionId) {
     const items = checklistData[sectionId]?.items ?? {}
-    const vals = Object.values(items)
-    return vals.length > 0 && vals.every(v => v === 'na')
+    const checked = Object.values(items).filter(v => v !== 'unchecked')
+    return checked.length > 0 && checked.every(v => v === 'na')
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -1291,7 +1431,154 @@ const hasAnyUploading = computed(() =>
     Object.values(checklistData).some(d => d.photos?.some(p => p.uploadStatus === 'uploading'))
 )
 
-// ─── Submit ───────────────────────────────────────────────────────────────────
+// ─── Caption Edit ────────────────────────────────────────────────────────────
+
+const captionEdit = reactive({ open: false, sectionId: null, photoIdx: null, caption: '' })
+
+function openCaptionEdit(sectionId, photoIdx) {
+    const photo = checklistData[sectionId]?.photos?.[photoIdx]
+    if (!photo) return
+    captionEdit.open = true
+    captionEdit.sectionId = sectionId
+    captionEdit.photoIdx = photoIdx
+    captionEdit.caption = photo.caption ?? ''
+}
+
+function saveCaptionEdit() {
+    const photo = checklistData[captionEdit.sectionId]?.photos?.[captionEdit.photoIdx]
+    if (photo) photo.caption = captionEdit.caption
+    closeCaptionEdit()
+}
+
+function closeCaptionEdit() {
+    Object.assign(captionEdit, { open: false, sectionId: null, photoIdx: null, caption: '' })
+}
+
+// ─── Signature ───────────────────────────────────────────────────────────────
+
+const staffSigCanvasRef = ref(null)
+let staffSigPad = null
+
+const signatureState = reactive({
+    staffSigned: false,
+    agreementChecked: false,
+})
+
+function initSignaturePads() {
+    if (staffSigCanvasRef.value && !staffSigPad) {
+        const canvas = staffSigCanvasRef.value
+        resizeCanvas(canvas)
+        staffSigPad = new SignaturePad(canvas, {
+            penColor: '#1E293B',
+            backgroundColor: 'rgba(255,255,255,0)',
+        })
+        staffSigPad.addEventListener('endStroke', () => {
+            signatureState.staffSigned = !staffSigPad.isEmpty()
+        })
+    }
+}
+
+function resizeCanvas(canvas) {
+    const ratio = Math.max(window.devicePixelRatio ?? 1, 1)
+    const rect = canvas.getBoundingClientRect()
+    canvas.width = rect.width * ratio
+    canvas.height = rect.height * ratio
+    canvas.getContext('2d').scale(ratio, ratio)
+}
+
+function clearStaffSignature() {
+    staffSigPad?.clear()
+    signatureState.staffSigned = false
+}
+
+function destroySignaturePads() {
+    if (staffSigPad) { staffSigPad.off(); staffSigPad = null }
+    signatureState.staffSigned = false
+    signatureState.agreementChecked = false
+}
+
+watch(() => submitModal.open, async (open) => {
+    if (open && !submitModal.loading && !submitModal.done && !submitModal.error) {
+        await nextTick()
+        setTimeout(initSignaturePads, 100)
+    } else if (!open) {
+        destroySignaturePads()
+    }
+})
+
+const canSubmit = computed(() => {
+    return signatureState.staffSigned && signatureState.agreementChecked
+})
+
+function getStaffSignatureData() {
+    if (!staffSigPad || staffSigPad.isEmpty()) return null
+    return staffSigPad.toDataURL('image/png')
+}
+
+// ─── Marketing photos ────────────────────────────────────────────────────────
+
+async function uploadMarketingPhoto(file) {
+    if (!handoverId.value) throw new Error('No handover ID')
+    const ext = file.name.split('.').pop() || 'jpg'
+    const filename = `marketing_${Date.now()}_${Math.random().toString(36).slice(2, 6)}.${ext}`
+    const path = `${REPORT_TYPE}s/${handoverId.value}/marketing/${filename}`
+    const fileRef = storageRef(storage, path)
+    const MAX_ATTEMPTS = 3
+    const UPLOAD_TIMEOUT_MS = 30_000
+    let lastError
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+        try {
+            await Promise.race([
+                uploadBytes(fileRef, file, { contentType: file.type || 'image/jpeg' }),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Upload timed out')), UPLOAD_TIMEOUT_MS)),
+            ])
+            const url = await getDownloadURL(fileRef)
+            return { url, storagePath: path }
+        } catch (err) {
+            lastError = err
+            if (attempt < MAX_ATTEMPTS) await new Promise(r => setTimeout(r, attempt * 1000))
+        }
+    }
+    throw lastError
+}
+
+async function handleMarketingUpload(slotKey, event) {
+    const files = Array.from(event.target.files ?? [])
+    if (!files.length) return
+
+    if (!handoverId.value) {
+        if (!validateSetup()) return
+        startHandover()
+    }
+
+    if (!marketingPhotos[slotKey]) marketingPhotos[slotKey] = []
+
+    for (const file of files) {
+        const previewUrl = URL.createObjectURL(file)
+        const entry = reactive({ previewUrl, thumbUrl: null, url: null, storagePath: null, uploadStatus: 'uploading' })
+        marketingPhotos[slotKey].push(entry)
+
+        try {
+            const { url, storagePath } = await uploadMarketingPhoto(file)
+            entry.url = url
+            entry.thumbUrl = url
+            entry.storagePath = storagePath
+            entry.uploadStatus = 'done'
+        } catch {
+            entry.uploadStatus = 'failed'
+        }
+    }
+    event.target.value = ''
+}
+
+async function removeMarketingPhoto(slotKey, idx) {
+    const photo = marketingPhotos[slotKey]?.[idx]
+    if (!photo) return
+    if (photo.storagePath) await deletePhotoFromStorage(photo.storagePath)
+    marketingPhotos[slotKey].splice(idx, 1)
+}
+
+// ─── Submit ──────────────────────────────────────────────────────────────────
 
 const submitModal = reactive({ open: false, loading: false, done: false, error: null, pdfUrl: null, statusMessage: '', canFlush: false })
 
@@ -1426,6 +1713,42 @@ async function confirmSubmit() {
             .map(p => ({ url: p.url, caption: p.caption, storagePath: p.storagePath })),
     }))
 
+    // ── Build signature payload ─────────────────────────────────────
+    const staffSigData = getStaffSignatureData()
+    const sigPayload = {
+        staff: {
+            name: inspectorName.value,
+            date: inspectionDate.value,
+            signature: staffSigData,
+        },
+        tenants: [],
+    }
+
+    // ── Upload staff signature to Storage ───────────────────────────
+    if (staffSigData) {
+        try {
+            const sigBlob = await (await fetch(staffSigData)).blob()
+            const sigFile = new File([sigBlob], 'staff_signature.png', { type: 'image/png' })
+            const sigPath = `${REPORT_TYPE}s/${id}/signatures/staff_signature.png`
+            const sigRef = storageRef(storage, sigPath)
+            await uploadBytes(sigRef, sigFile, { contentType: 'image/png' })
+            const sigUrl = await getDownloadURL(sigRef)
+            sigPayload.staff.signatureUrl = sigUrl
+            sigPayload.staff.signatureStoragePath = sigPath
+        } catch (err) {
+            console.warn('Staff signature upload failed:', err.message)
+        }
+    }
+
+    // ── Build marketing photos payload ──────────────────────────────
+    const marketingPayload = {}
+    for (const slot of MARKETING_SLOTS) {
+        const photos = (marketingPhotos[slot.key] ?? [])
+            .filter(p => p.uploadStatus === 'done' && p.url)
+            .map(p => ({ url: p.url, storagePath: p.storagePath }))
+        if (photos.length) marketingPayload[slot.key] = photos
+    }
+
     // ── Send to cloud function ─────────────────────────────────────
     try {
         const controller = new AbortController()
@@ -1443,6 +1766,8 @@ async function confirmSubmit() {
                 inspectorName: inspectorName.value,
                 inspectorEmail: inspectorEmail.value,
                 rooms,
+                signatures: sigPayload,
+                marketingPhotos: marketingPayload,
             }),
         })
         clearTimeout(fetchTimeout)
@@ -1537,6 +1862,7 @@ function clearChecklist() {
     inspectorEmail.value = ''
     propertyType.value = null
     selectedOptional.clear()
+    Object.keys(marketingPhotos).forEach(k => delete marketingPhotos[k])
     confirmClear.open = false
     clearCache()
 }
@@ -1552,6 +1878,15 @@ function saveToCache() {
             inspectorEmail: inspectorEmail.value,
             propertyType: propertyType.value,
             selectedOptional: [...selectedOptional],
+            marketingPhotos: Object.fromEntries(
+                Object.entries(marketingPhotos).map(([k, photos]) => [
+                    k,
+                    (photos ?? []).filter(p => p.url).map(p => ({
+                        thumbUrl: p.url, url: p.url, storagePath: p.storagePath,
+                        uploadStatus: p.uploadStatus === 'done' ? 'done' : 'skipped',
+                    })),
+                ])
+            ),
             handoverId: handoverId.value,
             checklistSections: checklistSections.value,
             checklistData: Object.fromEntries(
@@ -1594,6 +1929,13 @@ function loadFromCache() {
             selectedOptional.clear()
             data.selectedOptional.forEach(k => selectedOptional.add(k))
         }
+        if (data.marketingPhotos && typeof data.marketingPhotos === 'object') {
+            for (const [k, photos] of Object.entries(data.marketingPhotos)) {
+                if (Array.isArray(photos) && photos.length) {
+                    marketingPhotos[k] = photos
+                }
+            }
+        }
         if (Array.isArray(data.checklistSections) && data.checklistSections.length) {
             checklistSections.value = data.checklistSections
         }
@@ -1616,6 +1958,7 @@ function debouncedSave() {
 
 watch([propertyAddress, inspectionDate, inspectorName, inspectorEmail, propertyType], debouncedSave)
 watch(() => [...selectedOptional], debouncedSave)
+watch(marketingPhotos, debouncedSave, { deep: true })
 watch(checklistSections, debouncedSave, { deep: true })
 watch(checklistData, debouncedSave, { deep: true })
 

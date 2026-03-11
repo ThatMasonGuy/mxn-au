@@ -20,6 +20,14 @@ const STATUS_META = {
 // Zero changes needed here.
 import { getSchema } from './checklistSchemas/index.mjs';
 
+// Maps inspection reportSubtype → human-readable title for the PDF cover page
+const SUBTYPE_TITLES = {
+    entry: 'Entry Report',
+    routine: 'Routine Inspection',
+    exit: 'Exit Report',
+    event: 'Event Response',
+};
+
 
 // Aggregate item-level stats across all rooms
 function computeItemStats(rooms) {
@@ -56,13 +64,16 @@ export const generateInspectionReport = onRequest(
         const { default: sharp } = await import('sharp');
         const { Resend } = await import('resend');
 
-        const { reportType, inspectionId, propertyAddress, inspectionDate, inspectorName, inspectorEmail, rooms } = req.body;
+        const { reportType, reportSubtype, inspectionId, propertyAddress, inspectionDate, inspectorName, inspectorEmail, rooms, signatures, marketingPhotos } = req.body;
 
         if (!inspectionId || !Array.isArray(rooms) || !rooms.length) {
             return res.status(400).json({ error: 'Missing inspectionId or rooms' });
         }
 
         const schema = getSchema(reportType);
+
+        // Resolve the document title: use reportSubtype for inspections, or fall back to schema default
+        const docTitle = (reportSubtype && SUBTYPE_TITLES[reportSubtype]) || schema.docTitle;
 
         const docRef = db.collection(schema.collection).doc(inspectionId);
 
@@ -109,11 +120,78 @@ export const generateInspectionReport = onRequest(
                 }
             }
 
-            // ── 3. Build PDF ───────────────────────────────────────────────
-            const pdfBuffer = await buildPDF({ propertyAddress, inspectionDate, inspectorName, rooms, photoAssets, schema });
+            // ── 2b. Download signature images ──────────────────────────
+            const sigAssets = { staff: null, tenants: [] };
+            if (signatures?.staff?.signatureUrl) {
+                try {
+                    const resp = await fetch(signatures.staff.signatureUrl);
+                    if (resp.ok) {
+                        const raw = Buffer.from(await resp.arrayBuffer());
+                        sigAssets.staff = {
+                            buffer: raw,
+                            name: signatures.staff.name ?? inspectorName ?? '',
+                            date: signatures.staff.date ?? inspectionDate ?? '',
+                        };
+                    }
+                } catch (err) {
+                    console.warn('Staff signature download failed:', err.message);
+                }
+            }
+            if (Array.isArray(signatures?.tenants)) {
+                for (const tenant of signatures.tenants) {
+                    if (!tenant?.signatureUrl) { sigAssets.tenants.push(null); continue; }
+                    try {
+                        const resp = await fetch(tenant.signatureUrl);
+                        if (resp.ok) {
+                            const raw = Buffer.from(await resp.arrayBuffer());
+                            sigAssets.tenants.push({
+                                buffer: raw,
+                                name: tenant.name ?? '',
+                                date: tenant.date ?? '',
+                            });
+                        } else {
+                            sigAssets.tenants.push(null);
+                        }
+                    } catch (err) {
+                        console.warn('Tenant signature download failed:', err.message);
+                        sigAssets.tenants.push(null);
+                    }
+                }
+            }
 
-            // ── 4. Build zip (images only) ─────────────────────────────────
-            const zipBuffer = await buildZip(photoAssets, propertyAddress, inspectionDate);
+            // ── 2c. Download marketing photos (uncompressed) ────────────
+            const marketingAssets = []; // [{ buffer, filename, slotKey }]
+            if (marketingPhotos && typeof marketingPhotos === 'object') {
+                for (const [slotKey, photos] of Object.entries(marketingPhotos)) {
+                    if (!Array.isArray(photos)) continue;
+                    for (let i = 0; i < photos.length; i++) {
+                        const mp = photos[i];
+                        if (!mp?.url) continue;
+                        try {
+                            const resp = await fetch(mp.url);
+                            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                            const raw = Buffer.from(await resp.arrayBuffer());
+                            // Detect extension from content-type or default to jpg
+                            const ct = resp.headers.get('content-type') ?? '';
+                            const ext = ct.includes('png') ? 'png' : ct.includes('webp') ? 'webp' : 'jpg';
+                            marketingAssets.push({
+                                buffer: raw,
+                                filename: `${slotKey}_${i + 1}.${ext}`,
+                                slotKey,
+                                storagePath: mp.storagePath ?? null,
+                            });
+                        } catch (err) {
+                            console.warn(`Marketing photo fetch failed for ${slotKey}[${i}]:`, err.message);
+                        }
+                    }
+                }
+            }
+
+            // ── 3. Build PDF ───────────────────────────────────────────────
+            const pdfBuffer = await buildPDF({ propertyAddress, inspectionDate, inspectorName, rooms, photoAssets, schema, docTitle, sigAssets, reportSubtype });
+
+            // ── 4. Build zip (room images + marketing) ───────────────────
+            const zipBuffer = await buildZip(photoAssets, marketingAssets, propertyAddress, inspectionDate);
 
             // ── 5. Save PDF to Storage (long-term record) ──────────────────
             const bucket = firebaseAdmin.storage().bucket();
@@ -128,9 +206,10 @@ export const generateInspectionReport = onRequest(
             // ── 6. Send emails via Resend ──────────────────────────────────
             const resend = new Resend(RESEND_API_KEY.value());
             const dateLabel = formatDate(inspectionDate);
-            const subject = `${schema.emailSubjectPrefix} — ${propertyAddress} — ${dateLabel}`;
+            const emailSubjectTitle = docTitle || schema.emailSubjectPrefix;
+            const subject = `${emailSubjectTitle} — ${propertyAddress} — ${dateLabel}`;
             const cleanAddr = (propertyAddress ?? 'Property').replace(/[^a-zA-Z0-9]/g, '_');
-            const filePrefix = schema.emailSubjectPrefix.replace(/\s+/g, '_');
+            const filePrefix = emailSubjectTitle.replace(/\s+/g, '_');
             const zipName = `${filePrefix}_${cleanAddr}_${inspectionDate}_Photos.zip`;
             const pdfName = `${filePrefix}_${cleanAddr}_${inspectionDate}_Report.pdf`;
             const attachments = [
@@ -147,7 +226,7 @@ export const generateInspectionReport = onRequest(
                     to: t.email,
                     subject,
                     reply_to: ADMIN_EMAIL,
-                    html: buildEmailHtml({ propertyAddress, inspectionDate: dateLabel, inspectorName, rooms, isAdmin: t.isAdmin, schema }),
+                    html: buildEmailHtml({ propertyAddress, inspectionDate: dateLabel, inspectorName, rooms, isAdmin: t.isAdmin, schema, docTitle }),
                     attachments,
                 }))
             );
@@ -162,13 +241,23 @@ export const generateInspectionReport = onRequest(
             console.log('Email results:', emailResults.map((r, i) => `${targets[i].email}: ${r.status}`));
 
             // ── 7. Delete individual photos from Storage ───────────────────
-            const toDelete = photoAssets.filter(p => p.storagePath);
+            const toDelete = [
+                ...photoAssets.filter(p => p.storagePath),
+                ...marketingAssets.filter(p => p.storagePath),
+            ];
+            // Also delete signature images
+            if (signatures?.staff?.signatureStoragePath) {
+                toDelete.push({ storagePath: signatures.staff.signatureStoragePath });
+            }
+            for (const t of (signatures?.tenants ?? [])) {
+                if (t?.signatureStoragePath) toDelete.push({ storagePath: t.signatureStoragePath });
+            }
             const deleteResults = await Promise.allSettled(
                 toDelete.map(p => bucket.file(p.storagePath).delete())
             );
             const failedDeletes = deleteResults.filter(r => r.status === 'rejected').length;
             if (failedDeletes) {
-                console.warn(`${failedDeletes}/${toDelete.length} photo deletions failed — manual cleanup needed for inspections/${inspectionId}/`);
+                console.warn(`${failedDeletes}/${toDelete.length} photo deletions failed — manual cleanup needed for ${schema.collection}/${inspectionId}/`);
             }
 
             // ── 8. Mark complete ───────────────────────────────────────────
@@ -196,10 +285,10 @@ export const generateInspectionReport = onRequest(
 
 // ─── PDF Builder ──────────────────────────────────────────────────────────────
 
-async function buildPDF({ propertyAddress, inspectionDate, inspectorName, rooms, photoAssets, schema }) {
+async function buildPDF({ propertyAddress, inspectionDate, inspectorName, rooms, photoAssets, schema, docTitle, sigAssets, reportSubtype }) {
 
     const { default: PDFDocument } = await import('pdfkit');
-    
+
     return new Promise((resolve, reject) => {
         const doc = new PDFDocument({
             size: 'A4',
@@ -254,7 +343,7 @@ async function buildPDF({ propertyAddress, inspectionDate, inspectorName, rooms,
         doc.rect(0, 0, PAGE_W, 6).fill('#7C3AED');
 
         doc.font('Helvetica-Bold').fontSize(10).fillColor('#7C3AED').text('EVERHOMES', MARGIN, 56);
-        doc.font('Helvetica').fontSize(9).fillColor('#94A3B8').text(schema.docTitle, MARGIN, 70);
+        doc.font('Helvetica').fontSize(9).fillColor('#94A3B8').text(docTitle || schema.docTitle, MARGIN, 70);
         doc.moveTo(MARGIN, 94).lineTo(PAGE_W - MARGIN, 94).strokeColor('#E2E8F0').lineWidth(0.5).stroke();
 
         doc.font('Helvetica-Bold').fontSize(20).fillColor('#1E293B')
@@ -263,7 +352,7 @@ async function buildPDF({ propertyAddress, inspectionDate, inspectorName, rooms,
 
         doc.font('Helvetica').fontSize(10).fillColor('#64748B')
             .text(`Inspection Date:  ${formatDate(inspectionDate)}`, MARGIN, afterTitle)
-            .text(`Inspector:            ${inspectorName || 'Unknown'}`, MARGIN, afterTitle + 16)
+            .text(`Everhomes Staff:  ${inspectorName || 'Unknown'}`, MARGIN, afterTitle + 16)
             .text(`Report Generated: ${formatDate(new Date().toISOString().split('T')[0])}`, MARGIN, afterTitle + 32);
 
         // Room-level stats
@@ -596,6 +685,102 @@ async function buildPDF({ propertyAddress, inspectionDate, inspectorName, rooms,
             }
         }
 
+        // ── Signatures page ────────────────────────────────────────────
+        if (sigAssets?.staff?.buffer || sigAssets?.tenants?.some(t => t?.buffer)) {
+            doc.addPage();
+            doc.rect(0, 0, PAGE_W, 4).fill('#7C3AED');
+
+            doc.font('Helvetica-Bold').fontSize(10).fillColor('#7C3AED').text('EVERHOMES', MARGIN, 56);
+            doc.font('Helvetica').fontSize(9).fillColor('#94A3B8').text('Signatures', MARGIN, 70);
+            doc.moveTo(MARGIN, 90).lineTo(PAGE_W - MARGIN, 90).strokeColor('#E2E8F0').lineWidth(0.5).stroke();
+
+            let sy = 102;
+
+            // Staff signature
+            if (sigAssets.staff?.buffer) {
+                sy = ensureSpace(sy, 180);
+                doc.font('Helvetica-Bold').fontSize(7).fillColor('#94A3B8').text('EVERHOMES STAFF', MARGIN, sy);
+                sy += 14;
+
+                doc.font('Helvetica-Bold').fontSize(10).fillColor('#1E293B')
+                    .text(sigAssets.staff.name || inspectorName || 'Unknown', MARGIN, sy);
+                sy += 14;
+                doc.font('Helvetica').fontSize(8.5).fillColor('#64748B')
+                    .text(`Date: ${formatDate(sigAssets.staff.date || inspectionDate)}`, MARGIN, sy);
+                sy += 18;
+
+                // Draw signature image
+                try {
+                    doc.image(sigAssets.staff.buffer, MARGIN, sy, {
+                        fit: [CONTENT_W * 0.5, 100],
+                        align: 'left',
+                        valign: 'top',
+                    });
+                } catch (err) {
+                    console.warn('Failed to embed staff signature:', err.message);
+                }
+                sy += 110;
+
+                // Signature line
+                doc.moveTo(MARGIN, sy).lineTo(MARGIN + CONTENT_W * 0.5, sy)
+                    .strokeColor('#CBD5E1').lineWidth(0.5).stroke();
+                doc.font('Helvetica').fontSize(7).fillColor('#94A3B8')
+                    .text('Signature', MARGIN, sy + 4);
+                sy += 24;
+
+                // Agreement text
+                doc.font('Helvetica-Oblique').fontSize(7.5).fillColor('#94A3B8')
+                    .text(
+                        `I, ${sigAssets.staff.name || inspectorName || '___'}, confirm that this ${(docTitle || 'inspection').toLowerCase()} was completed on ${formatDate(sigAssets.staff.date || inspectionDate)} and that the information recorded is accurate to the best of my knowledge.`,
+                        MARGIN, sy, { width: CONTENT_W }
+                    );
+                sy = doc.y + 20;
+            }
+
+            // Tenant signatures (entry/exit only)
+            const hasTenants = sigAssets.tenants?.some(t => t?.buffer);
+            if (hasTenants) {
+                sy = ensureSpace(sy, 40);
+                doc.moveTo(MARGIN, sy).lineTo(PAGE_W - MARGIN, sy).strokeColor('#E2E8F0').lineWidth(0.5).stroke();
+                sy += 16;
+                doc.font('Helvetica-Bold').fontSize(7).fillColor('#94A3B8').text('TENANTS', MARGIN, sy);
+                sy += 14;
+
+                for (let ti = 0; ti < sigAssets.tenants.length; ti++) {
+                    const tenant = sigAssets.tenants[ti];
+                    if (!tenant?.buffer) continue;
+
+                    sy = ensureSpace(sy, 160);
+
+                    doc.font('Helvetica-Bold').fontSize(9).fillColor('#1E293B')
+                        .text(tenant.name || `Tenant ${ti + 1}`, MARGIN, sy);
+                    sy += 13;
+                    if (tenant.date) {
+                        doc.font('Helvetica').fontSize(8).fillColor('#64748B')
+                            .text(`Date: ${formatDate(tenant.date)}`, MARGIN, sy);
+                        sy += 14;
+                    }
+
+                    try {
+                        doc.image(tenant.buffer, MARGIN, sy, {
+                            fit: [CONTENT_W * 0.45, 90],
+                            align: 'left',
+                            valign: 'top',
+                        });
+                    } catch (err) {
+                        console.warn(`Failed to embed tenant ${ti + 1} signature:`, err.message);
+                    }
+                    sy += 100;
+
+                    doc.moveTo(MARGIN, sy).lineTo(MARGIN + CONTENT_W * 0.45, sy)
+                        .strokeColor('#CBD5E1').lineWidth(0.5).stroke();
+                    doc.font('Helvetica').fontSize(7).fillColor('#94A3B8')
+                        .text('Signature', MARGIN, sy + 4);
+                    sy += 24;
+                }
+            }
+        }
+
         // ── Page numbers ──────────────────────────────────────────────────
         const range = doc.bufferedPageRange();
 
@@ -623,7 +808,7 @@ async function buildPDF({ propertyAddress, inspectionDate, inspectorName, rooms,
 
 // ─── Zip Builder ──────────────────────────────────────────────────────────────
 
-async function buildZip(photoAssets, propertyAddress, inspectionDate) {
+async function buildZip(photoAssets, marketingAssets, propertyAddress, inspectionDate) {
     // Now you can await the import
     const { default: archiver } = await import('archiver');
 
@@ -639,18 +824,28 @@ async function buildZip(photoAssets, propertyAddress, inspectionDate) {
             .trim()
             .replace(/\s+/g, '_');
 
+        const baseFolder = `${cleanAddr}_${inspectionDate}_Photos`;
+
         for (const p of photoAssets) {
-            archive.append(p.buffer, { 
-                name: `${cleanAddr}_${inspectionDate}_Photos/${p.filename}` 
+            archive.append(p.buffer, {
+                name: `${baseFolder}/${p.filename}`
             });
         }
+
+        // Marketing photos in a subfolder (uncompressed originals)
+        for (const mp of (marketingAssets ?? [])) {
+            archive.append(mp.buffer, {
+                name: `${baseFolder}/marketing/${mp.filename}`
+            });
+        }
+
         archive.finalize();
     });
 }
 
 // ─── Email HTML ───────────────────────────────────────────────────────────────
 
-function buildEmailHtml({ propertyAddress, inspectionDate, inspectorName, rooms, isAdmin, schema }) {
+function buildEmailHtml({ propertyAddress, inspectionDate, inspectorName, rooms, isAdmin, schema, docTitle }) {
     const flagged = rooms.filter(r => r.status === 'issue' || r.status === 'attention')
         .sort((a, b) => (a.status === 'issue' ? -1 : 1));
 
@@ -702,7 +897,7 @@ function buildEmailHtml({ propertyAddress, inspectionDate, inspectorName, rooms,
             Everhomes
           </div>
           <div style="font-size:22px;color:#fff;font-weight:800;line-height:1.2;margin:6px 0 0 0;padding:0;">
-            Inspection Report
+            ${docTitle || schema.docTitle}
           </div>
         </td>
       </tr>
@@ -710,7 +905,7 @@ function buildEmailHtml({ propertyAddress, inspectionDate, inspectorName, rooms,
   </div>
   <div style="padding:28px 32px 24px; mso-line-height-rule:exactly;">
     <p style="margin:0;padding:0 0 4px 0;font-size:17px;font-weight:700;color:#1E293B;">${propertyAddress}</p>
-    <p style="margin:0;padding:0 0 20px 0;font-size:13px;color:#64748B;">${inspectionDate} &middot; ${inspectorName || 'Unknown Housing Officer'}</p>
+    <p style="margin:0;padding:0 0 20px 0;font-size:13px;color:#64748B;">${inspectionDate} &middot; ${inspectorName || 'Unknown'}</p>
 
     <p style="margin:0 0 6px;font-size:10px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.08em;">Checklist Summary</p>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;">
@@ -760,7 +955,7 @@ function buildEmailHtml({ propertyAddress, inspectionDate, inspectorName, rooms,
 
     <p style="font-size:12px;color:#94A3B8;line-height:1.7;margin:0;">
       The full inspection report (PDF) and all photos (ZIP) are attached.
-      ${isAdmin ? `<br>Housing Officer: ${inspectorName || 'Unknown'}` : 'A copy has also been sent to the Everhomes administration team.'}
+      ${isAdmin ? `<br>Everhomes Staff: ${inspectorName || 'Unknown'}` : 'A copy has also been sent to the Everhomes administration team.'}
     </p>
   </div>
   <div style="padding:14px 32px;background:#F8FAFC;border-top:1px solid #E2E8F0;">

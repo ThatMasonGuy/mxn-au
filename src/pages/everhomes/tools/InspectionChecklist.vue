@@ -209,9 +209,24 @@
                 <div
                     class="mb-4 flex items-start gap-3 px-4 py-3 bg-amber-500/10 border border-amber-500/25 rounded-2xl">
                     <AlertTriangle class="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-                    <p class="text-xs text-amber-300/90 font-medium leading-relaxed">Images uploaded through this
-                        checklist will be <span class="font-bold text-amber-200">compressed</span>. Please ensure you
-                        take marketing photos separately.</p>
+                    <p class="text-xs text-amber-300/90 font-medium leading-relaxed">Room photos are <span class="font-bold text-amber-200">compressed</span> for the report. Use the Marketing Photos section below for uncompressed hero shots.</p>
+                </div>
+
+                <!-- Marketing photos toggle -->
+                <div class="mb-4 flex items-center justify-between px-4 py-3 bg-slate-800/50 border border-slate-700/50 rounded-2xl">
+                    <div class="flex items-center gap-2.5">
+                        <Images class="w-4 h-4 text-violet-400" />
+                        <div>
+                            <p class="text-xs font-bold text-white">Marketing Photos</p>
+                            <p class="text-[0.6rem] text-slate-500">Hero shots for listings — uploaded uncompressed</p>
+                        </div>
+                    </div>
+                    <button @click="showMarketing = !showMarketing"
+                        class="w-10 h-6 rounded-full transition-colors duration-200 flex items-center px-0.5"
+                        :class="showMarketing ? 'bg-violet-600' : 'bg-slate-700'">
+                        <div class="w-5 h-5 rounded-full bg-white shadow transition-transform duration-200"
+                            :class="showMarketing ? 'translate-x-4' : 'translate-x-0'" />
+                    </button>
                 </div>
 
                 <!-- Status legend -->
@@ -487,6 +502,12 @@
                                                     class="absolute top-1 right-1 w-5 h-5 bg-black/70 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                                                     <X class="w-3 h-3 text-white" />
                                                 </button>
+                                                <!-- Edit caption -->
+                                                <button v-if="photo.uploadStatus === 'done'"
+                                                    @click.stop="openCaptionEdit(room.id, pIdx)"
+                                                    class="absolute top-1 left-1 w-5 h-5 bg-black/70 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <Pencil class="w-2.5 h-2.5 text-white" />
+                                                </button>
                                             </div>
                                             <!-- Caption byline -->
                                             <p v-if="photo.caption && photo.uploadStatus === 'done'"
@@ -523,6 +544,58 @@
                                 </div>
                             </div>
                         </Transition>
+                    </div>
+                </div>
+
+                <!-- ── Marketing Photos Section ─────────────────────────── -->
+                <div v-if="showMarketing" class="mt-6 bg-gradient-to-b from-violet-900/20 to-slate-900/50 border border-violet-500/20 rounded-2xl overflow-hidden">
+                    <div class="px-5 py-4 border-b border-violet-500/15 bg-violet-500/5">
+                        <div class="flex items-center gap-2.5 mb-1">
+                            <Images class="w-4 h-4 text-violet-400" />
+                            <h3 class="text-sm font-black text-white">Marketing Photos</h3>
+                        </div>
+                        <p class="text-[0.65rem] text-slate-400 leading-relaxed">These hero shots are for marketing and listing purposes. They are uploaded <span class="font-bold text-violet-300">uncompressed</span> and will <span class="font-bold text-violet-300">not</span> appear in the compliance report.</p>
+                    </div>
+                    <div class="px-5 py-4 space-y-3">
+                        <div v-for="slot in MARKETING_SLOTS" :key="slot.key"
+                            class="bg-slate-800/60 border border-slate-700/50 rounded-xl p-3">
+                            <div class="flex items-center justify-between mb-2">
+                                <div>
+                                    <p class="text-xs font-bold text-white">{{ slot.label }}</p>
+                                    <p class="text-[0.6rem] text-slate-500 mt-0.5">{{ slot.hint }}</p>
+                                </div>
+                                <label
+                                    class="flex items-center gap-1 text-xs font-bold text-violet-400 hover:text-violet-300 px-2 py-1 rounded-lg hover:bg-violet-500/10 transition-colors cursor-pointer">
+                                    <Plus class="w-3.5 h-3.5" />Add
+                                    <input type="file" accept="image/*" multiple class="hidden"
+                                        @change="handleMarketingUpload(slot.key, $event)" />
+                                </label>
+                            </div>
+                            <div v-if="(marketingPhotos[slot.key] ?? []).length" class="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                                <div v-for="(photo, mpIdx) in marketingPhotos[slot.key]" :key="mpIdx"
+                                    class="relative group aspect-square rounded-xl overflow-hidden border-2"
+                                    :class="photo.uploadStatus === 'uploading' ? 'border-violet-500/60' : photo.uploadStatus === 'failed' ? 'border-rose-500/60' : 'border-slate-700/60'">
+                                    <img :src="photo.thumbUrl || photo.previewUrl" alt="" class="w-full h-full object-cover" />
+                                    <div v-if="photo.uploadStatus === 'uploading'"
+                                        class="absolute inset-0 bg-black/60 flex flex-col items-center justify-center gap-1">
+                                        <div class="w-5 h-5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                                        <span class="text-white text-[10px] font-bold">Uploading…</span>
+                                    </div>
+                                    <div v-else-if="photo.uploadStatus === 'failed'"
+                                        class="absolute inset-0 bg-rose-900/80 flex flex-col items-center justify-center gap-1 p-1">
+                                        <AlertTriangle class="w-4 h-4 text-rose-300" />
+                                        <span class="text-[9px] font-bold text-rose-200">Failed</span>
+                                    </div>
+                                    <button v-if="photo.uploadStatus !== 'uploading'" @click.stop="removeMarketingPhoto(slot.key, mpIdx)"
+                                        class="absolute top-1 right-1 w-5 h-5 bg-black/70 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <X class="w-3 h-3 text-white" />
+                                    </button>
+                                </div>
+                            </div>
+                            <div v-else class="flex items-center justify-center h-16 rounded-xl border-2 border-dashed border-slate-700/50 text-slate-600 text-xs font-medium">
+                                No photos yet
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -689,12 +762,72 @@
                                         uninspectedCount !== 1 ? 's' : '' }} still unchecked — you can still submit.</p>
                                 </div>
 
+                                <!-- ── Signature Section ─────────────────────── -->
+                                <div class="mx-5 mt-5 border border-slate-700 rounded-xl overflow-hidden">
+                                    <div class="bg-slate-800/50 px-4 py-3 border-b border-slate-700">
+                                        <p class="text-xs font-black text-slate-400 uppercase tracking-widest">Staff Signature</p>
+                                    </div>
+                                    <div class="px-4 py-4 space-y-3">
+                                        <div class="flex items-center justify-between text-xs">
+                                            <span class="text-slate-400">{{ inspectorName || 'Staff name not set' }}</span>
+                                            <span class="text-slate-500">{{ formatDate(inspectionDate) }}</span>
+                                        </div>
+                                        <div class="relative bg-white rounded-xl overflow-hidden" style="touch-action: none;">
+                                            <canvas ref="staffSigCanvasRef" class="w-full" style="height: 140px;" />
+                                            <button @click="clearStaffSignature"
+                                                class="absolute top-2 right-2 px-2 py-1 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-600 text-[10px] font-bold transition-colors">
+                                                Clear
+                                            </button>
+                                        </div>
+                                        <label class="flex items-start gap-2.5 cursor-pointer select-none">
+                                            <input type="checkbox" v-model="signatureState.agreementChecked"
+                                                class="mt-0.5 w-4 h-4 rounded border-slate-600 bg-slate-800 text-violet-500 focus:ring-violet-500 focus:ring-offset-0 shrink-0" />
+                                            <span class="text-[0.65rem] text-slate-400 leading-relaxed">
+                                                I, <span class="font-bold text-white">{{ inspectorName || '___' }}</span>, confirm that this inspection was completed on <span class="font-bold text-white">{{ formatDate(inspectionDate) || '___' }}</span> and that the information recorded is accurate to the best of my knowledge.
+                                            </span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <!-- ── Tenant Signatures (Entry/Exit only) ───── -->
+                                <template v-if="reportSubtype === 'entry' || reportSubtype === 'exit'">
+                                    <div class="mx-5 mt-4 border border-slate-700 rounded-xl overflow-hidden">
+                                        <div class="bg-slate-800/50 px-4 py-3 border-b border-slate-700">
+                                            <p class="text-xs font-black text-slate-400 uppercase tracking-widest">Tenant Signatures</p>
+                                            <p class="text-[0.6rem] text-slate-500 mt-0.5">Required for {{ reportSubtype }} reports — up to 3 tenants</p>
+                                        </div>
+                                        <div class="divide-y divide-slate-700/50">
+                                            <div v-for="(tenant, tIdx) in signatureState.tenants" :key="tIdx" class="px-4 py-4 space-y-3">
+                                                <div class="grid grid-cols-2 gap-3">
+                                                    <div>
+                                                        <label class="block text-[0.6rem] font-bold text-slate-500 uppercase mb-1">Tenant {{ tIdx + 1 }} Name</label>
+                                                        <input v-model="tenant.name" type="text" placeholder="Full name"
+                                                            class="w-full bg-slate-800 border border-slate-700 text-white placeholder-slate-600 text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-violet-500" />
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-[0.6rem] font-bold text-slate-500 uppercase mb-1">Date</label>
+                                                        <input v-model="tenant.date" type="date"
+                                                            class="w-full bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-violet-500 appearance-none" />
+                                                    </div>
+                                                </div>
+                                                <div class="relative bg-white rounded-xl overflow-hidden" style="touch-action: none;">
+                                                    <canvas :ref="el => setTenantCanvasRef(tIdx, el)" class="w-full" style="height: 120px;" />
+                                                    <button @click="clearTenantSignature(tIdx)"
+                                                        class="absolute top-2 right-2 px-2 py-1 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-600 text-[10px] font-bold transition-colors">
+                                                        Clear
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </template>
+
                                 <div class="flex gap-3 px-5 py-5">
                                     <button @click="submitModal.open = false"
                                         class="flex-1 py-2.5 rounded-xl border-2 border-slate-700 text-slate-400 hover:text-white hover:border-slate-600 text-sm font-bold transition-colors">
                                         Back
                                     </button>
-                                    <button @click="confirmSubmit" :disabled="hasAnyUploading"
+                                    <button @click="confirmSubmit" :disabled="hasAnyUploading || !canSubmit"
                                         class="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-black transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2">
                                         <Send class="w-4 h-4" />Confirm &amp; Submit
                                     </button>
@@ -856,11 +989,37 @@
             </Transition>
         </Teleport>
 
+        <!-- ── Caption Edit Modal ─────────────────────────────────────── -->
+        <Teleport to="body">
+            <Transition enter-active-class="transition duration-200 ease-out"
+                leave-active-class="transition duration-150 ease-in" enter-from-class="opacity-0"
+                enter-to-class="opacity-100" leave-from-class="opacity-100" leave-to-class="opacity-0">
+                <div v-if="captionEdit.open" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+                    <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" @click="closeCaptionEdit" />
+                    <div
+                        class="relative z-10 w-full sm:w-[400px] bg-slate-900 border border-slate-700 sm:rounded-2xl rounded-t-2xl shadow-2xl p-5">
+                        <h3 class="text-white font-black text-base mb-4">Edit Caption</h3>
+                        <input v-model="captionEdit.caption" type="text" placeholder="e.g. Crack in wall near window"
+                            class="w-full bg-slate-800/60 border border-slate-700 text-white placeholder-slate-500 text-base sm:text-sm rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-violet-500 transition mb-4"
+                            @keydown.enter="saveCaptionEdit" />
+                        <div class="flex gap-3">
+                            <button @click="closeCaptionEdit"
+                                class="flex-1 py-2.5 rounded-xl border-2 border-slate-700 text-slate-400 hover:text-white hover:border-slate-600 text-sm font-bold transition-colors">Cancel</button>
+                            <button @click="saveCaptionEdit"
+                                class="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white text-sm font-bold transition-all">
+                                Save
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </Transition>
+        </Teleport>
+
     </LayoutComponent>
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import LayoutComponent from '@/components/everhomes/layouts/LayoutComponent.vue'
 
 // Firebase — adjust these imports to match your actual client firebase config exports
@@ -875,9 +1034,10 @@ import {
     Check, Tv, UtensilsCrossed, Flame, Sparkles,
     Building2, Truck, Sun, Archive, Monitor, Wrench,
     Home, Trees, Send, Trash2, Save, FileText,
-    RefreshCw,
+    RefreshCw, Pencil, Images,
 } from 'lucide-vue-next'
 import { CHECKLIST_ITEMS, _common, getChecklistGroups } from '@/data/inspectionItems.js'
+import SignaturePad from 'signature_pad'
 
 // ─── Constants ─────────────────────────────────────────────────────────────
 
@@ -947,6 +1107,16 @@ const ITEM_STATUS_OPTIONS = [
     { value: 'na', label: 'N/A', icon: MinusCircle, activeClass: 'bg-slate-700/80 border-slate-500/80 text-slate-400' },
 ]
 
+const MARKETING_SLOTS = [
+    { key: 'frontExterior', label: 'Front Exterior', hint: 'Full front view of the property from the street' },
+    { key: 'kitchenWide', label: 'Kitchen Wide', hint: 'Wide-angle shot showing the full kitchen' },
+    { key: 'livingArea', label: 'Living Area', hint: 'Main living space — open and well-lit' },
+    { key: 'mainBedroom', label: 'Main Bedroom', hint: 'Primary bedroom — bed area and window' },
+    { key: 'bathroom', label: 'Bathroom', hint: 'Main bathroom — clean and bright' },
+    { key: 'outdoorGarden', label: 'Outdoor / Garden', hint: 'Backyard, patio, or balcony area' },
+    { key: 'streetView', label: 'Street View', hint: 'Property from across the street with surroundings' },
+]
+
 
 // All status-checkable item IDs for a given room type (excludes input-type items)
 function getItemIds(type) {
@@ -970,6 +1140,8 @@ const bedrooms = reactive([
 
 const selectedOptional = reactive(new Set(['dining', 'laundry']))
 const reportSubtype = ref('routine')
+const showMarketing = ref(false)
+const marketingPhotos = reactive({})  // { [slotKey]: [{ previewUrl, thumbUrl, url, storagePath, uploadStatus }] }
 
 function addBedroom() { bedrooms.push({ id: _id++, name: '', hasEnsuite: false, isOOA: false }) }
 function removeBedroom() { if (bedrooms.length > 1) bedrooms.pop() }
@@ -1441,6 +1613,68 @@ async function confirmSubmit() {
             .map(p => ({ url: p.url, caption: p.caption, storagePath: p.storagePath })),
     }))
 
+    // ── Build signature payload ─────────────────────────────────────
+    const staffSigData = getStaffSignatureData()
+    const sigPayload = {
+        staff: {
+            name: inspectorName.value,
+            date: inspectionDate.value,
+            signature: staffSigData,
+        },
+        tenants: (reportSubtype.value === 'entry' || reportSubtype.value === 'exit')
+            ? signatureState.tenants.map((t, i) => ({
+                name: t.name,
+                date: t.date,
+                signature: getTenantSignatureData(i),
+            })).filter(t => t.name || t.signature)
+            : [],
+    }
+
+    // ── Build marketing photos payload ──────────────────────────────
+    const marketingPayload = {}
+    for (const slot of MARKETING_SLOTS) {
+        const photos = (marketingPhotos[slot.key] ?? [])
+            .filter(p => p.uploadStatus === 'done' && p.url)
+            .map(p => ({ url: p.url, storagePath: p.storagePath }))
+        if (photos.length) marketingPayload[slot.key] = photos
+    }
+
+    // ── Upload staff signature to Storage ───────────────────────────
+    let staffSigStoragePath = null
+    if (staffSigData) {
+        try {
+            const sigBlob = await (await fetch(staffSigData)).blob()
+            const sigFile = new File([sigBlob], 'staff_signature.png', { type: 'image/png' })
+            const sigPath = `${REPORT_TYPE}s/${id}/signatures/staff_signature.png`
+            const sigRef = storageRef(storage, sigPath)
+            await uploadBytes(sigRef, sigFile, { contentType: 'image/png' })
+            const sigUrl = await getDownloadURL(sigRef)
+            sigPayload.staff.signatureUrl = sigUrl
+            sigPayload.staff.signatureStoragePath = sigPath
+            staffSigStoragePath = sigPath
+        } catch (err) {
+            console.warn('Staff signature upload failed:', err.message)
+        }
+    }
+
+    // ── Upload tenant signatures to Storage ─────────────────────────
+    for (let i = 0; i < sigPayload.tenants.length; i++) {
+        const t = sigPayload.tenants[i]
+        if (!t.signature) continue
+        try {
+            const blob = await (await fetch(t.signature)).blob()
+            const file = new File([blob], `tenant_${i + 1}_signature.png`, { type: 'image/png' })
+            const tPath = `${REPORT_TYPE}s/${id}/signatures/tenant_${i + 1}_signature.png`
+            const tRef = storageRef(storage, tPath)
+            await uploadBytes(tRef, file, { contentType: 'image/png' })
+            const tUrl = await getDownloadURL(tRef)
+            t.signatureUrl = tUrl
+            t.signatureStoragePath = tPath
+        } catch (err) {
+            console.warn(`Tenant ${i + 1} signature upload failed:`, err.message)
+        }
+    }
+
     // ── Send to cloud function ─────────────────────────────────────
     try {
         const controller = new AbortController()
@@ -1459,6 +1693,8 @@ async function confirmSubmit() {
                 inspectorName: inspectorName.value,
                 inspectorEmail: inspectorEmail.value,
                 rooms,
+                signatures: sigPayload,
+                marketingPhotos: marketingPayload,
             }),
         })
         clearTimeout(fetchTimeout)
@@ -1562,6 +1798,8 @@ function clearChecklist() {
     bedrooms.splice(0, bedrooms.length, { id: ++_id, name: '', hasEnsuite: true, isOOA: false }, { id: ++_id, name: '', hasEnsuite: true, isOOA: false }, { id: ++_id, name: '', hasEnsuite: false, isOOA: true })
     selectedOptional.clear();['dining', 'laundry'].forEach(k => selectedOptional.add(k))
     reportSubtype.value = 'routine'
+    showMarketing.value = false
+    Object.keys(marketingPhotos).forEach(k => delete marketingPhotos[k])
     confirmClear.open = false
     clearCache()
 }
@@ -1582,6 +1820,16 @@ function saveToCache() {
             bedrooms: bedrooms.map(b => ({ ...b })),
             selectedOptional: [...selectedOptional],
             reportSubtype: reportSubtype.value,
+            showMarketing: showMarketing.value,
+            marketingPhotos: Object.fromEntries(
+                Object.entries(marketingPhotos).map(([k, photos]) => [
+                    k,
+                    (photos ?? []).filter(p => p.url).map(p => ({
+                        thumbUrl: p.url, url: p.url, storagePath: p.storagePath,
+                        uploadStatus: p.uploadStatus === 'done' ? 'done' : 'skipped',
+                    })),
+                ])
+            ),
             inspectionId: inspectionId.value,
             checklistRooms: checklistRooms.value,
             inspectionData: Object.fromEntries(
@@ -1638,6 +1886,14 @@ function loadFromCache() {
             }
         }
         if (data.reportSubtype) reportSubtype.value = data.reportSubtype
+        if (typeof data.showMarketing === 'boolean') showMarketing.value = data.showMarketing
+        if (data.marketingPhotos && typeof data.marketingPhotos === 'object') {
+            for (const [k, photos] of Object.entries(data.marketingPhotos)) {
+                if (Array.isArray(photos) && photos.length) {
+                    marketingPhotos[k] = photos
+                }
+            }
+        }
         if (Array.isArray(data.checklistRooms) && data.checklistRooms.length) {
             checklistRooms.value = data.checklistRooms
         }
@@ -1662,6 +1918,8 @@ watch([propertyAddress, inspectionDate, inspectorName, inspectorEmail, bathrooms
 watch(() => bedrooms.map(b => ({ ...b })), debouncedSave, { deep: true })
 watch(() => [...selectedOptional], debouncedSave)
 watch(reportSubtype, debouncedSave)
+watch(showMarketing, debouncedSave)
+watch(marketingPhotos, debouncedSave, { deep: true })
 watch(checklistRooms, debouncedSave, { deep: true })
 watch(inspectionData, debouncedSave, { deep: true })
 
@@ -1774,7 +2032,201 @@ async function confirmPhotoQueue() {
     }
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────
+
+// ─── Caption Edit ────────────────────────────────────────────────────────────
+
+const captionEdit = reactive({ open: false, roomId: null, photoIdx: null, caption: '' })
+
+function openCaptionEdit(roomId, photoIdx) {
+    const photo = inspectionData[roomId]?.photos?.[photoIdx]
+    if (!photo) return
+    captionEdit.open = true
+    captionEdit.roomId = roomId
+    captionEdit.photoIdx = photoIdx
+    captionEdit.caption = photo.caption ?? ''
+}
+
+function saveCaptionEdit() {
+    const photo = inspectionData[captionEdit.roomId]?.photos?.[captionEdit.photoIdx]
+    if (photo) photo.caption = captionEdit.caption
+    closeCaptionEdit()
+}
+
+function closeCaptionEdit() {
+    Object.assign(captionEdit, { open: false, roomId: null, photoIdx: null, caption: '' })
+}
+
+// ─── Signature ───────────────────────────────────────────────────────────────
+
+const staffSigCanvasRef = ref(null)
+const tenantCanvasRefs = {}
+let staffSigPad = null
+const tenantSigPads = {}
+
+const signatureState = reactive({
+    staffSigned: false,
+    agreementChecked: false,
+    tenants: [
+        { name: '', date: '', signed: false },
+        { name: '', date: '', signed: false },
+        { name: '', date: '', signed: false },
+    ],
+})
+
+function setTenantCanvasRef(idx, el) {
+    tenantCanvasRefs[idx] = el
+}
+
+function initSignaturePads() {
+    // Staff pad
+    if (staffSigCanvasRef.value && !staffSigPad) {
+        const canvas = staffSigCanvasRef.value
+        resizeCanvas(canvas)
+        staffSigPad = new SignaturePad(canvas, {
+            penColor: '#1E293B',
+            backgroundColor: 'rgba(255,255,255,0)',
+        })
+        staffSigPad.addEventListener('endStroke', () => {
+            signatureState.staffSigned = !staffSigPad.isEmpty()
+        })
+    }
+    // Tenant pads
+    for (let i = 0; i < 3; i++) {
+        const el = tenantCanvasRefs[i]
+        if (el && !tenantSigPads[i]) {
+            resizeCanvas(el)
+            tenantSigPads[i] = new SignaturePad(el, {
+                penColor: '#1E293B',
+                backgroundColor: 'rgba(255,255,255,0)',
+            })
+            const idx = i
+            tenantSigPads[i].addEventListener('endStroke', () => {
+                signatureState.tenants[idx].signed = !tenantSigPads[idx].isEmpty()
+            })
+        }
+    }
+}
+
+function resizeCanvas(canvas) {
+    const ratio = Math.max(window.devicePixelRatio ?? 1, 1)
+    const rect = canvas.getBoundingClientRect()
+    canvas.width = rect.width * ratio
+    canvas.height = rect.height * ratio
+    canvas.getContext('2d').scale(ratio, ratio)
+}
+
+function clearStaffSignature() {
+    staffSigPad?.clear()
+    signatureState.staffSigned = false
+}
+
+function clearTenantSignature(idx) {
+    tenantSigPads[idx]?.clear()
+    signatureState.tenants[idx].signed = false
+}
+
+function destroySignaturePads() {
+    if (staffSigPad) { staffSigPad.off(); staffSigPad = null }
+    for (const key of Object.keys(tenantSigPads)) {
+        tenantSigPads[key]?.off()
+        delete tenantSigPads[key]
+    }
+    signatureState.staffSigned = false
+    signatureState.agreementChecked = false
+    signatureState.tenants.forEach(t => { t.name = ''; t.date = ''; t.signed = false })
+}
+
+// Re-init signature pads when submit modal opens
+watch(() => submitModal.open, async (open) => {
+    if (open && !submitModal.loading && !submitModal.done && !submitModal.error) {
+        await nextTick()
+        // Small delay for the DOM to fully render the canvas
+        setTimeout(initSignaturePads, 100)
+    } else if (!open) {
+        destroySignaturePads()
+    }
+})
+
+const canSubmit = computed(() => {
+    if (!signatureState.staffSigned || !signatureState.agreementChecked) return false
+    return true
+})
+
+function getStaffSignatureData() {
+    if (!staffSigPad || staffSigPad.isEmpty()) return null
+    return staffSigPad.toDataURL('image/png')
+}
+
+function getTenantSignatureData(idx) {
+    if (!tenantSigPads[idx] || tenantSigPads[idx].isEmpty()) return null
+    return tenantSigPads[idx].toDataURL('image/png')
+}
+
+// ─── Marketing photos ────────────────────────────────────────────────────────
+
+async function uploadMarketingPhoto(file) {
+    if (!inspectionId.value) throw new Error('No inspection ID')
+    const ext = file.name.split('.').pop() || 'jpg'
+    const filename = `marketing_${Date.now()}_${Math.random().toString(36).slice(2, 6)}.${ext}`
+    const path = `${REPORT_TYPE}s/${inspectionId.value}/marketing/${filename}`
+    const fileRef = storageRef(storage, path)
+    const MAX_ATTEMPTS = 3
+    const UPLOAD_TIMEOUT_MS = 30_000
+    let lastError
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+        try {
+            await Promise.race([
+                uploadBytes(fileRef, file, { contentType: file.type || 'image/jpeg' }),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Upload timed out')), UPLOAD_TIMEOUT_MS)),
+            ])
+            const url = await getDownloadURL(fileRef)
+            return { url, storagePath: path }
+        } catch (err) {
+            lastError = err
+            if (attempt < MAX_ATTEMPTS) await new Promise(r => setTimeout(r, attempt * 1000))
+        }
+    }
+    throw lastError
+}
+
+async function handleMarketingUpload(slotKey, event) {
+    const files = Array.from(event.target.files ?? [])
+    if (!files.length) return
+
+    // Ensure the inspection has started (need an ID for the storage path)
+    if (!inspectionId.value) {
+        if (!validateSetup()) return
+        startInspection()
+    }
+
+    if (!marketingPhotos[slotKey]) marketingPhotos[slotKey] = []
+
+    for (const file of files) {
+        const previewUrl = URL.createObjectURL(file)
+        const entry = reactive({ previewUrl, thumbUrl: null, url: null, storagePath: null, uploadStatus: 'uploading' })
+        marketingPhotos[slotKey].push(entry)
+
+        try {
+            const { url, storagePath } = await uploadMarketingPhoto(file)
+            entry.url = url
+            entry.thumbUrl = url
+            entry.storagePath = storagePath
+            entry.uploadStatus = 'done'
+        } catch {
+            entry.uploadStatus = 'failed'
+        }
+    }
+    // Reset the input so the same file can be re-selected
+    event.target.value = ''
+}
+
+async function removeMarketingPhoto(slotKey, idx) {
+    const photo = marketingPhotos[slotKey]?.[idx]
+    if (!photo) return
+    if (photo.storagePath) await deletePhotoFromStorage(photo.storagePath)
+    marketingPhotos[slotKey].splice(idx, 1)
+}
 
 function formatDate(dateStr) {
     if (!dateStr) return ''

@@ -28,7 +28,7 @@ export const REPORT_SCHEMAS = {
   handover: {
     items: handoverItems,
     fallback: [],
-    docTitle: 'SDA Property Handover Checklist',
+    docTitle: 'Handover Inspection',
     collection: 'handovers',
     emailSubjectPrefix: 'Property Handover',
     fromName: 'Everhomes Onboarding',
