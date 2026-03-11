@@ -89,7 +89,7 @@
                                         : { borderColor: '#1e293b', color: '#64748b' }">
                                     <span class="text-sm font-black">{{ pt.key }}</span>
                                     <span class="text-[0.65rem] font-medium leading-tight opacity-80">{{ pt.label
-                                    }}</span>
+                                        }}</span>
                                     <div class="flex flex-wrap gap-1 mt-0.5">
                                         <span v-for="cat in pt.includes" :key="cat"
                                             class="text-[0.55rem] font-black px-1.5 py-0.5 rounded-md uppercase"
@@ -166,9 +166,7 @@
                 <div
                     class="mb-4 flex items-start gap-3 px-4 py-3 bg-amber-500/10 border border-amber-500/25 rounded-2xl">
                     <AlertTriangle class="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-                    <p class="text-xs text-amber-300/90 font-medium leading-relaxed">Section photos are <span
-                            class="font-bold text-amber-200">compressed</span> for the report. Use the Marketing Photos
-                        section at the bottom for uncompressed hero shots.</p>
+                    <p class="text-xs text-amber-300/90 font-medium leading-relaxed">Section photos are <span class="font-bold text-amber-200">compressed</span> for the report. Use the Marketing Photos section at the bottom for uncompressed hero shots.</p>
                 </div>
 
                 <!-- Header + progress -->
@@ -444,18 +442,13 @@
                 </div>
 
                 <!-- ── Marketing Photos Section (Core) ────────────────── -->
-                <div
-                    class="mt-6 bg-gradient-to-b from-teal-900/20 to-slate-900/50 border border-teal-500/20 rounded-2xl overflow-hidden">
+                <div class="mt-6 bg-gradient-to-b from-teal-900/20 to-slate-900/50 border border-teal-500/20 rounded-2xl overflow-hidden">
                     <div class="px-5 py-4 border-b border-teal-500/15 bg-teal-500/5">
                         <div class="flex items-center gap-2.5 mb-1">
                             <Images class="w-4 h-4 text-teal-400" />
                             <h3 class="text-sm font-black text-white">Marketing Photos</h3>
                         </div>
-                        <p class="text-[0.65rem] text-slate-400 leading-relaxed">Hero shots for marketing and listing
-                            purposes. Uploaded
-                            <span class="font-bold text-teal-300">uncompressed</span> — not included in the compliance
-                            report.
-                        </p>
+                        <p class="text-[0.65rem] text-slate-400 leading-relaxed">Hero shots for marketing and listing purposes. Uploaded <span class="font-bold text-teal-300">uncompressed</span> — not included in the compliance report.</p>
                     </div>
                     <div class="px-5 py-4 space-y-3">
                         <div v-for="slot in MARKETING_SLOTS" :key="slot.key"
@@ -472,17 +465,14 @@
                                         @change="handleMarketingUpload(slot.key, $event)" />
                                 </label>
                             </div>
-                            <div v-if="(marketingPhotos[slot.key] ?? []).length"
-                                class="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                            <div v-if="(marketingPhotos[slot.key] ?? []).length" class="grid grid-cols-3 sm:grid-cols-4 gap-2">
                                 <div v-for="(photo, mpIdx) in marketingPhotos[slot.key]" :key="mpIdx"
                                     class="relative group aspect-square rounded-xl overflow-hidden border-2"
                                     :class="photo.uploadStatus === 'uploading' ? 'border-teal-500/60' : photo.uploadStatus === 'failed' ? 'border-rose-500/60' : 'border-slate-700/60'">
-                                    <img :src="photo.thumbUrl || photo.previewUrl" alt=""
-                                        class="w-full h-full object-cover" />
+                                    <img :src="photo.thumbUrl || photo.previewUrl" alt="" class="w-full h-full object-cover" />
                                     <div v-if="photo.uploadStatus === 'uploading'"
                                         class="absolute inset-0 bg-black/60 flex flex-col items-center justify-center gap-1">
-                                        <div
-                                            class="w-5 h-5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                                        <div class="w-5 h-5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
                                         <span class="text-white text-[10px] font-bold">Uploading…</span>
                                     </div>
                                     <div v-else-if="photo.uploadStatus === 'failed'"
@@ -490,15 +480,13 @@
                                         <AlertTriangle class="w-4 h-4 text-rose-300" />
                                         <span class="text-[9px] font-bold text-rose-200">Failed</span>
                                     </div>
-                                    <button v-if="photo.uploadStatus !== 'uploading'"
-                                        @click.stop="removeMarketingPhoto(slot.key, mpIdx)"
+                                    <button v-if="photo.uploadStatus !== 'uploading'" @click.stop="removeMarketingPhoto(slot.key, mpIdx)"
                                         class="absolute top-1 right-1 w-5 h-5 bg-black/70 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                                         <X class="w-3 h-3 text-white" />
                                     </button>
                                 </div>
                             </div>
-                            <div v-else
-                                class="flex items-center justify-center h-16 rounded-xl border-2 border-dashed border-slate-700/50 text-slate-600 text-xs font-medium">
+                            <div v-else class="flex items-center justify-center h-16 rounded-xl border-2 border-dashed border-slate-700/50 text-slate-600 text-xs font-medium">
                                 No photos yet
                             </div>
                         </div>
@@ -608,7 +596,7 @@
                                     <div>
                                         <h3 class="text-white font-black text-base">Submit Handover Review</h3>
                                         <p class="text-slate-400 text-xs mt-0.5">{{ propertyAddress || 'Address not set'
-                                        }} · {{ formatDate(inspectionDate) }}</p>
+                                            }} · {{ formatDate(inspectionDate) }}</p>
                                     </div>
                                     <button @click="submitModal.open = false"
                                         class="w-8 h-8 flex items-center justify-center rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 transition-colors shrink-0">
@@ -621,7 +609,7 @@
                                         class="flex flex-col items-center gap-1 py-3 rounded-xl border"
                                         :style="{ borderColor: stat.color + '40', background: stat.color + '0D' }">
                                         <span class="text-lg font-black" :style="{ color: stat.color }">{{ stat.count
-                                        }}</span>
+                                            }}</span>
                                         <span
                                             class="text-[0.6rem] font-bold text-slate-500 text-center leading-tight">{{
                                                 stat.label }}</span>
@@ -670,17 +658,14 @@
                                 <!-- ── Signature Section ─────────────────────── -->
                                 <div class="mx-5 mt-5 border border-slate-700 rounded-xl overflow-hidden">
                                     <div class="bg-slate-800/50 px-4 py-3 border-b border-slate-700">
-                                        <p class="text-xs font-black text-slate-400 uppercase tracking-widest">Staff
-                                            Signature</p>
+                                        <p class="text-xs font-black text-slate-400 uppercase tracking-widest">Staff Signature</p>
                                     </div>
                                     <div class="px-4 py-4 space-y-3">
                                         <div class="flex items-center justify-between text-xs">
-                                            <span class="text-slate-400">{{ inspectorName || 'Staff name not set'
-                                                }}</span>
+                                            <span class="text-slate-400">{{ inspectorName || 'Staff name not set' }}</span>
                                             <span class="text-slate-500">{{ formatDate(inspectionDate) }}</span>
                                         </div>
-                                        <div class="relative bg-white rounded-xl overflow-hidden"
-                                            style="touch-action: none;">
+                                        <div class="relative bg-white rounded-xl overflow-hidden" style="touch-action: none;">
                                             <canvas ref="staffSigCanvasRef" class="w-full" style="height: 140px;" />
                                             <button @click="clearStaffSignature"
                                                 class="absolute top-2 right-2 px-2 py-1 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-600 text-[10px] font-bold transition-colors">
@@ -691,11 +676,7 @@
                                             <input type="checkbox" v-model="signatureState.agreementChecked"
                                                 class="mt-0.5 w-4 h-4 rounded border-slate-600 bg-slate-800 text-teal-500 focus:ring-teal-500 focus:ring-offset-0 shrink-0" />
                                             <span class="text-[0.65rem] text-slate-400 leading-relaxed">
-                                                I, <span class="font-bold text-white">{{ inspectorName || '___'
-                                                    }}</span>, confirm that this handover review was completed on <span
-                                                    class="font-bold text-white">{{ formatDate(inspectionDate) || '___'
-                                                    }}</span> and that the information recorded is accurate to the best
-                                                of my knowledge.
+                                                I, <span class="font-bold text-white">{{ inspectorName || '___' }}</span>, confirm that this handover review was completed on <span class="font-bold text-white">{{ formatDate(inspectionDate) || '___' }}</span> and that the information recorded is accurate to the best of my knowledge.
                                             </span>
                                         </label>
                                     </div>
@@ -762,7 +743,7 @@
                                     <h2 class="text-white font-extrabold text-base">{{ photoModal.queue.length > 0 ?
                                         `Label
                                         Photo ${photoModal.queueIndex + 1} of ${photoModal.queue.length}` : 'Add Photo'
-                                    }}</h2>
+                                        }}</h2>
                                     <p class="text-slate-400 text-xs mt-0.5">{{ photoModal.sectionLabel }}</p>
                                 </div>
                                 <button @click="closePhotoModal"
@@ -1510,9 +1491,44 @@ const canSubmit = computed(() => {
     return signatureState.staffSigned && signatureState.agreementChecked
 })
 
+// Crop a signature canvas to just the drawn content with some padding
+function cropSignatureData(sigPad) {
+    if (!sigPad || sigPad.isEmpty()) return null
+    const canvas = sigPad.canvas
+    const ctx = canvas.getContext('2d')
+    const { width, height } = canvas
+    const imageData = ctx.getImageData(0, 0, width, height)
+    const { data } = imageData
+
+    let minX = width, minY = height, maxX = 0, maxY = 0
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const alpha = data[(y * width + x) * 4 + 3]
+            if (alpha > 10) {
+                if (x < minX) minX = x
+                if (x > maxX) maxX = x
+                if (y < minY) minY = y
+                if (y > maxY) maxY = y
+            }
+        }
+    }
+    if (maxX <= minX || maxY <= minY) return sigPad.toDataURL('image/png')
+
+    const pad = Math.round(Math.max(width, height) * 0.04)
+    const cropX = Math.max(0, minX - pad)
+    const cropY = Math.max(0, minY - pad)
+    const cropW = Math.min(width - cropX, (maxX - minX) + pad * 2)
+    const cropH = Math.min(height - cropY, (maxY - minY) + pad * 2)
+
+    const cropped = document.createElement('canvas')
+    cropped.width = cropW
+    cropped.height = cropH
+    cropped.getContext('2d').drawImage(canvas, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH)
+    return cropped.toDataURL('image/png')
+}
+
 function getStaffSignatureData() {
-    if (!staffSigPad || staffSigPad.isEmpty()) return null
-    return staffSigPad.toDataURL('image/png')
+    return cropSignatureData(staffSigPad)
 }
 
 // ─── Marketing photos ────────────────────────────────────────────────────────

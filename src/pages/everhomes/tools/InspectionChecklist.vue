@@ -2153,14 +2153,49 @@ const canSubmit = computed(() => {
     return true
 })
 
+// Crop a signature canvas to just the drawn content with some padding
+function cropSignatureData(sigPad) {
+    if (!sigPad || sigPad.isEmpty()) return null
+    const canvas = sigPad.canvas
+    const ctx = canvas.getContext('2d')
+    const { width, height } = canvas
+    const imageData = ctx.getImageData(0, 0, width, height)
+    const { data } = imageData
+
+    let minX = width, minY = height, maxX = 0, maxY = 0
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const alpha = data[(y * width + x) * 4 + 3]
+            if (alpha > 10) {
+                if (x < minX) minX = x
+                if (x > maxX) maxX = x
+                if (y < minY) minY = y
+                if (y > maxY) maxY = y
+            }
+        }
+    }
+    // Nothing drawn (shouldn't happen since we check isEmpty)
+    if (maxX <= minX || maxY <= minY) return sigPad.toDataURL('image/png')
+
+    const pad = Math.round(Math.max(width, height) * 0.04)
+    const cropX = Math.max(0, minX - pad)
+    const cropY = Math.max(0, minY - pad)
+    const cropW = Math.min(width - cropX, (maxX - minX) + pad * 2)
+    const cropH = Math.min(height - cropY, (maxY - minY) + pad * 2)
+
+    const cropped = document.createElement('canvas')
+    cropped.width = cropW
+    cropped.height = cropH
+    cropped.getContext('2d').drawImage(canvas, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH)
+    return cropped.toDataURL('image/png')
+}
+
 function getStaffSignatureData() {
-    if (!staffSigPad || staffSigPad.isEmpty()) return null
-    return staffSigPad.toDataURL('image/png')
+    return cropSignatureData(staffSigPad)
 }
 
 function getTenantSignatureData(idx) {
-    if (!tenantSigPads[idx] || tenantSigPads[idx].isEmpty()) return null
-    return tenantSigPads[idx].toDataURL('image/png')
+    return cropSignatureData(tenantSigPads[idx])
 }
 
 // ─── Marketing photos ────────────────────────────────────────────────────────

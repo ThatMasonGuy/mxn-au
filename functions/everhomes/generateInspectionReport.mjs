@@ -288,7 +288,7 @@ export const generateInspectionReport = onRequest(
 async function buildPDF({ propertyAddress, inspectionDate, inspectorName, rooms, photoAssets, schema, docTitle, sigAssets, reportSubtype }) {
 
     const { default: PDFDocument } = await import('pdfkit');
-
+    
     return new Promise((resolve, reject) => {
         const doc = new PDFDocument({
             size: 'A4',
@@ -827,8 +827,8 @@ async function buildZip(photoAssets, marketingAssets, propertyAddress, inspectio
         const baseFolder = `${cleanAddr}_${inspectionDate}_Photos`;
 
         for (const p of photoAssets) {
-            archive.append(p.buffer, {
-                name: `${baseFolder}/${p.filename}`
+            archive.append(p.buffer, { 
+                name: `${baseFolder}/${p.filename}` 
             });
         }
 

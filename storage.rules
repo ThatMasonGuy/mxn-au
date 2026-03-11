@@ -4,9 +4,9 @@ service firebase.storage {
   match /b/{bucket}/o {
 
     // ============================
-    // Inspection Photos
+    // Inspection Files (photos, marketing, signatures)
     // ============================
-    match /inspections/{inspectionId}/photos/{filename} {
+    match /inspections/{inspectionId}/{subfolder}/{filename} {
 
       // Upload only: image files under 15MB
       allow write: if request.resource.size < 15 * 1024 * 1024
@@ -17,9 +17,9 @@ service firebase.storage {
     }
 
     // ============================
-    // Handover Photos
+    // Handover Files (photos, marketing, signatures)
     // ============================
-    match /handovers/{inspectionId}/photos/{filename} {
+    match /handovers/{inspectionId}/{subfolder}/{filename} {
 
       // Upload only: image files under 15MB
       allow write: if request.resource.size < 15 * 1024 * 1024
