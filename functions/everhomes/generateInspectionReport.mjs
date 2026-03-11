@@ -1,6 +1,11 @@
 import { onRequest } from 'firebase-functions/v2/https';
 import { defineSecret } from 'firebase-functions/params';
 import { firebaseAdmin, db } from '../config/firebase.mjs';
+import { readFileSync } from 'fs';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const RESEND_API_KEY = defineSecret('RESEND_API_KEY');
 
@@ -288,13 +293,18 @@ export const generateInspectionReport = onRequest(
 async function buildPDF({ propertyAddress, inspectionDate, inspectorName, rooms, photoAssets, schema, docTitle, sigAssets, reportSubtype }) {
 
     const { default: PDFDocument } = await import('pdfkit');
+
+    // Load logo — gracefully skip if not found
+    let logoBuf = null;
+    try { logoBuf = readFileSync(join(__dirname, 'assets', 'everhomes-logo.png')); } catch { /* no logo */ }
     
     return new Promise((resolve, reject) => {
         const doc = new PDFDocument({
             size: 'A4',
-            margins: { top: 50, bottom: 50, left: 50, right: 50 },
+            margins: { top: 50, bottom: 60, left: 50, right: 50 },
             autoFirstPage: false,
             bufferPages: true,
+            compress: true,
         });
         const chunks = [];
         doc.on('data', c => chunks.push(c));
@@ -305,7 +315,8 @@ async function buildPDF({ propertyAddress, inspectionDate, inspectorName, rooms,
         const MARGIN = 50;
         const CONTENT_W = PAGE_W - MARGIN * 2;
         const PAGE_H = 842;
-        const BOTTOM = PAGE_H - MARGIN;
+        const FOOTER_ZONE = 30; // reserved for footer
+        const BOTTOM = PAGE_H - MARGIN - FOOTER_ZONE;
         const PHOTO_COL_W = (CONTENT_W - 12) / 2;
 
         // ── Helpers ───────────────────────────────────────────────────────
@@ -344,6 +355,12 @@ async function buildPDF({ propertyAddress, inspectionDate, inspectorName, rooms,
 
         doc.font('Helvetica-Bold').fontSize(10).fillColor('#7C3AED').text('EVERHOMES', MARGIN, 56);
         doc.font('Helvetica').fontSize(9).fillColor('#94A3B8').text(docTitle || schema.docTitle, MARGIN, 70);
+
+        // Logo top-right
+        if (logoBuf) {
+            try { doc.image(logoBuf, PAGE_W - MARGIN - 90, 42, { fit: [90, 40] }); } catch { /* skip */ }
+        }
+
         doc.moveTo(MARGIN, 94).lineTo(PAGE_W - MARGIN, 94).strokeColor('#E2E8F0').lineWidth(0.5).stroke();
 
         doc.font('Helvetica-Bold').fontSize(20).fillColor('#1E293B')
@@ -499,7 +516,7 @@ async function buildPDF({ propertyAddress, inspectionDate, inspectorName, rooms,
 
             // Groups and their items
             const ITEM_ROW_H = 15;
-            const GROUP_HEADER_H = 16;
+            const GROUP_HEADER_H = 20;
 
             for (const group of groups) {
                 // Group header
@@ -508,7 +525,7 @@ async function buildPDF({ propertyAddress, inspectionDate, inspectorName, rooms,
                     .text(group.group.toUpperCase(), MARGIN, y, { lineBreak: false });
                 if (group.sda) {
                     const labelW = doc.widthOfString(group.group.toUpperCase(), { fontSize: 7 });
-                    drawPill(MARGIN + labelW + 6, y + 7, 'SDA', '#7C3AED', '#EDE9FE');
+                    drawPill(MARGIN + labelW + 6, y + 4, 'SDA', '#7C3AED', '#EDE9FE');
                 }
                 y += GROUP_HEADER_H;
 
@@ -584,7 +601,7 @@ async function buildPDF({ propertyAddress, inspectionDate, inspectorName, rooms,
 
                     y += ITEM_ROW_H;
                 }
-                y += 6; // gap between groups
+                y += 12; // gap between groups
             }
 
             y += 8;
@@ -688,17 +705,31 @@ async function buildPDF({ propertyAddress, inspectionDate, inspectorName, rooms,
         // ── Signatures page ────────────────────────────────────────────
         if (sigAssets?.staff?.buffer || sigAssets?.tenants?.some(t => t?.buffer)) {
             doc.addPage();
-            doc.rect(0, 0, PAGE_W, 4).fill('#7C3AED');
+            doc.rect(0, 0, PAGE_W, 6).fill('#7C3AED');
 
+            // Header with logo
             doc.font('Helvetica-Bold').fontSize(10).fillColor('#7C3AED').text('EVERHOMES', MARGIN, 56);
             doc.font('Helvetica').fontSize(9).fillColor('#94A3B8').text('Signatures', MARGIN, 70);
-            doc.moveTo(MARGIN, 90).lineTo(PAGE_W - MARGIN, 90).strokeColor('#E2E8F0').lineWidth(0.5).stroke();
+            if (logoBuf) {
+                try { doc.image(logoBuf, PAGE_W - MARGIN - 90, 42, { fit: [90, 40] }); } catch { /* skip */ }
+            }
+            doc.moveTo(MARGIN, 94).lineTo(PAGE_W - MARGIN, 94).strokeColor('#E2E8F0').lineWidth(0.5).stroke();
 
-            let sy = 102;
+            // Property context
+            let sy = 108;
+            doc.font('Helvetica-Bold').fontSize(13).fillColor('#1E293B')
+                .text(propertyAddress || 'Unknown Property', MARGIN, sy, { width: CONTENT_W });
+            sy = doc.y + 4;
+            doc.font('Helvetica').fontSize(9).fillColor('#64748B')
+                .text(`${docTitle || schema.docTitle} — ${formatDate(inspectionDate)}`, MARGIN, sy);
+            sy = doc.y + 20;
+
+            doc.moveTo(MARGIN, sy).lineTo(PAGE_W - MARGIN, sy).strokeColor('#E2E8F0').lineWidth(0.5).stroke();
+            sy += 20;
 
             // Staff signature
             if (sigAssets.staff?.buffer) {
-                sy = ensureSpace(sy, 180);
+                sy = ensureSpace(sy, 170);
                 doc.font('Helvetica-Bold').fontSize(7).fillColor('#94A3B8').text('EVERHOMES STAFF', MARGIN, sy);
                 sy += 14;
 
@@ -707,26 +738,26 @@ async function buildPDF({ propertyAddress, inspectionDate, inspectorName, rooms,
                 sy += 14;
                 doc.font('Helvetica').fontSize(8.5).fillColor('#64748B')
                     .text(`Date: ${formatDate(sigAssets.staff.date || inspectionDate)}`, MARGIN, sy);
-                sy += 18;
+                sy += 20;
 
-                // Draw signature image
+                // Draw signature image (now cropped, so use actual dimensions)
                 try {
                     doc.image(sigAssets.staff.buffer, MARGIN, sy, {
-                        fit: [CONTENT_W * 0.5, 100],
+                        fit: [CONTENT_W * 0.45, 80],
                         align: 'left',
                         valign: 'top',
                     });
                 } catch (err) {
                     console.warn('Failed to embed staff signature:', err.message);
                 }
-                sy += 110;
+                sy += 88;
 
                 // Signature line
-                doc.moveTo(MARGIN, sy).lineTo(MARGIN + CONTENT_W * 0.5, sy)
+                doc.moveTo(MARGIN, sy).lineTo(MARGIN + CONTENT_W * 0.45, sy)
                     .strokeColor('#CBD5E1').lineWidth(0.5).stroke();
                 doc.font('Helvetica').fontSize(7).fillColor('#94A3B8')
                     .text('Signature', MARGIN, sy + 4);
-                sy += 24;
+                sy += 22;
 
                 // Agreement text
                 doc.font('Helvetica-Oblique').fontSize(7.5).fillColor('#94A3B8')
@@ -750,7 +781,7 @@ async function buildPDF({ propertyAddress, inspectionDate, inspectorName, rooms,
                     const tenant = sigAssets.tenants[ti];
                     if (!tenant?.buffer) continue;
 
-                    sy = ensureSpace(sy, 160);
+                    sy = ensureSpace(sy, 140);
 
                     doc.font('Helvetica-Bold').fontSize(9).fillColor('#1E293B')
                         .text(tenant.name || `Tenant ${ti + 1}`, MARGIN, sy);
@@ -763,41 +794,60 @@ async function buildPDF({ propertyAddress, inspectionDate, inspectorName, rooms,
 
                     try {
                         doc.image(tenant.buffer, MARGIN, sy, {
-                            fit: [CONTENT_W * 0.45, 90],
+                            fit: [CONTENT_W * 0.4, 70],
                             align: 'left',
                             valign: 'top',
                         });
                     } catch (err) {
                         console.warn(`Failed to embed tenant ${ti + 1} signature:`, err.message);
                     }
-                    sy += 100;
+                    sy += 78;
 
-                    doc.moveTo(MARGIN, sy).lineTo(MARGIN + CONTENT_W * 0.45, sy)
+                    doc.moveTo(MARGIN, sy).lineTo(MARGIN + CONTENT_W * 0.4, sy)
                         .strokeColor('#CBD5E1').lineWidth(0.5).stroke();
                     doc.font('Helvetica').fontSize(7).fillColor('#94A3B8')
                         .text('Signature', MARGIN, sy + 4);
-                    sy += 24;
+                    sy += 22;
                 }
             }
+
+            // Contact line
+            sy = ensureSpace(sy, 40);
+            doc.moveTo(MARGIN, sy).lineTo(PAGE_W - MARGIN, sy).strokeColor('#E2E8F0').lineWidth(0.5).stroke();
+            sy += 14;
+            doc.font('Helvetica').fontSize(8).fillColor('#94A3B8')
+                .text('For any issues or concerns regarding this report, please contact ', MARGIN, sy, { width: CONTENT_W, continued: true })
+                .font('Helvetica-Bold').fillColor('#7C3AED').text('admin@everhomes.com.au', { link: 'mailto:admin@everhomes.com.au' });
         }
 
-        // ── Page numbers ──────────────────────────────────────────────────
+        // ── Footer on every page ─────────────────────────────────────────
         const range = doc.bufferedPageRange();
+        const FOOTER_Y = PAGE_H - MARGIN - 10;
+        const THIRD_W = CONTENT_W / 3;
 
         for (let i = 0; i < range.count; i++) {
             doc.switchToPage(range.start + i);
 
-            const footerY =
-                doc.page.height - doc.page.margins.bottom - 18; // safely inside margins
+            // Light line above footer
+            doc.moveTo(MARGIN, FOOTER_Y - 6).lineTo(PAGE_W - MARGIN, FOOTER_Y - 6)
+                .strokeColor('#F1F5F9').lineWidth(0.3).stroke();
 
-            doc.font('Helvetica')
-                .fontSize(8)
-                .fillColor('#CBD5E1')
-                .text(`Page ${i + 1} of ${range.count}`, doc.page.margins.left, footerY, {
-                    align: 'right',
-                    width: doc.page.width - doc.page.margins.left - doc.page.margins.right,
-                    lineBreak: false,
-                });
+            doc.font('Helvetica').fontSize(7).fillColor('#CBD5E1');
+
+            // Left: company name
+            doc.text('Everhomes Pty Ltd', MARGIN, FOOTER_Y, {
+                width: THIRD_W, align: 'left', lineBreak: false,
+            });
+
+            // Center: ABN
+            doc.text('ABN: 12 642 435 578', MARGIN + THIRD_W, FOOTER_Y, {
+                width: THIRD_W, align: 'center', lineBreak: false,
+            });
+
+            // Right: page number
+            doc.text(`Page ${i + 1} of ${range.count}`, MARGIN + THIRD_W * 2, FOOTER_Y, {
+                width: THIRD_W, align: 'right', lineBreak: false,
+            });
         }
 
         doc.switchToPage(range.start + range.count - 1);
@@ -952,6 +1002,18 @@ function buildEmailHtml({ propertyAddress, inspectionDate, inspectorName, rooms,
         </tr></thead>
         <tbody>${itemRows}</tbody>
       </table>` : ''}
+
+    <p style="margin:0 0 8px;font-size:10px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.08em;">Status Guide</p>
+    <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
+      <tr>
+        <td style="padding:6px 10px;font-size:12px;border-bottom:1px solid #F1F5F9;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#10B981;margin-right:6px;vertical-align:middle;"></span><span style="font-weight:700;color:#10B981;">Good</span><span style="color:#94A3B8;font-size:11px;"> — Item is in acceptable condition</span></td>
+        <td style="padding:6px 10px;font-size:12px;border-bottom:1px solid #F1F5F9;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#F59E0B;margin-right:6px;vertical-align:middle;"></span><span style="font-weight:700;color:#F59E0B;">Attention</span><span style="color:#94A3B8;font-size:11px;"> — Minor issue, note for follow-up</span></td>
+      </tr>
+      <tr>
+        <td style="padding:6px 10px;font-size:12px;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#F43F5E;margin-right:6px;vertical-align:middle;"></span><span style="font-weight:700;color:#F43F5E;">Issue</span><span style="color:#94A3B8;font-size:11px;"> — Requires action or repair</span></td>
+        <td style="padding:6px 10px;font-size:12px;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#64748B;margin-right:6px;vertical-align:middle;"></span><span style="font-weight:700;color:#64748B;">N/A</span><span style="color:#94A3B8;font-size:11px;"> — Not applicable to this property</span></td>
+      </tr>
+    </table>
 
     <p style="font-size:12px;color:#94A3B8;line-height:1.7;margin:0;">
       The full inspection report (PDF) and all photos (ZIP) are attached.
