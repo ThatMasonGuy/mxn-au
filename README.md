@@ -174,8 +174,21 @@ Feedback on UX, performance, clarity, and feature ideas is always welcome.
 
 ## 📄 License
 
-No explicit license file is currently present in this repository.
-Unless a license is added, treat this project as all rights reserved.
+This project is licensed under the **MIT License**.
+
+The MIT License is a permissive open-source license that allows you to:
+
+- Use the code commercially
+- Modify and distribute it
+- Include it in private or proprietary projects
+- Fork and build on top of it
+
+The only requirement is that the original copyright notice and license text remain included in any copies or substantial portions of the software.
+
+In simple terms:  
+You can use the code however you want, just keep the license attached and don’t claim you wrote the original parts.
+
+See the full license text in the [`LICENSE`](./LICENSE) file.
 
 ---
 
