@@ -179,4 +179,4 @@ Unless a license is added, treat this project as all rights reserved.
 
 ---
 
-<sub>This README was written with AI assistance and then edited for accuracy/style.</sub>
+<sub>— Mason (Yes, this was written by AI)</sub>
