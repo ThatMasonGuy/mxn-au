@@ -218,8 +218,8 @@ export const generateInspectionReport = onRequest(
             const zipName = `${filePrefix}_${cleanAddr}_${inspectionDate}_Photos.zip`;
             const pdfName = `${filePrefix}_${cleanAddr}_${inspectionDate}_Report.pdf`;
             const attachments = [
-                { filename: zipName, content: zipBuffer.toString('base64') },
-                { filename: pdfName, content: pdfBuffer.toString('base64') },
+                { filename: zipName, content: zipBuffer },
+                { filename: pdfName, content: pdfBuffer },
             ];
 
             const targets = [{ email: ADMIN_EMAIL, isAdmin: true }];
@@ -296,7 +296,11 @@ async function buildPDF({ propertyAddress, inspectionDate, inspectorName, rooms,
 
     // Load logo — gracefully skip if not found
     let logoBuf = null;
-    try { logoBuf = readFileSync(join(__dirname, 'assets', 'everhomes-logo.png')); } catch { /* no logo */ }
+    try {
+        logoBuf = readFileSync(join(__dirname, '..', 'assets', 'everhomes-logo.png'));
+    } catch {
+        /* no logo */
+    }
     
     return new Promise((resolve, reject) => {
         const doc = new PDFDocument({
@@ -703,126 +707,120 @@ async function buildPDF({ propertyAddress, inspectionDate, inspectorName, rooms,
         }
 
         // ── Signatures page ────────────────────────────────────────────
-        if (sigAssets?.staff?.buffer || sigAssets?.tenants?.some(t => t?.buffer)) {
-            doc.addPage();
-            doc.rect(0, 0, PAGE_W, 6).fill('#7C3AED');
+        doc.addPage();
+        doc.rect(0, 0, PAGE_W, 6).fill('#7C3AED');
 
-            // Header with logo
-            doc.font('Helvetica-Bold').fontSize(10).fillColor('#7C3AED').text('EVERHOMES', MARGIN, 56);
-            doc.font('Helvetica').fontSize(9).fillColor('#94A3B8').text('Signatures', MARGIN, 70);
-            if (logoBuf) {
-                try { doc.image(logoBuf, PAGE_W - MARGIN - 90, 42, { fit: [90, 40] }); } catch { /* skip */ }
+        // Header with logo
+        doc.font('Helvetica-Bold').fontSize(10).fillColor('#7C3AED').text('EVERHOMES', MARGIN, 56);
+        doc.font('Helvetica').fontSize(9).fillColor('#94A3B8').text('Signatures & Declaration', MARGIN, 70);
+        if (logoBuf) {
+            try { doc.image(logoBuf, PAGE_W - MARGIN - 90, 42, { fit: [90, 40] }); } catch { /* skip */ }
+        }
+        doc.moveTo(MARGIN, 94).lineTo(PAGE_W - MARGIN, 94).strokeColor('#E2E8F0').lineWidth(0.5).stroke();
+
+        // Property context
+        let sy = 108;
+        doc.font('Helvetica-Bold').fontSize(13).fillColor('#1E293B')
+            .text(propertyAddress || 'Unknown Property', MARGIN, sy, { width: CONTENT_W });
+        sy = doc.y + 4;
+        doc.font('Helvetica').fontSize(9).fillColor('#64748B')
+            .text(`${docTitle || schema.docTitle} — ${formatDate(inspectionDate)}`, MARGIN, sy);
+        sy = doc.y + 18;
+
+        doc.moveTo(MARGIN, sy).lineTo(PAGE_W - MARGIN, sy).strokeColor('#E2E8F0').lineWidth(0.5).stroke();
+        sy += 16;
+
+        // Staff signature block (always rendered)
+        const staffName = sigAssets?.staff?.name || inspectorName || 'Everhomes Staff';
+        const staffDate = formatDate(sigAssets?.staff?.date || inspectionDate);
+        const staffSigWidth = CONTENT_W * 0.45;
+
+        sy = ensureSpace(sy, 170);
+        doc.font('Helvetica-Bold').fontSize(7).fillColor('#94A3B8').text('EVERHOMES STAFF', MARGIN, sy);
+        sy += 14;
+
+        doc.font('Helvetica-Bold').fontSize(10).fillColor('#1E293B').text(staffName, MARGIN, sy);
+        sy += 14;
+        doc.font('Helvetica').fontSize(8.5).fillColor('#64748B').text(`Date: ${staffDate}`, MARGIN, sy);
+        sy += 20;
+
+        if (sigAssets?.staff?.buffer) {
+            try {
+                doc.image(sigAssets.staff.buffer, MARGIN, sy, {
+                    fit: [staffSigWidth, 80],
+                    align: 'left',
+                    valign: 'top',
+                });
+            } catch (err) {
+                console.warn('Failed to embed staff signature:', err.message);
             }
-            doc.moveTo(MARGIN, 94).lineTo(PAGE_W - MARGIN, 94).strokeColor('#E2E8F0').lineWidth(0.5).stroke();
+        }
+        sy += 88;
 
-            // Property context
-            let sy = 108;
-            doc.font('Helvetica-Bold').fontSize(13).fillColor('#1E293B')
-                .text(propertyAddress || 'Unknown Property', MARGIN, sy, { width: CONTENT_W });
-            sy = doc.y + 4;
-            doc.font('Helvetica').fontSize(9).fillColor('#64748B')
-                .text(`${docTitle || schema.docTitle} — ${formatDate(inspectionDate)}`, MARGIN, sy);
-            sy = doc.y + 20;
+        doc.moveTo(MARGIN, sy).lineTo(MARGIN + staffSigWidth, sy)
+            .strokeColor('#CBD5E1').lineWidth(0.5).stroke();
+        doc.font('Helvetica').fontSize(7).fillColor('#94A3B8').text('Signature', MARGIN, sy + 4);
+        sy += 20;
 
+        doc.font('Helvetica-Oblique').fontSize(8).fillColor('#64748B').text(
+            `I, ${staffName}, confirm that this ${(docTitle || 'inspection').toLowerCase()} was completed on ${staffDate} and that the information recorded is accurate to the best of my knowledge.`,
+            MARGIN,
+            sy,
+            { width: CONTENT_W },
+        );
+        sy = doc.y + 18;
+
+        // Tenant signatures (entry/exit always shows 3 placeholders)
+        if (reportSubtype === 'entry' || reportSubtype === 'exit') {
+            sy = ensureSpace(sy, 40);
             doc.moveTo(MARGIN, sy).lineTo(PAGE_W - MARGIN, sy).strokeColor('#E2E8F0').lineWidth(0.5).stroke();
-            sy += 20;
+            sy += 14;
+            doc.font('Helvetica-Bold').fontSize(7).fillColor('#94A3B8').text('TENANT SIGNATURES', MARGIN, sy);
+            sy += 12;
 
-            // Staff signature
-            if (sigAssets.staff?.buffer) {
-                sy = ensureSpace(sy, 170);
-                doc.font('Helvetica-Bold').fontSize(7).fillColor('#94A3B8').text('EVERHOMES STAFF', MARGIN, sy);
+            for (let ti = 0; ti < 3; ti++) {
+                const tenant = sigAssets?.tenants?.[ti] ?? null;
+                sy = ensureSpace(sy, 120);
+
+                doc.font('Helvetica-Bold').fontSize(9).fillColor('#1E293B')
+                    .text(tenant?.name || `Tenant ${ti + 1}`, MARGIN, sy);
+                sy += 12;
+
+                doc.font('Helvetica').fontSize(8).fillColor('#64748B')
+                    .text(`Date: ${tenant?.date ? formatDate(tenant.date) : '________________'}`, MARGIN, sy);
                 sy += 14;
 
-                doc.font('Helvetica-Bold').fontSize(10).fillColor('#1E293B')
-                    .text(sigAssets.staff.name || inspectorName || 'Unknown', MARGIN, sy);
-                sy += 14;
-                doc.font('Helvetica').fontSize(8.5).fillColor('#64748B')
-                    .text(`Date: ${formatDate(sigAssets.staff.date || inspectionDate)}`, MARGIN, sy);
-                sy += 20;
-
-                // Draw signature image (now cropped, so use actual dimensions)
-                try {
-                    doc.image(sigAssets.staff.buffer, MARGIN, sy, {
-                        fit: [CONTENT_W * 0.45, 80],
-                        align: 'left',
-                        valign: 'top',
-                    });
-                } catch (err) {
-                    console.warn('Failed to embed staff signature:', err.message);
-                }
-                sy += 88;
-
-                // Signature line
-                doc.moveTo(MARGIN, sy).lineTo(MARGIN + CONTENT_W * 0.45, sy)
-                    .strokeColor('#CBD5E1').lineWidth(0.5).stroke();
-                doc.font('Helvetica').fontSize(7).fillColor('#94A3B8')
-                    .text('Signature', MARGIN, sy + 4);
-                sy += 22;
-
-                // Agreement text
-                doc.font('Helvetica-Oblique').fontSize(7.5).fillColor('#94A3B8')
-                    .text(
-                        `I, ${sigAssets.staff.name || inspectorName || '___'}, confirm that this ${(docTitle || 'inspection').toLowerCase()} was completed on ${formatDate(sigAssets.staff.date || inspectionDate)} and that the information recorded is accurate to the best of my knowledge.`,
-                        MARGIN, sy, { width: CONTENT_W }
-                    );
-                sy = doc.y + 20;
-            }
-
-            // Tenant signatures (entry/exit only)
-            const hasTenants = sigAssets.tenants?.some(t => t?.buffer);
-            if (hasTenants) {
-                sy = ensureSpace(sy, 40);
-                doc.moveTo(MARGIN, sy).lineTo(PAGE_W - MARGIN, sy).strokeColor('#E2E8F0').lineWidth(0.5).stroke();
-                sy += 16;
-                doc.font('Helvetica-Bold').fontSize(7).fillColor('#94A3B8').text('TENANTS', MARGIN, sy);
-                sy += 14;
-
-                for (let ti = 0; ti < sigAssets.tenants.length; ti++) {
-                    const tenant = sigAssets.tenants[ti];
-                    if (!tenant?.buffer) continue;
-
-                    sy = ensureSpace(sy, 140);
-
-                    doc.font('Helvetica-Bold').fontSize(9).fillColor('#1E293B')
-                        .text(tenant.name || `Tenant ${ti + 1}`, MARGIN, sy);
-                    sy += 13;
-                    if (tenant.date) {
-                        doc.font('Helvetica').fontSize(8).fillColor('#64748B')
-                            .text(`Date: ${formatDate(tenant.date)}`, MARGIN, sy);
-                        sy += 14;
-                    }
-
+                if (tenant?.buffer) {
                     try {
                         doc.image(tenant.buffer, MARGIN, sy, {
-                            fit: [CONTENT_W * 0.4, 70],
+                            fit: [CONTENT_W * 0.4, 62],
                             align: 'left',
                             valign: 'top',
                         });
                     } catch (err) {
                         console.warn(`Failed to embed tenant ${ti + 1} signature:`, err.message);
                     }
-                    sy += 78;
-
-                    doc.moveTo(MARGIN, sy).lineTo(MARGIN + CONTENT_W * 0.4, sy)
-                        .strokeColor('#CBD5E1').lineWidth(0.5).stroke();
-                    doc.font('Helvetica').fontSize(7).fillColor('#94A3B8')
-                        .text('Signature', MARGIN, sy + 4);
-                    sy += 22;
                 }
-            }
+                sy += 68;
 
-            // Contact line
-            sy = ensureSpace(sy, 40);
-            doc.moveTo(MARGIN, sy).lineTo(PAGE_W - MARGIN, sy).strokeColor('#E2E8F0').lineWidth(0.5).stroke();
-            sy += 14;
-            doc.font('Helvetica').fontSize(8).fillColor('#94A3B8')
-                .text('For any issues or concerns regarding this report, please contact ', MARGIN, sy, { width: CONTENT_W, continued: true })
-                .font('Helvetica-Bold').fillColor('#7C3AED').text('admin@everhomes.com.au', { link: 'mailto:admin@everhomes.com.au' });
+                doc.moveTo(MARGIN, sy).lineTo(MARGIN + CONTENT_W * 0.4, sy)
+                    .strokeColor('#CBD5E1').lineWidth(0.5).stroke();
+                doc.font('Helvetica').fontSize(7).fillColor('#94A3B8').text('Signature', MARGIN, sy + 4);
+                sy += 18;
+            }
         }
+
+        // Contact line
+        sy = ensureSpace(sy, 40);
+        doc.moveTo(MARGIN, sy).lineTo(PAGE_W - MARGIN, sy).strokeColor('#E2E8F0').lineWidth(0.5).stroke();
+        sy += 14;
+        doc.font('Helvetica').fontSize(8).fillColor('#94A3B8')
+            .text('For any issues or concerns regarding this report, please contact ', MARGIN, sy, { width: CONTENT_W, continued: true })
+            .font('Helvetica-Bold').fillColor('#7C3AED').text('admin@everhomes.com.au', { link: 'mailto:admin@everhomes.com.au' });
 
         // ── Footer on every page ─────────────────────────────────────────
         const range = doc.bufferedPageRange();
-        const FOOTER_Y = PAGE_H - MARGIN - 10;
+        const FOOTER_Y = PAGE_H - 58;
         const THIRD_W = CONTENT_W / 3;
 
         for (let i = 0; i < range.count; i++) {
