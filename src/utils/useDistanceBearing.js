@@ -86,13 +86,13 @@ function formatDistance(distanceKm) {
 }
 
 // Main function to get hint information
-export function getCountryHint(fromCountry, toCountry) {
+export async function getCountryHint(fromCountry, toCountry) {
     if (!fromCountry || !toCountry) {
         return null
     }
 
-    const fromCoords = getCountryCoordinates(fromCountry)
-    const toCoords = getCountryCoordinates(toCountry)
+    const fromCoords = await getCountryCoordinates(fromCountry)
+    const toCoords = await getCountryCoordinates(toCountry)
 
     if (!fromCoords || !toCoords) {
         return null
@@ -123,8 +123,8 @@ export function getCountryHint(fromCountry, toCountry) {
 }
 
 // Helper function to get a more detailed hint description
-export function getHintDescription(fromCountry, toCountry) {
-    const hint = getCountryHint(fromCountry, toCountry)
+export async function getHintDescription(fromCountry, toCountry) {
+    const hint = await getCountryHint(fromCountry, toCountry)
     if (!hint) return null
 
     if (hint.distance === 0) {

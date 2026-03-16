@@ -83,7 +83,7 @@
     "@vitejs/plugin-vue": "^6.0.4",
     "autoprefixer": "^10.4.19",
     "postcss": "^8.4.38",
-    "rollup-plugin-visualizer": "^5.12.0",
+    "rollup-plugin-visualizer": "^5.14.0",
     "tailwindcss": "^3.4.3",
     "typescript": "^5.8.3",
     "vite": "^7.3.1",

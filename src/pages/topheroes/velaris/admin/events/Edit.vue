@@ -416,7 +416,7 @@ const store = useEventPlayerStore();
 const route = useRoute();
 const { toast } = useToast();
 
-const eventId = route.params.eventId;
+let eventId = route.params.eventId;
 const activeTab = ref('event'); // Start with event tab
 const showAddMissingModal = ref(false)
 const matchedRows = ref([])

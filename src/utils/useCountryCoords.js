@@ -1,62 +1,81 @@
 // utils/useCountryCoords.js
-import countries from 'world-countries'
 
 // Create a lookup map for faster access
 const countryCoordMap = new Map()
+let isInitialized = false
+let initializationPromise = null
 
-// Initialize the coordinate map
-countries.forEach(country => {
-    // Get the main name
-    const mainName = country.name.common
-    const coords = country.latlng
+// Initialize the coordinate map by fetching data
+export async function initCountryCoords() {
+    if (isInitialized) return
+    if (initializationPromise) return initializationPromise
 
-    if (coords && coords.length === 2) {
-        countryCoordMap.set(mainName.toLowerCase(), {
-            lat: coords[0],
-            lng: coords[1],
-            name: mainName
-        })
+    initializationPromise = (async () => {
+        try {
+            const response = await fetch('/data/countries.json')
+            if (!response.ok) throw new Error('Failed to load countries data')
+            const countries = await response.json()
 
-        // Add alternative names
-        if (country.name.official) {
-            countryCoordMap.set(country.name.official.toLowerCase(), {
-                lat: coords[0],
-                lng: coords[1],
-                name: mainName
-            })
-        }
+            countries.forEach(country => {
+                // Get the main name
+                const mainName = country.name.common
+                const coords = country.latlng
 
-        // Add native names
-        if (country.name.nativeName) {
-            Object.values(country.name.nativeName).forEach(nativeName => {
-                if (nativeName.common) {
-                    countryCoordMap.set(nativeName.common.toLowerCase(), {
+                if (coords && coords.length === 2) {
+                    countryCoordMap.set(mainName.toLowerCase(), {
                         lat: coords[0],
                         lng: coords[1],
                         name: mainName
                     })
-                }
-                if (nativeName.official) {
-                    countryCoordMap.set(nativeName.official.toLowerCase(), {
-                        lat: coords[0],
-                        lng: coords[1],
-                        name: mainName
+
+                    // Add alternative names
+                    if (country.name.official) {
+                        countryCoordMap.set(country.name.official.toLowerCase(), {
+                            lat: coords[0],
+                            lng: coords[1],
+                            name: mainName
+                        })
+                    }
+
+                    // Add native names
+                    if (country.name.nativeName) {
+                        Object.values(country.name.nativeName).forEach(nativeName => {
+                            if (nativeName.common) {
+                                countryCoordMap.set(nativeName.common.toLowerCase(), {
+                                    lat: coords[0],
+                                    lng: coords[1],
+                                    name: mainName
+                                })
+                            }
+                            if (nativeName.official) {
+                                countryCoordMap.set(nativeName.official.toLowerCase(), {
+                                    lat: coords[0],
+                                    lng: coords[1],
+                                    name: mainName
+                                })
+                            }
+                        })
+                    }
+
+                    // Add common aliases
+                    const aliases = getCountryAliases(mainName)
+                    aliases.forEach(alias => {
+                        countryCoordMap.set(alias.toLowerCase(), {
+                            lat: coords[0],
+                            lng: coords[1],
+                            name: mainName
+                        })
                     })
                 }
             })
+            isInitialized = true
+        } catch (error) {
+            console.error('Error initializing country coordinates map:', error)
         }
+    })()
 
-        // Add common aliases
-        const aliases = getCountryAliases(mainName)
-        aliases.forEach(alias => {
-            countryCoordMap.set(alias.toLowerCase(), {
-                lat: coords[0],
-                lng: coords[1],
-                name: mainName
-            })
-        })
-    }
-})
+    return initializationPromise
+}
 
 function getCountryAliases(countryName) {
     const aliases = []
@@ -97,8 +116,10 @@ function getCountryAliases(countryName) {
     return aliases
 }
 
-export function getCountryCoordinates(countryName) {
+export async function getCountryCoordinates(countryName) {
     if (!countryName) return null
+
+    await initCountryCoords()
 
     // Try exact match first
     const coords = countryCoordMap.get(countryName.toLowerCase().trim())

@@ -450,7 +450,7 @@ export const useFlagleStore = defineStore('flagle', {
             let hint = null
             if (!correct) {
                 try {
-                    hint = getCountryHint(guess, currentCountry)
+                    hint = await getCountryHint(guess, currentCountry)
                 } catch (error) {
                     console.warn('Failed to calculate hint:', error)
                 }

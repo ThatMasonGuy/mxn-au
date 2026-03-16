@@ -51,17 +51,23 @@ export default defineConfig({
           // Core vendor chunk - Vue ecosystem
           'vue-vendor': ['vue', 'vue-router', 'pinia'],
 
+          // External heavy libraries
+          'firebase': ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/storage', 'firebase/analytics'],
+          'codemirror': ['codemirror', '@codemirror/state', '@codemirror/view', '@codemirror/commands', '@codemirror/language', '@codemirror/lang-javascript', '@codemirror/lang-json', '@codemirror/lang-markdown', '@codemirror/lang-html', '@codemirror/lang-css', '@codemirror/lang-sql'],
+          'xterm': ['xterm', 'xterm-addon-fit', 'xterm-addon-web-links'],
+          'utils': ['marked', 'dompurify', 'html2canvas', 'papaparse', 'crypto-js'],
+
           // Charts (large)
-          'charts': ['echarts', 'chart.js'],
+          'charts': ['echarts', 'vue-echarts', 'chart.js'],
 
           // XLSX (very large - 332KB)
           'xlsx': ['xlsx'],
 
           // UI components
-          'ui': ['radix-vue', 'vaul-vue'],
+          'ui': ['radix-vue', 'vaul-vue', '@heroicons/vue', 'lucide-vue-next'],
 
           // Date libraries
-          'date': ['date-fns', 'luxon'],
+          'date': ['date-fns', 'date-fns-tz', 'luxon'],
         },
       },
     },

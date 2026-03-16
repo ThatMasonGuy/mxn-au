@@ -208,7 +208,10 @@ const streakIconClass = computed(() => {
 
 async function loadAllowedWords() {
     try {
-        const mod = await import('word-list-json')
+        const response = await fetch('/data/words.json')
+        if (!response.ok) throw new Error('Failed to load words package')
+        const mod = await response.json()
+        
         let raw = mod.default ?? mod.words ?? mod.list ?? mod
         let arr
         if (Array.isArray(raw)) arr = raw
