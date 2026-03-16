@@ -1,12 +1,12 @@
 // @/router.js
 import { createRouter, createWebHistory } from 'vue-router'
-import { checkRouteAccess } from '@/utils/useRouteGuards'
+import { checkRouteAccess } from '@/shared/utils/useRouteGuards'
 import { waitForAuth } from '@/auth'
-import { useMainStore } from '@/stores/useMainStore'
-import { updateMetaTagsEnhanced } from '@/utils/useDynamicMetaTags'
-import { useLoadingScreen } from '@/composables/useLoadingScreen'
+import { useMainStore } from '@/shared/stores/useMainStore'
+import { updateMetaTagsEnhanced } from '@/shared/utils/useDynamicMetaTags'
+import { useLoadingScreen } from '@/shared/composables/useLoadingScreen'
 
-const routeModules = import.meta.glob('./routers/modules/*.js', { eager: true })
+const routeModules = import.meta.glob(['./features/*/routes.js', './router/mainRoutes.js'], { eager: true })
 const routes = Object.values(routeModules).flatMap(module => module.default || [])
 
 const router = createRouter({
@@ -52,7 +52,7 @@ router.afterEach((to, from) => {
             to.path !== from.path) {
             lastLoggedPath = to.path
 
-            import('@/utils/useLogUserEvent')
+            import('@/shared/utils/useLogUserEvent')
                 .then(({ logPageView }) => logPageView(to.path))
                 .catch(err => console.warn('[Router] Failed to log page view:', err))
         }

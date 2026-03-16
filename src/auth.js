@@ -6,8 +6,8 @@ import {
     createUserWithEmailAndPassword
 } from 'firebase/auth'
 import { doc, getDoc, collection, addDoc, serverTimestamp, updateDoc } from 'firebase/firestore'
-import { useMainStore } from '@/stores/useMainStore'
-import { useCreateNewUser } from '@/utils/useCreateNewUser'
+import { useMainStore } from '@/shared/stores/useMainStore'
+import { useCreateNewUser } from '@/shared/utils/useCreateNewUser'
 import router from './router'
 
 const emailRegex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/
