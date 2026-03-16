@@ -9,6 +9,8 @@ lerna-debug.log*
 
 functions/mxn-au-0173a0dfc9b9.json
 .env
+.env.*
+!.env.example
 node_modules
 dist
 dist-ssr
