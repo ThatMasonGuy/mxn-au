@@ -330,7 +330,6 @@ import {
 } from 'lucide-vue-next';
 import SchematicNode from '@/components/satisfactory/SchematicNode.vue';
 import { resourceNodes, productionBuildings, logisticsBuildings } from '@/data/satisfactoryBuildings';
-import html2canvas from 'html2canvas';
 
 const storageBuildings = [
   {
@@ -1236,6 +1235,7 @@ const exportToImage = async () => {
     await new Promise(resolve => setTimeout(resolve, 100));
     
     // Capture
+    const html2canvas = (await import('html2canvas')).default;
     const canvas = await html2canvas(canvasContent.value, {
       backgroundColor: '#0f172a',
       scale: 2,

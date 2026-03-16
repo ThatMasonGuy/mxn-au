@@ -2,6 +2,9 @@
   <div id="app" class="flex flex-col bg-black text-white relative scroll-smooth">
     <TooltipProvider>
 
+      <!-- Route Loading Screen -->
+      <LoadingScreen :visible="isLoading" :message="loadingMessage" />
+
       <!-- Headers (TopHeroes only when overlay is required) -->
       <TopHeroesHeader v-if="showTopHeroesOverlay && layout === 'default'" />
       <TopHeroesAdminHeader v-else-if="showTopHeroesOverlay && layout === 'admin'" />
@@ -36,6 +39,10 @@ import { Toaster } from '@/components/ui/toast'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { ref, computed, watchEffect, defineAsyncComponent } from 'vue'
 import { useRoute } from 'vue-router'
+import { useLoadingScreen } from '@/composables/useLoadingScreen'
+import LoadingScreen from '@/components/common/LoadingScreen.vue'
+
+const { isLoading, loadingMessage } = useLoadingScreen()
 
 // Lazy load layout components - only load when actually needed!
 const TopHeroesHeader = defineAsyncComponent(() => 

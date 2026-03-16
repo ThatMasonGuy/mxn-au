@@ -4,6 +4,7 @@ import { checkRouteAccess } from '@/utils/useRouteGuards'
 import { waitForAuth } from '@/auth'
 import { useMainStore } from '@/stores/useMainStore'
 import { updateMetaTagsEnhanced } from '@/utils/useDynamicMetaTags'
+import { useLoadingScreen } from '@/composables/useLoadingScreen'
 
 const routeModules = import.meta.glob('./routers/modules/*.js', { eager: true })
 const routes = Object.values(routeModules).flatMap(module => module.default || [])
@@ -16,21 +17,29 @@ const router = createRouter({
     },
 })
 
+const { startLoading, stopLoading } = useLoadingScreen()
+
 let lastLoggedPath = null
 let pageViewDebounce = null
 
 router.beforeEach(async (to, from, next) => {
     document.title = to.meta.title ? `${to.meta.title} | MXN.au` : 'MXN.au'
 
+    // Start the debounced loading screen
+    startLoading(to.meta.loadingMessage || '')
+
     await waitForAuth()
     const accessCheck = checkRouteAccess(to)
     if (accessCheck.blocked) {
+        stopLoading()
         return next(accessCheck.redirect)
     }
     next()
 })
 
 router.afterEach((to, from) => {
+    // Hide the loading screen
+    stopLoading()
     
     if (pageViewDebounce) {
         clearTimeout(pageViewDebounce)

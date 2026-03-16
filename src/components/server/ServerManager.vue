@@ -291,7 +291,7 @@ const saveServer = async () => {
         alert('Password is required!')
         return
       }
-      serverData.encryptedPassword = encryptCredential(formData.value.password)
+      serverData.encryptedPassword = await encryptCredential(formData.value.password)
       // Remove key fields if switching from key to password
       delete serverData.encryptedKey
     } else {
@@ -300,7 +300,7 @@ const saveServer = async () => {
         alert('Private key is required!')
         return
       }
-      serverData.encryptedKey = encryptCredential(formData.value.privateKey)
+      serverData.encryptedKey = await encryptCredential(formData.value.privateKey)
       // Remove password fields if switching from password to key
       delete serverData.encryptedPassword
     }

@@ -241,7 +241,6 @@ import {
     Upload, Info, FileDown, Database, FileSpreadsheet, BarChart3,
     FileText, CheckCircle, AlertTriangle, XCircle, Eye, ArrowRight
 } from 'lucide-vue-next'
-import Papa from 'papaparse'
 import { useMembers } from '@/composables/topheroes/admin/useMembers'
 import BulkMemberImportReviewModal from './BulkMemberImportReviewModal.vue'
 
@@ -296,12 +295,14 @@ const downloadTemplateCsv = () => {
     URL.revokeObjectURL(url)
 }
 
-const handleCSVUpload = (e) => {
+const handleCSVUpload = async (e) => {
     const file = e.target.files[0]
     if (!file) return
 
     // Reset summary
     summary.value = { total: 0, success: 0, conflicts: 0, errors: 0 }
+
+    const Papa = (await import('papaparse')).default;
 
     Papa.parse(file, {
         header: true,

@@ -48,14 +48,14 @@ export const useServers = () => {
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
     }
 
-    const getDecryptedCredentials = (server) => {
+    const getDecryptedCredentials = async (server) => {
         if (server.authMethod === 'password') {
             return {
-                password: decryptCredential(server.encryptedPassword)
+                password: await decryptCredential(server.encryptedPassword)
             }
         } else {
             return {
-                privateKey: decryptCredential(server.encryptedKey)
+                privateKey: await decryptCredential(server.encryptedKey)
             }
         }
     }
