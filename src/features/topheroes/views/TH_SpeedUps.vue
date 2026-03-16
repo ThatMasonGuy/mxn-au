@@ -1,57 +1,92 @@
 <!-- src/pages/topHeroes/TH_SpeedUps.vue -->
 <template>
-  <div class="flex flex-col h-full bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
+  <div
+    class="flex flex-col h-full bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white"
+  >
     <div class="flex-grow flex flex-col items-center p-4 sm:p-8">
       <h1 class="text-2xl sm:text-4xl font-extrabold text-center mb-4 sm:mb-8">
         Speed-up Calculator
       </h1>
 
-      <div class="overflow-x-auto w-full max-w-screen-lg border-collapse border border-gray-600 border-b-0 shadow-lg rounded-lg">
+      <div
+        class="overflow-x-auto w-full max-w-screen-lg border-collapse border border-gray-600 border-b-0 shadow-lg rounded-lg"
+      >
         <table class="table-auto w-full text-center text-sm sm:text-base">
           <thead class="bg-gray-800">
             <tr>
               <th class="px-2 sm:px-4 py-2">Type</th>
-              <th v-for="time in times" :key="time" class="border border-y-0 border-r-0 border-gray-600 px-2 sm:px-4 py-2">
+              <th
+                v-for="time in times"
+                :key="time"
+                class="border border-y-0 border-r-0 border-gray-600 px-2 sm:px-4 py-2"
+              >
                 {{ time }}
               </th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="type in speedUpTypes" :key="type">
-              <td class="border border-x-0 border-gray-600 px-2 sm:px-4 py-2 font-medium">
+              <td
+                class="border border-x-0 border-gray-600 px-2 sm:px-4 py-2 font-medium"
+              >
                 {{ type }}
               </td>
-              <td v-for="time in times" :key="time" class="border border-r-0 border-gray-600 px-2 sm:px-4 py-2">
-                <shad-input v-model.number="speedUps[type][time]" type="number" placeholder="0"
-                  class="w-16 sm:min-w-16 sm:w-full text-center bg-gray-800 text-white border border-gray-600 rounded text-xs sm:text-sm" />
+              <td
+                v-for="time in times"
+                :key="time"
+                class="border border-r-0 border-gray-600 px-2 sm:px-4 py-2"
+              >
+                <shad-input
+                  v-model.number="speedUps[type][time]"
+                  type="number"
+                  placeholder="0"
+                  class="w-16 sm:min-w-16 sm:w-full text-center bg-gray-800 text-white border border-gray-600 rounded text-xs sm:text-sm"
+                />
               </td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      <div class="mt-4 sm:mt-6 w-full max-w-screen-lg flex flex-col sm:flex-row justify-between gap-2">
-        <shad-button @click="calculateTotals"
-          class="bg-blue-700 hover:bg-blue-800 text-white font-semibold py-2 px-4 sm:py-3 sm:px-6 rounded-md text-sm sm:text-base shadow-md">
+      <div
+        class="mt-4 sm:mt-6 w-full max-w-screen-lg flex flex-col sm:flex-row justify-between gap-2"
+      >
+        <shad-button
+          @click="calculateTotals"
+          class="bg-blue-700 hover:bg-blue-800 text-white font-semibold py-2 px-4 sm:py-3 sm:px-6 rounded-md text-sm sm:text-base shadow-md"
+        >
           Calculate Totals
         </shad-button>
-        <shad-button @click="clearInputs"
-          class="bg-red-700 hover:bg-red-800 text-white font-semibold py-2 px-4 sm:py-3 sm:px-6 rounded-md text-sm sm:text-base shadow-md">
+        <shad-button
+          @click="clearInputs"
+          class="bg-red-700 hover:bg-red-800 text-white font-semibold py-2 px-4 sm:py-3 sm:px-6 rounded-md text-sm sm:text-base shadow-md"
+        >
           Clear All
         </shad-button>
       </div>
 
-      <div v-if="results" class="mt-6 sm:mt-8 p-4 sm:p-6 w-full max-w-screen-lg bg-gray-800 rounded-md shadow-lg text-sm sm:text-base">
+      <div
+        v-if="results"
+        class="mt-6 sm:mt-8 p-4 sm:p-6 w-full max-w-screen-lg bg-gray-800 rounded-md shadow-lg text-sm sm:text-base"
+      >
         <h2 class="text-xl sm:text-2xl font-semibold mb-4 sm:mb-2">Results</h2>
         <div class="grid grid-cols-1 gap-2 sm:gap-4">
-          <div v-for="(total, type) in results" :key="type" class="flex justify-between border-b border-gray-600 py-1 sm:py-2">
+          <div
+            v-for="(total, type) in results"
+            :key="type"
+            class="flex justify-between border-b border-gray-600 py-1 sm:py-2"
+          >
             <div class="text-base sm:text-lg">{{ type }}</div>
-            <div class="pl-4 text-base text-right sm:text-xl font-bold">{{ formatTime(total) }}</div>
+            <div class="pl-4 text-base text-right sm:text-xl font-bold">
+              {{ formatTime(total) }}
+            </div>
           </div>
         </div>
 
         <p class="mt-4 sm:mt-6 text-lg sm:text-xl font-extrabold text-center">
-          Total Speed-ups:<span class="text-blue-500 pl-2">{{ formatTime(grandTotal) }}</span>
+          Total Speed-ups:<span class="text-blue-500 pl-2">{{
+            formatTime(grandTotal)
+          }}</span>
         </p>
       </div>
     </div>
@@ -59,28 +94,37 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
-import { Input as ShadInput, Button as ShadButton } from '@/components/ui';
+import { ref } from "vue";
+import {
+  Input as ShadInput,
+  Button as ShadButton,
+} from "@/shared/components/ui";
 
-const speedUpTypes = ['Universal', 'Building', 'Research', 'Training', 'Healing'];
+const speedUpTypes = [
+  "Universal",
+  "Building",
+  "Research",
+  "Training",
+  "Healing",
+];
 const times = [
-  '1 Minute',
-  '5 Minutes',
-  '15 Minutes',
-  '30 Minutes',
-  '1 Hour',
-  '3 Hours',
-  '8 Hours',
+  "1 Minute",
+  "5 Minutes",
+  "15 Minutes",
+  "30 Minutes",
+  "1 Hour",
+  "3 Hours",
+  "8 Hours",
 ];
 
 const timeConversion = {
-  '1 Minute': 1,
-  '5 Minutes': 5,
-  '15 Minutes': 15,
-  '30 Minutes': 30,
-  '1 Hour': 60,
-  '3 Hours': 180,
-  '8 Hours': 480,
+  "1 Minute": 1,
+  "5 Minutes": 5,
+  "15 Minutes": 15,
+  "30 Minutes": 30,
+  "1 Hour": 60,
+  "3 Hours": 180,
+  "8 Hours": 480,
 };
 
 const speedUps = ref(
@@ -88,8 +132,8 @@ const speedUps = ref(
     speedUpTypes.map((type) => [
       type,
       Object.fromEntries(times.map((time) => [time, 0])),
-    ])
-  )
+    ]),
+  ),
 );
 
 const results = ref(null);
@@ -135,11 +179,11 @@ const formatTime = (totalMinutes) => {
   for (const [unit, value] of Object.entries(units)) {
     const count = Math.floor(totalMinutes / value);
     if (count > 0) {
-      result.push(`${count} ${unit}${count > 1 ? 's' : ''}`);
+      result.push(`${count} ${unit}${count > 1 ? "s" : ""}`);
       totalMinutes %= value;
     }
   }
 
-  return result.length > 0 ? result.join(', ') : '0 minutes';
+  return result.length > 0 ? result.join(", ") : "0 minutes";
 };
 </script>

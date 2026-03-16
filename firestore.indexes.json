@@ -55,6 +55,14 @@
         { "fieldPath": "rarity", "order": "ASCENDING" },
         { "fieldPath": "name", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "days",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "closed", "order": "ASCENDING" },
+        { "fieldPath": "date", "order": "DESCENDING" }
+      ]
     }
   ]
 }
