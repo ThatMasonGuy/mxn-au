@@ -483,11 +483,17 @@
 
                 <!-- Checklist Items -->
                 <div v-if="getFilteredGroups(section.type).length">
-                  <p
-                    class="text-[0.65rem] font-black text-slate-500 uppercase tracking-widest mb-2.5"
-                  >
-                    Review Items
-                  </p>
+                  <div class="flex items-center justify-between mb-2.5">
+                    <p class="text-[0.65rem] font-black text-slate-500 uppercase tracking-widest">
+                      Review Items
+                    </p>
+                    <div class="flex items-center gap-2 flex-wrap justify-end">
+                      <span class="flex items-center gap-1 text-[0.58rem] font-semibold text-emerald-400"><CheckCircle class="w-3 h-3" />OK</span>
+                      <span class="flex items-center gap-1 text-[0.58rem] font-semibold text-amber-400"><AlertTriangle class="w-3 h-3" />Attention</span>
+                      <span class="flex items-center gap-1 text-[0.58rem] font-semibold text-rose-400"><XCircle class="w-3 h-3" />Issue</span>
+                      <span class="flex items-center gap-1 text-[0.58rem] font-semibold text-slate-500"><MinusCircle class="w-3 h-3" />N/A</span>
+                    </div>
+                  </div>
                   <div class="space-y-4">
                     <div
                       v-for="group in getFilteredGroups(section.type)"
@@ -506,6 +512,7 @@
                       </div>
                       <div class="space-y-0.5">
                         <template v-for="item in group.items" :key="item.id">
+                          <template v-if="itemVisible(item, section.id)">
                           <!-- ── Input item (number / text) ── -->
                           <div
                             v-if="
@@ -549,6 +556,42 @@
                               class="w-28 shrink-0 bg-slate-900/80 border border-slate-600 text-white placeholder-slate-600 text-xs font-medium rounded-lg px-2.5 py-1.5 text-right focus:outline-none focus:ring-2 focus:ring-teal-500 transition"
                               :class="item.type === 'number' ? 'w-20' : 'w-36'"
                             />
+                          </div>
+
+                          <!-- ── Yes / No item ── -->
+                          <div
+                            v-else-if="item.type === 'yesno'"
+                            class="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-slate-800/40"
+                          >
+                            <div class="flex-1 flex flex-wrap items-center gap-1.5 min-w-0">
+                              <span
+                                v-for="chip in parseLabel(item.label).chips"
+                                :key="chip"
+                                class="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded-md text-[0.58rem] font-black uppercase tracking-wide leading-none"
+                                :style="sdaChipStyle(chip)"
+                                >{{ chip }}</span
+                              >
+                              <span
+                                class="text-xs font-medium leading-tight"
+                                :class="item.sda ? 'text-slate-300' : 'text-slate-400'"
+                              >{{ parseLabel(item.label).text }}</span>
+                            </div>
+                            <div class="flex items-center gap-1 shrink-0">
+                              <button
+                                @click="setItemInput(section.id, item.id, checklistData[section.id].inputs?.[item.id] === 'yes' ? '' : 'yes')"
+                                class="px-2.5 py-1 rounded-lg text-xs font-bold border transition-all duration-100"
+                                :class="checklistData[section.id].inputs?.[item.id] === 'yes'
+                                  ? 'bg-emerald-500/25 border-emerald-500/80 text-emerald-400'
+                                  : 'border-slate-700/60 text-slate-600 hover:border-slate-600 hover:text-slate-400 bg-transparent'"
+                              >Yes</button>
+                              <button
+                                @click="setItemInput(section.id, item.id, checklistData[section.id].inputs?.[item.id] === 'no' ? '' : 'no')"
+                                class="px-2.5 py-1 rounded-lg text-xs font-bold border transition-all duration-100"
+                                :class="checklistData[section.id].inputs?.[item.id] === 'no'
+                                  ? 'bg-rose-500/25 border-rose-500/80 text-rose-400'
+                                  : 'border-slate-700/60 text-slate-600 hover:border-slate-600 hover:text-slate-400 bg-transparent'"
+                              >No</button>
+                            </div>
                           </div>
 
                           <!-- ── Standard checklist item ── -->
@@ -611,6 +654,7 @@
                               </button>
                             </div>
                           </div>
+                          </template>
                         </template>
                       </div>
                     </div>
@@ -2093,6 +2137,12 @@ function getFilteredGroups(type) {
   return getHandoverGroups(type)
     .map((group) => ({ ...group, items: group.items.filter(itemApplicable) }))
     .filter((group) => group.items.length > 0);
+}
+
+function itemVisible(item, sectionId) {
+  if (!item.showIf) return true;
+  const val = checklistData[sectionId]?.inputs?.[item.showIf.id] ?? '';
+  return val === item.showIf.value;
 }
 
 // ─── SDA chip helpers ─────────────────────────────────────────────────────────
