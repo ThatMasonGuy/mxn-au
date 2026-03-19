@@ -13,15 +13,6 @@ export const HANDOVER_ITEMS = {
 
     general: [
         {
-            group: 'SDA Compliance', items: [
-                { id: 'sdaSuitability', label: 'Suitability of Dwelling to be Used as SDA' },
-                { id: 'sdaCount', label: 'Number of SDA Dwellings on Parcel of Land', type: 'number' },
-                { id: 'roomSize', label: 'Size or Usability of All Rooms in Dwelling' },
-                { id: 'storageCupboard', label: '600mm Wide Storage Cupboard with Adjustable Shelving (separate to bedroom robe)' },
-                { id: 'vandaalProof', label: 'R: High Impact / Vandal Proof Fittings and Fixtures' },
-            ]
-        },
-        {
             group: 'Floors, Walls & Ceilings', items: [
                 { id: 'floorFirmness', label: 'Internal Flooring — Firmness and Evenness' },
                 { id: 'carpetSpec', label: 'FA/HPS: Carpet — Pile <11mm, Backing <4mm, Total ≤15mm' },
@@ -39,10 +30,34 @@ export const HANDOVER_ITEMS = {
                 { id: 'gpoType', label: 'GPOs — Rocker / Toggle / Push Pad, Minimum Width 35mm' },
                 { id: 'gpoHeight', label: 'FA/HPS: GPOs Installed 600–1100mm Above Floor' },
                 { id: 'hvacPresent', label: 'FA/HPS: Reverse Cycle Air Conditioning — Living Areas and Bedrooms' },
-                { id: 'hvacZoned', label: 'FA/HPS: Ducted Air Conditioning Zoned into Habitable Rooms (if applicable)' },
+                { id: 'hvacZoned', label: 'FA/HPS: Ducted Air Conditioning Zoned into Habitable Rooms' },
                 { id: 'emergPower', label: 'HPS: Emergency Power — Minimum 2 Hour Outage Coverage' },
                 { id: 'emergGpos', label: 'HPS: Emergency Power — 2 Double GPOs in Participant Bedrooms' },
                 { id: 'emergDoors', label: 'HPS: Emergency Power — Covers Automated Entry / Egress Doors' },
+            ]
+        },
+        {
+            group: 'Security & General Fixtures', items: [
+                { id: 'securityScreens', label: 'Security Screens — Present' },
+                { id: 'ceilingFans', label: 'Ceiling Fans — Present' },
+                { id: 'airConditioning', label: 'Air Conditioning — Present' },
+            ]
+        },
+        {
+            group: 'Fire Safety & Evacuation', items: [
+                { id: 'smokeAlarms', label: 'Smoke Alarms — Present in Bedrooms and Living Spaces' },
+                { id: 'evacPlan', label: 'Emergency Evacuation Plan — Provided with Path of Travel to Safe Place' },
+                { id: 'fireSafetyEquip', label: 'Fire Safety Equipment — Extinguisher / Blanket Present' },
+                { id: 'fireSafetyType', label: 'Fire Safety — Equipment Type', type: 'text' },
+                { id: 'fireSafetyLocation', label: 'Fire Safety — Equipment Location', type: 'text' },
+                { id: 'fireSafetyDate', label: 'Fire Safety — Last Service Date', type: 'text' },
+                { id: 'sprinklers', label: 'Fire Sprinklers — Present' },
+                { id: 'sprinklerValvePhoto', label: 'Fire Sprinklers — Photo of High Pressure Water Valve / Backflow Prevention Taken' },
+                { id: 'emergLighting', label: 'Emergency Lighting (if required under NCC)' },
+                { id: 'designDrawings', label: 'R: Design Drawings Provided to Site Manager, Staff and Residents (egress / retreat)' },
+                { id: 'upsBattery', label: 'UPS / Battery Backup — Present & Functional' },
+                { id: 'upsBatteryLocation', label: 'UPS / Battery Backup — Location', type: 'text' },
+                { id: 'upsBatteryDate', label: 'UPS / Battery Backup — Last Service Date', type: 'text' },
             ]
         },
         {
@@ -52,50 +67,52 @@ export const HANDOVER_ITEMS = {
             ]
         },
         {
-            group: 'Fire Safety & Evacuation', items: [
-                { id: 'smokeAlarms', label: 'Smoke Alarms — Present in Bedrooms and Living Spaces' },
-                { id: 'evacPlan', label: 'Emergency Evacuation Plan — Provided with Path of Travel to Safe Place' },
-                { id: 'sprinklers', label: 'Fire Sprinklers (if provided)' },
-                { id: 'emergLighting', label: 'Emergency Lighting (if required under NCC)' },
-                { id: 'designDrawings', label: 'R: Design Drawings Provided to Site Manager, Staff and Residents (egress / retreat)' },
+            group: 'Meter Readings', items: [
+                { id: 'waterMeter', label: 'Water Meter Reading', type: 'text' },
+                { id: 'nmiReading', label: 'National Metering Identifier (NMI)', type: 'text' },
+            ]
+        },
+        {
+            group: 'Whitegoods & Warranties', items: [
+                { id: 'whitegoodsSupplied', label: 'Are Whitegoods Supplied?', type: 'yesno' },
+                { id: 'warrantyType', label: 'Are the Warranties Digital or Paper?', type: 'text' },
+                { id: 'warrantiesHeld', label: 'Do You Have the Warranties?', type: 'yesno' },
+            ]
+        },
+        {
+            group: 'Keys', items: [
+                { id: 'keysHeld', label: 'Do You Have the Keys?', type: 'yesno' },
+                { id: 'keysGarage', label: 'Keys — Garage', type: 'number', showIf: { id: 'keysHeld', value: 'yes' } },
+                { id: 'keysScreenDoor', label: 'Keys — Screen Door', type: 'number', showIf: { id: 'keysHeld', value: 'yes' } },
+                { id: 'keysFrontDoor', label: 'Keys — Front Door', type: 'number', showIf: { id: 'keysHeld', value: 'yes' } },
+                { id: 'keysDeadlock', label: 'Keys — Deadlock', type: 'number', showIf: { id: 'keysHeld', value: 'yes' } },
+                { id: 'keysLetterbox', label: 'Keys — Letterbox', type: 'number', showIf: { id: 'keysHeld', value: 'yes' } },
+                { id: 'keysWindows', label: 'Keys — Windows', type: 'number', showIf: { id: 'keysHeld', value: 'yes' } },
+                { id: 'keysOther', label: 'Keys — Other', type: 'text', showIf: { id: 'keysHeld', value: 'yes' } },
+            ]
+        },
+        {
+            group: 'Builder Defects', items: [
+                { id: 'builderDefects', label: 'Were There Any Defects to be Rectified by the Builder?', type: 'yesno' },
+                { id: 'builderNotified', label: 'Was the Builder Notified of Defects?', type: 'yesno', showIf: { id: 'builderDefects', value: 'yes' } },
+            ]
+        },
+        {
+            group: 'SDA Compliance', items: [
+                { id: 'sdaCount', label: 'Number of SDA Dwellings on Parcel of Land', type: 'number' },
+                { id: 'vandaalProof', label: 'R: High Impact / Vandal Proof Fittings and Fixtures' },
+                { id: 'roomSize', label: 'Is the Size or Usability of All Rooms in Dwelling Suitable?' },
+                { id: 'sdaSuitability', label: 'Suitability of Dwelling to be Used as SDA' },
             ]
         },
     ],
 
     accessway: [
         {
-            group: 'Pathway', items: [
-                { id: 'pathCrossfall', label: 'Crossfall (Sideways Slope) — Within Tolerance' },
-                { id: 'pathVertTol', label: 'Vertical Tolerance Between Abutting Surfaces and Cracks' },
-                { id: 'pathTransition', label: 'Transition of Surface Materials — Compliant' },
-                { id: 'pathSlipRes', label: 'Slip Resistance — Compliant' },
-                { id: 'pathLandings', label: 'Landings — Compliant' },
-                { id: 'pathKerbRails', label: 'Kerb Rails — Present and Compliant (if required)' },
-                { id: 'pathHandrails', label: 'Handrails or Walls — Present and Compliant (if required)' },
-                { id: 'pathWidthFA', label: 'FA/HPS: Pathway Width — 1200mm Clear (1500mm if Curved)' },
-                { id: 'pathWidthRIL', label: 'R/IL: Pathway Width — 1000mm Clear' },
-            ]
-        },
-        {
-            group: 'Step Ramp (if applicable)', items: [
-                { id: 'stepRampGrad', label: 'Gradient (Slope) — 1:10 Maximum' },
-                { id: 'stepRampLevel', label: 'Level Change — Within Tolerance' },
-                { id: 'stepRampSlip', label: 'Slip Resistance — P5 or R12' },
-                { id: 'stepRampWidthsFA', label: 'FA/HPS: Step Ramp Widths — 1000mm Min Width, 1540mm Door Circulation' },
-                { id: 'stepRampWidthsRIL', label: 'R/IL: Step Ramp Widths — 850mm Min Width, 1000mm Door Circulation' },
-            ]
-        },
-        {
-            group: 'Ramp (if applicable)', items: [
-                { id: 'rampLandings', label: 'Landings — Compliant' },
-                { id: 'rampHandrails', label: 'Handrails — AS1428.1 Compliant' },
-                { id: 'rampKerbRails', label: 'Kerb Rails — Present and Compliant' },
-                { id: 'rampSlipRes', label: 'Slip Resistance — Compliant' },
-            ]
-        },
-        {
-            group: 'Gates (if applicable)', items: [
-                { id: 'gates', label: 'Gates and Landings in Front of Them — Compliant' },
+            group: 'Accessways', items: [
+                { id: 'outdoorAccessible', label: 'Are All Outdoor Areas Accessible?', type: 'yesno' },
+                { id: 'slipResistant', label: 'Are Outdoor Surfaces Slip Resistant?', type: 'yesno' },
+                { id: 'outdoorCovered', label: 'Are Outdoor Areas Covered?', type: 'yesno' },
             ]
         },
     ],
@@ -103,8 +120,10 @@ export const HANDOVER_ITEMS = {
     carParking: [
         {
             group: 'Car Parking for Participants', items: [
+                { id: 'parkingType', label: 'Carport or Garage?', type: 'text' },
+                { id: 'parkingCount', label: 'Number of Car Parks', type: 'number' },
                 { id: 'parkingAccess', label: 'Access from Car Parking Space to Entry Doorway' },
-                { id: 'parkingDimensions', label: 'Car Parking Space Dimensions', type: 'text' },
+                { id: 'wheelchairSuitable', label: 'Wheelchair Vehicle Suitable?', type: 'yesno' },
                 { id: 'parkingSlipRes', label: 'Slip Resistance — Compliant' },
                 { id: 'parkingGradient', label: 'Gradient (Slope) — Compliant' },
                 { id: 'vertClearance', label: 'Vertical Clearance of Roof (including Carports)' },
@@ -118,7 +137,7 @@ export const HANDOVER_ITEMS = {
                 { id: 'stepFreeLanding', label: 'Step-Free Landing Area and Doorway Threshold — Front Door' },
                 { id: 'landingGradient', label: 'Landing Gradient (Slope) — Compliant' },
                 { id: 'landingCrossfall', label: 'Landing Crossfall — Compliant' },
-                { id: 'thresholdFlush', label: 'Threshold Flush or Ramp Present (if required)' },
+                { id: 'thresholdFlush', label: 'Threshold Flush or Ramp Present' },
                 { id: 'entranceDoorCirc', label: 'Door Circulation Space — Both Sides of Front Door' },
                 { id: 'coveredEntry', label: 'Covered Roof Area Over Entry' },
             ]
@@ -126,7 +145,7 @@ export const HANDOVER_ITEMS = {
         {
             group: 'Door Automation (if applicable)', sda: true, items: [
                 { id: 'autoCabling', label: 'HPS: Power & Control Cabling (GPO) to Head of Entry Doors' },
-                { id: 'autoHardware', label: 'Door Automation Hardware — Functional (if installed)' },
+                { id: 'autoHardware', label: 'Door Automation Hardware — Functional' },
             ]
         },
         {
@@ -153,6 +172,7 @@ export const HANDOVER_ITEMS = {
                 { id: 'corridorWidthFA', label: 'FA/HPS: Width — 1200mm Skirting to Skirting' },
                 { id: 'corridorWidthRIL', label: 'R/IL: Width — 1000mm Skirting to Skirting' },
                 { id: 'corridorCirc', label: 'Door Circulation Space in Corridor — Compliant' },
+                { id: 'storageCupboard', label: '600mm Wide Storage Cupboard with Adjustable Shelving (separate to bedroom robe)' },
             ]
         },
     ],
@@ -160,6 +180,7 @@ export const HANDOVER_ITEMS = {
     windows: [
         {
             group: 'Windows & Glazing', items: [
+                { id: 'blindsInstalled', label: 'Does the Property Have Blinds Installed?', type: 'yesno' },
                 { id: 'sillHeight', label: 'HPS/FA: Window Sill Height — Max 1000mm in Living Areas and at Least One Bedroom' },
                 { id: 'windowReach', label: 'HPS/FA: Window Controls Reachable — 600–1100mm Above Floor' },
                 { id: 'blindCabling', label: 'HPS: Power & Control Cabling for Blind Automation (capped GPO)' },
@@ -173,16 +194,15 @@ export const HANDOVER_ITEMS = {
     sanitary: [
         {
             group: 'Fixtures & Quantity', items: [
-                { id: 'wcCount', label: 'WC Pans — Count', type: 'number' },
-                { id: 'wcFunction', label: 'WC Pans — Accessible, Located and Functional' },
                 { id: 'basinCount', label: 'Hand Wash Basins — Count', type: 'number' },
                 { id: 'basinFunction', label: 'Hand Wash Basins — Accessible, Located and Functional' },
-                { id: 'showerCount', label: 'Showers — Count', type: 'number' },
-                { id: 'showerFunction', label: 'Showers — Accessible, Located and Functional' },
             ]
         },
         {
             group: 'Toilet', items: [
+                { id: 'wcCount', label: 'Toilets — Count', type: 'number' },
+                { id: 'wcFunction', label: 'Toilets — Accessible, Located and Functional' },
+                { id: 'bidetCapable', label: 'Bidet Capable? (See Notes for Details)', type: 'yesno' },
                 { id: 'toiletBackrest', label: 'Toilet Backrest — Present' },
                 { id: 'toiletGrabrail', label: 'Grab Rails — Present and Compliant' },
                 { id: 'toiletClear', label: 'Clear Space in Front — Clear of Door Swing' },
@@ -191,17 +211,19 @@ export const HANDOVER_ITEMS = {
         },
         {
             group: 'Shower Area', items: [
+                { id: 'showerCount', label: 'Showers — Count', type: 'number' },
+                { id: 'showerFunction', label: 'Showers — Accessible, Located and Functional' },
                 { id: 'showerClear', label: 'Clear Space in Front — Clear of Door Swing' },
                 { id: 'noShowerScreen', label: 'No Shower Screens or Screen Fixtures Present' },
                 { id: 'showerGrabrail', label: 'HPS/FA: Vertical Support Grab Rail — Present' },
                 { id: 'curtainRail', label: 'HPS/FA: Curtain Rail — Present' },
                 { id: 'showerGradient', label: 'HPS/FA: Shower Floor Gradient — No Notable Changes' },
                 { id: 'showerTaps', label: 'HPS/FA: Lever Style Shower Tap — Present' },
+                { id: 'towelRail', label: 'Towel Rail — Present' },
             ]
         },
         {
             group: 'Hand Wash Basin', items: [
-                { id: 'basinDepth', label: 'Basin Depth — Compliant' },
                 { id: 'basinClear', label: 'Clear Space in Front with Sufficient Circulation Space' },
                 { id: 'kneeClear', label: 'Knee and Toe Clearance Under Basin' },
                 { id: 'basinTaps', label: 'Tapware — Lever or Sensor Type, Within Reach' },
@@ -209,11 +231,12 @@ export const HANDOVER_ITEMS = {
         },
         {
             group: 'Other Sanitary', items: [
-                { id: 'bathtub', label: 'Bathtub — Compliant (if applicable)' },
+                { id: 'bathtub', label: 'Bathtub — Compliant' },
                 { id: 'otherGrabrails', label: 'Other Grab Rails — Present and Compliant' },
                 { id: 'sanitarySlipRes', label: 'Slip Resistance — Compliant' },
                 { id: 'wallCabinets', label: 'Wall Cabinets — Accessible and Compliant' },
                 { id: 'wallReinforcement', label: 'Wall Reinforcement (Thick Sheeting) — Present' },
+                { id: 'robustBathroomFixtures', label: 'R: Robust Fixtures — Present and Compliant' },
             ]
         },
     ],
@@ -221,12 +244,10 @@ export const HANDOVER_ITEMS = {
     kitchen: [
         {
             group: 'Functional Requirements', items: [
-                { id: 'kitchenCooktop', label: 'Fixed Cooktop with Rangehood — Present and Functional' },
-                { id: 'kitchenOven', label: 'Built-in Oven — Present and Functional' },
                 { id: 'kitchenSink', label: 'Sink with Tap — Present and Functional' },
                 { id: 'kitchenDishwasher', label: 'Dishwasher — Present (required for all categories)' },
                 { id: 'dishwasherDrawer', label: 'FA/HPS: Dishwasher — Drawer Style' },
-                { id: 'fridgeSpace', label: 'Fridge Space — 700mm Depth' },
+                { id: 'hasFridge', label: 'Is There a Fridge?', type: 'yesno' },
                 { id: 'kitchenSlipRes', label: 'Slip Resistance of Flooring — Compliant' },
             ]
         },
@@ -238,7 +259,8 @@ export const HANDOVER_ITEMS = {
             ]
         },
         {
-            group: 'Wall Oven (FA/HPS)', sda: true, items: [
+            group: 'Oven', sda: true, items: [
+                { id: 'kitchenOven', label: 'Built-in Oven — Present and Functional' },
                 { id: 'ovenDoorHinge', label: 'FA/HPS: Oven Door — Side Hinged, Latch Side Next to Accessible Benchtop' },
                 { id: 'ovenHandle', label: 'FA/HPS: Oven Door Handle Height — 600–1100mm Above Floor' },
                 { id: 'ovenRails', label: 'FA/HPS: Telescopic Rails on at Least One Shelf' },
@@ -262,10 +284,15 @@ export const HANDOVER_ITEMS = {
             ]
         },
         {
-            group: 'Cooktop & Tapware (FA/HPS)', sda: true, items: [
+            group: 'Cooktop', sda: true, items: [
+                { id: 'kitchenCooktop', label: 'Fixed Cooktop with Rangehood — Present and Functional' },
                 { id: 'cooktopType', label: 'FA/HPS: Cooktop — Electric or Induction (No Gas)' },
                 { id: 'cooktopPosition', label: 'FA/HPS: Cooktop — Min 300mm from Internal Corner / Wall' },
                 { id: 'cooktopControls', label: 'FA/HPS: Cooktop Controls — Accessible Side or Near Front Edge' },
+            ]
+        },
+        {
+            group: 'Kitchen Tapware', items: [
                 { id: 'kitchenTaps', label: 'FA/HPS: Tapware — Lever or Sensor, Max 300mm from Benchtop Edge' },
             ]
         },
@@ -280,6 +307,7 @@ export const HANDOVER_ITEMS = {
         {
             group: 'Laundry Fixtures', items: [
                 { id: 'laundryAvail', label: 'Laundry Access with Sink or Tub and Taps — Available' },
+                { id: 'washerDryer', label: 'Is There a Washer / Dryer?', type: 'yesno' },
                 { id: 'applianceDepth', label: 'Appliance Depth — 700mm Required' },
                 { id: 'laundrySlipRes', label: 'Slip Resistance of Flooring — Compliant' },
             ]
@@ -315,13 +343,17 @@ export const HANDOVER_ITEMS = {
             ]
         },
         {
-            group: 'Electrical & Climate', items: [
+            group: 'Electrical', items: [
                 { id: 'bedroomGpos', label: 'FA/HPS: 3 Double GPOs at Head of Bed + 1 Double GPO on Opposite Wall' },
                 { id: 'ceilingGpo', label: 'HPS: GPO in Ceiling for Ceiling Hoist Power' },
                 { id: 'bedroomDimmer', label: 'Dimmable Lights — Present' },
-                { id: 'bedroomHvac', label: 'FA/HPS: Reverse Cycle Air Conditioning — Panel 900–1100mm Above Floor, Min 500mm from Corner' },
-                { id: 'bedroomSmoke', label: 'Smoke Alarms — Present and Functional' },
                 { id: 'soundInsulation', label: 'R: Bedroom Sound Insulation — Wall Insulation Present' },
+            ]
+        },
+        {
+            group: 'Ceiling Hoist', items: [
+                { id: 'ceilingHoistCompatible', label: 'Is the Bedroom Compatible with a Ceiling Hoist?', type: 'yesno' },
+                { id: 'ceilingHoistPresent', label: 'Is There a Ceiling Hoist Installed?', type: 'yesno', showIf: { id: 'ceilingHoistCompatible', value: 'yes' } },
             ]
         },
         {
@@ -339,13 +371,13 @@ export const HANDOVER_ITEMS = {
             group: 'Living Areas', items: [
                 { id: 'livingCount', label: 'At Least One Living Area — Present and Functional' },
                 { id: 'livingDimmer', label: 'Dimmable Lights — Present' },
-                { id: 'livingSmoke', label: 'Smoke Alarms — Present and Functional' },
+                { id: 'tvAntenna', label: 'Is There a TV Antenna?', type: 'yesno' },
+                { id: 'recessedTvFixture', label: 'R: Is There a Recessed Robust TV Fixture?', type: 'yesno' },
             ]
         },
         {
             group: 'SDA / Accessibility', sda: true, items: [
                 { id: 'turningSpace', label: 'FA/HPS: Free Space Clear of Furniture — 2250mm Diameter' },
-                { id: 'livingHvac', label: 'FA/HPS: Reverse Cycle Air Conditioning — Panel 900–1100mm Above Floor, Min 500mm from Corner' },
             ]
         },
     ],
@@ -386,7 +418,6 @@ export const HANDOVER_ITEMS = {
         {
             group: 'Letterbox (FA/HPS)', sda: true, items: [
                 { id: 'letterboxArea', label: 'FA/HPS: Hard-Standing Area — 1540mm × 2070mm' },
-                { id: 'letterboxXfall', label: 'FA/HPS: Crossfall in Front — Less than 1:40 in Any Direction' },
                 { id: 'letterboxPath', label: 'FA/HPS: Accessible Path from Dwelling to Letterbox' },
                 { id: 'letterboxLock', label: 'FA/HPS: Letterbox — Lockable' },
                 { id: 'letterboxHeight', label: 'FA/HPS: Letterbox Height — 600–1100mm' },
@@ -401,31 +432,11 @@ export const HANDOVER_ITEMS = {
             ]
         },
         {
-            group: '1:20 Grade Accessways (if applicable)', items: [
-                { id: 'grade20Landing', label: 'Mid-Landings — 1200mm Length Every 15m' },
-                { id: 'grade20Turns', label: 'Turns — Comply with AS1428.1' },
-                { id: 'grade20Edge', label: 'Edge Treatment — Firm & Level for 600mm, or Kerb / Handrail ≥450mm Present' },
-                { id: 'grade20Slip', label: 'Slip Resistance — P4 or R11' },
-            ]
-        },
-        {
-            group: '1:10 Step Ramp (if applicable)', items: [
-                { id: 'ramp10Change', label: 'Max Level Change — 190mm' },
-                { id: 'ramp10Length', label: 'Max Length — 1900mm' },
-                { id: 'ramp10Compliance', label: 'AS1428.1 Compliant' },
-                { id: 'ramp10Slip', label: 'Slip Resistance — P5 or R12' },
-                { id: 'ramp10WidthsFA', label: 'FA/HPS: Widths — 1200mm Min, 1540mm Door Circulation' },
-                { id: 'ramp10WidthsRIL', label: 'R/IL: Widths — 1000mm Min, 1000mm Door Circulation' },
-            ]
-        },
-        {
-            group: '1:14 Ramp (if applicable)', items: [
-                { id: 'ramp14Landings', label: '1200mm Landings at Max 9m Intervals — AS1428.1 Compliant' },
-                { id: 'ramp14Handrails', label: 'Handrail Profile, Extensions and Kerb Rails — AS1428.1 Compliant' },
-                { id: 'ramp14Slip', label: 'Slip Resistance — P4 or R11' },
-                { id: 'ramp14WidthsFA', label: 'FA/HPS: Width — 1200mm Minimum' },
-                { id: 'ramp14WidthsRIL', label: 'R/IL: Width — 1000mm Minimum' },
-                { id: 'ramp14Boundary', label: 'Landing Space Fully Within Property Boundary' },
+            group: 'Utility Documentation', items: [
+                { id: 'meterBoxPhoto', label: 'Meter Box — Photo Taken' },
+                { id: 'powerBoxPhoto', label: 'Power Box — Photo Taken' },
+                { id: 'nbnPhoto', label: 'NBN — Photo Taken' },
+                { id: 'solarPhoto', label: 'Solar — Photo Taken' },
             ]
         },
     ],
