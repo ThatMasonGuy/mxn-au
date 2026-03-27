@@ -1,11 +1,11 @@
 <template>
-    <div class="prints-page bg-stone-950 text-white min-h-screen">
+    <div class="prints-page bg-stone-100 text-stone-900 min-h-screen">
         <PrintsHeader />
         <PrintsHero />
 
         <!-- Divider -->
         <div class="w-full flex justify-center py-2">
-            <div class="h-px w-2/3 bg-gradient-to-r from-transparent via-amber-400/15 to-transparent" />
+            <div class="h-px w-2/3 bg-gradient-to-r from-transparent via-stone-400/30 to-transparent" />
         </div>
 
         <PrintsGallery @select="selectedPrint = $event" />

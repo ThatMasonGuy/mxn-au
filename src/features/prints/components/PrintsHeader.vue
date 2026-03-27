@@ -2,17 +2,17 @@
     <header :class="[
         'fixed top-0 left-0 w-full z-50 transition-all duration-500',
         isHidden ? '-translate-y-full' : 'translate-y-0',
-        isScrolled ? 'bg-stone-950/80 backdrop-blur-xl border-b border-white/5' : 'bg-transparent'
+        isScrolled ? 'bg-stone-100/90 backdrop-blur-xl border-b border-stone-300/50 shadow-sm' : 'bg-transparent'
     ]">
         <div class="max-w-7xl mx-auto px-6 lg:px-8">
             <div class="flex justify-between items-center h-16 lg:h-20">
 
                 <!-- Brand -->
                 <a href="/prints" class="group flex flex-col">
-                    <span class="font-serif text-lg lg:text-xl tracking-[0.2em] text-white/90 group-hover:text-white transition-colors duration-300 uppercase">
+                    <span class="font-serif text-lg lg:text-xl tracking-[0.2em] text-stone-800 group-hover:text-stone-950 transition-colors duration-300 uppercase">
                         Mason Bartholomai
                     </span>
-                    <span class="text-[10px] lg:text-xs tracking-[0.35em] text-amber-400/70 uppercase font-light">
+                    <span class="text-[10px] lg:text-xs tracking-[0.35em] text-amber-700/60 uppercase font-light">
                         Photography
                     </span>
                 </a>
@@ -20,7 +20,7 @@
                 <!-- Desktop Nav -->
                 <nav class="hidden md:flex items-center gap-8">
                     <button v-for="link in links" :key="link.id" @click="scrollToSection(link.id)"
-                        class="text-xs tracking-[0.2em] uppercase text-white/60 hover:text-white transition-colors duration-300 font-light">
+                        class="text-xs tracking-[0.2em] uppercase text-stone-500 hover:text-stone-800 transition-colors duration-300 font-light">
                         {{ link.label }}
                     </button>
                 </nav>
@@ -29,18 +29,18 @@
                 <Drawer>
                     <DrawerTrigger as-child>
                         <button class="flex md:hidden items-center justify-center">
-                            <Menu class="w-5 h-5 text-white/70 hover:text-white transition-colors" />
+                            <Menu class="w-5 h-5 text-stone-500 hover:text-stone-800 transition-colors" />
                         </button>
                     </DrawerTrigger>
 
-                    <DrawerContent class="bg-stone-950/95 backdrop-blur-xl border-t border-amber-400/10">
+                    <DrawerContent class="bg-stone-100/95 backdrop-blur-xl border-t border-stone-300/50">
                         <DrawerTitle class="sr-only">Navigation Menu</DrawerTitle>
                         <DrawerDescription class="sr-only">Navigate the prints shop.</DrawerDescription>
 
                         <nav class="flex flex-col items-center gap-4 py-8 px-6">
                             <DrawerClose v-for="link in links" :key="link.id" as-child>
                                 <button @click="handleDrawerClick(link.id)"
-                                    class="text-sm tracking-[0.25em] uppercase text-white/70 hover:text-amber-400 transition-colors duration-300 py-2">
+                                    class="text-sm tracking-[0.25em] uppercase text-stone-500 hover:text-amber-700 transition-colors duration-300 py-2">
                                     {{ link.label }}
                                 </button>
                             </DrawerClose>
