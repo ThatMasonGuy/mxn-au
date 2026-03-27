@@ -93,6 +93,12 @@
                         </h3>
                         <ul class="space-y-2.5">
                             <li>
+                                <a href="/prints" class="hover:text-emerald-400 transition-colors flex items-center gap-1.5 text-sm">
+                                    <ChevronRight class="w-3 h-3" />
+                                    Photography Prints
+                                </a>
+                            </li>
+                            <li>
                                 <a href="/professional" class="hover:text-emerald-400 transition-colors flex items-center gap-1.5 text-sm">
                                     <ChevronRight class="w-3 h-3" />
                                     Professional Suite
