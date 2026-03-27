@@ -4,9 +4,9 @@
 
             <!-- Section Header -->
             <div class="text-center mb-16 lg:mb-20">
-                <span class="text-[10px] tracking-[0.5em] uppercase text-amber-400/60 font-light block mb-4">The Collection</span>
-                <h2 class="font-serif text-3xl lg:text-5xl text-white/90 mb-4">Selected Works</h2>
-                <p class="text-sm text-white/40 font-light max-w-md mx-auto leading-relaxed">
+                <span class="text-[10px] tracking-[0.5em] uppercase text-amber-700/50 font-light block mb-4">The Collection</span>
+                <h2 class="font-serif text-3xl lg:text-5xl text-stone-800 mb-4">Selected Works</h2>
+                <p class="text-sm text-stone-500 font-light max-w-md mx-auto leading-relaxed">
                     Each photograph is available as a museum-quality print, produced on demand with archival inks and premium papers.
                 </p>
             </div>
@@ -18,8 +18,8 @@
                     :class="[
                         'text-[11px] tracking-[0.2em] uppercase px-4 py-2 border transition-all duration-300',
                         activeTag === tag
-                            ? 'border-amber-400/50 text-amber-200 bg-amber-400/5'
-                            : 'border-white/10 text-white/40 hover:text-white/60 hover:border-white/20'
+                            ? 'border-amber-700/40 text-amber-800 bg-amber-50'
+                            : 'border-stone-300 text-stone-400 hover:text-stone-600 hover:border-stone-400'
                     ]">
                     {{ tag }}
                 </button>
@@ -34,8 +34,8 @@
 
             <!-- Empty state -->
             <div v-if="filteredPrints.length === 0" class="text-center py-20">
-                <Camera class="w-10 h-10 text-white/10 mx-auto mb-4" />
-                <p class="text-white/30 text-sm font-light">No prints in this category yet.</p>
+                <Camera class="w-10 h-10 text-stone-300 mx-auto mb-4" />
+                <p class="text-stone-400 text-sm font-light">No prints in this category yet.</p>
             </div>
         </div>
     </section>
