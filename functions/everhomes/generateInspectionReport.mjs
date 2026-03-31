@@ -106,8 +106,11 @@ export const generateInspectionReport = onRequest(
         startedAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
       });
 
-      // ── 2. Download + compress all photos ─────────────────────────
+      // ── 2. Download photos ────────────────────────────────────────
       // rooms[].photos = [{ url, caption, storagePath }]
+      // zipAssets  — raw originals, no processing, for the download ZIP
+      // photoAssets — small compressed versions for PDF embed only
+      const zipAssets = [];
       const photoAssets = [];
 
       for (const room of rooms) {
@@ -119,18 +122,29 @@ export const generateInspectionReport = onRequest(
             if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
             const raw = Buffer.from(await resp.arrayBuffer());
 
+            const filename = `${room.label.replace(/[^a-zA-Z0-9]/g, "_")}_${i + 1}.jpg`;
+
+            // Raw original → ZIP (no processing)
+            zipAssets.push({
+              buffer: raw,
+              filename,
+              roomLabel: room.label,
+              roomId: room.id,
+              storagePath: photo.storagePath ?? null,
+            });
+
+            // Small compressed version → PDF embed only
             const { data: compressed, info } = await sharp(raw)
               .rotate()
-              .resize(1400, null, { withoutEnlargement: true })
-              .jpeg({ quality: 75 })
+              .resize(500, null, { withoutEnlargement: true })
+              .jpeg({ quality: 60 })
               .toBuffer({ resolveWithObject: true });
 
-            // info.width / info.height are the post-resize dimensions
             photoAssets.push({
               buffer: compressed,
               width: info.width,
               height: info.height,
-              filename: `${room.label.replace(/[^a-zA-Z0-9]/g, "_")}_${i + 1}.jpg`,
+              filename,
               caption: photo.caption ?? "",
               roomLabel: room.label,
               roomId: room.id,
@@ -237,14 +251,15 @@ export const generateInspectionReport = onRequest(
 
       // ── 4. Build zip (room images + marketing) ───────────────────
       const zipBuffer = await buildZip(
-        photoAssets,
+        zipAssets,
         marketingAssets,
         propertyAddress,
         inspectionDate,
       );
 
-      // ── 5. Save PDF to Storage (long-term record) ──────────────────
+      // ── 5. Save PDF + ZIP to Storage ──────────────────────────────
       const bucket = firebaseAdmin.storage().bucket();
+
       const pdfStoragePath = `${schema.collection}/${inspectionId}/report.pdf`;
       const pdfFile = bucket.file(pdfStoragePath);
       await pdfFile.save(pdfBuffer, {
@@ -253,6 +268,16 @@ export const generateInspectionReport = onRequest(
       const [pdfUrl] = await pdfFile.getSignedUrl({
         action: "read",
         expires: Date.now() + 10 * 365 * 24 * 60 * 60 * 1000,
+      });
+
+      const zipStoragePath = `${schema.collection}/${inspectionId}/photos.zip`;
+      const zipFile = bucket.file(zipStoragePath);
+      await zipFile.save(zipBuffer, {
+        metadata: { contentType: "application/zip" },
+      });
+      const [photosDownloadUrl] = await zipFile.getSignedUrl({
+        action: "read",
+        expires: Date.now() + 90 * 24 * 60 * 60 * 1000, // 90 days
       });
 
       // ── 6. Send emails via Resend ──────────────────────────────────
@@ -265,10 +290,8 @@ export const generateInspectionReport = onRequest(
         "_",
       );
       const filePrefix = emailSubjectTitle.replace(/\s+/g, "_");
-      const zipName = `${filePrefix}_${cleanAddr}_${inspectionDate}_Photos.zip`;
       const pdfName = `${filePrefix}_${cleanAddr}_${inspectionDate}_Report.pdf`;
       const attachments = [
-        { filename: zipName, content: zipBuffer },
         { filename: pdfName, content: pdfBuffer },
       ];
 
@@ -291,6 +314,7 @@ export const generateInspectionReport = onRequest(
               isAdmin: t.isAdmin,
               schema,
               docTitle,
+              photosDownloadUrl,
             }),
             attachments,
           }),
@@ -314,7 +338,7 @@ export const generateInspectionReport = onRequest(
 
       // ── 7. Delete individual photos from Storage ───────────────────
       const toDelete = [
-        ...photoAssets.filter((p) => p.storagePath),
+        ...zipAssets.filter((p) => p.storagePath),
         ...marketingAssets.filter((p) => p.storagePath),
       ];
       // Also delete signature images
@@ -325,6 +349,9 @@ export const generateInspectionReport = onRequest(
         if (t?.signatureStoragePath)
           toDelete.push({ storagePath: t.signatureStoragePath });
       }
+      // Note: zipStoragePath is intentionally NOT deleted here.
+      // It persists in Storage for the 90-day signed URL window so recipients can download it.
+
       const deleteResults = await Promise.allSettled(
         toDelete.map((p) => bucket.file(p.storagePath).delete()),
       );
@@ -342,6 +369,7 @@ export const generateInspectionReport = onRequest(
         status: "complete",
         pdfUrl,
         pdfStoragePath,
+        photosDownloadUrl,
         emailsSent: targets.map((t) => t.email),
         completedAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
       });
@@ -1295,7 +1323,7 @@ async function buildPDF({
 // ─── Zip Builder ──────────────────────────────────────────────────────────────
 
 async function buildZip(
-  photoAssets,
+  zipAssets,
   marketingAssets,
   propertyAddress,
   inspectionDate,
@@ -1317,7 +1345,7 @@ async function buildZip(
 
     const baseFolder = `${cleanAddr}_${inspectionDate}_Photos`;
 
-    for (const p of photoAssets) {
+    for (const p of zipAssets) {
       archive.append(p.buffer, {
         name: `${baseFolder}/${p.filename}`,
       });
@@ -1344,6 +1372,7 @@ function buildEmailHtml({
   isAdmin,
   schema,
   docTitle,
+  photosDownloadUrl,
 }) {
   const flagged = rooms
     .filter((r) => r.status === "issue" || r.status === "attention")
@@ -1485,10 +1514,22 @@ function buildEmailHtml({
       </tr>
     </table>
 
-    <p style="font-size:12px;color:#94A3B8;line-height:1.7;margin:0;">
-      The full inspection report (PDF) and all photos (ZIP) are attached.
+    <p style="font-size:12px;color:#94A3B8;line-height:1.7;margin:0 0 16px;">
+      The full inspection report (PDF) is attached to this email.
       ${isAdmin ? `<br>Everhomes Staff: ${inspectorName || "Unknown"}` : "A copy has also been sent to the Everhomes administration team."}
     </p>
+
+    ${photosDownloadUrl ? `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:8px;">
+      <tr>
+        <td>
+          <a href="${photosDownloadUrl}" style="display:inline-block;background:#7C3AED;color:#fff;font-size:13px;font-weight:700;text-decoration:none;padding:12px 24px;border-radius:8px;">
+            &#8595; Download Photos (ZIP)
+          </a>
+          <p style="margin:8px 0 0;font-size:11px;color:#CBD5E1;">Link expires in 90 days.</p>
+        </td>
+      </tr>
+    </table>` : ""}
   </div>
   <div style="padding:14px 32px;background:#F8FAFC;border-top:1px solid #E2E8F0;">
     <p style="margin:0;font-size:11px;color:#CBD5E1;">Everhomes Pty Ltd &middot; Automated message, please do not reply directly.</p>
