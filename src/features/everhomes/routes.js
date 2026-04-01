@@ -1,3 +1,5 @@
+// src/features/everhomes/routes.js
+
 import { ROLES } from '@/shared/constants/roles'
 
 export default [

@@ -1,3 +1,5 @@
+// src/features/everhomes/data/inspectionItems.js
+
 // ─── Inspection Checklist Definitions ────────────────────────────────────────
 // Mirrors the backend checklistSchemas/inspectionItems.mjs.
 // If you add/rename/remove items here, do the same in the backend file.

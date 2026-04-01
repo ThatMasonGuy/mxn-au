@@ -1,3 +1,5 @@
+// functions/everhomes/generateInspectionReport.mjs
+
 import { onRequest } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 import { firebaseAdmin, db } from "../config/firebase.mjs";
@@ -33,22 +35,35 @@ const SUBTYPE_TITLES = {
   event: "Event Response",
 };
 
-// Aggregate item-level stats across all rooms
-function computeItemStats(rooms) {
-  let total = 0,
-    ok = 0,
-    attention = 0,
-    issues = 0,
-    na = 0,
-    unchecked = 0;
+// Returns true if an item's showIf condition is satisfied (or it has none).
+function itemIsVisible(item, itemStatuses, itemInputs) {
+  if (!item.showIf) return true;
+  const parentVal = (itemInputs ?? {})[item.showIf.id] ?? (itemStatuses ?? {})[item.showIf.id];
+  return parentVal === item.showIf.value;
+}
+
+// Returns only the active status items for a room (no type, showIf satisfied).
+function getActiveStatusItems(groups, itemStatuses, itemInputs) {
+  return groups
+    .flatMap((g) => g.items)
+    .filter((item) => !item.type && itemIsVisible(item, itemStatuses, itemInputs));
+}
+
+// Aggregate item-level stats across all rooms, respecting showIf conditions.
+function computeItemStats(rooms, schema) {
+  let total = 0, ok = 0, attention = 0, issues = 0, na = 0, unchecked = 0;
   for (const room of rooms) {
-    const items = room.items ?? {};
-    for (const status of Object.values(items)) {
+    const itemStatuses = room.items ?? {};
+    const itemInputs = room.inputs ?? {};
+    const groups = schema.items[room.type] ?? schema.fallback;
+    const activeItems = getActiveStatusItems(groups, itemStatuses, itemInputs);
+    for (const item of activeItems) {
       total++;
-      if (status === "ok") ok++;
-      else if (status === "attention") attention++;
-      else if (status === "issue") issues++;
-      else if (status === "na") na++;
+      const s = itemStatuses[item.id] ?? "unchecked";
+      if (s === "ok") ok++;
+      else if (s === "attention") attention++;
+      else if (s === "issue") issues++;
+      else if (s === "na") na++;
       else unchecked++;
     }
   }
@@ -99,142 +114,143 @@ export const generateInspectionReport = onRequest(
 
     const docRef = db.collection(schema.collection).doc(inspectionId);
 
+    // ── Deadline guard ────────────────────────────────────────────────
+    // GCF hard-kills at 300s. We fire at 270s to cleanly reset Firestore
+    // state before the process is torn down. Without this, a timeout leaves
+    // the doc stuck on "processing" forever.
+    let _deadlineTimer = null;
+    const _armDeadline = () => {
+      _deadlineTimer = setTimeout(async () => {
+        console.error(`generateInspectionReport deadline reached for ${inspectionId}`);
+        await docRef
+          .update({
+            status: "failed",
+            error: "Report generation timed out",
+            failedAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
+          })
+          .catch(() => {});
+        if (!res.headersSent)
+          res.status(504).json({ error: "Report timed out — please try again" });
+      }, 270_000);
+    };
+
     try {
+      _armDeadline();
       // ── 1. Mark processing ────────────────────────────────────────
       await docRef.update({
         status: "processing",
         startedAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
       });
 
-      // ── 2. Download photos ────────────────────────────────────────
-      // rooms[].photos = [{ url, caption, storagePath }]
+      // ── 2. Download all assets in parallel ───────────────────────
+      // Runs up to CONCURRENCY fetches at a time to avoid hammering Storage.
       // zipAssets  — raw originals, no processing, for the download ZIP
       // photoAssets — small compressed versions for PDF embed only
-      const zipAssets = [];
-      const photoAssets = [];
+      const CONCURRENCY = 15;
 
-      for (const room of rooms) {
-        for (let i = 0; i < (room.photos ?? []).length; i++) {
-          const photo = room.photos[i];
-          if (!photo?.url) continue;
+      async function runConcurrent(tasks) {
+        const results = [];
+        let idx = 0;
+        async function worker() {
+          while (idx < tasks.length) {
+            const i = idx++;
+            results[i] = await tasks[i]();
+          }
+        }
+        await Promise.all(Array.from({ length: Math.min(CONCURRENCY, tasks.length) }, worker));
+        return results;
+      }
+
+      // Build flat task list for all room photos
+      const photoTasks = rooms.flatMap((room) =>
+        (room.photos ?? []).map((photo, i) => async () => {
+          if (!photo?.url) return null;
           try {
             const resp = await fetch(photo.url);
             if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
             const raw = Buffer.from(await resp.arrayBuffer());
-
             const filename = `${room.label.replace(/[^a-zA-Z0-9]/g, "_")}_${i + 1}.jpg`;
-
-            // Raw original → ZIP (no processing)
-            zipAssets.push({
-              buffer: raw,
-              filename,
-              roomLabel: room.label,
-              roomId: room.id,
-              storagePath: photo.storagePath ?? null,
-            });
-
-            // Small compressed version → PDF embed only
             const { data: compressed, info } = await sharp(raw)
               .rotate()
               .resize(500, null, { withoutEnlargement: true })
               .jpeg({ quality: 60 })
               .toBuffer({ resolveWithObject: true });
-
-            photoAssets.push({
-              buffer: compressed,
-              width: info.width,
-              height: info.height,
-              filename,
-              caption: photo.caption ?? "",
-              roomLabel: room.label,
-              roomId: room.id,
-              storagePath: photo.storagePath ?? null,
-            });
-          } catch (err) {
-            console.warn(
-              `Photo fetch failed for room ${room.id}, photo ${i}:`,
-              err.message,
-            );
-          }
-        }
-      }
-
-      // ── 2b. Download signature images ──────────────────────────
-      const sigAssets = { staff: null, tenants: [] };
-      if (signatures?.staff?.signatureUrl) {
-        try {
-          const resp = await fetch(signatures.staff.signatureUrl);
-          if (resp.ok) {
-            const raw = Buffer.from(await resp.arrayBuffer());
-            sigAssets.staff = {
-              buffer: raw,
-              name: signatures.staff.name ?? inspectorName ?? "",
-              date: signatures.staff.date ?? inspectionDate ?? "",
+            return {
+              zip: { buffer: raw, filename, roomLabel: room.label, roomId: room.id, storagePath: photo.storagePath ?? null },
+              pdf: { buffer: compressed, width: info.width, height: info.height, filename, caption: photo.caption ?? "", roomLabel: room.label, roomId: room.id, storagePath: photo.storagePath ?? null },
             };
-          }
-        } catch (err) {
-          console.warn("Staff signature download failed:", err.message);
-        }
-      }
-      if (Array.isArray(signatures?.tenants)) {
-        for (const tenant of signatures.tenants) {
-          if (!tenant?.signatureUrl) {
-            sigAssets.tenants.push(null);
-            continue;
-          }
-          try {
-            const resp = await fetch(tenant.signatureUrl);
-            if (resp.ok) {
-              const raw = Buffer.from(await resp.arrayBuffer());
-              sigAssets.tenants.push({
-                buffer: raw,
-                name: tenant.name ?? "",
-                date: tenant.date ?? "",
-              });
-            } else {
-              sigAssets.tenants.push(null);
-            }
           } catch (err) {
-            console.warn("Tenant signature download failed:", err.message);
-            sigAssets.tenants.push(null);
+            console.warn(`Photo fetch failed for room ${room.id}, photo ${i}:`, err.message);
+            return null;
           }
-        }
-      }
+        }),
+      );
 
-      // ── 2c. Download marketing photos (uncompressed) ────────────
-      const marketingAssets = []; // [{ buffer, filename, slotKey }]
-      if (marketingPhotos && typeof marketingPhotos === "object") {
-        for (const [slotKey, photos] of Object.entries(marketingPhotos)) {
-          if (!Array.isArray(photos)) continue;
-          for (let i = 0; i < photos.length; i++) {
-            const mp = photos[i];
-            if (!mp?.url) continue;
-            try {
-              const resp = await fetch(mp.url);
-              if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-              const raw = Buffer.from(await resp.arrayBuffer());
-              // Detect extension from content-type or default to jpg
-              const ct = resp.headers.get("content-type") ?? "";
-              const ext = ct.includes("png")
-                ? "png"
-                : ct.includes("webp")
-                  ? "webp"
-                  : "jpg";
-              marketingAssets.push({
-                buffer: raw,
-                filename: `${slotKey}_${i + 1}.${ext}`,
-                slotKey,
-                storagePath: mp.storagePath ?? null,
-              });
-            } catch (err) {
-              console.warn(
-                `Marketing photo fetch failed for ${slotKey}[${i}]:`,
-                err.message,
-              );
-            }
+      const photoResults = await runConcurrent(photoTasks);
+      const zipAssets = photoResults.filter(Boolean).map((r) => r.zip);
+      const photoAssets = photoResults.filter(Boolean).map((r) => r.pdf);
+
+      // ── 2b. Download signature images (parallel) ────────────────
+      const tenantList = Array.isArray(signatures?.tenants) ? signatures.tenants : [];
+      const [staffSigRaw, ...tenantSigRaws] = await Promise.all([
+        // Staff signature
+        signatures?.staff?.signatureUrl
+          ? fetch(signatures.staff.signatureUrl)
+              .then(async (r) => r.ok ? Buffer.from(await r.arrayBuffer()) : null)
+              .catch(() => null)
+          : Promise.resolve(null),
+        // Tenant signatures
+        ...tenantList.map((tenant) =>
+          tenant?.signatureUrl
+            ? fetch(tenant.signatureUrl)
+                .then(async (r) => r.ok ? Buffer.from(await r.arrayBuffer()) : null)
+                .catch(() => null)
+            : Promise.resolve(null),
+        ),
+      ]);
+
+      const sigAssets = {
+        staff: staffSigRaw ? {
+          buffer: staffSigRaw,
+          name: signatures.staff.name ?? inspectorName ?? "",
+          date: signatures.staff.date ?? inspectionDate ?? "",
+        } : null,
+        tenants: tenantSigRaws.map((buf, ti) =>
+          buf ? { buffer: buf, name: tenantList[ti]?.name ?? "", date: tenantList[ti]?.date ?? "" } : null
+        ),
+      };
+
+      // ── 2c. Download marketing photos in parallel ────────────────
+      const marketingEntries = marketingPhotos && typeof marketingPhotos === "object"
+        ? Object.entries(marketingPhotos).flatMap(([slotKey, photos]) =>
+            Array.isArray(photos)
+              ? photos.map((mp, i) => ({ slotKey, mp, i }))
+              : [],
+          )
+        : [];
+
+      const marketingResults = await Promise.allSettled(
+        marketingEntries.map(async ({ slotKey, mp, i }) => {
+          if (!mp?.url) return null;
+          const resp = await fetch(mp.url);
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+          const raw = Buffer.from(await resp.arrayBuffer());
+          const ct = resp.headers.get("content-type") ?? "";
+          const ext = ct.includes("png") ? "png" : ct.includes("webp") ? "webp" : "jpg";
+          return { buffer: raw, filename: `${slotKey}_${i + 1}.${ext}`, slotKey, storagePath: mp.storagePath ?? null };
+        }),
+      );
+
+      const marketingAssets = marketingResults
+        .map((r, idx) => {
+          if (r.status === "rejected") {
+            const { slotKey, i } = marketingEntries[idx];
+            console.warn(`Marketing photo fetch failed for ${slotKey}[${i}]:`, r.reason?.message);
+            return null;
           }
-        }
-      }
+          return r.value;
+        })
+        .filter(Boolean);
 
       // ── 3. Build PDF ───────────────────────────────────────────────
       const pdfBuffer = await buildPDF({
@@ -257,28 +273,29 @@ export const generateInspectionReport = onRequest(
         inspectionDate,
       );
 
-      // ── 5. Save PDF + ZIP to Storage ──────────────────────────────
+      // ── 5. Save PDF + ZIP to Storage in parallel ─────────────────
       const bucket = firebaseAdmin.storage().bucket();
 
       const pdfStoragePath = `${schema.collection}/${inspectionId}/report.pdf`;
-      const pdfFile = bucket.file(pdfStoragePath);
-      await pdfFile.save(pdfBuffer, {
-        metadata: { contentType: "application/pdf" },
-      });
-      const [pdfUrl] = await pdfFile.getSignedUrl({
-        action: "read",
-        expires: Date.now() + 10 * 365 * 24 * 60 * 60 * 1000,
-      });
-
       const zipStoragePath = `${schema.collection}/${inspectionId}/photos.zip`;
-      const zipFile = bucket.file(zipStoragePath);
-      await zipFile.save(zipBuffer, {
-        metadata: { contentType: "application/zip" },
-      });
-      const [photosDownloadUrl] = await zipFile.getSignedUrl({
-        action: "read",
-        expires: Date.now() + 90 * 24 * 60 * 60 * 1000, // 90 days
-      });
+
+      const [
+        [pdfUrl],
+        [photosDownloadUrl],
+      ] = await Promise.all([
+        bucket.file(pdfStoragePath)
+          .save(pdfBuffer, { metadata: { contentType: "application/pdf" } })
+          .then(() => bucket.file(pdfStoragePath).getSignedUrl({
+            action: "read",
+            expires: Date.now() + 10 * 365 * 24 * 60 * 60 * 1000,
+          })),
+        bucket.file(zipStoragePath)
+          .save(zipBuffer, { metadata: { contentType: "application/zip" } })
+          .then(() => bucket.file(zipStoragePath).getSignedUrl({
+            action: "read",
+            expires: Date.now() + 90 * 24 * 60 * 60 * 1000,
+          })),
+      ]);
 
       // ── 6. Send emails via Resend ──────────────────────────────────
       const resend = new Resend(RESEND_API_KEY.value());
@@ -374,8 +391,12 @@ export const generateInspectionReport = onRequest(
         completedAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
       });
 
+      clearTimeout(_deadlineTimer);
+      if (res.headersSent) return; // deadline fired while we were finishing up
       return res.status(200).json({ success: true, pdfUrl });
     } catch (err) {
+      clearTimeout(_deadlineTimer);
+      if (res.headersSent) return; // deadline already responded
       console.error("generateInspectionReport failed:", err);
       await docRef
         .update({
@@ -635,7 +656,7 @@ async function buildPDF({
 
     // Item-level stats
     const ITEM_STATS_Y = STATS_Y + 90;
-    const iStats = computeItemStats(rooms);
+    const iStats = computeItemStats(rooms, schema);
     const iStatItems = [
       { label: "ITEMS", val: iStats.total, color: "#1E293B" },
       { label: "OK", val: iStats.ok, color: "#10B981" },
@@ -786,9 +807,8 @@ async function buildPDF({
       const itemStatuses = room.items ?? {};
       const itemInputs = room.inputs ?? {};
 
-      // Tally item stats for this room (exclude input-type items — they have no status)
-      const allItems = groups.flatMap((g) => g.items);
-      const statusItems = allItems.filter((item) => !item.type);
+      // Tally item stats for this room (exclude non-status types and failed showIf conditions)
+      const statusItems = getActiveStatusItems(groups, itemStatuses, itemInputs);
       const roomItemStats = {
         ok: 0,
         attention: 0,
@@ -875,68 +895,143 @@ async function buildPDF({
 
         for (let i = 0; i < group.items.length; i++) {
           const item = group.items[i];
-          const isInput = item.type === "number" || item.type === "text";
 
-          y = ensureSpace(y, ITEM_ROW_H);
-
-          // Alternating row tint
-          if (i % 2 === 0) {
-            doc.rect(MARGIN, y, CONTENT_W, ITEM_ROW_H).fill("#FAFAFA");
+          // ── showIf guard ──────────────────────────────────────────
+          // Skip conditional items whose parent condition isn't met.
+          // Parent value may live in itemInputs (text/number/yesno) or itemStatuses (status).
+          if (item.showIf) {
+            const parentVal =
+              itemInputs[item.showIf.id] ?? itemStatuses[item.showIf.id];
+            if (parentVal !== item.showIf.value) continue;
           }
 
+          const isInput = item.type === "number" || item.type === "text" || item.type === "multiline";
+          const isYesNo = item.type === "yesno";
+
           if (isInput) {
-            // Input-type item: show a data entry indicator and the recorded value
+            // ── Input / multiline item ────────────────────────────
             const inputVal = itemInputs[item.id];
-            const hasVal =
-              inputVal !== undefined && inputVal !== null && inputVal !== "";
+            const hasVal = inputVal !== undefined && inputVal !== null && inputVal !== "";
             const displayVal = hasVal ? String(inputVal) : "—";
             const valColor = hasVal ? "#0F172A" : "#CBD5E1";
+            const isMultiline = item.type === "multiline";
 
-            // Small square indicator instead of a status dot
+            // For multiline, measure how tall the value text will be
+            const VAL_W = CONTENT_W - 120; // label takes left portion, value takes right
+            let rowH = ITEM_ROW_H;
+            if (isMultiline && hasVal) {
+              doc.font("Helvetica").fontSize(8);
+              const textH = doc.heightOfString(displayVal, { width: VAL_W });
+              rowH = Math.max(ITEM_ROW_H, textH + 8);
+            }
+
+            y = ensureSpace(y, rowH);
+
+            // Alternating row tint
+            if (i % 2 === 0) {
+              doc.rect(MARGIN, y, CONTENT_W, rowH).fill("#FAFAFA");
+            }
+
+            // Small square indicator
             doc
               .rect(MARGIN + 4, y + 5, 6, 6)
               .fillAndStroke("#EFF6FF", "#BFDBFE");
+
+            // Item label (left side, truncated)
+            doc
+              .font("Helvetica")
+              .fontSize(8.5)
+              .fillColor("#334155")
+              .text(item.label, MARGIN + 16, y + 3.5, {
+                width: CONTENT_W - VAL_W - 24,
+                lineBreak: false,
+                ellipsis: true,
+              });
+
+            // Value box (right side, wraps for multiline)
+            doc
+              .roundedRect(PAGE_W - MARGIN - VAL_W, y + 2, VAL_W, rowH - 4, 2)
+              .fill("#EFF6FF");
+            doc
+              .font("Helvetica-Bold")
+              .fontSize(8)
+              .fillColor(valColor)
+              .text(displayVal, PAGE_W - MARGIN - VAL_W + 4, y + 4, {
+                width: VAL_W - 8,
+                align: isMultiline ? "left" : "center",
+                lineBreak: isMultiline,
+              });
+
+            y += rowH;
+
+          } else if (isYesNo) {
+            // ── Yes / No item ─────────────────────────────────────
+            const val = itemInputs[item.id];
+            const isYes = val === "yes";
+            const isNo = val === "no";
+            const answered = isYes || isNo;
+
+            y = ensureSpace(y, ITEM_ROW_H);
+
+            if (i % 2 === 0) {
+              doc.rect(MARGIN, y, CONTENT_W, ITEM_ROW_H).fill("#FAFAFA");
+            }
+
+            // Diamond indicator instead of dot or square
+            const dX = MARGIN + 7;
+            const dY = y + 6;
+            doc
+              .save()
+              .translate(dX, dY)
+              .path("M 0 -4 L 4 0 L 0 4 L -4 0 Z")
+              .fill(answered ? (isYes ? "#10B981" : "#F43F5E") : "#CBD5E1")
+              .restore();
 
             // Item label
             doc
               .font("Helvetica")
               .fontSize(8.5)
-              .fillColor("#334155")
+              .fillColor(answered ? "#334155" : "#94A3B8")
               .text(item.label, MARGIN + 16, y + 3.5, {
                 width: CONTENT_W - 100,
                 lineBreak: false,
                 ellipsis: true,
               });
 
-            // Value (right-aligned, in a light box)
-            const valW = 72;
-            doc
-              .roundedRect(
-                PAGE_W - MARGIN - valW,
-                y + 2,
-                valW,
-                ITEM_ROW_H - 4,
-                2,
-              )
-              .fill("#EFF6FF");
-            doc
-              .font("Helvetica-Bold")
-              .fontSize(8)
-              .fillColor(valColor)
-              .text(displayVal, PAGE_W - MARGIN - valW, y + 4, {
-                width: valW,
-                align: "center",
-                lineBreak: false,
-              });
+            // Yes / No pill (right-aligned)
+            if (answered) {
+              const pillText = isYes ? "YES" : "NO";
+              const pillColor = isYes ? "#10B981" : "#F43F5E";
+              const pillBg = isYes ? "#D1FAE5" : "#FFE4E6";
+              drawPill(PAGE_W - MARGIN - 36, y + 2, pillText, pillColor, pillBg);
+            } else {
+              doc
+                .font("Helvetica")
+                .fontSize(7.5)
+                .fillColor("#CBD5E1")
+                .text("—", PAGE_W - MARGIN - 36, y + 3.5, {
+                  width: 34,
+                  align: "center",
+                  lineBreak: false,
+                });
+            }
+
+            y += ITEM_ROW_H;
+
           } else {
+            // ── Status item (ok / attention / issue / na / unchecked) ──
+            y = ensureSpace(y, ITEM_ROW_H);
+
+            if (i % 2 === 0) {
+              doc.rect(MARGIN, y, CONTENT_W, ITEM_ROW_H).fill("#FAFAFA");
+            }
+
             const status = itemStatuses[item.id] ?? "unchecked";
             const sc = STATUS_META[status]?.hex ?? "#94A3B8";
             const sl = STATUS_META[status]?.label ?? "Not Inspected";
 
-            // Status dot
             drawDot(MARGIN + 7, y + 7.5, sc);
 
-            // Item label
             const labelColor = status === "unchecked" ? "#94A3B8" : "#334155";
             doc
               .font(item.sda ? "Helvetica-Bold" : "Helvetica")
@@ -948,7 +1043,6 @@ async function buildPDF({
                 ellipsis: true,
               });
 
-            // Status label (right-aligned)
             const statusBoxW = 80;
             const statusRightPad = 2;
             const statusFontSize = 7.5;
@@ -963,9 +1057,9 @@ async function buildPDF({
                 align: "right",
                 lineBreak: false,
               });
-          }
 
-          y += ITEM_ROW_H;
+            y += ITEM_ROW_H;
+          }
         }
         y += 12; // gap between groups
       }
@@ -1378,15 +1472,18 @@ function buildEmailHtml({
     .filter((r) => r.status === "issue" || r.status === "attention")
     .sort((a, b) => (a.status === "issue" ? -1 : 1));
 
-  const iStats = computeItemStats(rooms);
+  const iStats = computeItemStats(rooms, schema);
 
   // Collect flagged individual items (issues first, then attention, max 20 for email)
+  // Excludes items whose showIf condition is not met.
   const flaggedItems = [];
   for (const room of rooms) {
     const itemStatuses = room.items ?? {};
+    const itemInputs = room.inputs ?? {};
     const groups = schema.items[room.type] ?? schema.fallback;
     for (const group of groups) {
       for (const item of group.items) {
+        if (!itemIsVisible(item, itemStatuses, itemInputs)) continue;
         const status = itemStatuses[item.id];
         if (status === "issue" || status === "attention") {
           flaggedItems.push({

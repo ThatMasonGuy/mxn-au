@@ -1,3 +1,5 @@
+// functions/everhomes/checklistSchemas/inspectionItems.mjs
+
 // ─── Inspection Checklist Definitions ────────────────────────────────────────
 // Mirrors the frontend CHECKLIST_ITEMS for the inspection workflow.
 // Imported by the schema registry — do not import directly in the cloud function.

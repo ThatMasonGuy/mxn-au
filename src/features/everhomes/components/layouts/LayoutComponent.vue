@@ -1,3 +1,5 @@
+<!-- src/features/everhomes/components/layouts/LayoutComponent.vue -->
+
 <template>
     <ColourBlobBackground v-if="background">
         <GradientBackground :hue="210">

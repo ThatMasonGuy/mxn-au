@@ -1,3 +1,5 @@
+<!-- src/features/everhomes/views/tools/InspectionChecklist.vue -->
+
 <template>
   <LayoutComponent :header="true" :footer="true">
     <!-- ── Top bar ──────────────────────────────────────────────────── -->

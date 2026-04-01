@@ -1,3 +1,5 @@
+// functions/everhomes/checklistSchemas/index.mjs
+
 // ─── Report Schema Registry ───────────────────────────────────────────────────
 // Each entry defines everything the cloud function needs to generate a report
 // for a given workflow. Add new report types here — zero changes to the function.
