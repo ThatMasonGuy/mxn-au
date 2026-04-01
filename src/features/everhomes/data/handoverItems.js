@@ -4,10 +4,11 @@
 // Based on the Everhomes Annual SDA Dwelling Suitability Review Form.
 // Used for initial handover assessments and annual compliance reviews.
 //
-// Label prefixes indicate applicable SDA design categories:
+// badges: [] indicates which SDA design categories this item applies to.
 //   HPS = High Physical Support  |  FA = Fully Accessible
 //   IL  = Improved Liveability   |  R  = Robust
 //
+// Items with no badges array are applicable to all categories.
 // If you add/rename/remove items here, do the same in the backend file.
 
 export const HANDOVER_ITEMS = {
@@ -17,12 +18,12 @@ export const HANDOVER_ITEMS = {
             group: 'Floors, Walls & Ceilings',
             items: [
                 { id: 'floorFirmness', label: 'Internal Flooring — Firmness and Evenness' },
-                { id: 'carpetSpec', label: 'FA/HPS: Carpet — Pile <11mm, Backing <4mm, Total ≤15mm', sda: true },
+                { id: 'carpetSpec', label: 'Carpet — Pile <11mm, Backing <4mm, Total ≤15mm', badges: ['FA', 'HPS'], sda: true },
                 { id: 'floorTransitions', label: 'Floor Surface Transitions — Max 3mm Vertical or 5mm Bevelled' },
                 { id: 'floorSlipRes', label: 'Slip Resistance of Internal Floor Finishes — P3 or R10' },
-                { id: 'floorContrast', label: 'IL: Colour Contrast Between Floor and Wall Surfaces', sda: true },
-                { id: 'wallResilience', label: 'R: Resilience of Wall and Floor Materials', sda: true },
-                { id: 'recessedLighting', label: 'R: Recessed Lighting Fixtures', sda: true },
+                { id: 'floorContrast', label: 'Colour Contrast Between Floor and Wall Surfaces', badges: ['IL'], sda: true },
+                { id: 'wallResilience', label: 'Resilience of Wall and Floor Materials', badges: ['R'], sda: true },
+                { id: 'recessedLighting', label: 'Recessed Lighting Fixtures', badges: ['R'], sda: true },
             ],
         },
         {
@@ -31,12 +32,12 @@ export const HANDOVER_ITEMS = {
                 { id: 'switchLocation', label: 'Light Switches — Located 900–1000mm Above Floor, Aligned with Door Handle' },
                 { id: 'switchDimmable', label: 'Dimmable Lighting — Living Areas and Bedrooms' },
                 { id: 'gpoType', label: 'GPOs — Rocker / Toggle / Push Pad, Minimum Width 35mm' },
-                { id: 'gpoHeight', label: 'FA/HPS: GPOs Installed 600–1100mm Above Floor', sda: true },
-                { id: 'hvacPresent', label: 'FA/HPS: Reverse Cycle Air Conditioning — Living Areas and Bedrooms', sda: true },
-                { id: 'hvacZoned', label: 'FA/HPS: Ducted Air Conditioning Zoned into Habitable Rooms', sda: true },
-                { id: 'emergPower', label: 'HPS: Emergency Power — Minimum 2 Hour Outage Coverage', sda: true },
-                { id: 'emergGpos', label: 'HPS: Emergency Power — 2 Double GPOs in Participant Bedrooms', sda: true },
-                { id: 'emergDoors', label: 'HPS: Emergency Power — Covers Automated Entry / Egress Doors', sda: true },
+                { id: 'gpoHeight', label: 'GPOs Installed 600–1100mm Above Floor', badges: ['FA', 'HPS'], sda: true },
+                { id: 'hvacPresent', label: 'Reverse Cycle Air Conditioning — Living Areas and Bedrooms', badges: ['FA', 'HPS'], sda: true },
+                { id: 'hvacZoned', label: 'Ducted Air Conditioning Zoned into Habitable Rooms', badges: ['FA', 'HPS'], sda: true },
+                { id: 'emergPower', label: 'Emergency Power — Minimum 2 Hour Outage Coverage', badges: ['HPS'], sda: true },
+                { id: 'emergGpos', label: 'Emergency Power — 2 Double GPOs in Participant Bedrooms', badges: ['HPS'], sda: true },
+                { id: 'emergDoors', label: 'Emergency Power — Covers Automated Entry / Egress Doors', badges: ['HPS'], sda: true },
             ],
         },
         {
@@ -59,17 +60,17 @@ export const HANDOVER_ITEMS = {
                 { id: 'sprinklers', label: 'Fire Sprinklers — Present', type: 'yesno' },
                 { id: 'sprinklerValvePhoto', label: 'Fire Sprinklers — Photo of High Pressure Water Valve / Backflow Prevention Taken', type: 'yesno', showIf: { id: 'sprinklers', value: 'yes' } },
                 { id: 'emergLighting', label: 'Emergency Lighting — NCC Compliant' },
-                { id: 'designDrawings', label: 'R: Design Drawings Provided to Site Manager, Staff and Residents (egress / retreat)', sda: true },
-                { id: 'upsBattery', label: 'UPS / Battery Backup — Present & Functional' },
-                { id: 'upsBatteryLocation', label: 'UPS / Battery Backup — Location', type: 'text', placeholder: 'e.g. Garage cabinet', showIf: { id: 'upsBattery', value: 'ok' } },
-                { id: 'upsBatteryDate', label: 'UPS / Battery Backup — Last Service Date', type: 'text', placeholder: 'e.g. 14/03/2025', showIf: { id: 'upsBattery', value: 'ok' } },
+                { id: 'designDrawings', label: 'Design Drawings Provided to Site Manager, Staff and Residents (egress / retreat)', badges: ['R'], sda: true },
+                { id: 'upsBattery', label: 'UPS / Battery Backup — Present & Functional', type: 'yesno' },
+                { id: 'upsBatteryLocation', label: 'UPS / Battery Backup — Location', type: 'text', placeholder: 'e.g. Garage cabinet', showIf: { id: 'upsBattery', value: 'yes' } },
+                { id: 'upsBatteryDate', label: 'UPS / Battery Backup — Last Service Date', type: 'text', placeholder: 'e.g. 14/03/2025', showIf: { id: 'upsBattery', value: 'yes' } },
             ],
         },
         {
             group: 'Assistive Technology', sda: true,
             items: [
-                { id: 'internet', label: 'HPS/FA: High Speed Internet — Stable with Wi-Fi Coverage Throughout', sda: true },
-                { id: 'intercom', label: 'HPS: Video / Intercom Communication System', sda: true },
+                { id: 'internet', label: 'High Speed Internet — Stable with Wi-Fi Coverage Throughout', badges: ['HPS', 'FA'], sda: true },
+                { id: 'intercom', label: 'Video / Intercom Communication System', badges: ['HPS'], sda: true },
             ],
         },
         {
@@ -114,7 +115,7 @@ export const HANDOVER_ITEMS = {
             items: [
                 { id: 'sdaCount', label: 'Number of SDA Dwellings on Parcel of Land', type: 'number', placeholder: 'e.g. 2' },
                 { id: 'roomCount', label: 'Number of Participant Bedrooms (Excluding OOA)', type: 'number', placeholder: 'e.g. 4' },
-                { id: 'vandaalProof', label: 'R: High Impact / Vandal Proof Fittings and Fixtures', sda: true },
+                { id: 'vandaalProof', label: 'High Impact / Vandal Proof Fittings and Fixtures', badges: ['R'], sda: true },
                 { id: 'roomSize', label: 'Is the Size or Usability of All Rooms in Dwelling Suitable?', type: 'yesno' },
                 { id: 'sdaSuitability', label: 'Suitability of Dwelling to be Used as SDA' },
             ],
@@ -162,25 +163,25 @@ export const HANDOVER_ITEMS = {
         {
             group: 'Door Automation', sda: true,
             items: [
-                { id: 'autoCabling', label: 'HPS: Power & Control Cabling (GPO) to Head of Entry Doors', sda: true },
+                { id: 'autoCabling', label: 'Power & Control Cabling (GPO) to Head of Entry Doors', badges: ['HPS'], sda: true },
                 { id: 'autoHardware', label: 'Door Automation Hardware — Functional' },
             ],
         },
         {
             group: 'Doorways & Hardware',
             items: [
-                { id: 'clearOpeningHPS', label: 'HPS: Doorway Clear Opening Width — 920mm Minimum', sda: true },
-                { id: 'clearOpeningFA', label: 'FA: Doorway Clear Opening Width — 900mm Minimum', sda: true },
-                { id: 'clearOpeningIL', label: 'IL: Doorway Clear Opening Width — 820mm Minimum', sda: true },
-                { id: 'clearOpeningR', label: 'R: Doorway Clear Opening Width — 850mm Minimum', sda: true },
+                { id: 'clearOpeningHPS', label: 'Doorway Clear Opening Width — 920mm Minimum', badges: ['HPS'], sda: true },
+                { id: 'clearOpeningFA', label: 'Doorway Clear Opening Width — 900mm Minimum', badges: ['FA'], sda: true },
+                { id: 'clearOpeningIL', label: 'Doorway Clear Opening Width — 820mm Minimum', badges: ['IL'], sda: true },
+                { id: 'clearOpeningR', label: 'Doorway Clear Opening Width — 850mm Minimum', badges: ['R'], sda: true },
                 { id: 'doorCircSpace', label: 'Doorway Circulation Space — Compliant' },
                 { id: 'doorAngle', label: 'All Doors Open to 90° or More' },
                 { id: 'handleHeight', label: 'Door Handle Height — 900–1100mm Above Floor' },
                 { id: 'swingHandles', label: 'Swinging Door Handles — Lever with Kick Back (except Robust)' },
                 { id: 'slidingHandles', label: 'Sliding Door Handles — D Handle Ergonomically Designed (except Robust)' },
                 { id: 'intThreshold', label: 'Internal Doorway Level Transition — Max 3mm Vertical or 5mm Bevelled' },
-                { id: 'doorResilience', label: 'R: Door Resilience — Solid Core Timber / Laminated or Polycarbonate Glazing', sda: true },
-                { id: 'lumContrast', label: 'IL: Luminance Contrast — Min 30% Between Door Leaf and Surrounding Surfaces (50mm wide)', sda: true },
+                { id: 'doorResilience', label: 'Door Resilience — Solid Core Timber / Laminated or Polycarbonate Glazing', badges: ['R'], sda: true },
+                { id: 'lumContrast', label: 'Luminance Contrast — Min 30% Between Door Leaf and Surrounding Surfaces (50mm wide)', badges: ['IL'], sda: true },
             ],
         },
     ],
@@ -189,8 +190,8 @@ export const HANDOVER_ITEMS = {
         {
             group: 'Corridors',
             items: [
-                { id: 'corridorWidthFA', label: 'FA/HPS: Width — 1200mm Skirting to Skirting', sda: true },
-                { id: 'corridorWidthRIL', label: 'R/IL: Width — 1000mm Skirting to Skirting' },
+                { id: 'corridorWidthFA', label: 'Width — 1200mm Skirting to Skirting', badges: ['FA', 'HPS'], sda: true },
+                { id: 'corridorWidthRIL', label: 'Width — 1000mm Skirting to Skirting' },
                 { id: 'corridorCirc', label: 'Door Circulation Space in Corridor — Compliant' },
                 { id: 'storageCupboard', label: '600mm Wide Storage Cupboard with Adjustable Shelving (separate to bedroom robe)' },
             ],
@@ -202,12 +203,12 @@ export const HANDOVER_ITEMS = {
             group: 'Windows & Glazing',
             items: [
                 { id: 'blindsInstalled', label: 'Does the Property Have Blinds Installed?', type: 'yesno' },
-                { id: 'sillHeight', label: 'HPS/FA: Window Sill Height — Max 1000mm in Living Areas and at Least One Bedroom', sda: true },
-                { id: 'windowReach', label: 'HPS/FA: Window Controls Reachable — 600–1100mm Above Floor', sda: true },
-                { id: 'blindCabling', label: 'HPS: Power & Control Cabling for Blind Automation (capped GPO)', sda: true },
+                { id: 'sillHeight', label: 'Window Sill Height — Max 1000mm in Living Areas and at Least One Bedroom', badges: ['HPS', 'FA'], sda: true },
+                { id: 'windowReach', label: 'Window Controls Reachable — 600–1100mm Above Floor', badges: ['HPS', 'FA'], sda: true },
+                { id: 'blindCabling', label: 'Power & Control Cabling for Blind Automation (capped GPO)', badges: ['HPS'], sda: true },
                 { id: 'windowLocks', label: 'Windows — Lockable' },
-                { id: 'glazingStrip', label: 'IL/R: Contrasting Glazing Strip — 75mm Wide, 900–1000mm Above Floor', sda: true },
-                { id: 'glazingMaterial', label: 'R: Glazed Areas — Laminated Glass or Polycarbonate Resin Thermoplastic', sda: true },
+                { id: 'glazingStrip', label: 'Contrasting Glazing Strip — 75mm Wide, 900–1000mm Above Floor', badges: ['IL', 'R'], sda: true },
+                { id: 'glazingMaterial', label: 'Glazed Areas — Laminated Glass or Polycarbonate Resin Thermoplastic', badges: ['R'], sda: true },
             ],
         },
     ],
@@ -229,7 +230,7 @@ export const HANDOVER_ITEMS = {
                 { id: 'toiletBackrest', label: 'Toilet Backrest — Present' },
                 { id: 'toiletGrabrail', label: 'Grab Rails — Present and Compliant' },
                 { id: 'toiletClear', label: 'Clear Space in Front — Clear of Door Swing' },
-                { id: 'toiletContrast', label: 'IL: Toilet Seat Luminance Contrast — Min 30% with Background', sda: true },
+                { id: 'toiletContrast', label: 'Toilet Seat Luminance Contrast — Min 30% with Background', badges: ['IL'], sda: true },
             ],
         },
         {
@@ -239,10 +240,10 @@ export const HANDOVER_ITEMS = {
                 { id: 'showerFunction', label: 'Showers — Accessible, Located and Functional' },
                 { id: 'showerClear', label: 'Clear Space in Front — Clear of Door Swing' },
                 { id: 'noShowerScreen', label: 'No Shower Screens or Screen Fixtures Present' },
-                { id: 'showerGrabrail', label: 'HPS/FA: Vertical Support Grab Rail — Present', sda: true },
-                { id: 'curtainRail', label: 'HPS/FA: Curtain Rail — Present', sda: true },
-                { id: 'showerGradient', label: 'HPS/FA: Shower Floor Gradient — No Notable Changes', sda: true },
-                { id: 'showerTaps', label: 'HPS/FA: Lever Style Shower Tap — Present', sda: true },
+                { id: 'showerGrabrail', label: 'Vertical Support Grab Rail — Present', badges: ['HPS', 'FA'], sda: true },
+                { id: 'curtainRail', label: 'Curtain Rail — Present', badges: ['HPS', 'FA'], sda: true },
+                { id: 'showerGradient', label: 'Shower Floor Gradient — No Notable Changes', badges: ['HPS', 'FA'], sda: true },
+                { id: 'showerTaps', label: 'Lever Style Shower Tap — Present', badges: ['HPS', 'FA'], sda: true },
                 { id: 'towelRail', label: 'Towel Rail — Present' },
             ],
         },
@@ -262,7 +263,7 @@ export const HANDOVER_ITEMS = {
                 { id: 'sanitarySlipRes', label: 'Slip Resistance — Compliant' },
                 { id: 'wallCabinets', label: 'Wall Cabinets — Accessible and Compliant' },
                 { id: 'wallReinforcement', label: 'Wall Reinforcement (Thick Sheeting) — Present' },
-                { id: 'robustBathroomFixtures', label: 'R: Robust Fixtures — Present and Compliant', sda: true },
+                { id: 'robustBathroomFixtures', label: 'Robust Fixtures — Present and Compliant', badges: ['R'], sda: true },
             ],
         },
     ],
@@ -273,7 +274,7 @@ export const HANDOVER_ITEMS = {
             items: [
                 { id: 'kitchenSink', label: 'Sink with Tap — Present and Functional' },
                 { id: 'kitchenDishwasher', label: 'Dishwasher — Present (required for all categories)' },
-                { id: 'dishwasherDrawer', label: 'FA/HPS: Dishwasher — Drawer Style', sda: true },
+                { id: 'dishwasherDrawer', label: 'Dishwasher — Drawer Style', badges: ['FA', 'HPS'], sda: true },
                 { id: 'hasFridge', label: 'Is There a Fridge?', type: 'yesno' },
                 { id: 'kitchenSlipRes', label: 'Slip Resistance of Flooring — Compliant' },
             ],
@@ -290,19 +291,19 @@ export const HANDOVER_ITEMS = {
             group: 'Oven', sda: true,
             items: [
                 { id: 'kitchenOven', label: 'Built-in Oven — Present and Functional' },
-                { id: 'ovenDoorHinge', label: 'FA/HPS: Oven Door — Side Hinged, Latch Side Next to Accessible Benchtop', sda: true },
-                { id: 'ovenHandle', label: 'FA/HPS: Oven Door Handle Height — 600–1100mm Above Floor', sda: true },
-                { id: 'ovenRails', label: 'FA/HPS: Telescopic Rails on at Least One Shelf', sda: true },
+                { id: 'ovenDoorHinge', label: 'Oven Door — Side Hinged, Latch Side Next to Accessible Benchtop', badges: ['FA', 'HPS'], sda: true },
+                { id: 'ovenHandle', label: 'Oven Door Handle Height — 600–1100mm Above Floor', badges: ['FA', 'HPS'], sda: true },
+                { id: 'ovenRails', label: 'Telescopic Rails on at Least One Shelf', badges: ['FA', 'HPS'], sda: true },
             ],
         },
         {
-            group: 'Benchtop (FA/HPS)', sda: true,
+            group: 'Benchtop', sda: true,
             items: [
-                { id: 'accessBench', label: 'FA/HPS: Accessible Benchtop Next to Cooktop and Oven — 600mm Depth', sda: true },
-                { id: 'benchKnee', label: 'FA/HPS: Under-Bench Knee / Toe Space — 900mm Wide, 440mm Deep', sda: true },
-                { id: 'adjBench', label: 'FA/HPS: Height Adjustable Benchtop — 600mm × 440mm, 720–1020mm Range', sda: true },
-                { id: 'benchGpo', label: 'FA/HPS: GPO Within 300mm of Benchtop Front Edge, Max 1100mm High', sda: true },
-                { id: 'benchMaterial', label: 'R: Benchtop Made of Robust Materials', sda: true },
+                { id: 'accessBench', label: 'Accessible Benchtop Next to Cooktop and Oven — 600mm Depth', badges: ['FA', 'HPS'], sda: true },
+                { id: 'benchKnee', label: 'Under-Bench Knee / Toe Space — 900mm Wide, 440mm Deep', badges: ['FA', 'HPS'], sda: true },
+                { id: 'adjBench', label: 'Height Adjustable Benchtop — 600mm × 440mm, 720–1020mm Range', badges: ['FA', 'HPS'], sda: true },
+                { id: 'benchGpo', label: 'GPO Within 300mm of Benchtop Front Edge, Max 1100mm High', badges: ['FA', 'HPS'], sda: true },
+                { id: 'benchMaterial', label: 'Benchtop Made of Robust Materials', badges: ['R'], sda: true },
             ],
         },
         {
@@ -311,28 +312,28 @@ export const HANDOVER_ITEMS = {
                 { id: 'belowHandles', label: 'Below-Bench Cupboards — D Pull Handles (Top) or Push-to-Release' },
                 { id: 'aboveHandles', label: 'Above-Bench Cupboards — D Pull Handles (Bottom) or Push-to-Release' },
                 { id: 'overhangLip', label: 'Above-Bench Cupboards — 20mm Overhanging Lip' },
-                { id: 'cabinetMaterial', label: 'R: Cabinetry Made of Robust Materials', sda: true },
+                { id: 'cabinetMaterial', label: 'Cabinetry Made of Robust Materials', badges: ['R'], sda: true },
             ],
         },
         {
             group: 'Cooktop', sda: true,
             items: [
                 { id: 'kitchenCooktop', label: 'Fixed Cooktop with Rangehood — Present and Functional' },
-                { id: 'cooktopType', label: 'FA/HPS: Cooktop — Electric or Induction (No Gas)', sda: true },
-                { id: 'cooktopPosition', label: 'FA/HPS: Cooktop — Min 300mm from Internal Corner / Wall', sda: true },
-                { id: 'cooktopControls', label: 'FA/HPS: Cooktop Controls — Accessible Side or Near Front Edge', sda: true },
+                { id: 'cooktopType', label: 'Cooktop — Electric or Induction (No Gas)', badges: ['FA', 'HPS'], sda: true },
+                { id: 'cooktopPosition', label: 'Cooktop — Min 300mm from Internal Corner / Wall', badges: ['FA', 'HPS'], sda: true },
+                { id: 'cooktopControls', label: 'Cooktop Controls — Accessible Side or Near Front Edge', badges: ['FA', 'HPS'], sda: true },
             ],
         },
         {
             group: 'Kitchen Tapware',
             items: [
-                { id: 'kitchenTaps', label: 'FA/HPS: Tapware — Lever or Sensor, Max 300mm from Benchtop Edge', sda: true },
+                { id: 'kitchenTaps', label: 'Tapware — Lever or Sensor, Max 300mm from Benchtop Edge', badges: ['FA', 'HPS'], sda: true },
             ],
         },
         {
-            group: 'Accessible Storage (FA/HPS)', sda: true,
+            group: 'Accessible Storage', sda: true,
             items: [
-                { id: 'accessPantry', label: 'FA/HPS: Wheelchair Accessible Pantry — Extendable Basket or Full Pull-Out Style', sda: true },
+                { id: 'accessPantry', label: 'Wheelchair Accessible Pantry — Extendable Basket or Full Pull-Out Style', badges: ['FA', 'HPS'], sda: true },
             ],
         },
     ],
@@ -350,9 +351,9 @@ export const HANDOVER_ITEMS = {
         {
             group: 'SDA / Accessibility', sda: true,
             items: [
-                { id: 'laundryClearRIL', label: 'R/IL: Clearance in Front of Fixed Benches — 1000mm', sda: true },
-                { id: 'laundryClearFA', label: 'HPS/FA: Clearance in Front of Fixed Benches — 1500mm', sda: true },
-                { id: 'laundryTaps', label: 'FA/HPS: Tapware — Sensor or Lever, Max 300mm from Edge', sda: true },
+                { id: 'laundryClearRIL', label: 'Clearance in Front of Fixed Benches — 1000mm', badges: ['R', 'IL'], sda: true },
+                { id: 'laundryClearFA', label: 'Clearance in Front of Fixed Benches — 1500mm', badges: ['HPS', 'FA'], sda: true },
+                { id: 'laundryTaps', label: 'Tapware — Sensor or Lever, Max 300mm from Edge', badges: ['FA', 'HPS'], sda: true },
             ],
         },
     ],
@@ -362,15 +363,15 @@ export const HANDOVER_ITEMS = {
             group: 'Bedroom Compliance',
             items: [
                 { id: 'sdaBedroom', label: 'At Least One SDA Compliant Bedroom — Present' },
-                { id: 'bedroomSizeRIL', label: 'IL/R: Bedroom Size — Min 3100mm × 3100mm Wall to Wall' },
-                { id: 'bedroomSizeFA', label: 'FA/HPS: Bedroom — Queen Bed Allowance with Circulation (1540mm Transfer Side, 1000mm Other Sides)' },
+                { id: 'bedroomSizeRIL', label: 'Bedroom Size — Min 3100mm × 3100mm Wall to Wall', badges: ['IL', 'R'], sda: true },
+                { id: 'bedroomSizeFA', label: 'Bedroom — Queen Bed Allowance with Circulation (1540mm Transfer Side, 1000mm Other Sides)', badges: ['FA', 'HPS'], sda: true },
             ],
         },
         {
-            group: 'Door Circulation (FA/HPS)', sda: true,
+            group: 'Door Circulation', sda: true,
             items: [
-                { id: 'intDoorCirc', label: 'FA/HPS: Internal Door Circulation — 1540mm Wide, 1450mm Deep, Clear of Queen Bed', sda: true },
-                { id: 'extDoorCirc', label: 'FA/HPS: External Door Circulation — 1200mm Skirting to Skirting + 110mm Hinge Side', sda: true },
+                { id: 'intDoorCirc', label: 'Internal Door Circulation — 1540mm Wide, 1450mm Deep, Clear of Queen Bed', badges: ['FA', 'HPS'], sda: true },
+                { id: 'extDoorCirc', label: 'External Door Circulation — 1200mm Skirting to Skirting + 110mm Hinge Side', badges: ['FA', 'HPS'], sda: true },
             ],
         },
         {
@@ -378,16 +379,16 @@ export const HANDOVER_ITEMS = {
             items: [
                 { id: 'robeWidth', label: 'Robe Width — 1400mm Minimum' },
                 { id: 'robeSections', label: 'Robe — Multiple Smaller Sections' },
-                { id: 'robeAccess', label: 'FA/HPS: Clearance in Front of Robe — 1540mm Minimum', sda: true },
+                { id: 'robeAccess', label: 'Clearance in Front of Robe — 1540mm Minimum', badges: ['FA', 'HPS'], sda: true },
             ],
         },
         {
             group: 'Electrical',
             items: [
-                { id: 'bedroomGpos', label: 'FA/HPS: 3 Double GPOs at Head of Bed + 1 Double GPO on Opposite Wall', sda: true },
-                { id: 'ceilingGpo', label: 'HPS: GPO in Ceiling for Ceiling Hoist Power', sda: true },
+                { id: 'bedroomGpos', label: '3 Double GPOs at Head of Bed + 1 Double GPO on Opposite Wall', badges: ['FA', 'HPS'], sda: true },
+                { id: 'ceilingGpo', label: 'GPO in Ceiling for Ceiling Hoist Power', badges: ['HPS'], sda: true },
                 { id: 'bedroomDimmer', label: 'Dimmable Lights — Present' },
-                { id: 'soundInsulation', label: 'R: Bedroom Sound Insulation — Wall Insulation Present', sda: true },
+                { id: 'soundInsulation', label: 'Bedroom Sound Insulation — Wall Insulation Present', badges: ['R'], sda: true },
             ],
         },
         {
@@ -398,12 +399,12 @@ export const HANDOVER_ITEMS = {
             ],
         },
         {
-            group: 'Ceiling Hoist (HPS)', sda: true,
+            group: 'Ceiling Hoist Detail', sda: true,
             items: [
-                { id: 'hoistTravel', label: 'HPS: Hoist — Covers Full Width and Length of Bed', sda: true, showIf: { id: 'ceilingHoistPresent', value: 'yes' } },
-                { id: 'hoistCapacity', label: 'HPS: Hoist — 250kg Load Capacity Minimum', sda: true, showIf: { id: 'ceilingHoistPresent', value: 'yes' } },
-                { id: 'hoistMount', label: 'HPS: Hoist — Ceiling or Wall Mounted', sda: true, showIf: { id: 'ceilingHoistPresent', value: 'yes' } },
-                { id: 'hoistCert', label: 'HPS: Hoist — Engineer Inspected and Certified', sda: true, showIf: { id: 'ceilingHoistPresent', value: 'yes' } },
+                { id: 'hoistTravel', label: 'Hoist — Covers Full Width and Length of Bed', badges: ['HPS'], sda: true, showIf: { id: 'ceilingHoistPresent', value: 'yes' } },
+                { id: 'hoistCapacity', label: 'Hoist — 250kg Load Capacity Minimum', badges: ['HPS'], sda: true, showIf: { id: 'ceilingHoistPresent', value: 'yes' } },
+                { id: 'hoistMount', label: 'Hoist — Ceiling or Wall Mounted', badges: ['HPS'], sda: true, showIf: { id: 'ceilingHoistPresent', value: 'yes' } },
+                { id: 'hoistCert', label: 'Hoist — Engineer Inspected and Certified', badges: ['HPS'], sda: true, showIf: { id: 'ceilingHoistPresent', value: 'yes' } },
             ],
         },
     ],
@@ -415,13 +416,13 @@ export const HANDOVER_ITEMS = {
                 { id: 'livingCount', label: 'At Least One Living Area — Present and Functional' },
                 { id: 'livingDimmer', label: 'Dimmable Lights — Present' },
                 { id: 'tvAntenna', label: 'Is There a TV Antenna?', type: 'yesno' },
-                { id: 'recessedTvFixture', label: 'R: Is There a Recessed Robust TV Fixture?', type: 'yesno', sda: true },
+                { id: 'recessedTvFixture', label: 'Is There a Recessed Robust TV Fixture?', type: 'yesno', badges: ['R'], sda: true },
             ],
         },
         {
             group: 'SDA / Accessibility', sda: true,
             items: [
-                { id: 'turningSpace', label: 'FA/HPS: Free Space Clear of Furniture — 2250mm Diameter', sda: true },
+                { id: 'turningSpace', label: 'Free Space Clear of Furniture — 2250mm Diameter', badges: ['FA', 'HPS'], sda: true },
             ],
         },
     ],
@@ -430,7 +431,7 @@ export const HANDOVER_ITEMS = {
         {
             group: 'Level Access',
             items: [
-                { id: 'entryLevel', label: 'R/FA/HPS: All Internal Areas on Entry Level or Accessible by Lift (IL: bedrooms may be on upper level)' },
+                { id: 'entryLevel', label: 'All Internal Areas on Entry Level or Accessible by Lift (IL: bedrooms may be on upper level)', badges: ['R', 'FA', 'HPS'], sda: true },
             ],
         },
         {
@@ -464,19 +465,19 @@ export const HANDOVER_ITEMS = {
             ],
         },
         {
-            group: 'Letterbox (FA/HPS)', sda: true,
+            group: 'Letterbox', sda: true,
             items: [
-                { id: 'letterboxArea', label: 'FA/HPS: Hard-Standing Area — 1540mm × 2070mm', sda: true },
-                { id: 'letterboxPath', label: 'FA/HPS: Accessible Path from Dwelling to Letterbox', sda: true },
-                { id: 'letterboxLock', label: 'FA/HPS: Letterbox — Lockable', sda: true },
-                { id: 'letterboxHeight', label: 'FA/HPS: Letterbox Height — 600–1100mm', sda: true },
+                { id: 'letterboxArea', label: 'Hard-Standing Area — 1540mm × 2070mm', badges: ['FA', 'HPS'], sda: true },
+                { id: 'letterboxPath', label: 'Accessible Path from Dwelling to Letterbox', badges: ['FA', 'HPS'], sda: true },
+                { id: 'letterboxLock', label: 'Letterbox — Lockable', badges: ['FA', 'HPS'], sda: true },
+                { id: 'letterboxHeight', label: 'Letterbox Height — 600–1100mm', badges: ['FA', 'HPS'], sda: true },
             ],
         },
         {
             group: 'Ramps & Accessways',
             items: [
-                { id: 'accessWidthRIL', label: 'R/IL: Accessway Minimum Clear Width — 1000mm' },
-                { id: 'accessWidthFA', label: 'FA/HPS: Accessway Minimum Clear Width — 1200mm (1500mm if Curved)', sda: true },
+                { id: 'accessWidthRIL', label: 'Accessway Minimum Clear Width — 1000mm', badges: ['R', 'IL'], sda: true },
+                { id: 'accessWidthFA', label: 'Accessway Minimum Clear Width — 1200mm (1500mm if Curved)', badges: ['FA', 'HPS'], sda: true },
                 { id: 'accessLanding', label: 'Level Landings — Min 1200mm × 1200mm, Exclusive of Door Swing' },
                 { id: 'accessVertical', label: 'Vertical Clearance — Minimum 2000mm Along All Paths of Travel' },
             ],
@@ -494,9 +495,9 @@ export const HANDOVER_ITEMS = {
 
     breakout: [
         {
-            group: 'Breakout Room (Robust Only)', sda: true,
+            group: 'Breakout Room', sda: true,
             items: [
-                { id: 'breakoutSeparate', label: 'R: Breakout Room is a Separate Room — Not a Study or Living / Dining Area', sda: true },
+                { id: 'breakoutSeparate', label: 'Breakout Room is a Separate Room — Not a Study or Living / Dining Area', badges: ['R'], sda: true },
             ],
         },
     ],

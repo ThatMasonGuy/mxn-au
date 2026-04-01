@@ -1,7 +1,5 @@
 // src/features/everhomes/routes.js
 
-import { ROLES } from '@/shared/constants/roles'
-
 export default [
     {
         path: '/everhomes',
@@ -122,38 +120,32 @@ export default [
             requiresOverlay: false,
         },
     },
+
+    // ─── Report page — single route, schema-driven ────────────────────────────
+    // ReportPage.vue reads :reportType and loads the matching schema.
+    // Adding a new report type = new schema file + a new redirect below.
     {
-        path: '/everhomes/inspection-checklist',
-        alias: ['/everhomes/inspection'],
-        name: 'Everhomes | Inspection Checklist',
-        component: () => import('@/features/everhomes/views/tools/InspectionChecklist.vue'),
+        path: '/everhomes/report/:reportType',
+        name: 'Everhomes | Report',
+        component: () => import('@/features/everhomes/views/tools/ReportPage.vue'),
         meta: {
             requiresAuth: false,
             role: null,
-            title: 'Inspection Checklist',
+            title: 'Everhomes | Report',
             drawerRanking: 1,
             drawerVisible: false,
             layout: 'default',
-            description: 'Walk through property rooms and capture photos for each area.',
+            description: 'Walk through the property and generate a compliance report.',
             badge: 'New',
             requiresOverlay: false,
         },
     },
-    {
-        path: '/everhomes/handover-checklist',
-        alias: ['/everhomes/handover'],
-        name: 'Everhomes | Handover Checklist',
-        component: () => import('@/features/everhomes/views/tools/HandoverChecklist.vue'),
-        meta: {
-            requiresAuth: false,
-            role: null,
-            title: 'Handover Checklist',
-            drawerRanking: 1,
-            drawerVisible: false,
-            layout: 'default',
-            description: 'Walk through property rooms and capture photos for each area.',
-            badge: 'New',
-            requiresOverlay: false,
-        },
-    }
+
+    // ─── Legacy / shorthand redirects ────────────────────────────────────────
+    // Aliases can't inject params, so these are explicit redirects.
+    // Old bookmarks and any existing links continue to work.
+    { path: '/everhomes/handover-checklist', redirect: { name: 'Everhomes | Report', params: { reportType: 'handover' } } },
+    { path: '/everhomes/handover',           redirect: { name: 'Everhomes | Report', params: { reportType: 'handover' } } },
+    { path: '/everhomes/inspection-checklist', redirect: { name: 'Everhomes | Report', params: { reportType: 'inspection' } } },
+    { path: '/everhomes/inspection',         redirect: { name: 'Everhomes | Report', params: { reportType: 'inspection' } } },
 ]
