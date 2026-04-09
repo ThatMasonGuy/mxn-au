@@ -46,7 +46,6 @@ async function fetchExistingGroups(todayId) {
     const startPast = toDateId(addDaysUTC(today, -30))
     const endFuture = toDateId(addDaysUTC(today, +365))
 
-    // Get past 30 days
     const pastSnap = await SOLS_COL()
         .where('__name__', '>=', startPast)
         .where('__name__', '<=', todayId)
@@ -55,9 +54,9 @@ async function fetchExistingGroups(todayId) {
     pastSnap.forEach((doc) => {
         const answer = doc.data()?.answer
         if (answer) {
-            ['easy', 'medium', 'hard', 'expert'].forEach(level => {
+            ;['easy', 'medium', 'hard', 'expert'].forEach((level) => {
                 if (answer[level]) {
-                    answer[level].forEach(word => ban.add(word.toUpperCase()))
+                    answer[level].forEach((word) => ban.add(word.toUpperCase()))
                 }
             })
         }
@@ -71,9 +70,9 @@ async function fetchExistingGroups(todayId) {
     futureSnap.forEach((doc) => {
         const answer = doc.data()?.answer
         if (answer) {
-            ['easy', 'medium', 'hard', 'expert'].forEach(level => {
+            ;['easy', 'medium', 'hard', 'expert'].forEach((level) => {
                 if (answer[level]) {
-                    answer[level].forEach(word => ban.add(word.toUpperCase()))
+                    answer[level].forEach((word) => ban.add(word.toUpperCase()))
                 }
             })
         }
@@ -88,7 +87,6 @@ async function fetchExistingGroups(todayId) {
 async function checkMissingDates(todayId) {
     const today = parseDateIdUTC(todayId)
 
-    // Next 14 days must exist, plus day 15
     const next14 = range(14).map((i) => toDateId(addDaysUTC(today, i + 1)))
     const day15 = toDateId(addDaysUTC(today, 15))
 
@@ -102,7 +100,7 @@ async function checkMissingDates(todayId) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Generate Connections puzzle using GPT-4
+// Generate Connections puzzle using GPT-4o
 // ──────────────────────────────────────────────────────────────────────────────
 async function generatePuzzle(ban) {
     const client = openai()
@@ -131,7 +129,7 @@ async function generatePuzzle(ban) {
                         "hard": "Category description",
                         "expert": "Category description"
                     }
-                }`
+                }`,
             },
             {
                 role: 'user',
@@ -155,11 +153,11 @@ async function generatePuzzle(ban) {
     EXCLUDE these already-used words:
     ${banList}
     
-    Create a clever, challenging puzzle that will truly test experienced players!`
-            }
+    Create a clever, challenging puzzle that will truly test experienced players!`,
+            },
         ],
         temperature: 0.8,
-    })    
+    })
 
     let parsed = {}
     try {
@@ -169,9 +167,13 @@ async function generatePuzzle(ban) {
         return null
     }
 
-    if (!parsed.answer ||
-        !parsed.answer.easy || !parsed.answer.medium ||
-        !parsed.answer.hard || !parsed.answer.expert) {
+    if (
+        !parsed.answer ||
+        !parsed.answer.easy ||
+        !parsed.answer.medium ||
+        !parsed.answer.hard ||
+        !parsed.answer.expert
+    ) {
         return null
     }
 
@@ -179,8 +181,8 @@ async function generatePuzzle(ban) {
         if (!Array.isArray(parsed.answer[level]) || parsed.answer[level].length !== 4) {
             return null
         }
-        parsed.answer[level] = parsed.answer[level].map(w => w.toUpperCase().trim())
-        if (parsed.answer[level].some(w => ban.has(w))) {
+        parsed.answer[level] = parsed.answer[level].map((w) => w.toUpperCase().trim())
+        if (parsed.answer[level].some((w) => ban.has(w))) {
             return null
         }
     }
@@ -189,7 +191,7 @@ async function generatePuzzle(ban) {
         ...parsed.answer.easy,
         ...parsed.answer.medium,
         ...parsed.answer.hard,
-        ...parsed.answer.expert
+        ...parsed.answer.expert,
     ]
     if (new Set(allWords).size !== 16) {
         return null
@@ -197,26 +199,51 @@ async function generatePuzzle(ban) {
 
     return {
         answer: parsed.answer,
-        categories: parsed.categories || {}
+        categories: parsed.categories || {},
     }
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Save puzzles to Firestore
+// Core generation routine — saves each puzzle immediately as it's generated
+// so partial progress is never lost on timeout/error
 // ──────────────────────────────────────────────────────────────────────────────
-async function upsertSolutions(dateIds, puzzles) {
-    const batch = db.batch()
+async function runGenerationFor(todayId) {
+    const ban = await fetchExistingGroups(todayId)
+    const { missing, day15, need15 } = await checkMissingDates(todayId)
 
-    for (let i = 0; i < dateIds.length && i < puzzles.length; i++) {
-        const id = dateIds[i]
-        const puzzle = puzzles[i]
-        const ref = SOLS_COL().doc(id)
-        const snap = await ref.get()
+    const dateIds = [...missing, ...(need15 ? [day15] : [])]
+    if (dateIds.length === 0) {
+        console.info('[connectionsGenerate] all dates filled, nothing to do')
+        return { filledCount: 0, dates: [] }
+    }
 
-        if (snap.exists) continue
+    console.info(`[connectionsGenerate] need to fill ${dateIds.length} date(s):`, dateIds)
 
-        batch.set(
-            ref,
+    let filledCount = 0
+    const filled = []
+
+    for (const dateId of dateIds) {
+        // Re-check before generating — a concurrent run may have already written this
+        const existing = await SOLS_COL().doc(dateId).get()
+        if (existing.exists) {
+            console.info(`[connectionsGenerate] ${dateId} already filled, skipping`)
+            continue
+        }
+
+        let puzzle = null
+        let attempts = 0
+        while (!puzzle && attempts < 3) {
+            puzzle = await generatePuzzle(ban)
+            attempts++
+        }
+
+        if (!puzzle) {
+            console.warn(`[connectionsGenerate] failed to generate puzzle for ${dateId} after 3 attempts`)
+            continue
+        }
+
+        // Save immediately — don't batch everything at the end
+        await SOLS_COL().doc(dateId).set(
             {
                 answer: puzzle.answer,
                 categories: puzzle.categories,
@@ -226,50 +253,25 @@ async function upsertSolutions(dateIds, puzzles) {
             },
             { merge: true }
         )
+
+        // Add new words to ban set so subsequent puzzles in this run avoid them
+        Object.values(puzzle.answer).flat().forEach((word) => ban.add(word))
+
+        filledCount++
+        filled.push(dateId)
+        console.info(`[connectionsGenerate] saved ${dateId} (${filledCount}/${dateIds.length})`)
     }
 
-    await batch.commit()
-}
-
-// ──────────────────────────────────────────────────────────────────────────────
-// Core generation routine
-// ──────────────────────────────────────────────────────────────────────────────
-async function runGenerationFor(todayId) {
-    const ban = await fetchExistingGroups(todayId)
-    const { missing, day15, need15 } = await checkMissingDates(todayId)
-
-    const dateIds = [...missing, ...(need15 ? [day15] : [])]
-    if (dateIds.length === 0) {
-        return { filledCount: 0, dates: [], puzzles: [] }
-    }
-
-    const puzzles = []
-    for (let i = 0; i < dateIds.length; i++) {
-        let puzzle = null
-        let attempts = 0
-
-        while (!puzzle && attempts < 3) {
-            puzzle = await generatePuzzle(ban)
-            attempts++
-        }
-
-        if (puzzle) {
-            puzzles.push(puzzle)
-            Object.values(puzzle.answer).flat().forEach(word => ban.add(word))
-        }
-    }
-
-    await upsertSolutions(dateIds, puzzles)
-
-    return {
-        filledCount: puzzles.length,
-        dates: dateIds.slice(0, puzzles.length),
-        puzzles
-    }
+    return { filledCount, dates: filled }
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Scheduled: every midnight UTC
+//
+// retryCount: 0  — this is a best-effort generation job. Retrying blindly on
+//                  failure would re-run all the OpenAI calls we just paid for.
+//                  If today's run fails, tomorrow's run will catch up.
+// timeoutSeconds: 540 — generous headroom for generating up to 15 puzzles
 // ──────────────────────────────────────────────────────────────────────────────
 export const connectionsGenerateCron = onSchedule(
     {
@@ -277,13 +279,14 @@ export const connectionsGenerateCron = onSchedule(
         timeZone: 'Etc/UTC',
         region: 'australia-southeast1',
         secrets: [OPENAI_API_KEY],
-        retryCount: 3,
-        maxInstances: 1
+        retryCount: 0,       // ← was 3; retries caused repeated OpenAI spam
+        timeoutSeconds: 540, // ← was unset (defaulted to 60s, causing timeouts)
+        maxInstances: 1,
     },
     async () => {
         const todayId = toDateId(new Date())
         const result = await runGenerationFor(todayId)
-        console.info('[connectionsGenerateCron] generated', result)
+        console.info('[connectionsGenerateCron] done', result)
         return result
     }
 )
@@ -292,11 +295,12 @@ export const connectionsGenerateCron = onSchedule(
 // Admin HTTP trigger for manual generation
 // ──────────────────────────────────────────────────────────────────────────────
 export const connectionsGenerateNow = onRequest(
-    { 
+    {
         region: REGION,
         secrets: [OPENAI_API_KEY, ADMIN_API_KEY],
         cors: true,
-        maxInstances: 1
+        maxInstances: 1,
+        timeoutSeconds: 540,
     },
     async (req, res) => {
         try {
@@ -327,34 +331,31 @@ export const connectionsGenerateNow = onRequest(
             const puzzles = []
 
             for (const dateId of dateIds) {
+                if (!overwrite) {
+                    const existing = await SOLS_COL().doc(dateId).get()
+                    if (existing.exists) {
+                        console.info(`[connectionsGenerateNow] ${dateId} already exists, skipping`)
+                        continue
+                    }
+                }
+
                 let puzzle = null
                 let attempts = 0
-
                 while (!puzzle && attempts < 3) {
                     puzzle = await generatePuzzle(ban)
                     attempts++
                 }
 
-                if (puzzle) {
-                    puzzles.push(puzzle)
-                    Object.values(puzzle.answer).flat().forEach(word => ban.add(word))
-                }
-            }
-
-            const batch = db.batch()
-            for (let i = 0; i < dateIds.length && i < puzzles.length; i++) {
-                const ref = SOLS_COL().doc(dateIds[i])
-
-                if (!overwrite) {
-                    const snap = await ref.get()
-                    if (snap.exists) continue
+                if (!puzzle) {
+                    console.warn(`[connectionsGenerateNow] failed to generate for ${dateId}`)
+                    continue
                 }
 
-                batch.set(
-                    ref,
+                // Save immediately
+                await SOLS_COL().doc(dateId).set(
                     {
-                        answer: puzzles[i].answer,
-                        categories: puzzles[i].categories,
+                        answer: puzzle.answer,
+                        categories: puzzle.categories,
                         source: 'ai',
                         model: 'gpt-4o',
                         createdAt: FieldValue.serverTimestamp(),
@@ -362,8 +363,10 @@ export const connectionsGenerateNow = onRequest(
                     },
                     { merge: true }
                 )
+
+                Object.values(puzzle.answer).flat().forEach((word) => ban.add(word))
+                puzzles.push({ dateId, ...puzzle })
             }
-            await batch.commit()
 
             res.status(200).json({
                 ok: true,
