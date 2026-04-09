@@ -21,15 +21,6 @@ export class DiscordHandler {
             };
         }
 
-        // Discord-specific validation
-        if (!platformInfo.guildId) {
-            return {
-                valid: false,
-                status: 400,
-                error: "Discord guild ID required",
-            };
-        }
-
         return {
             valid: true,
             apiKey,
