@@ -182,10 +182,13 @@
             >
               <AlertTriangle class="w-4 h-4 text-rose-300" />
               <span class="text-[9px] font-bold text-rose-200 text-center leading-tight">
-                {{ photo.retryNote ?? 'Upload failed' }}
+                {{ photo.retryNote ?? photo.errorMessage ?? 'Upload failed' }}
+              </span>
+              <span v-if="photo.errorCode" class="text-[9px] text-rose-100/80 text-center leading-tight">
+                {{ photo.errorCode }}
               </span>
               <button
-                v-if="!photo.retryNote"
+                v-if="!photo.retryNote && photo.retryable !== false"
                 @click.stop="reportState.retryPhoto(section.id, pIdx)"
                 class="text-[10px] font-black text-white bg-rose-500 rounded-lg px-2 py-1 hover:bg-rose-400 transition-colors"
               >

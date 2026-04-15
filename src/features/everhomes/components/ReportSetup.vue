@@ -188,7 +188,11 @@
               </button>
               <!-- OOA toggle -->
               <button
-                @click="reportState.updateRoom(room.id, { isOOA: !room.isOOA, hasEnsuite: false })"
+                @click="reportState.updateRoom(room.id, {
+                  isOOA: !room.isOOA,
+                  key: room.isOOA ? 'bedroom' : 'ooa',
+                  hasEnsuite: false,
+                })"
                 class="shrink-0 flex items-center gap-1.5 px-3 py-2.5 rounded-xl border text-xs font-bold transition-all duration-150"
                 :class="room.isOOA
                   ? 'bg-rose-500 border-rose-500 text-white shadow-sm'
