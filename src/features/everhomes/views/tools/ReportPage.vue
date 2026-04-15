@@ -96,6 +96,13 @@
       @submitted="onSubmitted"
     />
 
+    <ErrorLogModal
+      :open="reportState.fatalError.open"
+      :message="reportState.fatalError.message"
+      :logs="reportState.fatalError.logs"
+      @close="reportState.closeFatalError()"
+    />
+
     <!-- ── Clear confirm ────────────────────────────────────────────── -->
     <Teleport to="body">
       <Transition
@@ -144,6 +151,7 @@ import ReportSetup         from '@/features/everhomes/components/ReportSetup.vue
 import SectionAccordion    from '@/features/everhomes/components/SectionAccordion.vue'
 import MarketingPhotoPanel from '@/features/everhomes/components/MarketingPhotoPanel.vue'
 import SubmitModal         from '@/features/everhomes/components/SubmitModal.vue'
+import ErrorLogModal       from '@/features/everhomes/components/ErrorLogModal.vue'
 
 import { useReportState }  from '@/features/everhomes/composables/useReportState'
 

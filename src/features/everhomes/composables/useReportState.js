@@ -40,6 +40,14 @@ const CHECKED_STATUSES = new Set(['ok', 'attention', 'issue', 'na'])
 // Item types that are inputs — they go into section.inputs, not section.items
 const INPUT_TYPES = new Set(['text', 'number', 'multiline', 'yesno'])
 
+// Firebase Storage error codes that are generally worth retrying automatically
+const RETRYABLE_STORAGE_CODES = new Set([
+    'storage/retry-limit-exceeded',
+    'storage/unknown',
+    'storage/quota-exceeded',
+    'storage/canceled',
+])
+
 // ─── Composable ───────────────────────────────────────────────────────────────
 
 export function useReportState(schema) {
@@ -72,9 +80,29 @@ export function useReportState(schema) {
     // Tracked continuously — components can read isOnline and show a banner
     // rather than only discovering offline state at submit time.
     const isOnline = ref(navigator.onLine)
+    const fatalError = reactive({
+        open: false,
+        title: 'Upload Error',
+        message: '',
+        logs: '',
+    })
 
     function handleOnline()  { isOnline.value = true }
     function handleOffline() { isOnline.value = false }
+
+    function openFatalError(payload = {}) {
+        fatalError.open = true
+        fatalError.title = payload.title ?? 'Upload Error'
+        fatalError.message = payload.message ?? 'An unexpected error occurred.'
+        fatalError.logs = payload.logs ?? ''
+    }
+
+    function closeFatalError() {
+        fatalError.open = false
+        fatalError.title = 'Upload Error'
+        fatalError.message = ''
+        fatalError.logs = ''
+    }
 
     onMounted(() => {
         window.addEventListener('online',  handleOnline)
@@ -194,6 +222,13 @@ export function useReportState(schema) {
         }
     }
 
+    function migrateLegacySectionData(nextId, legacyIds = []) {
+        if (store.checklistData[nextId]) return
+        const legacyId = legacyIds.find((id) => id && store.checklistData[id])
+        if (!legacyId) return
+        store.checklistData[nextId] = store.checklistData[legacyId]
+    }
+
     // ── Section building — toggle mode (handover) ─────────────────────────────
     function buildToggleSections() {
         const sections = []
@@ -255,19 +290,23 @@ export function useReportState(schema) {
             if (!poolEntry) continue
 
             instanceCount[room.key] = (instanceCount[room.key] ?? 0) + 1
-            const count    = instanceCount[room.key]
-            const sectionId = `${room.key}_${count}`
-            const label    = room.label || `${poolEntry.label} ${count}`
+            const count = instanceCount[room.key]
+            const sectionId = `room_${room.id}`
+            const legacySectionId = `${room.key}_${count}`
+            const label = room.label || `${poolEntry.label} ${count}`
 
             rooms.push({ id: sectionId, key: room.key, label, isOOA: room.isOOA ?? false, isEnsuite: false, meta: poolEntry })
+            migrateLegacySectionData(sectionId, [legacySectionId])
             seedSectionData(sectionId, poolEntry.itemsKey ?? room.key)
 
             // Auto-create ensuite if this room has one
             if (room.hasEnsuite) {
                 const ensuitePoolEntry = poolByKey['ensuite']
-                const ensuiteId    = `ensuite_${count}`
+                const ensuiteId    = `ensuite_${room.id}`
+                const legacyEnsuiteId = `ensuite_${count}`
                 const ensuiteLabel = `${label} — Ensuite`
                 rooms.push({ id: ensuiteId, key: 'ensuite', label: ensuiteLabel, isOOA: false, isEnsuite: true, meta: ensuitePoolEntry })
+                migrateLegacySectionData(ensuiteId, [legacyEnsuiteId])
                 seedSectionData(ensuiteId, 'ensuite')
             }
         }
@@ -567,7 +606,43 @@ export function useReportState(schema) {
     const MAX_UPLOAD_ATTEMPTS  = 3
     const UPLOAD_TIMEOUT_MS    = 30_000
 
-    async function uploadPhotoToStorage(file, pathPrefix) {
+    function classifyUploadError(err, context = {}) {
+        const code = err?.code ?? 'unknown'
+        const message = err?.message ?? 'Unknown upload error'
+        const retryable = RETRYABLE_STORAGE_CODES.has(code) || /timeout/i.test(message)
+
+        const info = {
+            timestamp: new Date().toISOString(),
+            code,
+            message,
+            retryable,
+            path: context.path ?? '',
+            pathPrefix: context.pathPrefix ?? '',
+            sectionId: context.sectionId ?? '',
+            slotKey: context.slotKey ?? '',
+            fileName: context.fileName ?? '',
+            fileType: context.fileType ?? '',
+            fileSize: context.fileSize ?? 0,
+        }
+
+        info.logText = [
+            `timestamp: ${info.timestamp}`,
+            `code: ${info.code}`,
+            `message: ${info.message}`,
+            `retryable: ${String(info.retryable)}`,
+            `path: ${info.path}`,
+            `pathPrefix: ${info.pathPrefix}`,
+            `sectionId: ${info.sectionId}`,
+            `slotKey: ${info.slotKey}`,
+            `fileName: ${info.fileName}`,
+            `fileType: ${info.fileType}`,
+            `fileSize: ${info.fileSize}`,
+        ].join('\n')
+
+        return info
+    }
+
+    async function uploadPhotoToStorage(file, pathPrefix, context = {}) {
         const reportId = store.setup.reportId
         if (!reportId) throw new Error('No report ID — start the report first')
 
@@ -590,7 +665,14 @@ export function useReportState(schema) {
                 const url = await getDownloadURL(ref)
                 return { url, storagePath: path }
             } catch (err) {
-                lastError = err
+                lastError = classifyUploadError(err, {
+                    ...context,
+                    path,
+                    pathPrefix,
+                    fileName: file?.name ?? '',
+                    fileType: file?.type ?? '',
+                    fileSize: file?.size ?? 0,
+                })
                 if (attempt < MAX_UPLOAD_ATTEMPTS) {
                     await new Promise((r) => setTimeout(r, 1000 * attempt))
                 }
@@ -601,7 +683,26 @@ export function useReportState(schema) {
 
     async function addPhoto(sectionId, file) {
         const entry = store.checklistData[sectionId]
-        if (!entry) return
+        if (!entry) {
+            const missing = {
+                code: 'section/not-found',
+                message: `Photo upload section not found: ${sectionId}`,
+                retryable: false,
+                logText: [
+                    `timestamp: ${new Date().toISOString()}`,
+                    `code: section/not-found`,
+                    `message: Photo upload section not found: ${sectionId}`,
+                    `sectionId: ${sectionId}`,
+                    `availableSectionIds: ${Object.keys(store.checklistData).join(', ')}`,
+                ].join('\n'),
+            }
+            openFatalError({
+                title: 'Upload Error',
+                message: 'Oops, something went wrong while uploading this photo.',
+                logs: missing.logText,
+            })
+            return
+        }
 
         const previewUrl = URL.createObjectURL(file)
         const photo = reactive({
@@ -610,6 +711,9 @@ export function useReportState(schema) {
             url:          null,
             storagePath:  null,
             caption:      '',
+            errorCode:    null,
+            errorMessage: '',
+            retryable:    true,
             uploadStatus: 'uploading',
         })
 
@@ -618,15 +722,31 @@ export function useReportState(schema) {
 
         // Return the reactive photo entry immediately so the caller (PhotoPanel)
         // can set the caption before the upload completes.
-        uploadPhotoToStorage(file, `photos/${sectionId}`)
+        uploadPhotoToStorage(file, `photos/${sectionId}`, { sectionId })
             .then(({ url, storagePath }) => {
                 photo.url          = url
                 photo.thumbUrl     = url
                 photo.storagePath  = storagePath
+                photo.errorCode    = null
+                photo.errorMessage = ''
+                photo.retryable    = true
                 photo.uploadStatus = 'done'
             })
-            .catch(() => {
+            .catch((errInfo) => {
+                photo.errorCode    = errInfo?.code ?? 'unknown'
+                photo.errorMessage = errInfo?.message ?? 'Upload failed'
+                photo.retryable    = errInfo?.retryable !== false
                 photo.uploadStatus = 'failed'
+                if (import.meta.env.DEV) {
+                    console.warn('[everhomes] section photo upload failed', errInfo)
+                }
+                if (photo.retryable === false) {
+                    openFatalError({
+                        title: 'Upload Error',
+                        message: 'Oops, something went wrong while uploading this photo.',
+                        logs: errInfo?.logText ?? '',
+                    })
+                }
             })
             .finally(() => {
                 store.trackUploadEnd()
@@ -640,6 +760,8 @@ export function useReportState(schema) {
         if (!photo || photo.uploadStatus !== 'failed') return
 
         photo.uploadStatus = 'uploading'
+        photo.errorCode = null
+        photo.errorMessage = ''
         store.trackUploadStart()
 
         try {
@@ -662,6 +784,7 @@ export function useReportState(schema) {
             // Surface a clear error status rather than hanging.
             photo.uploadStatus = 'failed'
             photo.retryNote    = 'Please remove and re-add this photo.'
+            photo.retryable    = false
         } finally {
             store.trackUploadEnd()
         }
@@ -689,21 +812,40 @@ export function useReportState(schema) {
             thumbUrl:     previewUrl,
             url:          null,
             storagePath:  null,
+            errorCode:    null,
+            errorMessage: '',
+            retryable:    true,
             uploadStatus: 'uploading',
         })
 
         store.marketingPhotos[slotKey].push(photo)
         store.trackUploadStart()
 
-        uploadPhotoToStorage(file, `marketing/${slotKey}`)
+        uploadPhotoToStorage(file, `marketing/${slotKey}`, { slotKey })
             .then(({ url, storagePath }) => {
                 photo.url          = url
                 photo.thumbUrl     = url
                 photo.storagePath  = storagePath
+                photo.errorCode    = null
+                photo.errorMessage = ''
+                photo.retryable    = true
                 photo.uploadStatus = 'done'
             })
-            .catch(() => {
+            .catch((errInfo) => {
+                photo.errorCode    = errInfo?.code ?? 'unknown'
+                photo.errorMessage = errInfo?.message ?? 'Upload failed'
+                photo.retryable    = errInfo?.retryable !== false
                 photo.uploadStatus = 'failed'
+                if (import.meta.env.DEV) {
+                    console.warn('[everhomes] marketing photo upload failed', errInfo)
+                }
+                if (photo.retryable === false) {
+                    openFatalError({
+                        title: 'Upload Error',
+                        message: 'Oops, something went wrong while uploading this photo.',
+                        logs: errInfo?.logText ?? '',
+                    })
+                }
             })
             .finally(() => {
                 store.trackUploadEnd()
@@ -836,6 +978,9 @@ export function useReportState(schema) {
 
         // Online state
         isOnline,
+        fatalError,
+        openFatalError,
+        closeFatalError,
 
         // Setup
         setupErrors,
