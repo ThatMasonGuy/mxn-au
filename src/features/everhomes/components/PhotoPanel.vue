@@ -330,14 +330,15 @@ function clearSingle() {
 
 // ─── Confirm single photo ─────────────────────────────────────────────────────
 async function confirmSingle() {
-  if (!singleFile.value || !props.sectionId) return
+  const sectionId = props.sectionId
+  if (!singleFile.value || !sectionId) return
   const file    = singleFile.value
   const caption = singleCaption.value
 
   handleClose()
 
   // addPhoto in composable handles the upload + store mutation
-  const photo = await props.reportState.addPhoto(props.sectionId, file)
+  const photo = await props.reportState.addPhoto(sectionId, file)
   if (photo && caption) photo.caption = caption
 }
 
@@ -348,14 +349,15 @@ function nextInQueue() {
 
 // ─── Confirm queue ────────────────────────────────────────────────────────────
 async function confirmQueue() {
-  if (!props.sectionId || !queue.length) return
+  const sectionId = props.sectionId
+  if (!sectionId || !queue.length) return
   const items = queue.map((q) => ({ file: q.file, caption: q.caption }))
 
   handleClose()
 
   // Fire uploads sequentially so we don't hammer the storage API
   for (const item of items) {
-    const photo = await props.reportState.addPhoto(props.sectionId, item.file)
+    const photo = await props.reportState.addPhoto(sectionId, item.file)
     if (photo && item.caption) photo.caption = item.caption
   }
 }
