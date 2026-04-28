@@ -511,8 +511,8 @@ const ooaOptions = [
     { label: 'With OOA', value: 'withOOA' },
 ]
 const sprinklerOptions = [
-    { label: 'Without', value: 'noSprinklers' },
-    { label: 'With', value: 'withSprinklers' },
+    { label: 'Without Spr.', value: 'noSprinklers' },
+    { label: 'With Spr.', value: 'withSprinklers' },
 ]
 const itcOptions = [
     { label: 'Not Claimed', value: 'itcNotClaimed' },

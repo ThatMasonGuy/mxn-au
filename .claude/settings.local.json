@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/MasonBartholomai/Downloads/**)",
+      "Bash(python3 -c ' *)",
+      "Bash(node -e ' *)",
+      "Bash(grep -E \"\\\\.\\(js|ts|tsx\\)$\")",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)"
+    ]
+  }
+}

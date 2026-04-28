@@ -196,7 +196,8 @@ const tools = [
         icon: CloudArrowUpIcon,
         colorHex: '#f59e0b',
         badges: [{ label: 'In Progress', type: 'soon' }],
-        tags: ['Finance']
+        tags: ['Finance'],
+        hidden: true,
     },
     {
         id: 'inspection-checklist',
@@ -232,6 +233,8 @@ const tools = [
 
 const filteredTools = computed(() => {
     return tools.filter(tool => {
+        if (tool.hidden) return false
+
         const matchesSearch =
             searchQuery.value === '' ||
             tool.title.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
