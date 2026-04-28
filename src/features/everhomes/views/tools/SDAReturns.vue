@@ -418,11 +418,11 @@ function cancelUpload() {
 
 // ── Calculator state ──────────────────────────────────────────────────────────
 const stockType = ref('newBuild')
-const dwelling = ref('')
-const designCategory = ref('')
+const dwelling = ref('House, 2 residents')
+const designCategory = ref('highPhysicalSupport')
 const ooa = ref('withOOA')
-const sprinklers = ref('noSprinklers')
-const itc = ref('itcClaimed')
+const sprinklers = ref('withSprinklers')
+const itc = ref('itcNotClaimed')
 const mrrcType = ref('single')
 const location = ref('')
 const showQldOnly = ref(true)
@@ -634,26 +634,8 @@ onMounted(async () => {
         return
     }
 
-    // Resolve all select defaults from the loaded dataset — never trust a
-    // hardcoded string that might not match the uploaded Excel data.
-
-    // Dwelling
-    const dwellingSet = DWELLING_SETS[stockType.value] || []
-    if (!dwelling.value || !dwellingSet.includes(dwelling.value)) {
-        dwelling.value = dwellingSet.includes('House, 2 residents')
-            ? 'House, 2 residents'
-            : dwellingSet[0] ?? ''
-    }
-
-    // Design Category
-    const catSet = CATEGORY_SETS[stockType.value] || []
-    if (!designCategory.value || !catSet.includes(designCategory.value)) {
-        designCategory.value = catSet.includes('highPhysicalSupport')
-            ? 'highPhysicalSupport'
-            : catSet[0] ?? ''
-    }
-
-    // Location — resolve to a name that actually exists in the Firestore dataset
+    // Location — resolve to a name that actually exists in the Firestore dataset.
+    // dwelling & designCategory use static option lists so they never need this.
     const names = store.locationNames
     const isValidLocation = location.value && names.includes(location.value)
     if (!isValidLocation) {
