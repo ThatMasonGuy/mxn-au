@@ -424,7 +424,7 @@ const ooa = ref('withOOA')
 const sprinklers = ref('noSprinklers')
 const itc = ref('itcClaimed')
 const mrrcType = ref('single')
-const location = ref('QLD - Brisbane Inner City')
+const location = ref('')
 const showQldOnly = ref(true)
 const showAdvancedResults = ref(false)
 
@@ -554,9 +554,12 @@ const benchmarkKey = computed(() => {
     return `${designCategory.value}${ooaSuffix}`
 })
 
-const currentDwellingRow = computed(() =>
-    store.getBenchmarkRow(tableKey.value, dwelling.value)
-)
+// ── Direct state reads — no getter-function indirection so Vue tracks deps reliably ──
+const currentDwellingRow = computed(() => {
+    const table = store.benchmarks[tableKey.value]
+    if (!table) return null
+    return table.find(r => r.dwelling === dwelling.value) ?? null
+})
 
 const benchmarkAmount = computed(() => {
     const row = currentDwellingRow.value
@@ -579,8 +582,11 @@ const locationFactorSet = computed(() =>
 )
 
 const locationFactor = computed(() => {
-    if (dwellingFactorIndex.value === null || !location.value) return null
-    return store.getLocationFactor(location.value, dwellingFactorIndex.value, locationFactorSet.value)
+    const idx = dwellingFactorIndex.value
+    if (idx === null || !location.value) return null
+    const locs = store.locationFactors[locationFactorSet.value] ?? []
+    const loc = locs.find(l => l.name === location.value)
+    return loc?.factors[idx] ?? null
 })
 
 const adjustedAmount = computed(() => {
@@ -622,17 +628,19 @@ function onDwellingChange() {
 // ── Init ──────────────────────────────────────────────────────────────────────
 onMounted(async () => {
     await store.fetchData()
+
     if (!store.hasData) {
         showAdminPanel.value = true
+        return
     }
-    if (store.locationNames.length && !location.value) {
-        location.value = store.locationNames.find(n => n !== 'Median capital city') || store.locationNames[0]
-    }
-})
 
-watch(() => store.locationNames, (names) => {
-    if (names.length && !location.value) {
-        location.value = names.find(n => n !== 'Median capital city') || names[0]
+    // Always resolve location to a real entry from the loaded dataset.
+    // Never rely on a hardcoded string that might not match the uploaded data.
+    const names = store.locationNames
+    const isValidLocation = location.value && names.includes(location.value)
+    if (!isValidLocation) {
+        const qld = names.filter(n => n.startsWith('QLD'))
+        location.value = qld[0] ?? names.find(n => n !== 'Median capital city') ?? names[0] ?? ''
     }
 })
 
