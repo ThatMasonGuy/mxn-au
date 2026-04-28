@@ -418,8 +418,8 @@ function cancelUpload() {
 
 // ── Calculator state ──────────────────────────────────────────────────────────
 const stockType = ref('newBuild')
-const dwelling = ref('House, 2 residents')
-const designCategory = ref('highPhysicalSupport')
+const dwelling = ref('')
+const designCategory = ref('')
 const ooa = ref('withOOA')
 const sprinklers = ref('noSprinklers')
 const itc = ref('itcClaimed')
@@ -634,8 +634,26 @@ onMounted(async () => {
         return
     }
 
-    // Always resolve location to a real entry from the loaded dataset.
-    // Never rely on a hardcoded string that might not match the uploaded data.
+    // Resolve all select defaults from the loaded dataset — never trust a
+    // hardcoded string that might not match the uploaded Excel data.
+
+    // Dwelling
+    const dwellingSet = DWELLING_SETS[stockType.value] || []
+    if (!dwelling.value || !dwellingSet.includes(dwelling.value)) {
+        dwelling.value = dwellingSet.includes('House, 2 residents')
+            ? 'House, 2 residents'
+            : dwellingSet[0] ?? ''
+    }
+
+    // Design Category
+    const catSet = CATEGORY_SETS[stockType.value] || []
+    if (!designCategory.value || !catSet.includes(designCategory.value)) {
+        designCategory.value = catSet.includes('highPhysicalSupport')
+            ? 'highPhysicalSupport'
+            : catSet[0] ?? ''
+    }
+
+    // Location — resolve to a name that actually exists in the Firestore dataset
     const names = store.locationNames
     const isValidLocation = location.value && names.includes(location.value)
     if (!isValidLocation) {

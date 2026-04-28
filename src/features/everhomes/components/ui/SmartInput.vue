@@ -79,7 +79,9 @@ const inputClass = computed(() => {
         'pr-3 py-2 text-sm text-gray-700 border border-gray-300 rounded-md',
         'group-focus-within:ring-2 group-focus-within:ring-teal-500',
         'focus:outline-none placeholder-gray-400 transition',
-        'min-w-0 max-w-full truncate',
+        'min-w-0 max-w-full',
+        // truncate (overflow:hidden) breaks native <select> display on iOS — inputs only
+        inputTag.value !== 'select' ? 'truncate' : '',
     ].join(' ')
 })
 
