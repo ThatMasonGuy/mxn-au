@@ -6,126 +6,123 @@
             gradient="from-purple-600 to-pink-500"
         >
             <template #actions>
-                <div class="flex items-center gap-2">
-                    <span v-if="store.config" class="text-xs text-white/70 font-mono">
+                <div class="flex items-center gap-2 mt-1">
+                    <span v-if="store.config" class="text-xs text-white/60 font-mono bg-white/10 px-2 py-1 rounded-md">
                         {{ store.config.financialYear }}
                     </span>
                     <button
                         v-if="isAdmin || !store.hasData"
                         @click="showAdminPanel = !showAdminPanel"
-                        class="text-xs px-2 py-1 rounded bg-white/20 hover:bg-white/30 text-white transition-colors"
+                        class="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-white font-medium transition-all border border-white/20"
                     >
+                        <ArrowUpTrayIcon class="w-3.5 h-3.5" />
                         {{ showAdminPanel ? 'Close' : 'Update Dataset' }}
                     </button>
                 </div>
             </template>
         </ToolBannerComponent>
 
-        <main class="container mx-auto px-4 py-8 space-y-6">
+        <main class="max-w-3xl mx-auto px-4 py-6 sm:py-8 space-y-5">
 
             <!-- Admin Upload Panel -->
             <Transition name="expand">
-                <div v-if="isAdmin && showAdminPanel" class="bg-white rounded-lg shadow-md border border-purple-200 overflow-hidden">
-                    <div class="px-6 py-4 bg-purple-50 border-b border-purple-200 flex items-center gap-2">
-                        <ArrowUpTrayIcon class="w-5 h-5 text-purple-600" />
-                        <h2 class="font-semibold text-purple-800">Update Pricing Dataset</h2>
-                        <span v-if="store.config" class="ml-auto text-xs text-purple-600">
-                            Current: {{ store.config.financialYear }} · Imported {{ formatDate(store.config.importedAt) }}
+                <div v-if="isAdmin && showAdminPanel" class="bg-white rounded-2xl shadow-sm border border-purple-100 overflow-hidden">
+                    <div class="px-5 py-4 bg-gradient-to-r from-purple-50 to-pink-50 border-b border-purple-100 flex flex-wrap items-center gap-2">
+                        <ArrowUpTrayIcon class="w-4 h-4 text-purple-600 flex-shrink-0" />
+                        <h2 class="font-semibold text-purple-800 text-sm">Update Pricing Dataset</h2>
+                        <span v-if="store.config" class="ml-auto text-xs text-purple-500">
+                            Current: {{ store.config.financialYear }} · {{ formatDate(store.config.importedAt) }}
                         </span>
                     </div>
-                    <div class="p-6">
-                        <p class="text-sm text-gray-600 mb-4">
-                            Upload the <strong>NDIS SDA Price Calculator</strong> Excel file (.xlsx) published by the NDIA.
-                            All users will immediately have access to the new pricing data.
+                    <div class="p-5">
+                        <p class="text-sm text-gray-500 mb-4">
+                            Upload the <strong class="text-gray-700">NDIS SDA Price Calculator</strong> (.xlsx) published annually by the NDIA.
+                            All users will see the new data immediately.
                         </p>
 
                         <!-- File Drop Zone -->
                         <div
-                            v-if="!uploadPreview"
+                            v-if="!uploadPreview && uploadStatus !== 'parsing'"
                             @dragover.prevent="dragOver = true"
                             @dragleave="dragOver = false"
                             @drop.prevent="onDrop"
-                            class="border-2 border-dashed rounded-lg p-10 text-center transition-colors cursor-pointer"
-                            :class="dragOver ? 'border-purple-400 bg-purple-50' : 'border-gray-300 hover:border-purple-300'"
+                            class="border-2 border-dashed rounded-xl py-10 px-6 text-center transition-all cursor-pointer"
+                            :class="dragOver ? 'border-purple-400 bg-purple-50 scale-[1.01]' : 'border-gray-200 hover:border-purple-300 hover:bg-purple-50/40'"
                             @click="fileInput.click()"
                         >
-                            <DocumentArrowUpIcon class="w-10 h-10 mx-auto text-gray-400 mb-3" />
-                            <p class="text-sm text-gray-600 font-medium">Drop the Excel file here or click to browse</p>
-                            <p class="text-xs text-gray-400 mt-1">NDIS SDA Price Calculator 20XX-XX vX.X.xlsx</p>
+                            <DocumentArrowUpIcon class="w-9 h-9 mx-auto text-gray-300 mb-3" />
+                            <p class="text-sm text-gray-600 font-medium">Drop the Excel file here or tap to browse</p>
+                            <p class="text-xs text-gray-400 mt-1">NDIS SDA Price Calculator 20XX-XX.xlsx</p>
                             <input ref="fileInput" type="file" accept=".xlsx" class="hidden" @change="onFileSelect" />
                         </div>
 
                         <!-- Parsing indicator -->
-                        <div v-if="uploadStatus === 'parsing'" class="flex items-center gap-3 py-6 text-gray-600">
+                        <div v-if="uploadStatus === 'parsing'" class="flex items-center justify-center gap-3 py-8 text-gray-500">
                             <div class="w-5 h-5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
-                            <span class="text-sm">Extracting pricing data from spreadsheet…</span>
+                            <span class="text-sm">Extracting pricing data…</span>
                         </div>
 
                         <!-- Preview -->
                         <div v-if="uploadPreview" class="space-y-4">
-                            <div class="rounded-lg border p-4 space-y-2"
+                            <div class="rounded-xl border p-4 space-y-2"
                                 :class="uploadPreview.valid ? 'border-green-200 bg-green-50' : 'border-amber-200 bg-amber-50'">
                                 <p class="text-sm font-semibold" :class="uploadPreview.valid ? 'text-green-800' : 'text-amber-800'">
-                                    {{ uploadPreview.valid ? 'Ready to import' : 'Warnings detected — review before importing' }}
+                                    {{ uploadPreview.valid ? '✓ Ready to import' : '⚠ Warnings detected — review before importing' }}
                                 </p>
-                                <ul class="text-sm space-y-1">
-                                    <li class="text-gray-700">Financial year: <strong>{{ uploadPreview.financialYear }}</strong></li>
-                                    <li class="text-gray-700">Benchmark tables: <strong>8</strong></li>
-                                    <li class="text-gray-700">
-                                        Locations: <strong>{{ uploadPreview.locationFactors.newBuild.length }}</strong> SA4 regions
-                                    </li>
-                                    <li class="text-gray-700">
-                                        MRRC (single): <strong>{{ formatCurrency(uploadPreview.mrrc.single.perAnnum) }}/yr</strong>
-                                    </li>
+                                <ul class="text-sm space-y-0.5 text-gray-600">
+                                    <li>Financial year: <strong class="text-gray-800">{{ uploadPreview.financialYear }}</strong></li>
+                                    <li>Benchmark tables: <strong class="text-gray-800">8</strong></li>
+                                    <li>Locations: <strong class="text-gray-800">{{ uploadPreview.locationFactors.newBuild.length }}</strong> SA4 regions</li>
+                                    <li>MRRC (single): <strong class="text-gray-800">{{ formatCurrency(uploadPreview.mrrc.single.perAnnum) }}/yr</strong></li>
                                 </ul>
                                 <ul v-if="uploadPreview.warnings.length" class="text-sm text-amber-700 space-y-0.5 mt-2">
-                                    <li v-for="w in uploadPreview.warnings" :key="w" class="flex gap-1">
+                                    <li v-for="w in uploadPreview.warnings" :key="w" class="flex gap-1.5">
                                         <ExclamationTriangleIcon class="w-4 h-4 flex-shrink-0 mt-0.5" />
                                         {{ w }}
                                     </li>
                                 </ul>
                             </div>
 
-                            <div class="flex gap-3">
+                            <div class="flex flex-wrap gap-3">
                                 <button
                                     @click="confirmUpload"
                                     :disabled="store.uploading"
-                                    class="flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium transition-colors disabled:opacity-50"
+                                    class="flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium transition-colors disabled:opacity-50"
                                 >
                                     <div v-if="store.uploading" class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                                     <CloudArrowUpIcon v-else class="w-4 h-4" />
-                                    {{ store.uploading ? 'Saving to Firebase…' : 'Save to Firebase' }}
+                                    {{ store.uploading ? 'Saving…' : 'Save to Firebase' }}
                                 </button>
                                 <button
                                     @click="cancelUpload"
-                                    class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 text-sm hover:bg-gray-50 transition-colors"
+                                    class="px-4 py-2 rounded-xl border border-gray-200 text-gray-600 text-sm hover:bg-gray-50 transition-colors"
                                 >
                                     Cancel
                                 </button>
                             </div>
 
-                            <p v-if="store.error" class="text-sm text-red-600">
-                                Error: {{ store.error }}
-                            </p>
+                            <p v-if="store.error" class="text-sm text-red-500">{{ store.error }}</p>
                         </div>
                     </div>
                 </div>
             </Transition>
 
             <!-- Loading -->
-            <div v-if="store.loading" class="flex items-center justify-center py-24 gap-3 text-gray-500">
-                <div class="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
-                <span>Loading pricing data…</span>
+            <div v-if="store.loading" class="flex items-center justify-center py-24 gap-3 text-gray-400">
+                <div class="w-5 h-5 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />
+                <span class="text-sm">Loading pricing data…</span>
             </div>
 
             <!-- No data state -->
-            <div v-else-if="!store.hasData" class="bg-white rounded-lg shadow-md p-12 text-center">
-                <TableCellsIcon class="w-12 h-12 mx-auto text-gray-300 mb-4" />
-                <h2 class="text-lg font-semibold text-gray-700 mb-2">No pricing data loaded</h2>
-                <p v-if="isAdmin" class="text-sm text-gray-500">
-                    Use the <strong>Update Dataset</strong> button above to upload the NDIS SDA Price Calculator.
+            <div v-else-if="!store.hasData" class="bg-white rounded-2xl shadow-sm border border-gray-100 py-16 px-6 text-center">
+                <div class="w-14 h-14 rounded-2xl bg-purple-50 flex items-center justify-center mx-auto mb-4">
+                    <TableCellsIcon class="w-7 h-7 text-purple-300" />
+                </div>
+                <h2 class="text-base font-semibold text-gray-700 mb-2">No pricing data loaded</h2>
+                <p v-if="isAdmin" class="text-sm text-gray-400 max-w-xs mx-auto">
+                    Use the <strong class="text-purple-600">Update Dataset</strong> button above to upload the NDIS SDA Price Calculator.
                 </p>
-                <p v-else class="text-sm text-gray-500">
+                <p v-else class="text-sm text-gray-400 max-w-xs mx-auto">
                     Ask your administrator to upload the NDIS SDA Price Calculator dataset.
                 </p>
             </div>
@@ -133,16 +130,16 @@
             <!-- Calculator -->
             <template v-else>
 
-                <!-- Dwelling Details -->
-                <div class="bg-white rounded-lg shadow-md p-6">
-                    <h2 class="text-xl font-semibold text-gray-800 mb-5">Dwelling Details</h2>
+                <!-- ── Dwelling Details ─────────────────────────────────────────── -->
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 sm:p-6">
+                    <h2 class="text-base font-semibold text-gray-800 mb-4">Dwelling Details</h2>
 
-                    <!-- Stock Type Tabs -->
-                    <div class="flex rounded-lg border border-gray-200 bg-gray-50 p-1 gap-1 mb-5 w-full sm:w-auto sm:inline-flex">
+                    <!-- Stock Type segmented control -->
+                    <div class="flex rounded-xl border border-gray-200 bg-gray-50 p-1 gap-1 mb-5">
                         <button
                             v-for="opt in stockTypeOptions" :key="opt.value"
                             @click="setStockType(opt.value)"
-                            class="flex-1 sm:flex-none px-4 py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap"
+                            class="flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap"
                             :class="stockType === opt.value
                                 ? 'bg-white text-purple-700 shadow-sm border border-gray-200'
                                 : 'text-gray-500 hover:text-gray-700'"
@@ -151,7 +148,8 @@
                         </button>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Selects grid -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
                         <SmartInput
                             v-model="dwelling"
                             label="Dwelling Type"
@@ -165,7 +163,7 @@
                             type="select"
                             :options="categoryOptions"
                         />
-                        <div class="space-y-1">
+                        <div class="sm:col-span-2 space-y-1">
                             <div class="flex items-center justify-between">
                                 <label class="block text-sm font-medium text-gray-700">Location (SA4 Region)</label>
                                 <button
@@ -183,39 +181,47 @@
                         </div>
                     </div>
 
-                    <div class="mt-4 flex flex-wrap gap-6">
+                    <!-- Toggle options -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-gray-100">
+
                         <!-- OOA (hidden for Basic) -->
-                        <div v-if="designCategory !== 'basic'" class="space-y-1.5">
-                            <label class="block text-sm font-medium text-gray-700">On-site Overnight Accommodation</label>
-                            <div class="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5 gap-0.5">
+                        <div v-if="designCategory !== 'basic'" class="space-y-2">
+                            <label class="block text-xs font-semibold uppercase tracking-wide text-gray-400">OOA</label>
+                            <div class="flex rounded-lg border border-gray-200 bg-gray-50 p-0.5 gap-0.5">
                                 <button v-for="opt in ooaOptions" :key="opt.value"
                                     @click="ooa = opt.value"
-                                    class="px-3 py-1.5 rounded-md text-sm font-medium transition-all border"
-                                    :class="ooa === opt.value ? 'bg-white text-purple-700 shadow-sm border-gray-200' : 'text-gray-500 hover:text-gray-700 border-transparent'"
+                                    class="flex-1 px-3 py-2 rounded-md text-sm font-medium transition-all border"
+                                    :class="ooa === opt.value
+                                        ? 'bg-white text-purple-700 shadow-sm border-gray-200'
+                                        : 'text-gray-500 hover:text-gray-700 border-transparent'"
                                 >{{ opt.label }}</button>
                             </div>
                         </div>
 
                         <!-- Sprinklers -->
-                        <div class="space-y-1.5">
-                            <label class="block text-sm font-medium text-gray-700">Fire Sprinklers</label>
-                            <div class="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5 gap-0.5">
+                        <div class="space-y-2">
+                            <label class="block text-xs font-semibold uppercase tracking-wide text-gray-400">Sprinklers</label>
+                            <div class="flex rounded-lg border border-gray-200 bg-gray-50 p-0.5 gap-0.5">
                                 <button v-for="opt in sprinklerOptions" :key="opt.value"
                                     @click="sprinklers = opt.value"
-                                    class="px-3 py-1.5 rounded-md text-sm font-medium transition-all border"
-                                    :class="sprinklers === opt.value ? 'bg-white text-purple-700 shadow-sm border-gray-200' : 'text-gray-500 hover:text-gray-700 border-transparent'"
+                                    class="flex-1 px-3 py-2 rounded-md text-sm font-medium transition-all border"
+                                    :class="sprinklers === opt.value
+                                        ? 'bg-white text-purple-700 shadow-sm border-gray-200'
+                                        : 'text-gray-500 hover:text-gray-700 border-transparent'"
                                 >{{ opt.label }}</button>
                             </div>
                         </div>
 
                         <!-- ITC (New Build only) -->
-                        <div v-if="stockType === 'newBuild'" class="space-y-1.5">
-                            <label class="block text-sm font-medium text-gray-700">Input Tax Credits</label>
-                            <div class="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5 gap-0.5">
+                        <div v-if="stockType === 'newBuild'" class="space-y-2">
+                            <label class="block text-xs font-semibold uppercase tracking-wide text-gray-400">Input Tax Credits</label>
+                            <div class="flex rounded-lg border border-gray-200 bg-gray-50 p-0.5 gap-0.5">
                                 <button v-for="opt in itcOptions" :key="opt.value"
                                     @click="itc = opt.value"
-                                    class="px-3 py-1.5 rounded-md text-sm font-medium transition-all border"
-                                    :class="itc === opt.value ? 'bg-white text-purple-700 shadow-sm border-gray-200' : 'text-gray-500 hover:text-gray-700 border-transparent'"
+                                    class="flex-1 px-3 py-2 rounded-md text-sm font-medium transition-all border"
+                                    :class="itc === opt.value
+                                        ? 'bg-white text-purple-700 shadow-sm border-gray-200'
+                                        : 'text-gray-500 hover:text-gray-700 border-transparent'"
                                 >{{ opt.label }}</button>
                             </div>
                         </div>
@@ -225,99 +231,104 @@
 
                 <!-- N/A combination warning -->
                 <div v-if="isNACombo"
-                    class="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                    <ExclamationTriangleIcon class="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                    class="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-2xl">
+                    <ExclamationTriangleIcon class="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
                     <div>
-                        <p class="text-sm font-medium text-amber-800">Combination not applicable (N/A)</p>
-                        <p class="text-xs text-amber-600 mt-0.5">
-                            {{ naReason }}
-                        </p>
+                        <p class="text-sm font-medium text-amber-800">Combination not applicable</p>
+                        <p class="text-xs text-amber-600 mt-0.5">{{ naReason }}</p>
                     </div>
                 </div>
 
-                <!-- Results -->
-                <div v-if="!isNACombo && benchmarkAmount !== null" class="bg-white rounded-lg shadow-md p-6">
-                    <div class="flex items-center justify-between mb-5">
-                        <h2 class="text-xl font-semibold text-gray-800">Results</h2>
-                        <span class="text-xs text-gray-400">{{ store.config?.financialYear }} pricing</span>
+                <!-- ── Results ─────────────────────────────────────────────────── -->
+                <div v-if="!isNACombo && benchmarkAmount !== null" class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+
+                    <!-- Hero result -->
+                    <div class="bg-gradient-to-br from-purple-600 to-pink-500 px-6 py-7 text-center text-white">
+                        <p class="text-xs font-semibold uppercase tracking-widest text-white/70 mb-2">Adjusted SDA Amount</p>
+                        <p class="text-5xl sm:text-6xl font-black tracking-tight">{{ formatCurrency(adjustedAmount) }}</p>
+                        <p class="text-sm text-white/60 mt-2">per participant / year · {{ store.config?.financialYear }}</p>
                     </div>
 
-                    <!-- Primary results -->
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <div class="rounded-lg bg-gray-50 border border-gray-200 p-4">
-                            <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">Annual Benchmark</p>
-                            <p class="text-2xl font-bold text-gray-800">{{ formatCurrency(benchmarkAmount) }}</p>
-                            <p class="text-xs text-gray-400 mt-1">per participant</p>
-                        </div>
-
-                        <div class="rounded-lg bg-gray-50 border border-gray-200 p-4">
-                            <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">Location Factor</p>
-                            <p class="text-2xl font-bold text-gray-800">× {{ locationFactor?.toFixed(2) ?? '—' }}</p>
-                            <p class="text-xs text-gray-400 mt-1 truncate">{{ location }}</p>
-                        </div>
-
-                        <div class="rounded-lg bg-purple-50 border border-purple-200 p-4">
-                            <p class="text-xs font-semibold uppercase tracking-wide text-purple-600 mb-1">Adjusted SDA Amount</p>
-                            <p class="text-2xl font-bold text-purple-700">{{ formatCurrency(adjustedAmount) }}</p>
-                            <p class="text-xs text-purple-400 mt-1">per participant / year</p>
-                        </div>
-                    </div>
-
-                    <!-- Always-visible breakdown bar -->
-                    <div class="mt-4 p-3 bg-blue-50 border-l-4 border-blue-400 rounded text-sm text-blue-700">
-                        <strong>{{ formatCurrency(benchmarkAmount) }}</strong>
-                        × <strong>{{ locationFactor?.toFixed(2) }}</strong> location factor
-                        = <strong>{{ formatCurrency(adjustedAmount) }}</strong> adjusted SDA amount per participant / year.
-                    </div>
-
-                    <!-- MRRC / Net to Provider foldout -->
-                    <div class="mt-3">
-                        <button
-                            @click="showAdvancedResults = !showAdvancedResults"
-                            class="flex items-center gap-1.5 text-sm font-medium text-purple-600 hover:text-purple-800 transition-colors"
-                        >
-                            <ChevronDownIcon
-                                class="w-4 h-4 transition-transform"
-                                :class="showAdvancedResults ? 'rotate-180' : ''"
-                            />
-                            {{ showAdvancedResults ? 'Hide' : 'Show' }} MRRC &amp; net to provider
-                        </button>
-
-                        <Transition name="expand">
-                            <div v-if="showAdvancedResults" class="mt-4 space-y-4">
-                                <!-- MRRC type toggle -->
-                                <div class="flex items-center gap-4">
-                                    <span class="text-sm text-gray-600 font-medium">Participant status:</span>
-                                    <div class="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5 gap-0.5">
-                                        <button v-for="opt in mrrcTypeOptions" :key="opt.value"
-                                            @click="mrrcType = opt.value"
-                                            class="px-3 py-1.5 rounded-md text-sm font-medium transition-all border"
-                                            :class="mrrcType === opt.value ? 'bg-white text-purple-700 shadow-sm border-gray-200' : 'text-gray-500 hover:text-gray-700 border-transparent'"
-                                        >{{ opt.label }}</button>
-                                    </div>
-                                </div>
-
-                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div class="rounded-lg bg-gray-50 border border-gray-200 p-4">
-                                        <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">MRRC ({{ mrrcType === 'single' ? 'Single' : 'Couple' }})</p>
-                                        <p class="text-2xl font-bold text-gray-800">{{ formatCurrency(mrrcAmount) }}</p>
-                                        <p class="text-xs text-gray-400 mt-1">max participant contribution / year</p>
-                                    </div>
-
-                                    <div class="rounded-lg bg-green-50 border border-green-200 p-4">
-                                        <p class="text-xs font-semibold uppercase tracking-wide text-green-600 mb-1">Net to Provider</p>
-                                        <p class="text-2xl font-bold text-green-700">{{ formatCurrency(netToProvider) }}</p>
-                                        <p class="text-xs text-green-500 mt-1">adjusted SDA minus MRRC</p>
-                                    </div>
-                                </div>
-
-                                <div class="p-3 bg-green-50 border-l-4 border-green-400 rounded text-sm text-green-700">
-                                    <strong>{{ formatCurrency(adjustedAmount) }}</strong> adjusted SDA
-                                    − <strong>{{ formatCurrency(mrrcAmount) }}</strong> MRRC ({{ mrrcType === 'single' ? 'single' : 'couple' }})
-                                    = <strong>{{ formatCurrency(netToProvider) }}</strong> net to provider per participant / year.
-                                </div>
+                    <div class="p-5 sm:p-6 space-y-4">
+                        <!-- Benchmark + factor -->
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="rounded-xl bg-gray-50 border border-gray-100 p-4">
+                                <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-400 mb-1">Annual Benchmark</p>
+                                <p class="text-xl font-bold text-gray-800">{{ formatCurrency(benchmarkAmount) }}</p>
+                                <p class="text-xs text-gray-400 mt-0.5">per participant</p>
                             </div>
-                        </Transition>
+                            <div class="rounded-xl bg-gray-50 border border-gray-100 p-4">
+                                <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-400 mb-1">Location Factor</p>
+                                <p class="text-xl font-bold text-gray-800">× {{ locationFactor?.toFixed(2) ?? '—' }}</p>
+                                <p class="text-xs text-gray-400 mt-0.5 truncate">{{ location }}</p>
+                            </div>
+                        </div>
+
+                        <!-- Equation bar -->
+                        <div class="flex flex-wrap items-center justify-center gap-1.5 px-4 py-3 bg-purple-50 rounded-xl text-sm text-purple-700 font-medium">
+                            <span>{{ formatCurrency(benchmarkAmount) }}</span>
+                            <span class="text-purple-400">×</span>
+                            <span>{{ locationFactor?.toFixed(2) }}</span>
+                            <span class="text-purple-400">=</span>
+                            <span class="font-bold">{{ formatCurrency(adjustedAmount) }}<span class="font-normal text-purple-400">/yr</span></span>
+                        </div>
+
+                        <!-- MRRC / Net to Provider foldout -->
+                        <div class="border-t border-gray-100 pt-3">
+                            <button
+                                @click="showAdvancedResults = !showAdvancedResults"
+                                class="flex items-center gap-1.5 text-sm font-medium text-purple-600 hover:text-purple-800 transition-colors"
+                            >
+                                <ChevronDownIcon
+                                    class="w-4 h-4 transition-transform duration-200"
+                                    :class="showAdvancedResults ? 'rotate-180' : ''"
+                                />
+                                {{ showAdvancedResults ? 'Hide' : 'Show' }} MRRC &amp; net to provider
+                            </button>
+
+                            <Transition name="expand">
+                                <div v-if="showAdvancedResults" class="mt-4 space-y-4">
+
+                                    <!-- MRRC type toggle -->
+                                    <div class="flex flex-wrap items-center gap-3">
+                                        <span class="text-sm text-gray-500">Participant status:</span>
+                                        <div class="flex rounded-lg border border-gray-200 bg-gray-50 p-0.5 gap-0.5">
+                                            <button v-for="opt in mrrcTypeOptions" :key="opt.value"
+                                                @click="mrrcType = opt.value"
+                                                class="px-4 py-1.5 rounded-md text-sm font-medium transition-all border"
+                                                :class="mrrcType === opt.value
+                                                    ? 'bg-white text-purple-700 shadow-sm border-gray-200'
+                                                    : 'text-gray-500 hover:text-gray-700 border-transparent'"
+                                            >{{ opt.label }}</button>
+                                        </div>
+                                    </div>
+
+                                    <!-- MRRC + Net cards -->
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div class="rounded-xl bg-gray-50 border border-gray-100 p-4">
+                                            <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-400 mb-1">MRRC · {{ mrrcType === 'single' ? 'Single' : 'Couple' }}</p>
+                                            <p class="text-xl font-bold text-gray-800">{{ formatCurrency(mrrcAmount) }}</p>
+                                            <p class="text-xs text-gray-400 mt-0.5">max contribution / yr</p>
+                                        </div>
+                                        <div class="rounded-xl bg-green-50 border border-green-100 p-4">
+                                            <p class="text-[11px] font-semibold uppercase tracking-wide text-green-500 mb-1">Net to Provider</p>
+                                            <p class="text-xl font-bold text-green-700">{{ formatCurrency(netToProvider) }}</p>
+                                            <p class="text-xs text-green-400 mt-0.5">SDA minus MRRC</p>
+                                        </div>
+                                    </div>
+
+                                    <!-- Net equation bar -->
+                                    <div class="flex flex-wrap items-center justify-center gap-1.5 px-4 py-3 bg-green-50 rounded-xl text-sm text-green-700 font-medium">
+                                        <span>{{ formatCurrency(adjustedAmount) }}</span>
+                                        <span class="text-green-400">−</span>
+                                        <span>{{ formatCurrency(mrrcAmount) }} MRRC</span>
+                                        <span class="text-green-400">=</span>
+                                        <span class="font-bold">{{ formatCurrency(netToProvider) }}<span class="font-normal text-green-400">/yr</span></span>
+                                    </div>
+
+                                </div>
+                            </Transition>
+                        </div>
                     </div>
                 </div>
 
