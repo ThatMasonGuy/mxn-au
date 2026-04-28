@@ -418,8 +418,8 @@ function cancelUpload() {
 
 // ── Calculator state ──────────────────────────────────────────────────────────
 const stockType = ref('newBuild')
-const dwelling = ref('House, 2 residents')
-const designCategory = ref('highPhysicalSupport')
+const dwelling = ref('Apartment, 1 bedroom, 1 resident')
+const designCategory = ref('improvedLiveability')
 const ooa = ref('withOOA')
 const sprinklers = ref('withSprinklers')
 const itc = ref('itcNotClaimed')
