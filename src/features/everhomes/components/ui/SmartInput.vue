@@ -65,7 +65,10 @@ const inputAttrs = computed(() => {
         step: props.step,
         min: props.min,
         max: props.max,
-        type: props.type === 'currency' ? 'number' : props.type
+    }
+    // <select> has no type attribute — only add it for <input> elements
+    if (inputTag.value !== 'select') {
+        base.type = props.type === 'currency' ? 'number' : props.type
     }
     return base
 })

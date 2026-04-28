@@ -106,7 +106,7 @@ export default [
     {
         path: '/everhomes/sda-returns',
         alias: ['/everhomes/sda-returns', '/everhomes/sda-return'],
-        name: 'Everhomes | SDA Returns',
+        name: 'Everhomes | SDA Price Calculator',
         component: () => import('@/features/everhomes/views/tools/SDAReturns.vue'),
         meta: {
             requiresAuth: false,
@@ -116,6 +116,24 @@ export default [
             drawerVisible: false,
             layout: 'default',
             description: 'Calculate sda returns.',
+            badge: 'Beta',
+            requiresOverlay: false,
+        },
+    },
+
+    {
+        path: '/everhomes/qr-code',
+        alias: ['/everhomes/qr'],
+        name: 'Everhomes | QR Code Generator',
+        component: () => import('@/features/everhomes/views/tools/QRCodeTool.vue'),
+        meta: {
+            requiresAuth: false,
+            role: null,
+            title: 'QR Code Generator',
+            drawerRanking: 1,
+            drawerVisible: false,
+            layout: 'default',
+            description: 'Generate customisable QR codes for URLs, text, and Wi-Fi credentials.',
             badge: 'Beta',
             requiresOverlay: false,
         },

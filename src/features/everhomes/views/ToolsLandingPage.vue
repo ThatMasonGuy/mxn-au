@@ -121,20 +121,22 @@ import {
     ClipboardDocumentCheckIcon,
     ArrowRightIcon,
     MagnifyingGlassIcon,
-    ClipboardDocumentListIcon
+    ClipboardDocumentListIcon,
+    QrCodeIcon
 } from '@heroicons/vue/24/solid'
 
 const searchQuery = ref('')
 const selectedTags = ref([])
 
-const allTags = ['Finance', 'SDA', 'Placement', 'Returns', 'Inspection']
+const allTags = ['Finance', 'SDA', 'Placement', 'Returns', 'Inspection', 'Utility']
 
 const tagsColourMap = {
     Finance: 'teal',
     SDA: 'sky',
     Placement: 'emerald',
     Returns: 'rose',
-    Inspection: 'violet'
+    Inspection: 'violet',
+    Utility: 'purple'
 }
 
 const tagTooltips = {
@@ -142,7 +144,8 @@ const tagTooltips = {
     SDA: 'Specialist Disability Accommodation tools',
     Placement: 'Fee calculators for participant placements',
     Returns: 'Tools to calculate SDA returns and income',
-    Inspection: 'Property inspection and checklist tools'
+    Inspection: 'Property inspection and checklist tools',
+    Utility: 'General-purpose productivity tools'
 }
 
 const tagColorHexMap = {
@@ -150,7 +153,8 @@ const tagColorHexMap = {
     SDA: '#0ea5e9',
     Placement: '#10b981',
     Returns: '#f43f5e',
-    Inspection: '#8b5cf6'
+    Inspection: '#8b5cf6',
+    Utility: '#7c3aed'
 }
 
 const tools = [
@@ -176,12 +180,12 @@ const tools = [
     },
     {
         id: 'sda-return',
-        title: 'SDA Returns',
-        byline: 'Estimate SDA property rental returns',
+        title: 'SDA Price Calculator',
+        byline: 'Location-adjusted annual SDA amounts per participant',
         link: '/everhomes/sda-returns',
         icon: BuildingOffice2Icon,
         colorHex: '#8b5cf6',
-        badges: [{ label: 'In Progress', type: 'soon' }],
+        badges: [{ label: 'New!', type: 'new', glow: true }],
         tags: ['Finance', 'SDA', 'Returns']
     },
     {
@@ -203,6 +207,16 @@ const tools = [
         colorHex: '#14b8a6',
         badges: [{ label: 'New!', type: 'new', glow: true }],
         tags: ['Inspection', 'SDA']
+    },
+    {
+        id: 'qr-code',
+        title: 'QR Code Generator',
+        byline: 'Generate customisable QR codes for URLs, text, and Wi-Fi',
+        link: '/everhomes/qr-code',
+        icon: QrCodeIcon,
+        colorHex: '#7c3aed',
+        badges: [{ label: 'New!', type: 'new', glow: true }],
+        tags: ['Utility']
     },
     {
         id: 'handover-checklist',
