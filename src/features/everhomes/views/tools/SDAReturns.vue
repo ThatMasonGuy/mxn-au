@@ -139,7 +139,7 @@
                         <button
                             v-for="opt in stockTypeOptions" :key="opt.value"
                             @click="setStockType(opt.value)"
-                            class="flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap"
+                            class="flex-1 px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap"
                             :class="stockType === opt.value
                                 ? 'bg-white text-purple-700 shadow-sm border border-gray-200'
                                 : 'text-gray-500 hover:text-gray-700'"

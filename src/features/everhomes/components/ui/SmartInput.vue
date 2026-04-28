@@ -76,7 +76,7 @@ const inputAttrs = computed(() => {
 const inputClass = computed(() => {
     return [
         props.prefix ? 'pl-7' : 'pl-3',
-        'pr-3 py-2 text-gray-700 border border-gray-300 rounded-md',
+        'pr-3 py-2 text-sm text-gray-700 border border-gray-300 rounded-md',
         'group-focus-within:ring-2 group-focus-within:ring-teal-500',
         'focus:outline-none placeholder-gray-400 transition',
         'min-w-0 max-w-full truncate',
