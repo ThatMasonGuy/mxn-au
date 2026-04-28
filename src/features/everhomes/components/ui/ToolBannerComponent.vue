@@ -3,12 +3,12 @@
         :class="[gradientClass, 'text-white']">
         <div class="max-w-4xl mx-auto">
             <!-- If actions slot provided, use a flex row; otherwise centred title -->
-            <div v-if="$slots.actions" class="flex items-start justify-between gap-4">
-                <div class="text-left">
-                    <h1 class="text-3xl md:text-4xl font-extrabold tracking-tight">{{ title }}</h1>
-                    <p v-if="subtitle" class="mt-2 text-sm md:text-base opacity-90">{{ subtitle }}</p>
+            <div v-if="$slots.actions" class="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
+                <div class="text-left min-w-0">
+                    <h1 class="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight">{{ title }}</h1>
+                    <p v-if="subtitle" class="mt-1.5 text-sm md:text-base opacity-90">{{ subtitle }}</p>
                 </div>
-                <div class="flex-shrink-0 pt-1">
+                <div class="flex-shrink-0">
                     <slot name="actions" />
                 </div>
             </div>

@@ -22,11 +22,11 @@
             </template>
         </ToolBannerComponent>
 
-        <main class="max-w-3xl mx-auto px-4 py-6 sm:py-8 space-y-5">
+        <main class="max-w-5xl mx-auto px-4 py-6 sm:py-8 space-y-5">
 
             <!-- Admin Upload Panel -->
             <Transition name="expand">
-                <div v-if="isAdmin && showAdminPanel" class="bg-white rounded-2xl shadow-sm border border-purple-100 overflow-hidden">
+                <div v-if="isAdmin && showAdminPanel" class="bg-white rounded-2xl shadow-md border border-purple-100 overflow-hidden">
                     <div class="px-5 py-4 bg-gradient-to-r from-purple-50 to-pink-50 border-b border-purple-100 flex flex-wrap items-center gap-2">
                         <ArrowUpTrayIcon class="w-4 h-4 text-purple-600 flex-shrink-0" />
                         <h2 class="font-semibold text-purple-800 text-sm">Update Pricing Dataset</h2>
@@ -114,7 +114,7 @@
             </div>
 
             <!-- No data state -->
-            <div v-else-if="!store.hasData" class="bg-white rounded-2xl shadow-sm border border-gray-100 py-16 px-6 text-center">
+            <div v-else-if="!store.hasData" class="bg-white rounded-2xl shadow-md border border-gray-100 py-16 px-6 text-center">
                 <div class="w-14 h-14 rounded-2xl bg-purple-50 flex items-center justify-center mx-auto mb-4">
                     <TableCellsIcon class="w-7 h-7 text-purple-300" />
                 </div>
@@ -131,7 +131,7 @@
             <template v-else>
 
                 <!-- ── Dwelling Details ─────────────────────────────────────────── -->
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 sm:p-6">
+                <div class="bg-white rounded-2xl shadow-md border border-gray-100 p-5 sm:p-6">
                     <h2 class="text-base font-semibold text-gray-800 mb-4">Dwelling Details</h2>
 
                     <!-- Stock Type segmented control -->
@@ -240,16 +240,16 @@
                 </div>
 
                 <!-- ── Results ─────────────────────────────────────────────────── -->
-                <div v-if="!isNACombo && benchmarkAmount !== null" class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div v-if="!isNACombo && benchmarkAmount !== null" class="rounded-2xl shadow-md overflow-hidden">
 
                     <!-- Hero result -->
                     <div class="bg-gradient-to-br from-purple-600 to-pink-500 px-6 py-7 text-center text-white">
                         <p class="text-xs font-semibold uppercase tracking-widest text-white/70 mb-2">Adjusted SDA Amount</p>
-                        <p class="text-5xl sm:text-6xl font-black tracking-tight">{{ formatCurrency(adjustedAmount) }}</p>
+                        <p class="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight">{{ formatCurrency(adjustedAmount) }}</p>
                         <p class="text-sm text-white/60 mt-2">per participant / year · {{ store.config?.financialYear }}</p>
                     </div>
 
-                    <div class="p-5 sm:p-6 space-y-4">
+                    <div class="bg-white p-5 sm:p-6 space-y-4">
                         <!-- Benchmark + factor -->
                         <div class="grid grid-cols-2 gap-3">
                             <div class="rounded-xl bg-gray-50 border border-gray-100 p-4">
@@ -511,8 +511,8 @@ const ooaOptions = [
     { label: 'With OOA', value: 'withOOA' },
 ]
 const sprinklerOptions = [
-    { label: 'Without Sprinklers', value: 'noSprinklers' },
-    { label: 'With Sprinklers', value: 'withSprinklers' },
+    { label: 'Without', value: 'noSprinklers' },
+    { label: 'With', value: 'withSprinklers' },
 ]
 const itcOptions = [
     { label: 'Not Claimed', value: 'itcNotClaimed' },

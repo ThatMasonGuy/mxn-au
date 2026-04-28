@@ -1,5 +1,5 @@
 <template>
-    <div class="w-full">
+    <div class="w-full min-w-0">
         <label v-if="label" class="block text-sm font-medium text-gray-700 mb-1">{{ label }}</label>
 
         <label class="group relative w-full flex items-center cursor-text" :class="{ 'opacity-60': disabled }">
@@ -78,7 +78,8 @@ const inputClass = computed(() => {
         props.prefix ? 'pl-7' : 'pl-3',
         'pr-3 py-2 text-gray-700 border border-gray-300 rounded-md',
         'group-focus-within:ring-2 group-focus-within:ring-teal-500',
-        'focus:outline-none placeholder-gray-400 transition'
+        'focus:outline-none placeholder-gray-400 transition',
+        'min-w-0 max-w-full truncate',
     ].join(' ')
 })
 
