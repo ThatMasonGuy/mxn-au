@@ -46,6 +46,11 @@ export const HANDOVER_ITEMS = {
             ]
         },
         {
+            group: 'Maintenance Documentation', items: [
+                { id: 'laminatedMaintenanceQrCode', label: 'Is There a Laminated Maintenance Request Form QR Code?', type: 'yesno' },
+            ]
+        },
+        {
             group: 'Fire Safety & Evacuation', items: [
                 { id: 'smokeAlarms', label: 'Smoke Alarms — Present in Bedrooms and Living Spaces' },
                 { id: 'evacPlan', label: 'Emergency Evacuation Plan — Provided with Path of Travel to Safe Place' },
@@ -91,6 +96,7 @@ export const HANDOVER_ITEMS = {
                 { id: 'keysLetterbox', label: 'Keys — Letterbox', type: 'number', showIf: { id: 'keysHeld', value: 'yes' } },
                 { id: 'keysWindows', label: 'Keys — Windows', type: 'number', showIf: { id: 'keysHeld', value: 'yes' } },
                 { id: 'keysOther', label: 'Keys — Other', type: 'text', showIf: { id: 'keysHeld', value: 'yes' } },
+                { id: 'doorCode', label: 'Door Code', type: 'text' },
             ]
         },
         {
@@ -406,6 +412,11 @@ export const HANDOVER_ITEMS = {
         },
         {
             group: 'Lifts', items: [
+                { id: 'liftServiceCompany', label: 'Lift Servicing Company Name', type: 'text' },
+                { id: 'liftServiceEmail', label: 'Lift Servicing Company Email Address', type: 'text', showIf: { id: 'liftServiceCompany', hasValue: true } },
+                { id: 'liftServicePhone', label: 'Lift Servicing Company Phone Number', type: 'text', showIf: { id: 'liftServiceCompany', hasValue: true } },
+                { id: 'liftLastServiceDate', label: 'Lift Last Service Date', type: 'date', showIf: { id: 'liftServiceCompany', hasValue: true } },
+                { id: 'liftNextServiceDate', label: 'Lift Next Service Date', type: 'date', showIf: { id: 'liftServiceCompany', hasValue: true } },
                 { id: 'liftDoor', label: 'Lift Door Opening — Minimum 900mm' },
                 { id: 'liftSize', label: 'Lift Size — 1100mm Wide × 1400mm (Direction of Travel)' },
                 { id: 'liftCompliance', label: 'Lift — NCC Clause E3.6 Compliant' },

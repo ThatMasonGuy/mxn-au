@@ -518,7 +518,7 @@
                           <!-- ── Input item (number / text) ── -->
                           <div
                             v-if="
-                              item.type === 'number' || item.type === 'text'
+                              item.type === 'number' || item.type === 'text' || item.type === 'date'
                             "
                             class="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-slate-800/40"
                           >
@@ -556,7 +556,7 @@
                                 )
                               "
                               class="w-28 shrink-0 bg-slate-900/80 border border-slate-600 text-white placeholder-slate-600 text-xs font-medium rounded-lg px-2.5 py-1.5 text-right focus:outline-none focus:ring-2 focus:ring-teal-500 transition"
-                              :class="item.type === 'number' ? 'w-20' : 'w-36'"
+                              :class="item.type === 'number' ? 'w-20' : item.type === 'date' ? 'w-32' : 'w-36'"
                             />
                           </div>
 
@@ -2144,6 +2144,8 @@ function getFilteredGroups(type) {
 function itemVisible(item, sectionId) {
   if (!item.showIf) return true;
   const val = checklistData[sectionId]?.inputs?.[item.showIf.id] ?? '';
+  if (item.showIf.hasValue === true) return val !== undefined && val !== null && String(val).trim() !== '';
+  if (item.showIf.hasValue === false) return val === undefined || val === null || String(val).trim() === '';
   return val === item.showIf.value;
 }
 

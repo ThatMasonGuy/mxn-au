@@ -25,7 +25,7 @@
 
 <template>
   <div
-    v-if="item.type === 'text' || item.type === 'number'"
+    v-if="item.type === 'text' || item.type === 'number' || item.type === 'date'"
     class="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-slate-800/40"
   >
     <div class="flex-1 flex flex-wrap items-center gap-1.5 min-w-0">
@@ -38,7 +38,7 @@
       :value="inputValue"
       @input="emit('set-input', item.id, $event.target.value)"
       class="shrink-0 bg-slate-900/80 border border-slate-600 text-white placeholder-slate-600 text-xs font-medium rounded-lg px-2.5 py-1.5 text-right focus:outline-none focus:ring-2 focus:ring-teal-500 transition"
-      :class="item.type === 'number' ? 'w-20' : 'w-36'"
+      :class="item.type === 'number' ? 'w-20' : item.type === 'date' ? 'w-32' : 'w-36'"
     />
   </div><div
     v-else-if="item.type === 'multiline'"

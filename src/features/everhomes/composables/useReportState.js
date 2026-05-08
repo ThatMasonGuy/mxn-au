@@ -38,7 +38,7 @@ const FUNCTIONS_URL = import.meta.env.VITE_FUNCTIONS_URL ?? ''
 const CHECKED_STATUSES = new Set(['ok', 'attention', 'issue', 'na'])
 
 // Item types that are inputs — they go into section.inputs, not section.items
-const INPUT_TYPES = new Set(['text', 'number', 'multiline', 'yesno'])
+const INPUT_TYPES = new Set(['text', 'number', 'date', 'multiline', 'yesno'])
 
 // Firebase Storage error codes that are generally worth retrying automatically
 const RETRYABLE_STORAGE_CODES = new Set([
@@ -153,11 +153,14 @@ export function useReportState(schema) {
     function isItemVisible(item, sectionId) {
         // ── showIf check ─────────────────────────────────────────────────
         if (item.showIf) {
-            const { id, value } = item.showIf
+            const { id, value, hasValue } = item.showIf
             const currentVal = store.checklistData[sectionId]?.inputs?.[id] ??
                                store.checklistData[sectionId]?.items?.[id]  ??
                                ''
-            if (currentVal !== value) return false
+            const isFilled = currentVal !== undefined && currentVal !== null && String(currentVal).trim() !== ''
+            if (hasValue === true && !isFilled) return false
+            if (hasValue === false && isFilled) return false
+            if (hasValue === undefined && currentVal !== value) return false
         }
 
         // ── SDA badge filter ─────────────────────────────────────────────

@@ -39,6 +39,12 @@ const SUBTYPE_TITLES = {
 function itemIsVisible(item, itemStatuses, itemInputs) {
   if (!item.showIf) return true;
   const parentVal = (itemInputs ?? {})[item.showIf.id] ?? (itemStatuses ?? {})[item.showIf.id];
+  if (item.showIf.hasValue === true) {
+    return parentVal !== undefined && parentVal !== null && String(parentVal).trim() !== "";
+  }
+  if (item.showIf.hasValue === false) {
+    return parentVal === undefined || parentVal === null || String(parentVal).trim() === "";
+  }
   return parentVal === item.showIf.value;
 }
 
@@ -902,10 +908,16 @@ async function buildPDF({
           if (item.showIf) {
             const parentVal =
               itemInputs[item.showIf.id] ?? itemStatuses[item.showIf.id];
-            if (parentVal !== item.showIf.value) continue;
+            if (item.showIf.hasValue === true) {
+              if (parentVal === undefined || parentVal === null || String(parentVal).trim() === "") continue;
+            } else if (item.showIf.hasValue === false) {
+              if (parentVal !== undefined && parentVal !== null && String(parentVal).trim() !== "") continue;
+            } else if (parentVal !== item.showIf.value) {
+              continue;
+            }
           }
 
-          const isInput = item.type === "number" || item.type === "text" || item.type === "multiline";
+          const isInput = item.type === "number" || item.type === "text" || item.type === "date" || item.type === "multiline";
           const isYesNo = item.type === "yesno";
 
           if (isInput) {
