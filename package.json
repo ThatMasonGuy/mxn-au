@@ -63,7 +63,7 @@
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
     "typed.js": "^2.1.0",
-    "uuid": "^11.1.0",
+    "uuid": "^14.0.0",
     "vaul-vue": "^0.1.0",
     "vee-validate": "^4.12.6",
     "vue": "^3.4.21",
