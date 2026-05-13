@@ -14,17 +14,23 @@
   "main": "index.mjs",
   "type": "module",
   "dependencies": {
-    "@google-cloud/pubsub": "^4.2.0",
+    "@google-cloud/pubsub": "^5.3.0",
     "archiver": "^7.0.1",
-    "firebase-admin": "^10.3.0",
-    "firebase-functions": "^4.9.0",
+    "firebase-admin": "^13.9.0",
+    "firebase-functions": "^6.6.0",
     "openai": "^4.0.0",
     "pdfkit": "^0.17.2",
     "resend": "^6.9.2",
     "sharp": "^0.34.5"
   },
   "devDependencies": {
-    "firebase-functions-test": "^3.1.0"
+    "firebase-functions-test": "^3.5.0"
+  },
+  "overrides": {
+    "http-proxy-agent": "^7.0.2",
+    "protobufjs": "^7.5.8",
+    "retry-request": "^8.0.2",
+    "teeny-request": "^10.1.2"
   },
   "private": true
 }

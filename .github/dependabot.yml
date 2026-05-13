@@ -1,0 +1,27 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      root-npm-dependencies:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "npm"
+    directory: "/functions"
+    schedule:
+      interval: "weekly"
+    groups:
+      firebase-google-functions:
+        patterns:
+          - "firebase-*"
+          - "@firebase/*"
+          - "@google-cloud/*"
+          - "google-*"
+          - "@grpc/*"
+          - "protobufjs"
+      functions-npm-dependencies:
+        patterns:
+          - "*"
