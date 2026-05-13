@@ -6,7 +6,7 @@
 
       <!-- Logo -->
       <div class="loading-screen__logo-wrap">
-        <img src="/og.png" alt="MXN" class="loading-screen__logo" />
+        <img src="/og-no-background.png" alt="MXN" class="loading-screen__logo" />
       </div>
 
       <!-- Progress bar -->
