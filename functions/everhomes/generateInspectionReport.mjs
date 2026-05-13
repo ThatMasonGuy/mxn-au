@@ -1434,11 +1434,10 @@ async function buildZip(
   propertyAddress,
   inspectionDate,
 ) {
-  // Now you can await the import
-  const { default: archiver } = await import("archiver");
+  const { ZipArchive } = await import("archiver");
 
   return new Promise((resolve, reject) => {
-    const archive = archiver("zip", { zlib: { level: 6 } });
+    const archive = new ZipArchive({ zlib: { level: 6 } });
     const chunks = [];
     archive.on("data", (c) => chunks.push(c));
     archive.on("end", () => resolve(Buffer.concat(chunks)));
