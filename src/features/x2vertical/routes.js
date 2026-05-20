@@ -4,7 +4,7 @@ export default [
     {
         path: '/x2vertical',
         name: 'X2Vertical',
-        component: () => import('@/features/x2vertical/views/TweetShare.vue'),
+        component: () => import('@/features/x2vertical/views/X2Vertical.vue'),
         meta: {
             requiresAuth: true,
             role: ROLES.SITE_ADMIN,
