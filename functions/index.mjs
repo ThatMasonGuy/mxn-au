@@ -45,3 +45,6 @@ export { createAutoTranslatePair } from './api/createAutoTranslatePair.mjs';
 
 // Everhomes Functions
 export { generateInspectionReport } from './everhomes/generateInspectionReport.mjs';
+
+// X2Vertical
+export { fetchTweet } from './x2vertical/fetchTweet.mjs';
