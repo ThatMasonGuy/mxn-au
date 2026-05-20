@@ -2,13 +2,13 @@ import { ROLES } from '@/shared/constants/roles'
 
 export default [
     {
-        path: '/tweet-share',
-        name: 'TweetShare',
-        component: () => import('@/features/tweet-share/views/TweetShare.vue'),
+        path: '/x2vertical',
+        name: 'X2Vertical',
+        component: () => import('@/features/x2vertical/views/TweetShare.vue'),
         meta: {
             requiresAuth: true,
             role: ROLES.SITE_ADMIN,
-            title: 'Tweet to Video',
+            title: 'X2Vertical',
             drawerRanking: -1,
             drawerVisible: false,
             layout: 'default',

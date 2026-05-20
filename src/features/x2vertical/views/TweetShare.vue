@@ -647,7 +647,7 @@ async function handleAuthAction() {
         return
     }
 
-    await router.push({ path: '/login', query: { redirect: '/tweet-share' } })
+    await router.push({ path: '/login', query: { redirect: '/x2vertical' } })
 }
 
 function openVibeExamples() {
