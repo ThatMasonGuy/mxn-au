@@ -490,6 +490,65 @@
 @layer base {
   /* Complete theme definitions for your @layer base section */
 
+  /* ===== X2VERTICAL THEME ===== */
+  .theme-x2vertical {
+    --x2v-bg: #050508;
+    --x2v-feature-bg: #07070b;
+    --x2v-nav-bg: rgba(5, 5, 8, 0.85);
+    --x2v-recents-bg: rgba(11, 11, 19, 0.9);
+    --x2v-panel-bg: rgba(9, 9, 13, 0.4);
+    --x2v-empty-bg: rgba(9, 9, 13, 0.6);
+    --x2v-input-bg: #0b0b10;
+    --x2v-popover-bg: rgba(11, 11, 16, 0.94);
+    --x2v-text: #f8fafc;
+    --x2v-text-strong: #ffffff;
+    --x2v-text-muted: #94a3b8;
+    --x2v-text-faint: #64748b;
+    --x2v-placeholder: #475569;
+    --x2v-border: rgba(255, 255, 255, 0.1);
+    --x2v-border-soft: rgba(255, 255, 255, 0.05);
+    --x2v-border-strong: rgba(255, 255, 255, 0.14);
+    --x2v-dot-color: rgba(139, 92, 246, 0.08);
+    --x2v-top-glow: rgba(139, 92, 246, 0.12);
+    --x2v-control-bg: rgba(255, 255, 255, 0.05);
+    --x2v-control-hover-bg: rgba(255, 255, 255, 0.1);
+    --x2v-action-bg: rgba(255, 255, 255, 0.03);
+    --x2v-action-hover-bg: rgba(255, 255, 255, 0.08);
+    --x2v-action-border: rgba(255, 255, 255, 0.06);
+    --x2v-action-hover-border: rgba(255, 255, 255, 0.15);
+    --x2v-panel-shadow: 0 0 50px -12px rgba(139, 92, 246, 0.1);
+    --x2v-band-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+
+  .theme-x2vertical.x2v-light {
+    --x2v-bg: #f7faff;
+    --x2v-feature-bg: #f2f6fc;
+    --x2v-nav-bg: rgba(247, 250, 255, 0.88);
+    --x2v-recents-bg: rgba(235, 241, 250, 0.92);
+    --x2v-panel-bg: rgba(255, 255, 255, 0.76);
+    --x2v-empty-bg: rgba(255, 255, 255, 0.78);
+    --x2v-input-bg: #ffffff;
+    --x2v-popover-bg: rgba(255, 255, 255, 0.96);
+    --x2v-text: #172033;
+    --x2v-text-strong: #0f172a;
+    --x2v-text-muted: #526173;
+    --x2v-text-faint: #7a8798;
+    --x2v-placeholder: #8793a5;
+    --x2v-border: rgba(15, 23, 42, 0.12);
+    --x2v-border-soft: rgba(15, 23, 42, 0.08);
+    --x2v-border-strong: rgba(15, 23, 42, 0.16);
+    --x2v-dot-color: rgba(59, 130, 246, 0.12);
+    --x2v-top-glow: rgba(59, 130, 246, 0.18);
+    --x2v-control-bg: rgba(15, 23, 42, 0.04);
+    --x2v-control-hover-bg: rgba(15, 23, 42, 0.08);
+    --x2v-action-bg: rgba(15, 23, 42, 0.05);
+    --x2v-action-hover-bg: rgba(15, 23, 42, 0.09);
+    --x2v-action-border: rgba(15, 23, 42, 0.08);
+    --x2v-action-hover-border: rgba(15, 23, 42, 0.16);
+    --x2v-panel-shadow: 0 22px 60px -32px rgba(59, 130, 246, 0.35);
+    --x2v-band-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  }
+
   /* ===== VELARIS THEME (Default) ===== */
   .theme-velaris {
     /* Brand colors - Purple/Teal/Green palette */
