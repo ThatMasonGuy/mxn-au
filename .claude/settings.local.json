@@ -9,7 +9,20 @@
       "Bash(git commit -m ' *)",
       "Bash(git push *)",
       "Bash(Get-ChildItem -Path \"C:\\\\mason\\\\mxn-au\" -Force)",
-      "Bash(Select-Object Name, FullName)"
+      "Bash(Select-Object Name, FullName)",
+      "Bash(git mv *)",
+      "Bash(cp -r \"C:/mason/mxn-au/src/features/tweet-share\" \"C:/mason/mxn-au/src/features/x2vertical\")",
+      "Bash(git rm *)",
+      "WebFetch(domain:developer.twitter.com)",
+      "WebFetch(domain:docs.x.com)",
+      "WebSearch",
+      "WebFetch(domain:developer.x.com)",
+      "WebFetch(domain:www.postman.com)",
+      "WebFetch(domain:twitterapi.io)",
+      "WebFetch(domain:dev.to)",
+      "Bash(firebase deploy *)",
+      "Bash(npx vite *)",
+      "Bash(firebase functions:log --only fetchTweet)"
     ]
   }
 }

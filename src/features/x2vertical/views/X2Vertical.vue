@@ -172,6 +172,12 @@
                             </button>
                         </div>
                     </div>
+                    <!-- Fetch error -->
+                    <Transition name="fade">
+                        <p v-if="fetchError" class="mt-2.5 text-sm text-red-400 text-center font-medium">
+                            {{ fetchError }}
+                        </p>
+                    </Transition>
                     <!-- Background Picker -->
                     <div class="mt-8 flex items-center justify-center gap-4 flex-wrap">
                         <span class="x2v-page-muted font-semibold text-sm">Background</span>
@@ -289,8 +295,9 @@
                             <div class="flex items-start gap-2.5 mb-2.5 flex-shrink-0">
                                 <!-- Avatar -->
                                 <div class="w-9 h-9 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center text-sm font-bold text-white"
-                                    :style="{ background: item.avatarColor || '#1d4ed8' }">
-                                    {{ item.displayName.charAt(0) }}
+                                    :style="item.avatarUrl ? {} : { background: item.avatarColor || '#1d4ed8' }">
+                                    <img v-if="item.avatarUrl" :src="item.avatarUrl" class="w-full h-full object-cover" :alt="item.displayName" />
+                                    <template v-else>{{ item.displayName.charAt(0) }}</template>
                                 </div>
                                 
                                 <!-- User info -->
@@ -399,19 +406,27 @@
                         
                         <!-- Action buttons below the card -->
                         <div class="mt-3 flex items-center justify-between gap-2.5 px-1 flex-shrink-0">
-                            <!-- Download button -->
-                            <button @click.stop class="flex-1 py-2 rounded-lg bg-[#09090d]/60 border border-white/5 hover:border-white/15 text-slate-400 hover:text-white transition-all flex items-center justify-center" title="Download Video">
+                            <!-- Download: open modal → user picks background → downloads -->
+                            <button
+                                @click.stop="openPreviewModal(item)"
+                                class="flex-1 py-2 rounded-lg bg-[#09090d]/60 border border-white/5 hover:border-violet-500/40 hover:text-violet-300 text-slate-400 transition-all flex items-center justify-center gap-1.5"
+                                title="Open & Download"
+                            >
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4">
                                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
                                 </svg>
                             </button>
-                            <!-- Copy/Share button -->
-                            <button @click.stop class="flex-1 py-2 rounded-lg bg-[#09090d]/60 border border-white/5 hover:border-white/15 text-slate-400 hover:text-white transition-all flex items-center justify-center" title="Copy Link">
+                            <!-- Copy: open modal → copy from there -->
+                            <button
+                                @click.stop="openPreviewModal(item)"
+                                class="flex-1 py-2 rounded-lg bg-[#09090d]/60 border border-white/5 hover:border-cyan-500/40 hover:text-cyan-300 text-slate-400 transition-all flex items-center justify-center gap-1.5"
+                                title="Open & Copy"
+                            >
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4">
                                     <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
                                 </svg>
                             </button>
-                            <!-- More options button -->
+                            <!-- More options (placeholder) -->
                             <button @click.stop class="flex-1 py-2 rounded-lg bg-[#09090d]/60 border border-white/5 hover:border-white/15 text-slate-400 hover:text-white transition-all flex items-center justify-center" title="More Actions">
                                 <svg viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4">
                                     <circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>
@@ -579,6 +594,7 @@
     <TweetPreviewModal
         :is-open="isModalOpen"
         :item="selectedModalItem || recentImports[0]"
+        :background="selectedBackgroundVariant"
         @close="isModalOpen = false"
     />
 </template>
@@ -591,6 +607,8 @@ import { signOut } from '@/auth'
 import { useMainStore } from '@/shared/stores/useMainStore'
 import TweetPreviewModal from './TweetPreviewModal.vue'
 import Logo from '../assets/X2Vertical.png'
+
+defineOptions({ inheritAttrs: false })
 
 const router = useRouter()
 const mainStore = useMainStore()
@@ -682,8 +700,12 @@ onBeforeUnmount(() => {
     document.removeEventListener('pointerdown', handleOutsidePopoverPointerDown)
 })
 
+const FETCH_TWEET_URL = 'https://australia-southeast1-mxn-au.cloudfunctions.net/fetchTweet'
+const PROXY_VIDEO_URL = 'https://australia-southeast1-mxn-au.cloudfunctions.net/proxyTweetVideo'
+
 const tweetUrl = ref('')
 const loading = ref(false)
+const fetchError = ref(null)
 const activeIdx = ref(0)
 
 const isModalOpen = ref(false)
@@ -750,9 +772,14 @@ const dotGrid = [
     {x:2,y:12},{x:7,y:12},{x:12,y:12},
 ]
 
-const recentImports = ref([
+// ── Recents: localStorage-backed, max 4, padded with mocks ──────────────────
+
+const RECENTS_KEY = 'x2v-recents-v1'
+const MAX_RECENTS = 4
+
+const MOCK_RECENTS = [
     {
-        id: '1',
+        id: 'mock-1',
         displayName: 'Marie 🐈',
         handle: 'glitchu_',
         avatarColor: '#7c2d82',
@@ -766,7 +793,7 @@ const recentImports = ref([
         cardTheme: 'dark',
     },
     {
-        id: '2',
+        id: 'mock-2',
         displayName: '✝ Rush Ganyu ✝',
         handle: 'basedganyu',
         avatarColor: '#4338ca',
@@ -781,7 +808,7 @@ const recentImports = ref([
         cardTheme: 'dark',
     },
     {
-        id: '3',
+        id: 'mock-3',
         displayName: 'That Mason Guy',
         handle: 'That_MasonGuy',
         avatarColor: '#0369a1',
@@ -793,11 +820,10 @@ const recentImports = ref([
         duration: null,
         timestamp: '10:31 AM · May 10, 2026',
         cardTheme: 'dark',
-        replies: 1,
-        likes: 1,
+        metrics: { likes: 1, retweets: 0, replies: 1, views: 0 },
     },
     {
-        id: '4',
+        id: 'mock-4',
         displayName: 'Dexerto',
         handle: 'Dexerto',
         avatarColor: '#b45309',
@@ -810,7 +836,39 @@ const recentImports = ref([
         timestamp: '7:00 PM · May 19, 2026',
         cardTheme: 'dark',
     },
-])
+]
+
+function isMock(item) {
+    return item.id.startsWith('mock-')
+}
+
+function loadRecents() {
+    try {
+        const raw = localStorage.getItem(RECENTS_KEY)
+        if (raw) {
+            const real = JSON.parse(raw)
+            if (Array.isArray(real) && real.length > 0) {
+                // Pad with mocks so there are always up to MAX_RECENTS cards
+                const needed = Math.max(0, MAX_RECENTS - real.length)
+                return [...real.slice(0, MAX_RECENTS), ...MOCK_RECENTS.slice(0, needed)]
+            }
+        }
+    } catch {
+        // Corrupted storage — ignore
+    }
+    return [...MOCK_RECENTS]
+}
+
+function saveRecents(items) {
+    try {
+        const real = items.filter(i => !isMock(i)).slice(0, MAX_RECENTS)
+        localStorage.setItem(RECENTS_KEY, JSON.stringify(real))
+    } catch {
+        // Storage full or unavailable — ignore
+    }
+}
+
+const recentImports = ref(loadRecents())
 
 const exampleTweet = computed(() => recentImports.value[0])
 
@@ -858,13 +916,93 @@ function handleMouseLeave(event, item) {
     }
 }
 
-function loadTweet() {
+async function loadTweet() {
     if (!tweetUrl.value.trim() || loading.value) return
     loading.value = true
-    setTimeout(() => {
+    fetchError.value = null
+    try {
+        const res = await fetch(FETCH_TWEET_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: tweetUrl.value.trim() }),
+        })
+        const data = await res.json()
+        if (!res.ok) {
+            // Surface the server's error message, with friendly fallbacks
+            const msg = data.error
+                || (res.status === 402 ? 'X API credits depleted — monthly limit reached' : null)
+                || (res.status === 429 ? 'X API rate limit — try again shortly' : null)
+                || `Request failed (${res.status})`
+            throw new Error(msg)
+        }
+        const item = mapTweetToCard(data.tweet)
+
+        // Prepend real item, keep only real items up to MAX_RECENTS, then pad with mocks
+        const real = [item, ...recentImports.value.filter(i => !isMock(i) && i.id !== item.id)]
+            .slice(0, MAX_RECENTS)
+        const needed = Math.max(0, MAX_RECENTS - real.length)
+        recentImports.value = [...real, ...MOCK_RECENTS.slice(0, needed)]
+        saveRecents(recentImports.value)
+
+        tweetUrl.value = ''
+        openPreviewModal(item)
+    } catch (err) {
+        fetchError.value = err.message || 'Failed to fetch tweet'
+        console.error('fetchTweet error:', err)
+    } finally {
         loading.value = false
-        // TODO: const data = await api.fetchTweet(tweetUrl.value)
-    }, 800)
+    }
+}
+
+function mapTweetToCard(tweet) {
+    const media = tweet.media?.[0] ?? null
+    let mediaType = 'none', mediaUrl = null, videoUrl = null
+    if (media) {
+        if (media.type === 'photo') {
+            mediaType = 'image'
+            mediaUrl = media.url
+        } else if (media.type === 'video') {
+            mediaType = 'video'
+            mediaUrl = media.previewUrl
+            videoUrl = `${PROXY_VIDEO_URL}?tweetId=${tweet.id}`
+        } else if (media.type === 'animated_gif') {
+            // Twitter delivers GIFs as silent looping MP4s
+            mediaType = 'video'
+            mediaUrl = media.previewUrl  // poster / static thumbnail
+            videoUrl = `${PROXY_VIDEO_URL}?tweetId=${tweet.id}`
+        }
+    }
+    return {
+        id: tweet.id,
+        displayName: tweet.author?.displayName ?? 'Unknown',
+        handle: tweet.author?.handle ?? 'unknown',
+        avatarUrl: tweet.author?.avatarUrl ?? null,
+        avatarColor: '#1d4ed8',
+        verified: tweet.author?.verified ?? false,
+        text: tweet.text ?? '',
+        mediaType,
+        mediaUrl,
+        videoUrl,
+        mediaBg: '#0f172a',
+        duration: media?.durationMs ? formatMediaDuration(media.durationMs) : null,
+        timestamp: formatTweetDate(tweet.createdAt),
+        cardTheme: 'dark',
+        metrics: tweet.metrics ?? null,
+        quotedTweet: tweet.quotedTweet ?? null,
+    }
+}
+
+function formatMediaDuration(ms) {
+    const s = Math.floor(ms / 1000)
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+}
+
+function formatTweetDate(iso) {
+    if (!iso) return ''
+    return new Date(iso).toLocaleString('en-AU', {
+        hour: 'numeric', minute: '2-digit', hour12: true,
+        month: 'short', day: 'numeric', year: 'numeric',
+    })
 }
 
 function loadFromCache(item) {

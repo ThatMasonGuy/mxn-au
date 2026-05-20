@@ -107,6 +107,40 @@ function normaliseUser(raw) {
 }
 
 /**
+ * Clean tweet text:
+ *   - Strip t.co URLs that are media attachments (photo/video/gif — surfaced separately)
+ *   - Strip t.co URLs that point to referenced tweets (quoted/replied — embedded separately)
+ *   - Replace all other t.co shortlinks with their human-readable display_url
+ */
+function cleanTweetText(text, entities, referencedTweets = []) {
+    if (!text || !entities?.urls?.length) return text
+    // Build a set of tweet IDs that are explicitly referenced (quoted, replied-to, etc.)
+    const refIds = new Set((referencedTweets ?? []).map(r => r.id))
+    let cleaned = text
+    for (const u of entities.urls) {
+        if (!u.url) continue
+        const exp  = u.expanded_url ?? ''
+        const disp = u.display_url  ?? ''
+        // Does this URL point to a referenced tweet? (twitter.com/{user}/status/{id})
+        const refMatch = exp.match(/\/status\/(\d+)/)
+        const isRefTweet = refMatch && refIds.has(refMatch[1])
+        const isMediaLink =
+            disp.startsWith('pic.twitter.com') ||
+            exp.includes('twitter.com/i/') ||
+            exp.includes('x.com/i/') ||
+            /\/(photo|video)\/\d+/.test(exp) ||
+            isRefTweet
+        if (isMediaLink) {
+            cleaned = cleaned.replace(u.url, '').trim()
+        } else {
+            // Replace raw t.co with the readable display URL (e.g. youtu.be/xxx)
+            cleaned = cleaned.replace(u.url, disp || exp || u.url)
+        }
+    }
+    return cleaned.trim()
+}
+
+/**
  * Normalise a tweet data object + the shared includes bag into a clean shape.
  * Handles the quoted tweet recursively (one level deep).
  */
@@ -137,7 +171,7 @@ function normaliseTweet(tweetData, includes, isQuote = false) {
 
     return {
         id: tweetData.id,
-        text: tweetData.text,
+        text: cleanTweetText(tweetData.text, tweetData.entities, tweetData.referenced_tweets),
         createdAt: tweetData.created_at ?? null,
         author,
         media,
@@ -232,6 +266,10 @@ export const fetchTweet = onRequest(
             if (err.status === 401 || err.status === 403) {
                 return res.status(502).json({ error: 'X API authentication failed' })
             }
+            // Credits depleted (X Developer plan limit)
+            if (err.status === 402) {
+                return res.status(402).json({ error: 'X API credits depleted — monthly limit reached' })
+            }
             // Rate limit
             if (err.status === 429) {
                 return res.status(429).json({ error: 'X API rate limit reached — try again shortly' })
@@ -245,7 +283,10 @@ export const fetchTweet = onRequest(
         }
 
         // ── Normalise ─────────────────────────────────────────────────────────
+        console.log(`[fetchTweet] referenced_tweets:`, JSON.stringify(raw.data.referenced_tweets ?? []))
+        console.log(`[fetchTweet] includes.tweets count:`, raw.includes?.tweets?.length ?? 0)
         const tweet = normaliseTweet(raw.data, raw.includes ?? {})
+        console.log(`[fetchTweet] quotedTweet resolved:`, tweet.quotedTweet ? `@${tweet.quotedTweet.author?.handle}` : 'null')
 
         // ── Write to cache ────────────────────────────────────────────────────
         await cacheRef.set({

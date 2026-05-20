@@ -48,3 +48,4 @@ export { generateInspectionReport } from './everhomes/generateInspectionReport.m
 
 // X2Vertical
 export { fetchTweet } from './x2vertical/fetchTweet.mjs';
+export { proxyTweetVideo } from './x2vertical/proxyTweetVideo.mjs';
