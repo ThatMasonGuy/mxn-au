@@ -1,101 +1,175 @@
 <template>
-    <LayoutComponent :header="true" :footer="true" :background="false" bg-style="linear-gradient(160deg, #101c2e 0%, #0b1525 48%, #070f1d 100%)">
-        <div class="relative min-h-screen">
-
+    <LayoutComponent
+        :header="true"
+        :footer="true"
+        :background="false"
+        bg-style="linear-gradient(160deg, #101c2e 0%, #0b1525 48%, #070f1d 100%)"
+    >
+        <main class="relative min-h-screen overflow-hidden bg-[#0b1525]">
             <!-- Background -->
-            <div class="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-                <div class="absolute inset-0" style="background: linear-gradient(160deg, #101c2e 0%, #0b1525 48%, #070f1d 100%);" />
-                <div class="absolute inset-0" style="background-image: radial-gradient(circle, rgba(148,163,184,0.055) 1px, transparent 1px); background-size: 28px 28px;" />
-                <div class="absolute top-0 inset-x-0 h-px" style="background: linear-gradient(to right, transparent 5%, rgba(20,184,166,0.4) 40%, rgba(34,211,238,0.3) 60%, transparent 95%);" />
+            <div class="pointer-events-none absolute inset-0" aria-hidden="true">
+                <div
+                    class="absolute inset-0"
+                    style="background: linear-gradient(160deg, #101c2e 0%, #0b1525 48%, #070f1d 100%);"
+                />
+
+                <div
+                    class="absolute inset-0 opacity-70"
+                    style="background-image: radial-gradient(circle, rgba(148, 163, 184, 0.14) 1px, transparent 1px); background-size: 28px 28px;"
+                />
+
+                <div class="absolute left-1/2 top-16 h-72 w-[42rem] -translate-x-1/2 rounded-full bg-cyan-500/10 blur-3xl" />
+                <div class="absolute right-[-12rem] top-80 h-80 w-80 rounded-full bg-violet-500/10 blur-3xl" />
+                <div class="absolute bottom-0 left-[-10rem] h-80 w-80 rounded-full bg-teal-500/10 blur-3xl" />
             </div>
 
-            <!-- ─── Page header ──────────────────────────────────────────────── -->
-            <div class="relative pt-20 sm:pt-24 pb-6 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <div>
-                        <div class="inline-flex items-center gap-1.5 text-xs font-medium text-teal-400 mb-2">
-                            <ShieldCheck class="w-3.5 h-3.5" />
-                            <span class="uppercase tracking-widest">Site Admin</span>
-                        </div>
-                        <h1 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">Everhomes Admin</h1>
-                        <p class="text-slate-400 text-sm mt-1">Submissions, datasets, and system management</p>
-                    </div>
-
-                    <button
-                        @click="loadSubmissions"
-                        :disabled="loading"
-                        class="self-start sm:self-auto flex items-center gap-2 px-3 py-1.5 rounded-lg text-slate-400 hover:text-white border border-white/[0.08] hover:border-white/20 hover:bg-white/[0.05] text-xs font-medium transition-all"
-                    >
-                        <RefreshCw class="w-3.5 h-3.5" :class="loading ? 'animate-spin' : ''" />
-                        Refresh
-                    </button>
-                </div>
-            </div>
-
-            <!-- ─── Stats row ───────────────────────────────────────────────── -->
-            <div class="relative px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto mb-8">
-                <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                    <div v-for="stat in stats" :key="stat.label" class="rounded-xl p-4 border" :style="{ background: '#0f1e30', borderColor: 'rgba(255,255,255,0.08)' }">
-                        <div class="flex items-center gap-2 mb-2">
-                            <div class="w-7 h-7 rounded-lg flex items-center justify-center" :style="{ background: stat.bgColor }">
-                                <component :is="stat.icon" class="w-3.5 h-3.5" :style="{ color: stat.color }" />
+            <div class="relative mx-auto max-w-7xl px-3 pb-24 pt-24 sm:px-6 sm:pt-28 lg:px-8">
+                <!-- Hero -->
+                <section class="mb-8 overflow-hidden rounded-[1.5rem] border border-white/10 bg-slate-950/45 p-5 shadow-2xl shadow-black/30 backdrop-blur sm:rounded-[2rem] sm:p-8 lg:p-10">
+                    <div class="grid gap-6 lg:grid-cols-[1fr_380px] lg:items-end">
+                        <div class="min-w-0">
+                            <div class="mb-5 inline-flex max-w-full items-center gap-2 rounded-full border border-teal-400/25 bg-teal-400/10 px-3 py-1 text-xs font-semibold tracking-wide text-teal-300">
+                                <ShieldCheck class="h-3.5 w-3.5 shrink-0" />
+                                <span class="truncate">Site Admin</span>
                             </div>
-                            <span class="text-xs text-slate-500 font-medium">{{ stat.label }}</span>
+
+                            <h1 class="max-w-full text-[clamp(2.4rem,12vw,4rem)] font-black leading-[0.92] tracking-tight text-white sm:text-5xl lg:text-6xl">
+                                <span class="block whitespace-nowrap">Everhomes</span>
+                                <span class="block bg-gradient-to-r from-teal-300 via-cyan-300 to-sky-400 bg-clip-text text-transparent">
+                                    Admin
+                                </span>
+                            </h1>
+
+                            <p class="mt-5 max-w-2xl text-[14px] leading-6 text-slate-300 sm:text-lg sm:leading-7">
+                                Submissions, datasets, reports, and the small administrative rituals keeping civilisation duct-taped together.
+                            </p>
+
+                            <div class="mt-7 flex flex-wrap items-center gap-3">
+                                <button
+                                    type="button"
+                                    @click="loadSubmissions"
+                                    :disabled="loading"
+                                    class="inline-flex items-center gap-2 rounded-full border border-teal-400/25 bg-teal-400/10 px-4 py-2 text-sm font-semibold text-teal-200 transition hover:border-teal-300/50 hover:bg-teal-400/15 disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                    <RefreshCw class="h-4 w-4" :class="loading ? 'animate-spin' : ''" />
+                                    Refresh submissions
+                                </button>
+
+                                <p class="text-xs font-medium text-slate-500">
+                                    Loaded {{ allSubmissions.length }} submission{{ allSubmissions.length === 1 ? '' : 's' }}
+                                </p>
+                            </div>
                         </div>
-                        <p class="text-2xl font-bold text-white tabular-nums">{{ stat.value }}</p>
+
+                        <aside class="rounded-3xl border border-white/10 bg-white/[0.06] p-5 shadow-xl shadow-black/20">
+                            <div class="mb-4 flex items-center justify-between gap-4">
+                                <div>
+                                    <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                                        System pulse
+                                    </p>
+                                    <p class="mt-1 text-sm font-medium text-slate-300">
+                                        Current submission state
+                                    </p>
+                                </div>
+
+                                <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-cyan-400/20 bg-cyan-400/10">
+                                    <BarChart3 class="h-5 w-5 text-cyan-300" />
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3">
+                                <div
+                                    v-for="stat in stats"
+                                    :key="stat.label"
+                                    class="rounded-2xl border border-white/10 bg-white/[0.06] p-4"
+                                >
+                                    <div class="mb-3 flex items-center justify-between gap-3">
+                                        <span class="text-xs font-semibold text-slate-500">{{ stat.label }}</span>
+                                        <div class="flex h-8 w-8 items-center justify-center rounded-xl" :style="{ background: stat.bgColor }">
+                                            <component :is="stat.icon" class="h-4 w-4" :style="{ color: stat.color }" />
+                                        </div>
+                                    </div>
+                                    <p class="text-3xl font-black leading-none text-white tabular-nums">
+                                        {{ stat.value }}
+                                    </p>
+                                </div>
+                            </div>
+                        </aside>
                     </div>
-                </div>
-            </div>
+                </section>
 
-            <!-- ─── Tabs ────────────────────────────────────────────────────── -->
-            <div class="relative px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto pb-24">
-
-                <div class="flex gap-1 mb-6 p-1 rounded-xl w-fit" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07)">
-                    <button
-                        v-for="tab in tabs" :key="tab.id"
-                        @click="activeTab = tab.id"
-                        class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all"
-                        :class="activeTab === tab.id
-                            ? 'bg-teal-500/20 text-teal-300 border border-teal-500/30'
-                            : 'text-slate-400 hover:text-slate-200'"
-                    >
-                        <component :is="tab.icon" class="w-4 h-4" />
-                        {{ tab.label }}
-                        <span v-if="tab.id === 'submissions' && allSubmissions.length" class="ml-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold" :class="activeTab === 'submissions' ? 'bg-teal-500/30 text-teal-300' : 'bg-white/10 text-slate-400'">
-                            {{ allSubmissions.length }}
-                        </span>
-                    </button>
-                </div>
-
-                <!-- ── Submissions tab ──────────────────────────────────────── -->
-                <div v-if="activeTab === 'submissions'">
-                    <!-- Filter bar -->
-                    <div class="flex flex-wrap items-center gap-2 mb-5">
+                <!-- Tabs -->
+                <section class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="flex w-full gap-1 rounded-2xl border border-white/10 bg-white/[0.04] p-1 shadow-xl shadow-black/10 sm:w-fit">
                         <button
-                            v-for="f in typeFilters" :key="f.id"
-                            @click="typeFilter = f.id"
-                            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border"
-                            :class="typeFilter === f.id
-                                ? 'bg-teal-500/15 text-teal-300 border-teal-500/30'
-                                : 'text-slate-400 hover:text-slate-200 border-white/[0.07] hover:border-white/15'"
+                            v-for="tab in tabs"
+                            :key="tab.id"
+                            type="button"
+                            @click="activeTab = tab.id"
+                            class="flex min-w-0 flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold transition sm:flex-none sm:px-4"
+                            :class="activeTab === tab.id
+                                ? 'border border-teal-400/30 bg-teal-400/15 text-teal-200 shadow-lg shadow-teal-950/30'
+                                : 'border border-transparent text-slate-400 hover:bg-white/[0.05] hover:text-slate-200'"
                         >
-                            <component :is="f.icon" class="w-3.5 h-3.5" />
-                            {{ f.label }}
-                        </button>
-
-                        <div class="ml-auto flex items-center gap-2">
-                            <button
-                                v-for="s in statusFilters" :key="s.id"
-                                @click="statusFilter = statusFilter === s.id ? 'all' : s.id"
-                                class="px-2.5 py-1 rounded-lg text-[11px] font-semibold uppercase tracking-wide transition-all border"
-                                :class="statusFilter === s.id ? s.activeClass : 'text-slate-500 border-white/[0.07] hover:border-white/15'"
+                            <component :is="tab.icon" class="h-4 w-4 shrink-0" />
+                            <span class="truncate">{{ tab.label }}</span>
+                            <span
+                                v-if="tab.id === 'submissions' && allSubmissions.length"
+                                class="ml-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-black leading-none"
+                                :class="activeTab === 'submissions' ? 'bg-teal-400/20 text-teal-200' : 'bg-white/10 text-slate-500'"
                             >
-                                {{ s.label }}
-                            </button>
+                                {{ allSubmissions.length }}
+                            </span>
+                        </button>
+                    </div>
+                </section>
+
+                <!-- Submissions tab -->
+                <section v-if="activeTab === 'submissions'" class="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4 shadow-xl shadow-black/10 backdrop-blur sm:rounded-[2rem] sm:p-5">
+                    <!-- Filter bar -->
+                    <div class="mb-5 flex flex-col gap-3 border-b border-white/[0.07] pb-5 lg:flex-row lg:items-center lg:justify-between">
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-300/70">
+                                Submission queue
+                            </p>
+                            <h2 class="mt-1 text-xl font-bold text-white">
+                                Recent reports
+                            </h2>
+                        </div>
+
+                        <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+                            <div class="flex flex-wrap gap-2">
+                                <button
+                                    v-for="f in typeFilters"
+                                    :key="f.id"
+                                    type="button"
+                                    @click="typeFilter = f.id"
+                                    class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition"
+                                    :class="typeFilter === f.id
+                                        ? 'border-teal-400/30 bg-teal-400/15 text-teal-200'
+                                        : 'border-white/10 bg-white/[0.04] text-slate-400 hover:border-white/20 hover:text-slate-200'"
+                                >
+                                    <component :is="f.icon" class="h-3.5 w-3.5" />
+                                    {{ f.label }}
+                                </button>
+                            </div>
+
+                            <div class="flex flex-wrap gap-2 sm:justify-end">
+                                <button
+                                    v-for="s in statusFilters"
+                                    :key="s.id"
+                                    type="button"
+                                    @click="statusFilter = statusFilter === s.id ? 'all' : s.id"
+                                    class="rounded-full border px-3 py-1.5 text-[11px] font-black uppercase tracking-wide transition"
+                                    :class="statusFilter === s.id ? s.activeClass : 'border-white/10 bg-white/[0.04] text-slate-500 hover:border-white/20 hover:text-slate-300'"
+                                >
+                                    {{ s.label }}
+                                </button>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Click-away trap for action dropdowns — always in the DOM, only catches clicks when a menu is open -->
+                    <!-- Click-away trap for action dropdowns -->
                     <div
                         class="fixed inset-0 z-10"
                         :class="actionMenuId ? '' : 'pointer-events-none'"
@@ -103,114 +177,140 @@
                     />
 
                     <!-- Loading state -->
-                    <div v-if="loading" class="flex items-center justify-center py-20 gap-3 text-slate-500">
-                        <Loader2 class="w-5 h-5 animate-spin" />
+                    <div v-if="loading" class="flex items-center justify-center gap-3 py-24 text-slate-500">
+                        <Loader2 class="h-5 w-5 animate-spin text-cyan-300" />
                         <span class="text-sm">Loading submissions…</span>
                     </div>
 
                     <!-- Empty state -->
-                    <div v-else-if="!filteredSubmissions.length" class="flex flex-col items-center justify-center py-20 text-center gap-3">
-                        <div class="w-12 h-12 rounded-xl flex items-center justify-center mb-1" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08)">
-                            <Inbox class="w-5 h-5 text-slate-600" />
+                    <div v-else-if="!filteredSubmissions.length" class="rounded-[2rem] border border-white/10 bg-white/[0.035] py-20 text-center">
+                        <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06]">
+                            <Inbox class="h-5 w-5 text-slate-500" />
                         </div>
-                        <p class="text-slate-400 font-medium">No submissions found</p>
-                        <p class="text-slate-600 text-sm">Try changing the filters</p>
+                        <p class="font-semibold text-slate-300">
+                            No submissions found
+                        </p>
+                        <p class="mt-1 text-sm text-slate-600">
+                            Try changing the filters. Riveting admin theatre, truly.
+                        </p>
                     </div>
 
                     <!-- Submissions list -->
-                    <div v-else class="flex flex-col gap-3">
-                        <div
-                            v-for="sub in filteredSubmissions"
+                    <div v-else class="space-y-3">
+                        <article
+                            v-for="sub in visibleSubmissions"
                             :key="sub.id"
-                            class="rounded-xl overflow-hidden transition-all"
-                            style="background: #0f1e30; border: 1px solid rgba(255,255,255,0.08);"
+                            class="group relative overflow-visible rounded-[1.35rem] border border-white/10 bg-slate-950/35 p-3 pt-4 shadow-lg shadow-black/10 transition hover:border-white/20 hover:bg-white/[0.055]"
                         >
-                            <!-- Top accent strip with type color -->
-                            <div class="h-0.5 w-full" :style="{ background: sub.collection === 'inspections' ? 'linear-gradient(to right, #14b8a6, rgba(20,184,166,0.2))' : 'linear-gradient(to right, #06b6d4, rgba(6,182,212,0.2))' }" />
+                            <!-- Decorative clipped layer only -->
+                            <div class="pointer-events-none absolute inset-0 overflow-hidden rounded-[1.35rem]">
+                                <div
+                                    class="absolute inset-x-0 top-0 h-1"
+                                    :style="{
+                                        background:
+                                            sub.collection === 'inspections'
+                                                ? 'linear-gradient(to right, rgba(20,184,166,0.85), rgba(20,184,166,0.12))'
+                                                : 'linear-gradient(to right, rgba(6,182,212,0.85), rgba(6,182,212,0.12))'
+                                    }"
+                                />
+                            </div>
 
-                            <div class="p-4 sm:p-5">
-                                <div class="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
-
-                                    <!-- Icon -->
-                                    <div class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 hidden sm:flex" :style="{ background: sub.collection === 'inspections' ? 'rgba(20,184,166,0.12)' : 'rgba(6,182,212,0.12)', border: sub.collection === 'inspections' ? '1px solid rgba(20,184,166,0.2)' : '1px solid rgba(6,182,212,0.2)' }">
-                                        <component :is="sub.collection === 'inspections' ? ClipboardCheck : ClipboardList" class="w-5 h-5" :style="{ color: sub.collection === 'inspections' ? '#14b8a6' : '#06b6d4' }" />
-                                    </div>
-
-                                    <!-- Content -->
-                                    <div class="flex-1 min-w-0">
-                                        <div class="flex flex-wrap items-center gap-2 mb-1">
-                                            <span class="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full" :style="sub.collection === 'inspections' ? 'background: rgba(20,184,166,0.12); color: #14b8a6; border: 1px solid rgba(20,184,166,0.2)' : 'background: rgba(6,182,212,0.12); color: #06b6d4; border: 1px solid rgba(6,182,212,0.2)'">
-                                                {{ sub.collection === 'inspections' ? 'Inspection' : 'Handover' }}
-                                            </span>
-                                            <StatusBadge :status="sub.status" />
+                            <div class="relative z-10 px-1 pb-1 sm:px-2 sm:pb-2">
+                                <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                    <div class="flex min-w-0 gap-3 sm:gap-4">
+                                        <div
+                                            class="hidden h-12 w-12 shrink-0 items-center justify-center rounded-2xl border sm:flex"
+                                            :style="{ background: sub.collection === 'inspections' ? 'rgba(20,184,166,0.12)' : 'rgba(6,182,212,0.12)', borderColor: sub.collection === 'inspections' ? 'rgba(20,184,166,0.24)' : 'rgba(6,182,212,0.24)' }"
+                                        >
+                                            <component
+                                                :is="sub.collection === 'inspections' ? ClipboardCheck : ClipboardList"
+                                                class="h-5 w-5"
+                                                :style="{ color: sub.collection === 'inspections' ? '#14b8a6' : '#06b6d4' }"
+                                            />
                                         </div>
 
-                                        <p class="text-white font-semibold text-sm truncate mb-0.5">{{ sub.propertyAddress || 'Unknown Property' }}</p>
-                                        <div class="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-500">
-                                            <span v-if="sub.inspectorName" class="flex items-center gap-1">
-                                                <User class="w-3 h-3" />{{ sub.inspectorName }}
-                                            </span>
-                                            <span v-if="sub.inspectionDate" class="flex items-center gap-1">
-                                                <Calendar class="w-3 h-3" />{{ sub.inspectionDate }}
-                                            </span>
-                                            <span v-if="sub.createdAt" class="flex items-center gap-1">
-                                                <Clock class="w-3 h-3" />Submitted {{ formatRelative(sub.createdAt) }}
-                                            </span>
+                                        <div class="min-w-0 flex-1">
+                                            <div class="mb-2 flex flex-wrap items-center gap-2">
+                                                <span
+                                                    class="rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-widest"
+                                                    :style="sub.collection === 'inspections' ? 'background: rgba(20,184,166,0.12); color: #5eead4; border: 1px solid rgba(20,184,166,0.2)' : 'background: rgba(6,182,212,0.12); color: #67e8f9; border: 1px solid rgba(6,182,212,0.2)'"
+                                                >
+                                                    {{ sub.collection === 'inspections' ? 'Inspection' : 'Handover' }}
+                                                </span>
+                                                <StatusBadge :status="sub.status" />
+                                            </div>
+
+                                            <p class="truncate text-base font-bold text-white">
+                                                {{ sub.propertyAddress || 'Unknown Property' }}
+                                            </p>
+
+                                            <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
+                                                <span v-if="sub.inspectorName" class="inline-flex items-center gap-1.5">
+                                                    <User class="h-3.5 w-3.5" />
+                                                    {{ sub.inspectorName }}
+                                                </span>
+                                                <span v-if="sub.inspectionDate" class="inline-flex items-center gap-1.5">
+                                                    <Calendar class="h-3.5 w-3.5" />
+                                                    {{ sub.inspectionDate }}
+                                                </span>
+                                                <span v-if="sub.createdAt" class="inline-flex items-center gap-1.5">
+                                                    <Clock class="h-3.5 w-3.5" />
+                                                    Submitted {{ formatRelative(sub.createdAt) }}
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
 
                                     <!-- Actions -->
-                                    <div class="flex flex-wrap sm:flex-nowrap items-center gap-2 shrink-0">
+                                    <div class="flex flex-wrap items-center gap-2 lg:justify-end">
                                         <a
                                             v-if="sub.pdfUrl"
                                             :href="sub.pdfUrl"
                                             target="_blank"
                                             rel="noopener"
-                                            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all text-slate-300 hover:text-white hover:bg-white/[0.07]"
-                                            style="border: 1px solid rgba(255,255,255,0.1)"
+                                            class="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.045] px-3 py-1.5 text-xs font-semibold text-slate-300 transition hover:border-cyan-400/30 hover:bg-cyan-400/10 hover:text-cyan-200"
                                         >
-                                            <FileText class="w-3.5 h-3.5" />
+                                            <FileText class="h-3.5 w-3.5" />
                                             PDF
                                         </a>
+
                                         <a
                                             v-if="sub.photosDownloadUrl"
                                             :href="sub.photosDownloadUrl"
                                             target="_blank"
                                             rel="noopener"
-                                            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all text-slate-300 hover:text-white hover:bg-white/[0.07]"
-                                            style="border: 1px solid rgba(255,255,255,0.1)"
+                                            class="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.045] px-3 py-1.5 text-xs font-semibold text-slate-300 transition hover:border-cyan-400/30 hover:bg-cyan-400/10 hover:text-cyan-200"
                                         >
-                                            <FolderArchive class="w-3.5 h-3.5" />
+                                            <FolderArchive class="h-3.5 w-3.5" />
                                             Photos
                                         </a>
-                                        <!-- Split resend/regenerate button — show when PDF exists OR a payload is stored (regen available) -->
+
                                         <div
                                             v-if="sub.pdfUrl || sub.submissionPayload"
-                                            class="relative flex"
+                                            class="relative z-20 flex"
                                         >
-                                            <!-- Main resend button — only active when PDF exists -->
                                             <button
+                                                type="button"
                                                 @click="triggerResend(sub)"
                                                 :disabled="!sub.pdfUrl || resendingId === sub.id || regenId === sub.id"
-                                                class="flex items-center gap-1.5 px-3 py-1.5 rounded-l-lg text-xs font-medium transition-all disabled:opacity-50"
-                                                :class="resendSuccess === sub.id ? 'text-teal-300 bg-teal-500/10 border-teal-500/30' : 'text-slate-300 hover:text-white hover:bg-white/[0.07]'"
-                                                style="border: 1px solid rgba(255,255,255,0.1); border-right: none;"
+                                                class="inline-flex items-center gap-1.5 rounded-l-full border border-r-0 px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-50"
+                                                :class="resendSuccess === sub.id ? 'border-teal-400/30 bg-teal-400/10 text-teal-200' : 'border-white/10 bg-white/[0.045] text-slate-300 hover:border-teal-400/30 hover:bg-teal-400/10 hover:text-teal-200'"
                                             >
-                                                <Loader2 v-if="resendingId === sub.id" class="w-3.5 h-3.5 animate-spin" />
-                                                <CheckCheck v-else-if="resendSuccess === sub.id" class="w-3.5 h-3.5" />
-                                                <SendHorizontal v-else class="w-3.5 h-3.5" />
-                                                {{ resendSuccess === sub.id ? 'Sent!' : resendingId === sub.id ? 'Sending…' : 'Resend' }}
+                                                <Loader2 v-if="resendingId === sub.id" class="h-3.5 w-3.5 animate-spin" />
+                                                <CheckCheck v-else-if="resendSuccess === sub.id" class="h-3.5 w-3.5" />
+                                                <SendHorizontal v-else class="h-3.5 w-3.5" />
+                                                {{ resendSuccess === sub.id ? 'Sent' : resendingId === sub.id ? 'Sending…' : 'Resend' }}
                                             </button>
-                                            <!-- Dropdown chevron -->
+
                                             <button
+                                                type="button"
                                                 @click.stop="actionMenuId = actionMenuId === sub.id ? null : sub.id"
                                                 :disabled="resendingId === sub.id || regenId === sub.id"
-                                                class="flex items-center justify-center px-1.5 py-1.5 rounded-r-lg text-slate-500 hover:text-white hover:bg-white/[0.07] transition-all disabled:opacity-50"
-                                                style="border: 1px solid rgba(255,255,255,0.1);"
+                                                class="inline-flex items-center justify-center rounded-r-full border border-white/10 bg-white/[0.045] px-2 py-1.5 text-slate-500 transition hover:border-white/20 hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
                                             >
-                                                <ChevronDown class="w-3 h-3" />
+                                                <ChevronDown class="h-3 w-3" />
                                             </button>
-                                            <!-- Dropdown menu -->
+
                                             <Transition
                                                 enter-active-class="transition duration-100 ease-out"
                                                 enter-from-class="opacity-0 scale-95"
@@ -221,26 +321,28 @@
                                             >
                                                 <div
                                                     v-if="actionMenuId === sub.id"
-                                                    class="absolute right-0 top-full mt-1 z-20 rounded-xl overflow-hidden shadow-2xl min-w-[160px]"
-                                                    style="background: #0f1e30; border: 1px solid rgba(255,255,255,0.12);"
+                                                    class="absolute right-0 top-full z-30 mt-2 min-w-[190px] overflow-hidden rounded-2xl"
+                                                    style="background: #111f33; border: 1px solid rgba(255,255,255,0.22); box-shadow: 0 12px 48px rgba(0,0,0,0.85), 0 2px 8px rgba(0,0,0,0.5);"
                                                 >
                                                     <button
+                                                        type="button"
                                                         @click="triggerResend(sub); actionMenuId = null"
-                                                        class="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs text-slate-300 hover:text-white hover:bg-white/[0.06] transition-colors text-left"
+                                                        class="flex w-full items-center gap-2.5 px-4 py-3.5 text-left text-xs font-semibold text-white transition-colors hover:bg-white/[0.09] active:bg-white/[0.12]"
                                                     >
-                                                        <SendHorizontal class="w-3.5 h-3.5 text-teal-400 shrink-0" />
+                                                        <SendHorizontal class="h-3.5 w-3.5 shrink-0 text-teal-400" />
                                                         Resend email
                                                     </button>
-                                                    <div style="height:1px; background: rgba(255,255,255,0.06);" />
+                                                    <div style="height:1px; background: rgba(255,255,255,0.12);" />
                                                     <button
+                                                        type="button"
                                                         @click="triggerRegen(sub); actionMenuId = null"
                                                         :disabled="!sub.submissionPayload"
-                                                        class="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs text-slate-300 hover:text-white hover:bg-white/[0.06] transition-colors text-left disabled:opacity-40 disabled:cursor-not-allowed"
+                                                        class="flex w-full items-center gap-2.5 px-4 py-3.5 text-left text-xs font-semibold text-white transition-colors hover:bg-white/[0.09] active:bg-white/[0.12] disabled:cursor-not-allowed disabled:opacity-40"
                                                     >
-                                                        <RotateCcw class="w-3.5 h-3.5 text-violet-400 shrink-0" :class="regenId === sub.id ? 'animate-spin' : ''" />
+                                                        <RotateCcw class="h-3.5 w-3.5 shrink-0 text-violet-400" :class="regenId === sub.id ? 'animate-spin' : ''" />
                                                         <span>
                                                             Regenerate report
-                                                            <span v-if="!sub.submissionPayload" class="block text-[10px] text-slate-600 mt-0.5">No stored payload</span>
+                                                            <span v-if="!sub.submissionPayload" class="mt-0.5 block text-[10px] text-slate-500">No stored payload</span>
                                                         </span>
                                                     </button>
                                                 </div>
@@ -249,297 +351,327 @@
                                     </div>
                                 </div>
 
-                                <!-- Error message -->
-                                <div v-if="sub.status === 'failed' && sub.error" class="mt-3 flex items-start gap-2 px-3 py-2 rounded-lg" style="background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2)">
-                                    <AlertCircle class="w-3.5 h-3.5 text-red-400 mt-0.5 shrink-0" />
-                                    <p class="text-xs text-red-400">{{ sub.error }}</p>
+                                <div v-if="sub.status === 'failed' && sub.error" class="mt-4 flex items-start gap-2 rounded-2xl border border-red-400/20 bg-red-500/10 px-3 py-2.5">
+                                    <AlertCircle class="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-300" />
+                                    <p class="text-xs leading-5 text-red-200">{{ sub.error }}</p>
                                 </div>
                             </div>
+                        </article>
+
+                        <div class="flex flex-col items-center justify-center gap-2 pt-4 text-center">
+                            <button
+                                v-if="hasMoreSubmissions"
+                                type="button"
+                                @click="loadMoreSubmissions"
+                                class="inline-flex items-center gap-2 rounded-full border border-teal-400/25 bg-teal-400/10 px-4 py-2 text-sm font-semibold text-teal-200 transition hover:border-teal-300/50 hover:bg-teal-400/15"
+                            >
+                                Load more
+                            </button>
+
+                            <p
+                                v-else
+                                class="rounded-full border border-white/10 bg-white/[0.035] px-4 py-2 text-xs font-semibold text-slate-500"
+                            >
+                                No more submissions to load
+                            </p>
+
+                            <p class="text-[11px] font-medium text-slate-600">
+                                Showing {{ visibleSubmissions.length }} of {{ filteredSubmissions.length }} matching submission{{ filteredSubmissions.length === 1 ? '' : 's' }}
+                            </p>
                         </div>
                     </div>
-                </div>
+                </section>
 
-                <!-- ── SDA Dataset tab ──────────────────────────────────────── -->
-                <div v-if="activeTab === 'sda'">
-                    <div class="grid lg:grid-cols-2 gap-6">
-
-                        <!-- Current dataset card -->
-                        <div class="rounded-xl p-5 border" style="background: #0f1e30; border-color: rgba(255,255,255,0.08)">
-                            <div class="flex items-center gap-2 mb-4">
-                                <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: rgba(139,92,246,0.15); border: 1px solid rgba(139,92,246,0.2)">
-                                    <Database class="w-4 h-4 text-violet-400" />
-                                </div>
-                                <h2 class="text-white font-semibold text-sm">Current SDA Dataset</h2>
-                            </div>
-
-                            <div v-if="sdaStore.loading" class="flex items-center gap-2 py-4 text-slate-500">
-                                <Loader2 class="w-4 h-4 animate-spin" />
-                                <span class="text-sm">Loading…</span>
-                            </div>
-
-                            <div v-else-if="sdaStore.config" class="space-y-3">
-                                <div class="grid grid-cols-2 gap-3">
-                                    <div class="rounded-lg p-3" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07)">
-                                        <p class="text-xs text-slate-500 mb-1">Financial Year</p>
-                                        <p class="text-white font-semibold text-sm">{{ sdaStore.config.financialYear }}</p>
-                                    </div>
-                                    <div class="rounded-lg p-3" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07)">
-                                        <p class="text-xs text-slate-500 mb-1">Imported</p>
-                                        <p class="text-white font-semibold text-sm">{{ formatDate(sdaStore.config.importedAt) }}</p>
-                                    </div>
-                                    <div class="rounded-lg p-3" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07)">
-                                        <p class="text-xs text-slate-500 mb-1">Imported By</p>
-                                        <p class="text-white font-semibold text-sm truncate">{{ sdaStore.config.importedBy ?? '—' }}</p>
-                                    </div>
-                                    <div class="rounded-lg p-3" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07)">
-                                        <p class="text-xs text-slate-500 mb-1">Source File</p>
-                                        <p class="text-white font-semibold text-sm truncate" :title="sdaStore.config.sourceFile">{{ sdaStore.config.sourceFile ?? '—' }}</p>
-                                    </div>
-                                </div>
-                                <div class="flex items-center gap-1.5 px-3 py-2 rounded-lg" style="background: rgba(20,184,166,0.08); border: 1px solid rgba(20,184,166,0.2)">
-                                    <CheckCircle2 class="w-3.5 h-3.5 text-teal-400 shrink-0" />
-                                    <span class="text-xs text-teal-300">Dataset is active and serving all users</span>
-                                </div>
-                            </div>
-
-                            <div v-else class="flex flex-col items-center justify-center py-8 text-center gap-2">
-                                <div class="w-10 h-10 rounded-xl flex items-center justify-center mb-1" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08)">
-                                    <DatabaseZap class="w-5 h-5 text-slate-600" />
-                                </div>
-                                <p class="text-slate-400 text-sm font-medium">No dataset loaded</p>
-                                <p class="text-slate-600 text-xs">Upload the NDIS SDA Price Calculator to get started</p>
-                            </div>
-                        </div>
-
-                        <!-- Upload card -->
-                        <div class="rounded-xl p-5 border" style="background: #0f1e30; border-color: rgba(255,255,255,0.08)">
-                            <div class="flex items-center gap-2 mb-4">
-                                <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: rgba(139,92,246,0.15); border: 1px solid rgba(139,92,246,0.2)">
-                                    <Upload class="w-4 h-4 text-violet-400" />
+                <!-- SDA Dataset tab -->
+                <section v-if="activeTab === 'sda'" class="grid gap-6 lg:grid-cols-2">
+                    <!-- Current dataset card -->
+                    <article class="overflow-hidden rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-5 shadow-xl shadow-black/10 backdrop-blur sm:rounded-[2rem] sm:p-6">
+                        <div class="mb-5 flex items-start justify-between gap-4 border-b border-white/[0.07] pb-5">
+                            <div class="flex items-center gap-3">
+                                <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-violet-400/20 bg-violet-400/10">
+                                    <Database class="h-5 w-5 text-violet-300" />
                                 </div>
                                 <div>
-                                    <h2 class="text-white font-semibold text-sm">Update Dataset</h2>
-                                    <p class="text-slate-500 text-xs">NDIS SDA Price Calculator (.xlsx)</p>
+                                    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-violet-300/70">
+                                        Dataset
+                                    </p>
+                                    <h2 class="mt-1 text-lg font-bold text-white">
+                                        Current SDA Dataset
+                                    </h2>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div v-if="sdaStore.loading" class="flex items-center gap-2 py-6 text-slate-500">
+                            <Loader2 class="h-4 w-4 animate-spin text-violet-300" />
+                            <span class="text-sm">Loading…</span>
+                        </div>
+
+                        <div v-else-if="sdaStore.config" class="space-y-4">
+                            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                <div class="rounded-2xl border border-white/10 bg-white/[0.045] p-4">
+                                    <p class="mb-1 text-xs font-semibold text-slate-500">Financial Year</p>
+                                    <p class="truncate text-sm font-bold text-white">{{ sdaStore.config.financialYear }}</p>
+                                </div>
+                                <div class="rounded-2xl border border-white/10 bg-white/[0.045] p-4">
+                                    <p class="mb-1 text-xs font-semibold text-slate-500">Imported</p>
+                                    <p class="truncate text-sm font-bold text-white">{{ formatDate(sdaStore.config.importedAt) }}</p>
+                                </div>
+                                <div class="rounded-2xl border border-white/10 bg-white/[0.045] p-4">
+                                    <p class="mb-1 text-xs font-semibold text-slate-500">Imported By</p>
+                                    <p class="truncate text-sm font-bold text-white">{{ sdaStore.config.importedBy ?? '—' }}</p>
+                                </div>
+                                <div class="rounded-2xl border border-white/10 bg-white/[0.045] p-4">
+                                    <p class="mb-1 text-xs font-semibold text-slate-500">Source File</p>
+                                    <p class="truncate text-sm font-bold text-white" :title="sdaStore.config.sourceFile">{{ sdaStore.config.sourceFile ?? '—' }}</p>
                                 </div>
                             </div>
 
-                            <!-- Drop zone -->
+                            <div class="flex items-center gap-2 rounded-2xl border border-teal-400/20 bg-teal-400/10 px-4 py-3">
+                                <CheckCircle2 class="h-4 w-4 shrink-0 text-teal-300" />
+                                <span class="text-xs font-semibold text-teal-200">Dataset is active and serving all users</span>
+                            </div>
+                        </div>
+
+                        <div v-else class="rounded-[2rem] border border-white/10 bg-white/[0.035] py-14 text-center">
+                            <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06]">
+                                <DatabaseZap class="h-5 w-5 text-slate-500" />
+                            </div>
+                            <p class="text-sm font-semibold text-slate-300">No dataset loaded</p>
+                            <p class="mt-1 text-xs text-slate-600">Upload the NDIS SDA Price Calculator to get started</p>
+                        </div>
+                    </article>
+
+                    <!-- Upload card -->
+                    <article class="overflow-hidden rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-5 shadow-xl shadow-black/10 backdrop-blur sm:rounded-[2rem] sm:p-6">
+                        <div class="mb-5 flex items-start gap-3 border-b border-white/[0.07] pb-5">
+                            <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-violet-400/20 bg-violet-400/10">
+                                <Upload class="h-5 w-5 text-violet-300" />
+                            </div>
+                            <div>
+                                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-violet-300/70">
+                                    Import
+                                </p>
+                                <h2 class="mt-1 text-lg font-bold text-white">
+                                    Update Dataset
+                                </h2>
+                                <p class="mt-1 text-sm text-slate-500">NDIS SDA Price Calculator (.xlsx)</p>
+                            </div>
+                        </div>
+
+                        <!-- Drop zone -->
+                        <div
+                            v-if="!uploadPreview && uploadStatus !== 'parsing'"
+                            @dragover.prevent="dragOver = true"
+                            @dragleave="dragOver = false"
+                            @drop.prevent="onDrop"
+                            @click="fileInputRef?.click()"
+                            class="cursor-pointer rounded-[1.5rem] px-6 py-12 text-center transition"
+                            :class="dragOver ? 'border-violet-300/60 bg-violet-400/10' : 'border-white/10 bg-white/[0.025] hover:border-violet-400/35 hover:bg-violet-400/[0.06]'"
+                            style="border-width: 2px; border-style: dashed;"
+                        >
+                            <FileSpreadsheet class="mx-auto mb-4 h-10 w-10 text-slate-600" />
+                            <p class="text-sm font-semibold text-slate-300">Drop the Excel file here</p>
+                            <p class="mt-1 text-xs text-slate-600">NDIS SDA Price Calculator 20XX–XX.xlsx</p>
+                            <input ref="fileInputRef" type="file" accept=".xlsx" class="hidden" @change="onFileSelect" />
+                        </div>
+
+                        <!-- Parsing spinner -->
+                        <div v-if="uploadStatus === 'parsing'" class="flex items-center justify-center gap-3 rounded-[1.5rem] border border-white/10 bg-white/[0.025] py-14 text-slate-400">
+                            <Loader2 class="h-5 w-5 animate-spin text-violet-300" />
+                            <span class="text-sm">Parsing spreadsheet…</span>
+                        </div>
+
+                        <!-- Preview -->
+                        <div v-if="uploadPreview" class="space-y-4">
                             <div
-                                v-if="!uploadPreview && uploadStatus !== 'parsing'"
-                                @dragover.prevent="dragOver = true"
-                                @dragleave="dragOver = false"
-                                @drop.prevent="onDrop"
-                                @click="fileInputRef?.click()"
-                                class="rounded-xl py-10 px-6 text-center cursor-pointer transition-all"
-                                :style="dragOver
-                                    ? 'background: rgba(139,92,246,0.12); border: 2px dashed rgba(139,92,246,0.6);'
-                                    : 'background: rgba(255,255,255,0.02); border: 2px dashed rgba(255,255,255,0.1);'"
-                                :class="dragOver ? '' : 'hover:border-violet-500/40 hover:bg-violet-500/5'"
+                                class="rounded-[1.5rem] p-4"
+                                :class="uploadPreview.valid ? 'border border-teal-400/25 bg-teal-400/10' : 'border border-amber-400/25 bg-amber-400/10'"
                             >
-                                <FileSpreadsheet class="w-9 h-9 mx-auto text-slate-600 mb-3" />
-                                <p class="text-sm text-slate-300 font-medium">Drop the Excel file here</p>
-                                <p class="text-xs text-slate-600 mt-1">NDIS SDA Price Calculator 20XX–XX.xlsx</p>
-                                <input ref="fileInputRef" type="file" accept=".xlsx" class="hidden" @change="onFileSelect" />
+                                <div class="mb-4 flex items-center gap-2">
+                                    <CheckCircle2 v-if="uploadPreview.valid" class="h-4 w-4 shrink-0 text-teal-300" />
+                                    <AlertTriangle v-else class="h-4 w-4 shrink-0 text-amber-300" />
+                                    <p class="text-sm font-bold" :class="uploadPreview.valid ? 'text-teal-200' : 'text-amber-200'">
+                                        {{ uploadPreview.valid ? 'Ready to import' : 'Warnings detected — review before importing' }}
+                                    </p>
+                                </div>
+
+                                <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                    <div class="flex items-center justify-between rounded-xl bg-white/[0.045] px-3 py-2 text-xs">
+                                        <span class="text-slate-500">Financial year</span>
+                                        <span class="font-bold text-white">{{ uploadPreview.financialYear }}</span>
+                                    </div>
+                                    <div class="flex items-center justify-between rounded-xl bg-white/[0.045] px-3 py-2 text-xs">
+                                        <span class="text-slate-500">Benchmark tables</span>
+                                        <span class="font-bold text-white">8</span>
+                                    </div>
+                                    <div class="flex items-center justify-between rounded-xl bg-white/[0.045] px-3 py-2 text-xs">
+                                        <span class="text-slate-500">SA4 regions</span>
+                                        <span class="font-bold text-white">{{ uploadPreview.locationFactors.newBuild.length }}</span>
+                                    </div>
+                                    <div class="flex items-center justify-between rounded-xl bg-white/[0.045] px-3 py-2 text-xs">
+                                        <span class="text-slate-500">MRRC (single)</span>
+                                        <span class="font-bold text-white">{{ formatCurrency(uploadPreview.mrrc?.single?.perAnnum) }}/yr</span>
+                                    </div>
+                                </div>
+
+                                <ul v-if="uploadPreview.warnings?.length" class="mt-4 space-y-2">
+                                    <li v-for="w in uploadPreview.warnings" :key="w" class="flex items-start gap-2 text-xs leading-5 text-amber-200">
+                                        <AlertTriangle class="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                                        {{ w }}
+                                    </li>
+                                </ul>
                             </div>
 
-                            <!-- Parsing spinner -->
-                            <div v-if="uploadStatus === 'parsing'" class="flex items-center justify-center gap-3 py-10 text-slate-400">
-                                <Loader2 class="w-5 h-5 animate-spin text-violet-400" />
-                                <span class="text-sm">Parsing spreadsheet…</span>
-                            </div>
-
-                            <!-- Preview -->
-                            <div v-if="uploadPreview" class="space-y-4">
-                                <div
-                                    class="rounded-xl p-4 space-y-2"
-                                    :style="uploadPreview.valid
-                                        ? 'background: rgba(20,184,166,0.06); border: 1px solid rgba(20,184,166,0.25)'
-                                        : 'background: rgba(245,158,11,0.06); border: 1px solid rgba(245,158,11,0.25)'"
+                            <div class="flex flex-wrap gap-3">
+                                <button
+                                    type="button"
+                                    @click="confirmUpload"
+                                    :disabled="sdaStore.uploading"
+                                    class="inline-flex items-center gap-2 rounded-full border border-violet-400/40 bg-violet-500/70 px-4 py-2 text-sm font-bold text-white transition hover:bg-violet-500/90 disabled:cursor-not-allowed disabled:opacity-50"
                                 >
-                                    <div class="flex items-center gap-2">
-                                        <CheckCircle2 v-if="uploadPreview.valid" class="w-4 h-4 text-teal-400 shrink-0" />
-                                        <AlertTriangle v-else class="w-4 h-4 text-amber-400 shrink-0" />
-                                        <p class="text-sm font-semibold" :class="uploadPreview.valid ? 'text-teal-300' : 'text-amber-300'">
-                                            {{ uploadPreview.valid ? 'Ready to import' : 'Warnings detected — review before importing' }}
-                                        </p>
-                                    </div>
-                                    <div class="grid grid-cols-2 gap-x-6 gap-y-1 mt-2">
-                                        <div class="flex items-center justify-between text-xs">
-                                            <span class="text-slate-500">Financial year</span>
-                                            <span class="text-white font-medium">{{ uploadPreview.financialYear }}</span>
-                                        </div>
-                                        <div class="flex items-center justify-between text-xs">
-                                            <span class="text-slate-500">Benchmark tables</span>
-                                            <span class="text-white font-medium">8</span>
-                                        </div>
-                                        <div class="flex items-center justify-between text-xs">
-                                            <span class="text-slate-500">SA4 regions</span>
-                                            <span class="text-white font-medium">{{ uploadPreview.locationFactors.newBuild.length }}</span>
-                                        </div>
-                                        <div class="flex items-center justify-between text-xs">
-                                            <span class="text-slate-500">MRRC (single)</span>
-                                            <span class="text-white font-medium">{{ formatCurrency(uploadPreview.mrrc?.single?.perAnnum) }}/yr</span>
-                                        </div>
-                                    </div>
-                                    <ul v-if="uploadPreview.warnings?.length" class="mt-2 space-y-1">
-                                        <li v-for="w in uploadPreview.warnings" :key="w" class="flex items-start gap-1.5 text-xs text-amber-400">
-                                            <AlertTriangle class="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                                            {{ w }}
-                                        </li>
-                                    </ul>
-                                </div>
+                                    <Loader2 v-if="sdaStore.uploading" class="h-4 w-4 animate-spin" />
+                                    <CloudUpload v-else class="h-4 w-4" />
+                                    {{ sdaStore.uploading ? 'Saving…' : 'Save to Firebase' }}
+                                </button>
 
-                                <div class="flex gap-3">
-                                    <button
-                                        @click="confirmUpload"
-                                        :disabled="sdaStore.uploading"
-                                        class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-all disabled:opacity-50"
-                                        style="background: rgba(139,92,246,0.8); border: 1px solid rgba(139,92,246,0.6);"
-                                        :class="!sdaStore.uploading ? 'hover:bg-violet-500/90' : ''"
-                                    >
-                                        <Loader2 v-if="sdaStore.uploading" class="w-4 h-4 animate-spin" />
-                                        <CloudUpload v-else class="w-4 h-4" />
-                                        {{ sdaStore.uploading ? 'Saving…' : 'Save to Firebase' }}
-                                    </button>
-                                    <button
-                                        @click="cancelUpload"
-                                        class="px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white transition-all"
-                                        style="border: 1px solid rgba(255,255,255,0.1)"
-                                    >
-                                        Cancel
-                                    </button>
-                                </div>
+                                <button
+                                    type="button"
+                                    @click="cancelUpload"
+                                    class="rounded-full border border-white/10 px-4 py-2 text-sm font-semibold text-slate-400 transition hover:border-white/20 hover:text-white"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
 
-                                <p v-if="sdaStore.error" class="text-xs text-red-400">{{ sdaStore.error }}</p>
+                            <p v-if="sdaStore.error" class="text-xs text-red-300">{{ sdaStore.error }}</p>
+                        </div>
+                    </article>
+                </section>
+            </div>
+        </main>
+
+        <!-- Resend confirm modal -->
+        <Teleport to="body">
+            <Transition
+                enter-active-class="transition duration-150"
+                enter-from-class="opacity-0"
+                enter-to-class="opacity-100"
+                leave-active-class="transition duration-100"
+                leave-from-class="opacity-100"
+                leave-to-class="opacity-0"
+            >
+                <div v-if="resendModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm">
+                    <div class="w-full max-w-md rounded-[2rem] border border-white/10 bg-[#0f1e30] p-6 shadow-2xl shadow-black/40">
+                        <div class="mb-4 flex items-center gap-3">
+                            <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-teal-400/20 bg-teal-400/10">
+                                <SendHorizontal class="h-5 w-5 text-teal-300" />
+                            </div>
+                            <div>
+                                <h3 class="text-base font-bold text-white">Resend Report</h3>
+                                <p class="text-xs text-slate-500">Re-email the existing PDF to all recipients</p>
                             </div>
                         </div>
+
+                        <div class="mb-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                            <p class="mb-0.5 text-sm font-semibold text-white">{{ resendModal.propertyAddress }}</p>
+                            <p class="text-xs text-slate-400">
+                                {{ resendModal.collection === 'inspections' ? 'Inspection' : 'Handover' }}
+                                · {{ resendModal.inspectionDate }}
+                            </p>
+                            <div v-if="resendModal.emailsSent?.length" class="mt-3 flex flex-wrap gap-1.5">
+                                <span v-for="email in resendModal.emailsSent" :key="email" class="rounded-full border border-white/10 bg-white/[0.06] px-2 py-0.5 text-[10px] text-slate-400">
+                                    {{ email }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-3">
+                            <button
+                                type="button"
+                                @click="confirmResend"
+                                class="flex flex-1 items-center justify-center gap-2 rounded-full border border-teal-400/40 bg-teal-500/70 py-2.5 text-sm font-bold text-white transition hover:bg-teal-500/85"
+                            >
+                                <SendHorizontal class="h-4 w-4" />
+                                Resend Now
+                            </button>
+                            <button
+                                type="button"
+                                @click="resendModal = null"
+                                class="rounded-full border border-white/10 px-5 py-2.5 text-sm font-semibold text-slate-400 transition hover:border-white/20 hover:text-white"
+                            >
+                                Cancel
+                            </button>
+                        </div>
                     </div>
                 </div>
-
-            </div>
-        </div>
-
-        <!-- Resend confirm modal — inside LayoutComponent so component has a single root -->
-        <Teleport to="body">
-        <Transition
-            enter-active-class="transition duration-150"
-            enter-from-class="opacity-0"
-            enter-to-class="opacity-100"
-            leave-active-class="transition duration-100"
-            leave-from-class="opacity-100"
-            leave-to-class="opacity-0"
-        >
-            <div v-if="resendModal" class="fixed inset-0 z-50 flex items-center justify-center p-4" style="background: rgba(0,0,0,0.6); backdrop-filter: blur(4px)">
-                <div class="w-full max-w-md rounded-2xl p-6" style="background: #0f1e30; border: 1px solid rgba(255,255,255,0.12)">
-                    <div class="flex items-center gap-3 mb-4">
-                        <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background: rgba(20,184,166,0.12); border: 1px solid rgba(20,184,166,0.2)">
-                            <SendHorizontal class="w-5 h-5 text-teal-400" />
-                        </div>
-                        <div>
-                            <h3 class="text-white font-semibold text-base">Resend Report</h3>
-                            <p class="text-slate-500 text-xs">Re-email the existing PDF to all recipients</p>
-                        </div>
-                    </div>
-
-                    <div class="rounded-xl p-3 mb-4" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07)">
-                        <p class="text-white text-sm font-medium mb-0.5">{{ resendModal.propertyAddress }}</p>
-                        <p class="text-slate-400 text-xs">
-                            {{ resendModal.collection === 'inspections' ? 'Inspection' : 'Handover' }}
-                            · {{ resendModal.inspectionDate }}
-                        </p>
-                        <div v-if="resendModal.emailsSent?.length" class="mt-2 flex flex-wrap gap-1.5">
-                            <span v-for="email in resendModal.emailsSent" :key="email" class="text-[10px] px-2 py-0.5 rounded-full text-slate-400" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08)">
-                                {{ email }}
-                            </span>
-                        </div>
-                    </div>
-
-                    <div class="flex gap-3">
-                        <button
-                            @click="confirmResend"
-                            class="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold text-white transition-all"
-                            style="background: rgba(20,184,166,0.7); border: 1px solid rgba(20,184,166,0.5)"
-                        >
-                            <SendHorizontal class="w-4 h-4" />
-                            Resend Now
-                        </button>
-                        <button
-                            @click="resendModal = null"
-                            class="px-5 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:text-white transition-all"
-                            style="border: 1px solid rgba(255,255,255,0.1)"
-                        >
-                            Cancel
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </Transition>
+            </Transition>
         </Teleport>
 
         <!-- Regenerate confirm modal -->
         <Teleport to="body">
-        <Transition
-            enter-active-class="transition duration-150"
-            enter-from-class="opacity-0"
-            enter-to-class="opacity-100"
-            leave-active-class="transition duration-100"
-            leave-from-class="opacity-100"
-            leave-to-class="opacity-0"
-        >
-            <div v-if="regenModal" class="fixed inset-0 z-50 flex items-center justify-center p-4" style="background: rgba(0,0,0,0.6); backdrop-filter: blur(4px)">
-                <div class="w-full max-w-md rounded-2xl p-6" style="background: #0f1e30; border: 1px solid rgba(255,255,255,0.12)">
-                    <div class="flex items-center gap-3 mb-4">
-                        <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background: rgba(139,92,246,0.12); border: 1px solid rgba(139,92,246,0.2)">
-                            <RotateCcw class="w-5 h-5 text-violet-400" />
+            <Transition
+                enter-active-class="transition duration-150"
+                enter-from-class="opacity-0"
+                enter-to-class="opacity-100"
+                leave-active-class="transition duration-100"
+                leave-from-class="opacity-100"
+                leave-to-class="opacity-0"
+            >
+                <div v-if="regenModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm">
+                    <div class="w-full max-w-md rounded-[2rem] border border-white/10 bg-[#0f1e30] p-6 shadow-2xl shadow-black/40">
+                        <div class="mb-4 flex items-center gap-3">
+                            <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-violet-400/20 bg-violet-400/10">
+                                <RotateCcw class="h-5 w-5 text-violet-300" />
+                            </div>
+                            <div>
+                                <h3 class="text-base font-bold text-white">Regenerate Report</h3>
+                                <p class="text-xs text-slate-500">Rebuild the PDF from stored data and resend emails</p>
+                            </div>
                         </div>
-                        <div>
-                            <h3 class="text-white font-semibold text-base">Regenerate Report</h3>
-                            <p class="text-slate-500 text-xs">Rebuild the PDF from stored data and resend emails</p>
+
+                        <div class="mb-3 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                            <p class="mb-0.5 text-sm font-semibold text-white">{{ regenModal.propertyAddress }}</p>
+                            <p class="text-xs text-slate-400">
+                                {{ regenModal.collection === 'inspections' ? 'Inspection' : 'Handover' }}
+                                · {{ regenModal.inspectionDate }}
+                            </p>
                         </div>
-                    </div>
 
-                    <div class="rounded-xl p-3 mb-3" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07)">
-                        <p class="text-white text-sm font-medium mb-0.5">{{ regenModal.propertyAddress }}</p>
-                        <p class="text-slate-400 text-xs">
-                            {{ regenModal.collection === 'inspections' ? 'Inspection' : 'Handover' }}
-                            · {{ regenModal.inspectionDate }}
-                        </p>
-                    </div>
+                        <div class="mb-4 flex items-start gap-2 rounded-2xl border border-amber-400/20 bg-amber-400/10 px-3 py-2.5">
+                            <AlertTriangle class="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-300" />
+                            <p class="text-xs leading-5 text-amber-200">
+                                This will <strong>overwrite the existing PDF</strong>, unpack the photos ZIP back into storage, re-run the full report pipeline, and re-send emails to all original recipients.
+                            </p>
+                        </div>
 
-                    <!-- Warning -->
-                    <div class="flex items-start gap-2 px-3 py-2.5 rounded-lg mb-4" style="background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.2)">
-                        <AlertTriangle class="w-3.5 h-3.5 text-amber-400 mt-0.5 shrink-0" />
-                        <p class="text-xs text-amber-300 leading-relaxed">
-                            This will <strong>overwrite the existing PDF</strong>, unpack the photos ZIP back into storage, re-run the full report pipeline, and re-send emails to all original recipients.
-                        </p>
-                    </div>
-
-                    <div class="flex gap-3">
-                        <button
-                            @click="confirmRegen"
-                            class="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold text-white transition-all"
-                            style="background: rgba(139,92,246,0.7); border: 1px solid rgba(139,92,246,0.5)"
-                        >
-                            <RotateCcw class="w-4 h-4" />
-                            Regenerate
-                        </button>
-                        <button
-                            @click="regenModal = null"
-                            class="px-5 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:text-white transition-all"
-                            style="border: 1px solid rgba(255,255,255,0.1)"
-                        >
-                            Cancel
-                        </button>
+                        <div class="flex gap-3">
+                            <button
+                                type="button"
+                                @click="confirmRegen"
+                                class="flex flex-1 items-center justify-center gap-2 rounded-full border border-violet-400/40 bg-violet-500/70 py-2.5 text-sm font-bold text-white transition hover:bg-violet-500/85"
+                            >
+                                <RotateCcw class="h-4 w-4" />
+                                Regenerate
+                            </button>
+                            <button
+                                type="button"
+                                @click="regenModal = null"
+                                class="rounded-full border border-white/10 px-5 py-2.5 text-sm font-semibold text-slate-400 transition hover:border-white/20 hover:text-white"
+                            >
+                                Cancel
+                            </button>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </Transition>
-    </Teleport>
+            </Transition>
+        </Teleport>
     </LayoutComponent>
 </template>
 
+
 <script setup>
-import { ref, computed, onMounted, defineComponent, h } from 'vue'
+import { ref, computed, onMounted, defineComponent, h, watch } from 'vue'
 import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore'
 import { firestore } from '@/firebase'
 import * as XLSX from 'xlsx'
@@ -573,6 +705,8 @@ const tabs = [
 // ─── Submissions ──────────────────────────────────────────────────────────────
 const allSubmissions = ref([])
 const loading        = ref(false)
+const SUBMISSIONS_PAGE_SIZE = 10
+const visibleSubmissionCount = ref(SUBMISSIONS_PAGE_SIZE)
 
 async function loadSubmissions() {
     loading.value = true
@@ -590,6 +724,7 @@ async function loadSubmissions() {
             const tb = b.createdAt?.toMillis?.() ?? 0
             return tb - ta
         })
+        visibleSubmissionCount.value = SUBMISSIONS_PAGE_SIZE
     } catch (err) {
         console.error('Failed to load submissions:', err)
     } finally {
@@ -619,6 +754,22 @@ const filteredSubmissions = computed(() => {
         const matchStatus = statusFilter.value === 'all' || s.status === statusFilter.value
         return matchType && matchStatus
     })
+})
+
+const visibleSubmissions = computed(() => {
+    return filteredSubmissions.value.slice(0, visibleSubmissionCount.value)
+})
+
+const hasMoreSubmissions = computed(() => {
+    return visibleSubmissionCount.value < filteredSubmissions.value.length
+})
+
+function loadMoreSubmissions() {
+    visibleSubmissionCount.value += SUBMISSIONS_PAGE_SIZE
+}
+
+watch([typeFilter, statusFilter], () => {
+    visibleSubmissionCount.value = SUBMISSIONS_PAGE_SIZE
 })
 
 // ─── Stats ────────────────────────────────────────────────────────────────────
