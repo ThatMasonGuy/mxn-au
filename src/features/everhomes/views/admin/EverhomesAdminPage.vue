@@ -169,12 +169,6 @@
                         </div>
                     </div>
 
-                    <!-- Click-away trap for action dropdowns -->
-                    <div
-                        class="fixed inset-0 z-10"
-                        :class="actionMenuId ? '' : 'pointer-events-none'"
-                        @click="actionMenuId = null"
-                    />
 
                     <!-- Loading state -->
                     <div v-if="loading" class="flex items-center justify-center gap-3 py-24 text-slate-500">
@@ -287,7 +281,7 @@
 
                                         <div
                                             v-if="sub.pdfUrl || sub.submissionPayload"
-                                            class="relative z-20 flex"
+                                            class="flex"
                                         >
                                             <button
                                                 type="button"
@@ -304,49 +298,12 @@
 
                                             <button
                                                 type="button"
-                                                @click.stop="actionMenuId = actionMenuId === sub.id ? null : sub.id"
+                                                @click.stop="openActionMenu($event, sub)"
                                                 :disabled="resendingId === sub.id || regenId === sub.id"
                                                 class="inline-flex items-center justify-center rounded-r-full border border-white/10 bg-white/[0.045] px-2 py-1.5 text-slate-500 transition hover:border-white/20 hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
                                             >
                                                 <ChevronDown class="h-3 w-3" />
                                             </button>
-
-                                            <Transition
-                                                enter-active-class="transition duration-100 ease-out"
-                                                enter-from-class="opacity-0 scale-95"
-                                                enter-to-class="opacity-100 scale-100"
-                                                leave-active-class="transition duration-75 ease-in"
-                                                leave-from-class="opacity-100 scale-100"
-                                                leave-to-class="opacity-0 scale-95"
-                                            >
-                                                <div
-                                                    v-if="actionMenuId === sub.id"
-                                                    class="absolute right-0 top-full z-30 mt-2 min-w-[190px] overflow-hidden rounded-2xl"
-                                                    style="background: #111f33; border: 1px solid rgba(255,255,255,0.22); box-shadow: 0 12px 48px rgba(0,0,0,0.85), 0 2px 8px rgba(0,0,0,0.5);"
-                                                >
-                                                    <button
-                                                        type="button"
-                                                        @click="triggerResend(sub); actionMenuId = null"
-                                                        class="flex w-full items-center gap-2.5 px-4 py-3.5 text-left text-xs font-semibold text-white transition-colors hover:bg-white/[0.09] active:bg-white/[0.12]"
-                                                    >
-                                                        <SendHorizontal class="h-3.5 w-3.5 shrink-0 text-teal-400" />
-                                                        Resend email
-                                                    </button>
-                                                    <div style="height:1px; background: rgba(255,255,255,0.12);" />
-                                                    <button
-                                                        type="button"
-                                                        @click="triggerRegen(sub); actionMenuId = null"
-                                                        :disabled="!sub.submissionPayload"
-                                                        class="flex w-full items-center gap-2.5 px-4 py-3.5 text-left text-xs font-semibold text-white transition-colors hover:bg-white/[0.09] active:bg-white/[0.12] disabled:cursor-not-allowed disabled:opacity-40"
-                                                    >
-                                                        <RotateCcw class="h-3.5 w-3.5 shrink-0 text-violet-400" :class="regenId === sub.id ? 'animate-spin' : ''" />
-                                                        <span>
-                                                            Regenerate report
-                                                            <span v-if="!sub.submissionPayload" class="mt-0.5 block text-[10px] text-slate-500">No stored payload</span>
-                                                        </span>
-                                                    </button>
-                                                </div>
-                                            </Transition>
                                         </div>
                                     </div>
                                 </div>
@@ -666,6 +623,55 @@
                 </div>
             </Transition>
         </Teleport>
+
+        <!-- Action dropdown — Teleported to body so it's never clipped by stacking contexts -->
+        <Teleport to="body">
+            <!-- Click-away backdrop -->
+            <div v-if="actionMenuId" class="fixed inset-0 z-[200]" @click="actionMenuId = null" />
+
+            <Transition
+                enter-active-class="transition duration-100 ease-out"
+                enter-from-class="opacity-0 scale-95"
+                enter-to-class="opacity-100 scale-100"
+                leave-active-class="transition duration-75 ease-in"
+                leave-from-class="opacity-100 scale-100"
+                leave-to-class="opacity-0 scale-95"
+            >
+                <div
+                    v-if="actionMenuSub"
+                    class="fixed z-[201] min-w-[190px] overflow-hidden rounded-2xl"
+                    :style="{
+                        top: actionMenuPos.top + 'px',
+                        right: actionMenuPos.right + 'px',
+                        background: '#111f33',
+                        border: '1px solid rgba(255,255,255,0.22)',
+                        boxShadow: '0 12px 48px rgba(0,0,0,0.85), 0 2px 8px rgba(0,0,0,0.5)',
+                    }"
+                >
+                    <button
+                        type="button"
+                        @click="triggerResend(actionMenuSub); actionMenuId = null"
+                        class="flex w-full items-center gap-2.5 px-4 py-3.5 text-left text-xs font-semibold text-white transition-colors hover:bg-white/[0.09] active:bg-white/[0.12]"
+                    >
+                        <SendHorizontal class="h-3.5 w-3.5 shrink-0 text-teal-400" />
+                        Resend email
+                    </button>
+                    <div style="height:1px; background: rgba(255,255,255,0.12);" />
+                    <button
+                        type="button"
+                        @click="triggerRegen(actionMenuSub); actionMenuId = null"
+                        :disabled="!actionMenuSub.submissionPayload"
+                        class="flex w-full items-center gap-2.5 px-4 py-3.5 text-left text-xs font-semibold text-white transition-colors hover:bg-white/[0.09] active:bg-white/[0.12] disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                        <RotateCcw class="h-3.5 w-3.5 shrink-0 text-violet-400" :class="regenId === actionMenuSub.id ? 'animate-spin' : ''" />
+                        <span>
+                            Regenerate report
+                            <span v-if="!actionMenuSub.submissionPayload" class="mt-0.5 block text-[10px] text-slate-500">No stored payload</span>
+                        </span>
+                    </button>
+                </div>
+            </Transition>
+        </Teleport>
     </LayoutComponent>
 </template>
 
@@ -807,11 +813,31 @@ const StatusBadge = defineComponent({
     }
 })
 
+// ─── Action dropdown (split button) ──────────────────────────────────────────
+// Teleported to <body> to escape stacking contexts; positioned via fixed coords.
+const actionMenuId  = ref(null)
+const actionMenuPos = ref({ top: 0, right: 0 })
+
+// The submission object currently shown in the dropdown
+const actionMenuSub = computed(() =>
+    actionMenuId.value
+        ? allSubmissions.value.find(s => s.id === actionMenuId.value) ?? null
+        : null
+)
+
+function openActionMenu(event, sub) {
+    const rect = event.currentTarget.getBoundingClientRect()
+    actionMenuPos.value = {
+        top:   rect.bottom + 6,                         // 6px below the button
+        right: window.innerWidth - rect.right,          // align right edge
+    }
+    actionMenuId.value = actionMenuId.value === sub.id ? null : sub.id
+}
+
 // ─── Resend ───────────────────────────────────────────────────────────────────
 const resendModal   = ref(null)
 const resendingId   = ref(null)
 const resendSuccess = ref(null)
-const actionMenuId  = ref(null)   // which card has its dropdown open
 
 function triggerResend(sub) {
     resendModal.value = sub
