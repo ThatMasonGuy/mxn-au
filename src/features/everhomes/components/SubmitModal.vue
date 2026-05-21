@@ -277,7 +277,7 @@ import {
 } from 'lucide-vue-next'
 import SignaturePad from 'signature_pad'
 import {
-  doc, setDoc, getDoc, updateDoc, onSnapshot, serverTimestamp,
+  doc, setDoc, getDoc, onSnapshot, serverTimestamp,
 } from 'firebase/firestore'
 import { firestore } from '@/firebase'
 
@@ -443,24 +443,6 @@ async function confirmSubmit() {
 
   const docRef = doc(firestore, `${props.schema.reportType}s`, id)
 
-  try {
-    await setDoc(docRef, {
-      status:          'pending',
-      propertyAddress: props.reportState.setup.propertyAddress,
-      inspectionDate:  props.reportState.setup.inspectionDate,
-      inspectorName:   props.reportState.setup.inspectorName,
-      inspectorEmail:  props.reportState.setup.inspectorEmail,
-      createdAt:       serverTimestamp(),
-    })
-  } catch (err) {
-    const isPermDenied = err?.code === 'permission-denied' || err?.message?.includes('PERMISSION_DENIED')
-    if (!isPermDenied) {
-      state.loading = false
-      state.error   = `Failed to create report record: ${err.message}`
-      return
-    }
-  }
-
   // Listen for status updates
   if (firestoreUnsub) firestoreUnsub()
   firestoreUnsub = onSnapshot(docRef, { includeMetadataChanges: true }, (snap) => {
@@ -489,11 +471,45 @@ async function confirmSubmit() {
 
   startTimeout()
 
-  // Build and send payload
+  // Build the full payload now so we can persist it alongside the initial doc write.
+  // This is the single most important thing for the regenerate feature — the payload
+  // MUST be written atomically with the doc creation, not in a separate updateDoc,
+  // because Firestore security rules typically only permit unauthenticated creates
+  // (not updates) on these public-facing collections.
   const sigData  = cropSignatureData(staffSigPad)
   const payload  = props.reportState.buildSubmitPayload(sigData)
 
-  // Upload staff signature to storage
+  // Build a stripped copy for Firestore storage — drop base64 image blobs (can be MB+).
+  // Signature images get deleted from Storage after report generation anyway, so their
+  // URLs are intentionally not included here; the ZIP preserves room photos for regen.
+  const storedPayload = JSON.parse(JSON.stringify(payload))
+  if (storedPayload.signatures?.staff?.signatureData)
+    delete storedPayload.signatures.staff.signatureData
+  storedPayload.signatures?.tenants?.forEach(t => { if (t?.signatureData) delete t.signatureData })
+
+  // Persist doc + payload in a single atomic write
+  try {
+    await setDoc(docRef, {
+      status:            'pending',
+      propertyAddress:   props.reportState.setup.propertyAddress,
+      inspectionDate:    props.reportState.setup.inspectionDate,
+      inspectorName:     props.reportState.setup.inspectorName,
+      inspectorEmail:    props.reportState.setup.inspectorEmail,
+      createdAt:         serverTimestamp(),
+      submissionPayload: storedPayload,
+    })
+  } catch (err) {
+    const isPermDenied = err?.code === 'permission-denied' || err?.message?.includes('PERMISSION_DENIED')
+    if (!isPermDenied) {
+      state.loading = false
+      state.error   = `Failed to create report record: ${err.message}`
+      return
+    }
+    // Permission-denied on the initial write is expected for some rule configs —
+    // the Cloud Function's admin SDK will create/update the doc directly.
+  }
+
+  // Upload staff signature to storage (after the initial doc write to avoid blocking it)
   if (sigData) {
     try {
       const { uploadBytes, getDownloadURL, ref: storageRef } = await import('firebase/storage')
@@ -509,18 +525,6 @@ async function confirmSubmit() {
     } catch (err) {
       console.warn('Staff signature upload failed:', err.message)
     }
-  }
-
-  // Store the full payload in Firestore so it can be used to regenerate the report later.
-  // Strip base64 signature data (large) — URLs are already stored above.
-  try {
-    const storedPayload = JSON.parse(JSON.stringify(payload))
-    if (storedPayload.signatures?.staff?.signatureData)
-      delete storedPayload.signatures.staff.signatureData
-    storedPayload.signatures?.tenants?.forEach(t => { if (t?.signatureData) delete t.signatureData })
-    await updateDoc(docRef, { submissionPayload: storedPayload })
-  } catch (e) {
-    console.warn('Could not store payload for regeneration:', e.message)
   }
 
   try {
