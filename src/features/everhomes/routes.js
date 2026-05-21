@@ -1,6 +1,22 @@
 // src/features/everhomes/routes.js
+import { ROLES } from '@/shared/constants/roles'
 
 export default [
+    {
+        path: '/everhomes/admin',
+        name: 'Everhomes | Admin',
+        component: () => import('@/features/everhomes/views/admin/EverhomesAdminPage.vue'),
+        meta: {
+            requiresAuth: true,
+            role: ROLES.SITE_ADMIN,
+            title: 'Everhomes Admin',
+            drawerRanking: null,
+            drawerVisible: false,
+            layout: 'default',
+            description: 'Admin panel for submissions, datasets and system management.',
+            requiresOverlay: false,
+        },
+    },
     {
         path: '/everhomes',
         alias: ['/everhomes/'],
