@@ -14,7 +14,7 @@
             </div>
         </GradientBackground>
     </ColourBlobBackground>
-    <div v-else class="min-h-screen flex flex-col text-white">
+    <div v-else class="min-h-screen flex flex-col text-white" :style="bgStyle ? `background: ${bgStyle}` : ''" >
         <EverhomesHeader v-if="header" />
 
         <main class="flex-grow">
@@ -34,6 +34,7 @@ import GradientBackground from '@/shared/components/common/backgrounds/GradientB
 const props = defineProps({
     header: { type: Boolean, default: true },
     footer: { type: Boolean, default: true },
-    background: { type: Boolean, default: true }
+    background: { type: Boolean, default: true },
+    bgStyle: { type: String, default: '' }
 })
 </script>

@@ -1,53 +1,46 @@
 <template>
-    <div class="relative w-full md:w-72">
+    <div class="relative w-full">
         <label for="tool-search" class="sr-only">Search tools</label>
 
-        <input id="tool-search" v-model="internalValue" type="text" placeholder="Search tools..."
-            :aria-label="'Search tools'" :aria-describedby="'tool-search-desc'"
-            class="w-full pl-10 pr-8 py-2 rounded-lg bg-white/10 text-white placeholder-white/60 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-400 transition-all duration-300"
-            @input="onInput" @keydown.enter="emitSearch" />
+        <Search class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" aria-hidden="true" />
 
-        <MagnifyingGlassIcon class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/50 pointer-events-none"
-            aria-hidden="true" />
+        <input
+            id="tool-search"
+            v-model="internalValue"
+            type="text"
+            placeholder="Search tools..."
+            class="w-full pl-10 pr-9 py-2.5 rounded-xl text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500/40 transition-all duration-200"
+            style="background: #0f1e30; border: 1px solid rgba(255,255,255,0.12);"
+            @input="onInput"
+            @keydown.enter="emitSearch"
+        />
 
-        <button v-if="internalValue" @click="clearInput" aria-label="Clear search"
-            class="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/50">
-            <XMarkIcon class="w-4 h-4 text-white/70" />
+        <button
+            v-if="internalValue"
+            @click="clearInput"
+            aria-label="Clear search"
+            class="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-md text-slate-500 hover:text-slate-300 hover:bg-slate-700 transition-colors"
+        >
+            <X class="w-3.5 h-3.5" />
         </button>
-
-        <p id="tool-search-desc" class="sr-only">
-            Enter a keyword to filter the tools on this page.
-        </p>
     </div>
 </template>
 
 <script setup>
 import { ref, watch } from 'vue'
-import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/vue/24/solid'
+import { Search, X } from 'lucide-vue-next'
 
 const props = defineProps({
     modelValue: { type: String, default: '' },
 })
 
 const emit = defineEmits(['update:modelValue', 'search'])
-
 const internalValue = ref(props.modelValue)
 
-watch(() => props.modelValue, newVal => {
-    internalValue.value = newVal
-})
+watch(() => props.modelValue, val => { internalValue.value = val })
 
-// === Emit debounced search ===
-function onInput() {
-    emit('update:modelValue', internalValue.value)
-}
-
-// === Emit immediately on Enter key ===
-function emitSearch() {
-    emit('search', internalValue.value)
-}
-
-// === Clear field ===
+function onInput() { emit('update:modelValue', internalValue.value) }
+function emitSearch() { emit('search', internalValue.value) }
 function clearInput() {
     internalValue.value = ''
     emit('update:modelValue', '')

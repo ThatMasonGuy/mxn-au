@@ -1,294 +1,299 @@
 <template>
-    <LayoutComponent :header="true" :footer="true">
-        <!-- Page Title Bar -->
-        <div class="pt-20 sm:pt-24 pb-6 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-            <div class="flex flex-col gap-1 mb-6">
-                <h1 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">Tools</h1>
-                <p class="text-slate-400 text-sm sm:text-base">Select a tool to get started.</p>
+    <LayoutComponent :header="true" :footer="true" :background="false" bg-style="linear-gradient(160deg, #121f33 0%, #0d1829 45%, #09121f 100%)" >
+        <!-- ─── Page wrapper (background scoped here) ─────────────────────────── -->
+        <div class="relative min-h-screen">
+
+            <!-- Background: gradient + dot grid, no blobs -->
+            <div class="absolute inset-0 overflow-hidden" aria-hidden="true">
+                <div class="absolute inset-0" style="background: linear-gradient(160deg, #121f33 0%, #0d1829 45%, #09121f 100%);" />
+                <div class="absolute inset-0" style="background-image: radial-gradient(circle, rgba(255,255,255,0.055) 1px, transparent 1px); background-size: 28px 28px;" />
+                <!-- Teal accent line across the top -->
+                <div class="absolute top-0 inset-x-0 h-px" style="background: linear-gradient(to right, transparent 5%, rgba(20,184,166,0.5) 40%, rgba(34,211,238,0.4) 60%, transparent 95%);" />
             </div>
 
-            <!-- Search + Filter Row -->
-            <div class="flex flex-col sm:flex-row gap-3 sm:items-center">
-                <ToolSearchComponent v-model="searchQuery" class="w-full sm:w-80" />
-                <ToolTagSelector
-                    :tags="allTags"
-                    v-model="selectedTags"
-                    :tooltipMap="tagTooltips"
-                    :maxSelectable="3"
-                    :clearAll="true"
-                    :tag-color-map="tagsColourMap"
-                    class="flex-1"
-                />
+        <!-- ─── Hero ──────────────────────────────────────────────────────────── -->
+        <div class="relative pt-24 sm:pt-28 pb-12 px-4 sm:px-6 lg:px-8">
+            <div class="max-w-2xl mx-auto text-center">
+                <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-500/10 border border-teal-500/25 text-teal-400/90 text-xs font-medium tracking-wide mb-6">
+                    <Building2 class="w-3 h-3 text-teal-400" />
+                    SDA Property Management
+                </div>
+
+                <h1 class="text-4xl sm:text-5xl font-extrabold text-white tracking-tight leading-tight mb-3">
+                    Everhomes
+                    <span class="text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-cyan-400"> Tools</span>
+                </h1>
+
+                <p class="text-slate-400 text-base sm:text-lg mb-8">
+                    Purpose-built for SDA property management.
+                </p>
+
+                <!-- Search -->
+                <div class="max-w-md mx-auto">
+                    <ToolSearchComponent v-model="searchQuery" />
+                </div>
             </div>
         </div>
 
-        <!-- Tool Grid -->
-        <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
-            <TransitionGroup
-                name="card"
-                tag="div"
-                class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5"
-                appear
-                enter-active-class="transition duration-300 ease-out"
-                leave-active-class="transition duration-200 ease-in absolute"
-                enter-from-class="opacity-0 translate-y-3"
-                enter-to-class="opacity-100 translate-y-0"
-                leave-from-class="opacity-100 translate-y-0"
-                leave-to-class="opacity-0 -translate-y-1"
-            >
-                <component
-                    v-for="tool in filteredTools"
-                    :key="tool.id"
-                    :is="tool.disabled ? 'div' : RouterLink"
-                    :to="tool.disabled ? undefined : tool.link"
-                    class="group relative flex flex-col rounded-2xl p-5 sm:p-6 border transition-all duration-300 backdrop-blur-md overflow-hidden cursor-pointer select-none"
-                    :class="[
-                        tool.disabled
-                            ? 'opacity-50 pointer-events-none grayscale'
-                            : 'hover:scale-[1.02] hover:shadow-2xl active:scale-[0.99]'
-                    ]"
-                    :style="cardStyle(tool)"
-                >
-                    <!-- Ambient glow on hover -->
-                    <div
-                        class="absolute inset-0 z-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
-                        :style="{ background: glowStyle(tool.colorHex) }"
-                    />
+        <!-- ─── Content ───────────────────────────────────────────────────────── -->
+        <div class="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-24">
 
-                    <!-- Badges -->
-                    <div v-if="tool.badges?.length" class="absolute top-3 right-3 z-10 flex flex-wrap gap-1 justify-end">
-                        <BadgeComponent v-for="(badge, i) in tool.badges" :key="i" v-bind="badge" />
+            <!-- Search results -->
+            <template v-if="searchQuery">
+                <p class="text-slate-500 text-sm mb-6">
+                    <span class="text-slate-300 font-medium">{{ filteredTools.length }}</span>
+                    result{{ filteredTools.length !== 1 ? 's' : '' }} for
+                    "<span class="text-slate-300">{{ searchQuery }}</span>"
+                </p>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <ToolCard v-for="tool in filteredTools" :key="tool.id" :tool="tool" />
+                </div>
+
+                <div v-if="!filteredTools.length" class="py-24 text-center">
+                    <div class="w-12 h-12 rounded-xl bg-slate-800/80 border border-slate-700/60 flex items-center justify-center mx-auto mb-3">
+                        <Search class="w-5 h-5 text-slate-600" />
                     </div>
+                    <p class="text-slate-400 font-medium mb-1">No tools found</p>
+                    <p class="text-slate-600 text-sm mb-4">Try a different keyword</p>
+                    <button @click="searchQuery = ''" class="text-teal-400 hover:text-teal-300 text-sm transition-colors">
+                        Clear search
+                    </button>
+                </div>
+            </template>
 
-                    <!-- Icon -->
-                    <div
-                        class="w-11 h-11 mb-4 flex items-center justify-center rounded-xl border border-white/20 z-10 relative transition-transform duration-300 group-hover:-translate-y-0.5"
-                        :style="{ background: iconBg(tool.colorHex) }"
-                    >
-                        <component :is="tool.icon" class="w-5 h-5 text-white" />
-                    </div>
+            <!-- Categorised sections -->
+            <template v-else>
+                <div class="space-y-12">
+                    <section v-for="cat in categories" :key="cat.id">
 
-                    <!-- Text -->
-                    <div class="z-10 relative flex-1">
-                        <h3 class="text-base sm:text-lg font-semibold text-white mb-1 leading-tight">{{ tool.title }}</h3>
-                        <p class="text-sm text-white/60 leading-snug">{{ tool.byline }}</p>
-                    </div>
+                        <!-- Section header -->
+                        <div class="flex items-center gap-2.5 mb-5 pb-4" style="border-bottom: 1px solid rgba(255,255,255,0.07)">
+                            <div
+                                class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                                :style="{ background: hexToRgba(cat.accentHex, 0.15), border: `1px solid ${hexToRgba(cat.accentHex, 0.2)}` }"
+                            >
+                                <component :is="cat.icon" class="w-3.5 h-3.5" :style="{ color: cat.accentHex }" />
+                            </div>
+                            <div>
+                                <h2 class="text-white font-semibold text-sm leading-none">{{ cat.label }}</h2>
+                                <p class="text-slate-500 text-xs mt-0.5">{{ cat.description }}</p>
+                            </div>
+                            <span class="ml-auto text-slate-700 text-xs font-medium tabular-nums">
+                                {{ cat.tools.length }} tool{{ cat.tools.length !== 1 ? 's' : '' }}
+                            </span>
+                        </div>
 
-                    <!-- Tags row -->
-                    <div v-if="tool.tags?.length" class="z-10 relative mt-4 flex flex-wrap gap-1.5">
-                        <span
-                            v-for="tag in tool.tags"
-                            :key="tag"
-                            class="inline-block text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full"
-                            :style="tagChipStyle(tag)"
-                        >
-                            {{ tag }}
-                        </span>
-                    </div>
+                        <!-- Tool grid -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <ToolCard v-for="tool in cat.tools" :key="tool.id" :tool="tool" />
+                        </div>
 
-                    <!-- Arrow indicator -->
-                    <div v-if="!tool.disabled" class="absolute bottom-4 right-4 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                        <ArrowRightIcon class="w-4 h-4 text-white/50" />
-                    </div>
-                </component>
-            </TransitionGroup>
+                    </section>
+                </div>
+            </template>
 
-            <!-- Empty state -->
-            <div v-if="filteredTools.length === 0" class="flex flex-col items-center justify-center py-20 text-center gap-3">
-                <MagnifyingGlassIcon class="w-10 h-10 text-slate-600" />
-                <p class="text-slate-400 text-sm">No tools match your search.</p>
-                <button @click="resetFilters" class="text-teal-400 hover:text-teal-300 text-sm underline-offset-2 underline transition-colors">
-                    Clear filters
-                </button>
-            </div>
-        </section>
+        </div>
+
+        </div><!-- end page wrapper -->
     </LayoutComponent>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, defineComponent, h } from 'vue'
 import { RouterLink } from 'vue-router'
 import LayoutComponent from '@/features/everhomes/components/layouts/LayoutComponent.vue'
 import ToolSearchComponent from '@/features/everhomes/components/ui/ToolSearchComponent.vue'
-import ToolTagSelector from '@/features/everhomes/components/ui/ToolTagSelector.vue'
 import BadgeComponent from '@/features/everhomes/components/ui/BadgeComponent.vue'
 
 import {
-    CurrencyDollarIcon,
-    BanknotesIcon,
-    BuildingOffice2Icon,
-    CloudArrowUpIcon,
-    ClipboardDocumentCheckIcon,
-    ArrowRightIcon,
-    MagnifyingGlassIcon,
-    ClipboardDocumentListIcon,
-    QrCodeIcon
-} from '@heroicons/vue/24/solid'
+    DollarSign,
+    Banknote,
+    Building2,
+    ClipboardCheck,
+    ClipboardList,
+    QrCode,
+    Wrench,
+    Search,
+    ArrowRight,
+} from 'lucide-vue-next'
 
+// ─── State ────────────────────────────────────────────────────────────────────
 const searchQuery = ref('')
-const selectedTags = ref([])
 
-const allTags = ['Finance', 'SDA', 'Placement', 'Returns', 'Inspection', 'Utility']
-
-const tagsColourMap = {
-    Finance: 'teal',
-    SDA: 'sky',
-    Placement: 'emerald',
-    Returns: 'rose',
-    Inspection: 'violet',
-    Utility: 'purple'
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function hexToRgb(hex) {
+    const s = hex.replace('#', '')
+    const n = parseInt(s, 16)
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255]
+}
+function hexToRgba(hex, a = 1) {
+    const [r, g, b] = hexToRgb(hex)
+    return `rgba(${r},${g},${b},${a})`
 }
 
-const tagTooltips = {
-    Finance: 'Tools related to billing, fees, and cost breakdowns',
-    SDA: 'Specialist Disability Accommodation tools',
-    Placement: 'Fee calculators for participant placements',
-    Returns: 'Tools to calculate SDA returns and income',
-    Inspection: 'Property inspection and checklist tools',
-    Utility: 'General-purpose productivity tools'
-}
+// ─── Tool card component ──────────────────────────────────────────────────────
+const ToolCard = defineComponent({
+    name: 'ToolCard',
+    props: { tool: { type: Object, required: true } },
+    setup(props) {
+        return () => {
+            const t = props.tool
+            return h(
+                RouterLink,
+                {
+                    to: t.link,
+                    class: 'tool-card group relative flex flex-col rounded-xl overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-black/50 active:translate-y-0',
+                    style: 'background: #0f1e30; border: 1px solid rgba(255,255,255,0.1);',
+                },
+                () => [
+                    // Colored top accent strip
+                    h('div', {
+                        class: 'h-0.5 w-full shrink-0',
+                        style: { background: `linear-gradient(to right, ${t.colorHex}, ${hexToRgba(t.colorHex, 0.3)})` }
+                    }),
 
-const tagColorHexMap = {
-    Finance: '#14b8a6',
-    SDA: '#0ea5e9',
-    Placement: '#10b981',
-    Returns: '#f43f5e',
-    Inspection: '#8b5cf6',
-    Utility: '#7c3aed'
-}
+                    // Card body
+                    h('div', { class: 'p-5 flex flex-col flex-1' }, [
 
+                        // Top row: icon + badge
+                        h('div', { class: 'flex items-start justify-between mb-4' }, [
+                            h('div', {
+                                class: 'w-10 h-10 rounded-lg flex items-center justify-center shrink-0',
+                                style: { background: hexToRgba(t.colorHex, 0.12), border: `1px solid ${hexToRgba(t.colorHex, 0.2)}` }
+                            }, [
+                                h(t.icon, { class: 'w-5 h-5', style: { color: t.colorHex } })
+                            ]),
+                            t.badges?.length
+                                ? h('div', { class: 'flex gap-1' }, t.badges.map((b, i) => h(BadgeComponent, { key: i, ...b })))
+                                : null
+                        ]),
+
+                        // Text
+                        h('div', { class: 'flex-1' }, [
+                            h('h3', { class: 'text-white font-semibold text-sm mb-1 leading-snug' }, t.title),
+                            h('p', { class: 'text-slate-500 text-xs leading-relaxed' }, t.byline)
+                        ]),
+
+                        // Arrow footer
+                        h('div', { class: 'mt-4 flex items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity duration-150' }, [
+                            h('span', { class: 'text-xs text-slate-500 mr-1.5' }, 'Open'),
+                            h(ArrowRight, { class: 'w-3.5 h-3.5 text-slate-500' })
+                        ])
+                    ])
+                ]
+            )
+        }
+    }
+})
+
+// ─── Tool definitions ─────────────────────────────────────────────────────────
 const tools = [
     {
         id: 'water',
         title: 'Water Bills',
         byline: 'Split SDA water bills by participant and date',
         link: '/everhomes/water-bills',
-        icon: CurrencyDollarIcon,
+        icon: DollarSign,
         colorHex: '#0ea5e9',
-        badges: [{ label: 'Stable', colorHex: '#0ea5e9', glow: true }],
-        tags: ['Finance', 'SDA']
+        badges: [],
+        category: 'finance'
     },
     {
         id: 'placement-fees',
         title: 'Placement Fees',
         byline: 'Calculate participant placement-related costs',
         link: '/everhomes/placement-fees',
-        icon: BanknotesIcon,
+        icon: Banknote,
         colorHex: '#10b981',
-        badges: [{ label: 'New!', type: 'new', glow: true }],
-        tags: ['Finance', 'Placement']
+        badges: [],
+        category: 'finance'
     },
     {
         id: 'sda-return',
         title: 'SDA Price Calculator',
         byline: 'Location-adjusted annual SDA amounts per participant',
         link: '/everhomes/sda-returns',
-        icon: BuildingOffice2Icon,
+        icon: Building2,
         colorHex: '#8b5cf6',
-        badges: [{ label: 'New!', type: 'new', glow: true }],
-        tags: ['Finance', 'SDA', 'Returns']
-    },
-    {
-        id: 'import',
-        title: 'Import Data',
-        byline: 'Upload and import data to the system',
-        link: '/everhomes/import',
-        icon: CloudArrowUpIcon,
-        colorHex: '#f59e0b',
-        badges: [{ label: 'In Progress', type: 'soon' }],
-        tags: ['Finance'],
-        hidden: true,
+        badges: [{ label: 'New', type: 'new' }],
+        category: 'finance'
     },
     {
         id: 'inspection-checklist',
         title: 'Inspection Checklist',
         byline: 'Walk through property rooms and capture photos for each area',
         link: '/everhomes/inspection-checklist',
-        icon: ClipboardDocumentCheckIcon,
+        icon: ClipboardCheck,
         colorHex: '#14b8a6',
-        badges: [{ label: 'New!', type: 'new', glow: true }],
-        tags: ['Inspection', 'SDA']
-    },
-    {
-        id: 'qr-code',
-        title: 'QR Code Generator',
-        byline: 'Generate customisable QR codes for URLs, text, and Wi-Fi',
-        link: '/everhomes/qr-code',
-        icon: QrCodeIcon,
-        colorHex: '#7c3aed',
-        badges: [{ label: 'New!', type: 'new', glow: true }],
-        tags: ['Utility']
+        badges: [],
+        category: 'inspection'
     },
     {
         id: 'handover-checklist',
         title: 'Handover Checklist',
         byline: 'SDA dwelling suitability review for handovers and annual compliance',
         link: '/everhomes/handover-checklist',
-        icon: ClipboardDocumentListIcon,
-        colorHex: '#0d9488',
-        badges: [{ label: 'New!', type: 'new', glow: true }],
-        tags: ['Inspection', 'SDA']
+        icon: ClipboardList,
+        colorHex: '#06b6d4',
+        badges: [],
+        category: 'inspection'
+    },
+    {
+        id: 'qr-code',
+        title: 'QR Code Generator',
+        byline: 'Generate customisable QR codes for URLs, text, and Wi-Fi',
+        link: '/everhomes/qr-code',
+        icon: QrCode,
+        colorHex: '#a855f7',
+        badges: [{ label: 'New', type: 'new' }],
+        category: 'utilities'
     },
 ]
 
+// ─── Category config ──────────────────────────────────────────────────────────
+const categoryMeta = [
+    {
+        id: 'finance',
+        label: 'Finance',
+        description: 'Billing, fees, and cost calculators',
+        icon: Banknote,
+        accentHex: '#0ea5e9'
+    },
+    {
+        id: 'inspection',
+        label: 'Inspection',
+        description: 'Property walkthroughs and compliance checklists',
+        icon: ClipboardList,
+        accentHex: '#14b8a6'
+    },
+    {
+        id: 'utilities',
+        label: 'Utilities',
+        description: 'General-purpose productivity tools',
+        icon: Wrench,
+        accentHex: '#a855f7'
+    }
+]
+
+const categories = computed(() =>
+    categoryMeta
+        .map(cat => ({ ...cat, tools: tools.filter(t => t.category === cat.id) }))
+        .filter(cat => cat.tools.length > 0)
+)
+
 const filteredTools = computed(() => {
-    return tools.filter(tool => {
-        if (tool.hidden) return false
-
-        const matchesSearch =
-            searchQuery.value === '' ||
-            tool.title.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-            tool.byline.toLowerCase().includes(searchQuery.value.toLowerCase())
-
-        const matchesTags =
-            selectedTags.value.length === 0 ||
-            selectedTags.value.every(tag => tool.tags?.includes(tag))
-
-        return matchesSearch && matchesTags
-    })
+    const q = searchQuery.value.toLowerCase()
+    return tools.filter(t =>
+        t.title.toLowerCase().includes(q) ||
+        t.byline.toLowerCase().includes(q)
+    )
 })
-
-function resetFilters() {
-    searchQuery.value = ''
-    selectedTags.value = []
-}
-
-function cardStyle(tool) {
-    const hex = tool.colorHex
-    return {
-        backgroundColor: hexToRgba(hex, 0.07),
-        borderColor: hexToRgba(hex, 0.35)
-    }
-}
-
-function glowStyle(hex) {
-    return `radial-gradient(ellipse at center, ${hexToRgba(hex, 0.18)} 0%, transparent 70%)`
-}
-
-function iconBg(hex) {
-    return hexToRgba(hex, 0.2)
-}
-
-function tagChipStyle(tag) {
-    const hex = tagColorHexMap[tag] || '#64748b'
-    return {
-        backgroundColor: hexToRgba(hex, 0.15),
-        color: hex,
-        border: `1px solid ${hexToRgba(hex, 0.35)}`
-    }
-}
-
-function hexToRgba(hex, alpha = 1) {
-    const [r, g, b] = hexToRgb(hex)
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`
-}
-
-function hexToRgb(hex) {
-    const stripped = hex.replace('#', '')
-    const bigint = parseInt(stripped, 16)
-    const r = (bigint >> 16) & 255
-    const g = (bigint >> 8) & 255
-    const b = bigint & 255
-    return [r, g, b]
-}
 </script>
+
+<style scoped>
+.tool-card:hover {
+    background: #162538 !important;
+    border-color: rgba(255, 255, 255, 0.18) !important;
+}
+</style>
