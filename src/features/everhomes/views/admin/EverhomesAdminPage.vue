@@ -95,6 +95,13 @@
                         </div>
                     </div>
 
+                    <!-- Click-away trap for action dropdowns — always in the DOM, only catches clicks when a menu is open -->
+                    <div
+                        class="fixed inset-0 z-10"
+                        :class="actionMenuId ? '' : 'pointer-events-none'"
+                        @click="actionMenuId = null"
+                    />
+
                     <!-- Loading state -->
                     <div v-if="loading" class="flex items-center justify-center py-20 gap-3 text-slate-500">
                         <Loader2 class="w-5 h-5 animate-spin" />
@@ -176,19 +183,69 @@
                                             <FolderArchive class="w-3.5 h-3.5" />
                                             Photos
                                         </a>
-                                        <button
-                                            v-if="sub.status === 'complete' && sub.pdfUrl"
-                                            @click="triggerResend(sub)"
-                                            :disabled="resendingId === sub.id"
-                                            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all disabled:opacity-50"
-                                            :class="resendSuccess === sub.id ? 'text-teal-300 bg-teal-500/10 border-teal-500/30' : 'text-slate-300 hover:text-white hover:bg-white/[0.07]'"
-                                            style="border: 1px solid rgba(255,255,255,0.1)"
+                                        <!-- Split resend/regenerate button — show when PDF exists OR a payload is stored (regen available) -->
+                                        <div
+                                            v-if="sub.pdfUrl || sub.submissionPayload"
+                                            class="relative flex"
                                         >
-                                            <Loader2 v-if="resendingId === sub.id" class="w-3.5 h-3.5 animate-spin" />
-                                            <CheckCheck v-else-if="resendSuccess === sub.id" class="w-3.5 h-3.5" />
-                                            <SendHorizontal v-else class="w-3.5 h-3.5" />
-                                            {{ resendSuccess === sub.id ? 'Sent!' : resendingId === sub.id ? 'Sending…' : 'Resend' }}
-                                        </button>
+                                            <!-- Main resend button — only active when PDF exists -->
+                                            <button
+                                                @click="triggerResend(sub)"
+                                                :disabled="!sub.pdfUrl || resendingId === sub.id || regenId === sub.id"
+                                                class="flex items-center gap-1.5 px-3 py-1.5 rounded-l-lg text-xs font-medium transition-all disabled:opacity-50"
+                                                :class="resendSuccess === sub.id ? 'text-teal-300 bg-teal-500/10 border-teal-500/30' : 'text-slate-300 hover:text-white hover:bg-white/[0.07]'"
+                                                style="border: 1px solid rgba(255,255,255,0.1); border-right: none;"
+                                            >
+                                                <Loader2 v-if="resendingId === sub.id" class="w-3.5 h-3.5 animate-spin" />
+                                                <CheckCheck v-else-if="resendSuccess === sub.id" class="w-3.5 h-3.5" />
+                                                <SendHorizontal v-else class="w-3.5 h-3.5" />
+                                                {{ resendSuccess === sub.id ? 'Sent!' : resendingId === sub.id ? 'Sending…' : 'Resend' }}
+                                            </button>
+                                            <!-- Dropdown chevron -->
+                                            <button
+                                                @click.stop="actionMenuId = actionMenuId === sub.id ? null : sub.id"
+                                                :disabled="resendingId === sub.id || regenId === sub.id"
+                                                class="flex items-center justify-center px-1.5 py-1.5 rounded-r-lg text-slate-500 hover:text-white hover:bg-white/[0.07] transition-all disabled:opacity-50"
+                                                style="border: 1px solid rgba(255,255,255,0.1);"
+                                            >
+                                                <ChevronDown class="w-3 h-3" />
+                                            </button>
+                                            <!-- Dropdown menu -->
+                                            <Transition
+                                                enter-active-class="transition duration-100 ease-out"
+                                                enter-from-class="opacity-0 scale-95"
+                                                enter-to-class="opacity-100 scale-100"
+                                                leave-active-class="transition duration-75 ease-in"
+                                                leave-from-class="opacity-100 scale-100"
+                                                leave-to-class="opacity-0 scale-95"
+                                            >
+                                                <div
+                                                    v-if="actionMenuId === sub.id"
+                                                    class="absolute right-0 top-full mt-1 z-20 rounded-xl overflow-hidden shadow-2xl min-w-[160px]"
+                                                    style="background: #0f1e30; border: 1px solid rgba(255,255,255,0.12);"
+                                                >
+                                                    <button
+                                                        @click="triggerResend(sub); actionMenuId = null"
+                                                        class="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs text-slate-300 hover:text-white hover:bg-white/[0.06] transition-colors text-left"
+                                                    >
+                                                        <SendHorizontal class="w-3.5 h-3.5 text-teal-400 shrink-0" />
+                                                        Resend email
+                                                    </button>
+                                                    <div style="height:1px; background: rgba(255,255,255,0.06);" />
+                                                    <button
+                                                        @click="triggerRegen(sub); actionMenuId = null"
+                                                        :disabled="!sub.submissionPayload"
+                                                        class="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs text-slate-300 hover:text-white hover:bg-white/[0.06] transition-colors text-left disabled:opacity-40 disabled:cursor-not-allowed"
+                                                    >
+                                                        <RotateCcw class="w-3.5 h-3.5 text-violet-400 shrink-0" :class="regenId === sub.id ? 'animate-spin' : ''" />
+                                                        <span>
+                                                            Regenerate report
+                                                            <span v-if="!sub.submissionPayload" class="block text-[10px] text-slate-600 mt-0.5">No stored payload</span>
+                                                        </span>
+                                                    </button>
+                                                </div>
+                                            </Transition>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -361,10 +418,9 @@
 
             </div>
         </div>
-    </LayoutComponent>
 
-    <!-- Resend confirm modal -->
-    <Teleport to="body">
+        <!-- Resend confirm modal — inside LayoutComponent so component has a single root -->
+        <Teleport to="body">
         <Transition
             enter-active-class="transition duration-150"
             enter-from-class="opacity-0"
@@ -418,7 +474,68 @@
                 </div>
             </div>
         </Transition>
+        </Teleport>
+
+        <!-- Regenerate confirm modal -->
+        <Teleport to="body">
+        <Transition
+            enter-active-class="transition duration-150"
+            enter-from-class="opacity-0"
+            enter-to-class="opacity-100"
+            leave-active-class="transition duration-100"
+            leave-from-class="opacity-100"
+            leave-to-class="opacity-0"
+        >
+            <div v-if="regenModal" class="fixed inset-0 z-50 flex items-center justify-center p-4" style="background: rgba(0,0,0,0.6); backdrop-filter: blur(4px)">
+                <div class="w-full max-w-md rounded-2xl p-6" style="background: #0f1e30; border: 1px solid rgba(255,255,255,0.12)">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background: rgba(139,92,246,0.12); border: 1px solid rgba(139,92,246,0.2)">
+                            <RotateCcw class="w-5 h-5 text-violet-400" />
+                        </div>
+                        <div>
+                            <h3 class="text-white font-semibold text-base">Regenerate Report</h3>
+                            <p class="text-slate-500 text-xs">Rebuild the PDF from stored data and resend emails</p>
+                        </div>
+                    </div>
+
+                    <div class="rounded-xl p-3 mb-3" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07)">
+                        <p class="text-white text-sm font-medium mb-0.5">{{ regenModal.propertyAddress }}</p>
+                        <p class="text-slate-400 text-xs">
+                            {{ regenModal.collection === 'inspections' ? 'Inspection' : 'Handover' }}
+                            · {{ regenModal.inspectionDate }}
+                        </p>
+                    </div>
+
+                    <!-- Warning -->
+                    <div class="flex items-start gap-2 px-3 py-2.5 rounded-lg mb-4" style="background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.2)">
+                        <AlertTriangle class="w-3.5 h-3.5 text-amber-400 mt-0.5 shrink-0" />
+                        <p class="text-xs text-amber-300 leading-relaxed">
+                            This will <strong>overwrite the existing PDF</strong>, unpack the photos ZIP back into storage, re-run the full report pipeline, and re-send emails to all original recipients.
+                        </p>
+                    </div>
+
+                    <div class="flex gap-3">
+                        <button
+                            @click="confirmRegen"
+                            class="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold text-white transition-all"
+                            style="background: rgba(139,92,246,0.7); border: 1px solid rgba(139,92,246,0.5)"
+                        >
+                            <RotateCcw class="w-4 h-4" />
+                            Regenerate
+                        </button>
+                        <button
+                            @click="regenModal = null"
+                            class="px-5 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:text-white transition-all"
+                            style="border: 1px solid rgba(255,255,255,0.1)"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </Transition>
     </Teleport>
+    </LayoutComponent>
 </template>
 
 <script setup>
@@ -437,7 +554,7 @@ import {
     FileText, FolderArchive, SendHorizontal, CheckCheck, AlertCircle,
     ClipboardCheck, ClipboardList, User, Calendar, Clock,
     CheckCircle2, AlertTriangle, FileSpreadsheet, CloudUpload,
-    BarChart3, TrendingUp, XCircle,
+    BarChart3, TrendingUp, XCircle, ChevronDown, RotateCcw,
 } from 'lucide-vue-next'
 
 const FUNCTIONS_URL = import.meta.env.VITE_FUNCTIONS_URL ?? ''
@@ -543,6 +660,7 @@ const StatusBadge = defineComponent({
 const resendModal   = ref(null)
 const resendingId   = ref(null)
 const resendSuccess = ref(null)
+const actionMenuId  = ref(null)   // which card has its dropdown open
 
 function triggerResend(sub) {
     resendModal.value = sub
@@ -568,6 +686,39 @@ async function confirmResend() {
         alert(`Resend failed: ${err.message}`)
     } finally {
         resendingId.value = null
+    }
+}
+
+// ─── Regenerate ───────────────────────────────────────────────────────────────
+const regenModal   = ref(null)
+const regenId      = ref(null)
+const regenSuccess = ref(null)
+
+function triggerRegen(sub) {
+    regenModal.value = sub
+}
+
+async function confirmRegen() {
+    const sub = regenModal.value
+    if (!sub) return
+    regenModal.value = null
+    regenId.value = sub.id
+
+    try {
+        const res = await fetch(`${FUNCTIONS_URL}/regenerateReport`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ collection: sub.collection, docId: sub.id }),
+        })
+        if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? `HTTP ${res.status}`)
+        regenSuccess.value = sub.id
+        // Reload submissions so the status reflects "pending" / eventual "complete"
+        setTimeout(() => loadSubmissions(), 2000)
+        setTimeout(() => { if (regenSuccess.value === sub.id) regenSuccess.value = null }, 6000)
+    } catch (err) {
+        alert(`Regeneration failed: ${err.message}`)
+    } finally {
+        regenId.value = null
     }
 }
 

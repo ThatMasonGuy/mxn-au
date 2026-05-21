@@ -46,6 +46,7 @@ export { createAutoTranslatePair } from './api/createAutoTranslatePair.mjs';
 // Everhomes Functions
 export { generateInspectionReport } from './everhomes/generateInspectionReport.mjs';
 export { resendReport } from './everhomes/resendReport.mjs';
+export { regenerateReport } from './everhomes/regenerateReport.mjs';
 
 // X2Vertical
 export { fetchTweet } from './x2vertical/fetchTweet.mjs';

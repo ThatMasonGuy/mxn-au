@@ -277,7 +277,7 @@ import {
 } from 'lucide-vue-next'
 import SignaturePad from 'signature_pad'
 import {
-  doc, setDoc, getDoc, onSnapshot, serverTimestamp,
+  doc, setDoc, getDoc, updateDoc, onSnapshot, serverTimestamp,
 } from 'firebase/firestore'
 import { firestore } from '@/firebase'
 
@@ -509,6 +509,18 @@ async function confirmSubmit() {
     } catch (err) {
       console.warn('Staff signature upload failed:', err.message)
     }
+  }
+
+  // Store the full payload in Firestore so it can be used to regenerate the report later.
+  // Strip base64 signature data (large) — URLs are already stored above.
+  try {
+    const storedPayload = JSON.parse(JSON.stringify(payload))
+    if (storedPayload.signatures?.staff?.signatureData)
+      delete storedPayload.signatures.staff.signatureData
+    storedPayload.signatures?.tenants?.forEach(t => { if (t?.signatureData) delete t.signatureData })
+    await updateDoc(docRef, { submissionPayload: storedPayload })
+  } catch (e) {
+    console.warn('Could not store payload for regeneration:', e.message)
   }
 
   try {
