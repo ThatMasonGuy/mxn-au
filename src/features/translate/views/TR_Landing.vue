@@ -896,6 +896,8 @@ onMounted(() => {
 </script>
 
 <style scoped>
+@reference "@/style.css";
+
 /* Fade in animation */
 @keyframes fade-in {
     from {

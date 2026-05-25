@@ -1188,6 +1188,8 @@ const clearFilters = () => {
 </script>
 
 <style scoped>
+@reference "@/style.css";
+
 /* Custom faction colors */
 :root {
     --nature-green: #10b981;
@@ -1326,7 +1328,7 @@ const clearFilters = () => {
 
 /* Card styles */
 .hero-card {
-    @apply elev-card p-4 transition-all duration-200 border-2;
+    @apply rounded-xl ring-1 ring-border p-4 shadow-md bg-card p-4 transition-all duration-200 border-2;
 }
 
 .hero-card:hover {

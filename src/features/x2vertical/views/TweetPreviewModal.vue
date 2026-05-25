@@ -414,6 +414,8 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+@reference "@/style.css";
+
 .fade-enter-active, .fade-leave-active { transition: opacity 0.22s ease; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
 

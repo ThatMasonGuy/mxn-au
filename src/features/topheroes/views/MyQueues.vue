@@ -509,6 +509,8 @@ watch(() => store.heroes?.length, (newCount) => {
 </script>
 
 <style scoped>
+@reference "@/style.css";
+
 :root {
     --nature-green: #10b981;
     --horde-red: #ef4444;

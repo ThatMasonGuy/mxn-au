@@ -319,6 +319,8 @@ const saveHero = async () => {
 </script>
 
 <style scoped>
+@reference "@/style.css";
+
 .rarity-badge {
     @apply inline-flex items-center gap-1 px-2 py-0.5 sm:py-1 rounded-full text-xs font-bold backdrop-blur-sm flex-shrink-0;
 }

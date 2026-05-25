@@ -621,7 +621,9 @@ onMounted(() => {
 </script>
 
 <style scoped>
+@reference "@/style.css";
+
 .resource-card {
-    @apply elev-card p-4 cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-1;
+    @apply rounded-xl ring-1 ring-border p-4 shadow-md bg-card cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-1;
 }
 </style>

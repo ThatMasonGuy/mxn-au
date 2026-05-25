@@ -1,6 +1,5 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@config "../tailwind.config.js";
 
 @layer base {
   :root {
@@ -153,28 +152,28 @@
     --player-10-end: #86efac;
 
     /* ===== VELARIS THEME COLORS ===== */
-    --velaris-purple: #7C3AED;
-    --velaris-teal: #06B6D4;
-    --velaris-green: #22C55E;
-    --velaris-amber: #F59E0B;
-    --velaris-purple-variant: #A855F7;
-    --velaris-teal-variant: #14B8A6;
-    --velaris-lime: #84CC16;
-    --velaris-orange: #F97316;
-    --velaris-pink: #EC4899;
-    --velaris-violet: #8B5CF6;
+    --velaris-purple: #7c3aed;
+    --velaris-teal: #06b6d4;
+    --velaris-green: #22c55e;
+    --velaris-amber: #f59e0b;
+    --velaris-purple-variant: #a855f7;
+    --velaris-teal-variant: #14b8a6;
+    --velaris-lime: #84cc16;
+    --velaris-orange: #f97316;
+    --velaris-pink: #ec4899;
+    --velaris-violet: #8b5cf6;
 
     /* ===== FROGGY THEME COLORS ===== */
-    --froggy-main-green: #22C55E;
-    --froggy-mint: #14B8A6;
-    --froggy-lime: #84CC16;
-    --froggy-yellow: #FDE047;
-    --froggy-forest: #16A34A;
-    --froggy-emerald: #10B981;
-    --froggy-olive: #65A30D;
-    --froggy-light-lime: #A3E635;
-    --froggy-spring: #4ADE80;
-    --froggy-pale: #86EFAC;
+    --froggy-main-green: #22c55e;
+    --froggy-mint: #14b8a6;
+    --froggy-lime: #84cc16;
+    --froggy-yellow: #fde047;
+    --froggy-forest: #16a34a;
+    --froggy-emerald: #10b981;
+    --froggy-olive: #65a30d;
+    --froggy-light-lime: #a3e635;
+    --froggy-spring: #4ade80;
+    --froggy-pale: #86efac;
 
     /* ===== COMPARISON COLORS ===== */
     --comparison-1: #1f77b4;
@@ -215,57 +214,57 @@
     /* Red for Combat */
 
     /* ===== TOPHEROES THEME COLORS ===== */
-    --th-primary: #1E40AF;
+    --th-primary: #1e40af;
     /* Heroic blue */
-    --th-secondary: #EA580C;
+    --th-secondary: #ea580c;
     /* Action orange */
-    --th-success: #16A34A;
+    --th-success: #16a34a;
     /* Victory green */
-    --th-warning: #D97706;
+    --th-warning: #d97706;
     /* Alert amber */
-    --th-danger: #DC2626;
+    --th-danger: #dc2626;
     /* Danger red */
-    --th-gold: #F59E0B;
+    --th-gold: #f59e0b;
     /* Gold accent */
-    --th-silver: #6B7280;
+    --th-silver: #6b7280;
     /* Silver accent */
-    --th-bronze: #92400E;
+    --th-bronze: #92400e;
     /* Bronze accent */
 
     /* Hero tier colors */
-    --th-legendary: #7C3AED;
+    --th-legendary: #7c3aed;
     /* Purple for legendary */
-    --th-epic: #DB2777;
+    --th-epic: #db2777;
     /* Magenta for epic */
-    --th-rare: #2563EB;
+    --th-rare: #2563eb;
     /* Blue for rare */
-    --th-common: #16A34A;
+    --th-common: #16a34a;
     /* Green for common */
 
     /* Element colors for hero types */
-    --th-fire: #DC2626;
+    --th-fire: #dc2626;
     /* Red */
-    --th-water: #0284C7;
+    --th-water: #0284c7;
     /* Blue */
-    --th-earth: #65A30D;
+    --th-earth: #65a30d;
     /* Green */
-    --th-air: #7C3AED;
+    --th-air: #7c3aed;
     /* Purple */
-    --th-light: #F59E0B;
+    --th-light: #f59e0b;
     /* Gold */
     --th-dark: #374151;
     /* Dark gray */
 
     /* Hero faction colors */
-    --league-blue: #3B82F6;
-    --nature-green: #22C55E;
-    --horde-red: #EF4444;
+    --league-blue: #3b82f6;
+    --nature-green: #22c55e;
+    --horde-red: #ef4444;
 
     /* Hero rarity colors */
-    --mythic-red: #DC2626;
-    --legendary-yellow: #F59E0B;
-    --epic-purple: #8B5CF6;
-    --rare-blue: #3B82F6;
+    --mythic-red: #dc2626;
+    --legendary-yellow: #f59e0b;
+    --epic-purple: #8b5cf6;
+    --rare-blue: #3b82f6;
   }
 
   .dark {
@@ -366,12 +365,20 @@
 }
 
 .typing-dots:after {
-  content: '.';
+  content: ".";
   animation: typing 1.5s infinite;
 }
 
 .animate-score-gradient {
-  background: linear-gradient(90deg, #34d399, #60a5fa, #f472b6, #facc15, #a78bfa, #34d399);
+  background: linear-gradient(
+    90deg,
+    #34d399,
+    #60a5fa,
+    #f472b6,
+    #facc15,
+    #a78bfa,
+    #34d399
+  );
   background-size: 300% 100%;
   background-clip: text;
   -webkit-background-clip: text;
@@ -455,15 +462,15 @@
 
 @keyframes typing {
   0% {
-    content: '.';
+    content: ".";
   }
 
   33% {
-    content: '..';
+    content: "..";
   }
 
   66% {
-    content: '...';
+    content: "...";
   }
 }
 
@@ -474,7 +481,7 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: theme('fontFamily.body');
+    font-family: theme("fontFamily.body");
   }
 
   h1,
@@ -483,7 +490,7 @@
   h4,
   h5,
   h6 {
-    font-family: theme('fontFamily.heading');
+    font-family: theme("fontFamily.heading");
   }
 }
 
@@ -1454,7 +1461,6 @@
 
 /* Professional Component Styles */
 @layer components {
-
   /* Professional theme sidebar styling */
   .professional-sidebar {
     background: hsl(var(--professional-sidebar));
@@ -1632,9 +1638,11 @@
   /* TopHeroes specific cards */
   .theme-topheroes .th-hero-card {
     @apply rounded-xl p-4 transition-all cursor-pointer;
-    background: linear-gradient(135deg,
-        hsl(var(--card)) 0%,
-        hsl(var(--card) / 0.8) 100%);
+    background: linear-gradient(
+      135deg,
+      hsl(var(--card)) 0%,
+      hsl(var(--card) / 0.8) 100%
+    );
     border: 1px solid hsl(var(--border));
     box-shadow: 0 2px 8px hsl(220 25% 8% / 0.1);
   }
@@ -1721,9 +1729,11 @@
   /* Stats displays */
   .theme-topheroes .th-stat-card {
     @apply rounded-xl p-4 border border-border;
-    background: linear-gradient(135deg,
-        hsl(var(--card)) 0%,
-        hsl(var(--muted)) 100%);
+    background: linear-gradient(
+      135deg,
+      hsl(var(--card)) 0%,
+      hsl(var(--muted)) 100%
+    );
   }
 
   .theme-topheroes .th-metric-positive {
@@ -1750,9 +1760,11 @@
   }
 
   .theme-topheroes .th-nav-item.active {
-    background: linear-gradient(135deg,
-        hsl(214 88% 41% / 0.15),
-        hsl(214 88% 41% / 0.1));
+    background: linear-gradient(
+      135deg,
+      hsl(214 88% 41% / 0.15),
+      hsl(214 88% 41% / 0.1)
+    );
     color: hsl(214 88% 41%);
     border: 1px solid hsl(214 88% 41% / 0.3);
   }
@@ -1766,10 +1778,12 @@
 
   .theme-topheroes .th-skeleton {
     @apply animate-pulse;
-    background: linear-gradient(90deg,
-        hsl(var(--muted)) 25%,
-        hsl(var(--muted) / 0.5) 50%,
-        hsl(var(--muted)) 75%);
+    background: linear-gradient(
+      90deg,
+      hsl(var(--muted)) 25%,
+      hsl(var(--muted) / 0.5) 50%,
+      hsl(var(--muted)) 75%
+    );
     background-size: 200% 100%;
   }
 
@@ -1885,64 +1899,124 @@
 
   /* ===== ROLE GRADIENT CLASSES ===== */
   .bg-gradient-r1 {
-    background: linear-gradient(135deg, var(--role-r1-start), var(--role-r1-end));
+    background: linear-gradient(
+      135deg,
+      var(--role-r1-start),
+      var(--role-r1-end)
+    );
   }
 
   .bg-gradient-r2 {
-    background: linear-gradient(135deg, var(--role-r2-start), var(--role-r2-end));
+    background: linear-gradient(
+      135deg,
+      var(--role-r2-start),
+      var(--role-r2-end)
+    );
   }
 
   .bg-gradient-r3 {
-    background: linear-gradient(135deg, var(--role-r3-start), var(--role-r3-end));
+    background: linear-gradient(
+      135deg,
+      var(--role-r3-start),
+      var(--role-r3-end)
+    );
   }
 
   .bg-gradient-r4 {
-    background: linear-gradient(135deg, var(--role-r4-start), var(--role-r4-end));
+    background: linear-gradient(
+      135deg,
+      var(--role-r4-start),
+      var(--role-r4-end)
+    );
   }
 
   .bg-gradient-r5 {
-    background: linear-gradient(135deg, var(--role-r5-start), var(--role-r5-end));
+    background: linear-gradient(
+      135deg,
+      var(--role-r5-start),
+      var(--role-r5-end)
+    );
   }
 
   /* ===== PLAYER GRADIENT CLASSES ===== */
   .bg-gradient-player-1 {
-    background: linear-gradient(135deg, var(--player-1-start), var(--player-1-end));
+    background: linear-gradient(
+      135deg,
+      var(--player-1-start),
+      var(--player-1-end)
+    );
   }
 
   .bg-gradient-player-2 {
-    background: linear-gradient(135deg, var(--player-2-start), var(--player-2-end));
+    background: linear-gradient(
+      135deg,
+      var(--player-2-start),
+      var(--player-2-end)
+    );
   }
 
   .bg-gradient-player-3 {
-    background: linear-gradient(135deg, var(--player-3-start), var(--player-3-end));
+    background: linear-gradient(
+      135deg,
+      var(--player-3-start),
+      var(--player-3-end)
+    );
   }
 
   .bg-gradient-player-4 {
-    background: linear-gradient(135deg, var(--player-4-start), var(--player-4-end));
+    background: linear-gradient(
+      135deg,
+      var(--player-4-start),
+      var(--player-4-end)
+    );
   }
 
   .bg-gradient-player-5 {
-    background: linear-gradient(135deg, var(--player-5-start), var(--player-5-end));
+    background: linear-gradient(
+      135deg,
+      var(--player-5-start),
+      var(--player-5-end)
+    );
   }
 
   .bg-gradient-player-6 {
-    background: linear-gradient(135deg, var(--player-6-start), var(--player-6-end));
+    background: linear-gradient(
+      135deg,
+      var(--player-6-start),
+      var(--player-6-end)
+    );
   }
 
   .bg-gradient-player-7 {
-    background: linear-gradient(135deg, var(--player-7-start), var(--player-7-end));
+    background: linear-gradient(
+      135deg,
+      var(--player-7-start),
+      var(--player-7-end)
+    );
   }
 
   .bg-gradient-player-8 {
-    background: linear-gradient(135deg, var(--player-8-start), var(--player-8-end));
+    background: linear-gradient(
+      135deg,
+      var(--player-8-start),
+      var(--player-8-end)
+    );
   }
 
   .bg-gradient-player-9 {
-    background: linear-gradient(135deg, var(--player-9-start), var(--player-9-end));
+    background: linear-gradient(
+      135deg,
+      var(--player-9-start),
+      var(--player-9-end)
+    );
   }
 
   .bg-gradient-player-10 {
-    background: linear-gradient(135deg, var(--player-10-start), var(--player-10-end));
+    background: linear-gradient(
+      135deg,
+      var(--player-10-start),
+      var(--player-10-end)
+    );
   }
 
   /* ===== DAY TASK UTILITY CLASSES ===== */
@@ -2058,14 +2132,14 @@
   .btn-soft-violet {
     @apply inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition;
     @apply text-white ring-1 ring-velaris-purple bg-velaris-purple;
-    --tw-ring-opacity: .4;
+    --tw-ring-opacity: 0.4;
     /* ring-velaris-purple/40 */
-    --tw-bg-opacity: .10;
+    --tw-bg-opacity: 0.1;
     /* bg-velaris-purple/10 */
   }
 
   .btn-soft-violet:hover {
-    --tw-bg-opacity: .20;
+    --tw-bg-opacity: 0.2;
   }
 
   .btn-solid-purple {
@@ -2095,41 +2169,43 @@
 
   /* ---- Translate Theme Components ---- */
   .theme-translate .translate-gradient-bg {
-    background: linear-gradient(to bottom right,
-        hsl(240 10% 4%),
-        hsl(262 50% 8%),
-        hsl(240 10% 4%));
+    background: linear-gradient(
+      to bottom right,
+      hsl(240 10% 4%),
+      hsl(262 50% 8%),
+      hsl(240 10% 4%)
+    );
   }
 
   .theme-translate .translate-card {
     @apply rounded-xl ring-1 ring-border/70 p-6 shadow-lg;
-    background: linear-gradient(to bottom,
-        hsl(240 4% 10% / 0.8),
-        hsl(240 4% 8% / 0.9));
+    background: linear-gradient(
+      to bottom,
+      hsl(240 4% 10% / 0.8),
+      hsl(240 4% 8% / 0.9)
+    );
     backdrop-filter: blur(12px);
   }
 
   .theme-translate .translate-glass-card {
     @apply rounded-2xl ring-1 ring-white/10 p-6 shadow-2xl;
-    background: linear-gradient(to bottom,
-        hsl(240 4% 10% / 0.4),
-        hsl(240 4% 8% / 0.6));
+    background: linear-gradient(
+      to bottom,
+      hsl(240 4% 10% / 0.4),
+      hsl(240 4% 8% / 0.6)
+    );
     backdrop-filter: blur(16px);
   }
 
   .theme-translate .translate-btn-primary {
     @apply inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-bold text-white transition-all;
-    background: linear-gradient(to right,
-        hsl(262 83% 58%),
-        hsl(328 85% 70%));
+    background: linear-gradient(to right, hsl(262 83% 58%), hsl(328 85% 70%));
     box-shadow: 0 0 24px hsl(262 83% 58% / 0.35);
   }
 
   .theme-translate .translate-btn-primary:hover {
     transform: scale(1.05);
-    background: linear-gradient(to right,
-        hsl(262 83% 65%),
-        hsl(328 85% 75%));
+    background: linear-gradient(to right, hsl(262 83% 65%), hsl(328 85% 75%));
   }
 
   .theme-translate .translate-btn-secondary {
@@ -2157,9 +2233,11 @@
 
   .theme-translate .translate-server-card {
     @apply p-4 rounded-xl border border-white/10 transition-all cursor-pointer;
-    background: linear-gradient(to bottom,
-        hsl(240 4% 10% / 0.6),
-        hsl(240 4% 8% / 0.8));
+    background: linear-gradient(
+      to bottom,
+      hsl(240 4% 10% / 0.6),
+      hsl(240 4% 8% / 0.8)
+    );
     backdrop-filter: blur(12px);
   }
 
@@ -2171,7 +2249,8 @@
 
   .theme-translate .translate-server-card.selected {
     border-color: hsl(262 83% 58%);
-    box-shadow: 0 0 0 1px hsl(262 83% 58%),
+    box-shadow:
+      0 0 0 1px hsl(262 83% 58%),
       0 8px 32px hsl(262 83% 58% / 0.25);
   }
 
@@ -2182,7 +2261,26 @@
     opacity: 0.2;
     mix-blend-mode: soft-light;
     pointer-events: none;
-    background-image: url('data:image/svg+xml,%3Csvg width="100" height="100" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noise"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.9" /%3E%3C/filter%3E%3Crect width="100" height="100" filter="url(%23noise)" opacity="0.4"/%3E%3C/svg%3E');
+    background-image:
+      radial-gradient(
+        circle at 20% 30%,
+        rgba(255, 255, 255, 0.18) 0 1px,
+        transparent 1px
+      ),
+      radial-gradient(
+        circle at 70% 60%,
+        rgba(255, 255, 255, 0.12) 0 1px,
+        transparent 1px
+      ),
+      radial-gradient(
+        circle at 40% 80%,
+        rgba(255, 255, 255, 0.1) 0 1px,
+        transparent 1px
+      );
+    background-size:
+      37px 37px,
+      53px 53px,
+      71px 71px;
   }
 
   /* Status indicators */
@@ -2389,7 +2487,7 @@
 
   .fade--opacity-enter-active,
   .fade--opacity-leave-active {
-    transition: opacity .15s ease;
+    transition: opacity 0.15s ease;
   }
 
   .fade--opacity-enter-from,
@@ -2450,10 +2548,12 @@
   }
 
   .animate-shimmer {
-    background: linear-gradient(90deg,
-        hsl(var(--foreground)/0.05) 25%,
-        hsl(var(--foreground)/0.15) 50%,
-        hsl(var(--foreground)/0.05) 75%);
+    background: linear-gradient(
+      90deg,
+      hsl(var(--foreground) / 0.05) 25%,
+      hsl(var(--foreground) / 0.15) 50%,
+      hsl(var(--foreground) / 0.05) 75%
+    );
     background-size: 200% 100%;
     animation: shimmer 2s infinite;
   }
@@ -2466,12 +2566,11 @@
   }
 
   @keyframes bounce {
-
     0%,
     80%,
     100% {
       transform: scale(0);
-      opacity: .5;
+      opacity: 0.5;
     }
 
     40% {

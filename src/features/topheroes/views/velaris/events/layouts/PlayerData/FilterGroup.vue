@@ -52,6 +52,8 @@ function isOptionActive(value) {
 </script>
 
 <style scoped>
+@reference "@/style.css";
+
 .filter-group {
     @apply flex flex-col gap-2;
 }

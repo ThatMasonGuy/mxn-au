@@ -126,6 +126,8 @@ const activeFiltersCount = computed(() => {
 </script>
 
 <style scoped>
+@reference "@/style.css";
+
 .filters-panel {
     @apply mb-6 border border-border rounded-xl bg-card shadow-sm;
 }

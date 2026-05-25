@@ -121,6 +121,8 @@ const displayTags = computed(() => {
 </script>
 
 <style scoped>
+@reference "@/style.css";
+
 .hero-mini-card {
     @apply p-3 rounded-lg border-2 transition-all duration-200 hover:transform hover:-translate-y-1 relative overflow-hidden min-h-[6rem] flex flex-col justify-between;
 }

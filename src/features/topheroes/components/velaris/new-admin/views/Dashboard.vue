@@ -774,6 +774,8 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+@reference "@/style.css";
+
 /* KPI Card Styles for Consistent Sizing */
 .kpi-card {
     @apply relative overflow-hidden rounded-xl border;

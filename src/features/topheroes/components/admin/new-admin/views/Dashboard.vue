@@ -721,6 +721,8 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+@reference "@/style.css";
+
 .th-stat-card {
   @apply relative overflow-hidden rounded-xl border min-h-[120px];
 }

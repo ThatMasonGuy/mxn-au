@@ -1153,6 +1153,8 @@ watch(() => props.eventId, async (newEventId) => {
 </script>
 
 <style scoped>
+@reference "@/style.css";
+
 /* Form styling to match theme */
 .form-input, .form-select, .form-textarea {
     @apply w-full px-4 py-3 bg-background border border-border rounded-lg text-foreground 

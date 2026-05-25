@@ -733,6 +733,8 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+@reference "@/style.css";
+
 .cyber-card {
     @apply p-6 rounded-xl border-2 backdrop-blur-sm relative;
     background: linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);

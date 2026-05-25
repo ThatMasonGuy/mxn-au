@@ -194,6 +194,8 @@ const displayTags = computed(() => {
 </script>
 
 <style scoped>
+@reference "@/style.css";
+
 .hero-showcase-card {
     @apply relative p-4 sm:p-6 rounded-2xl border backdrop-blur-sm transition-all duration-300 hover:-translate-y-2 overflow-hidden;
 }

@@ -648,6 +648,8 @@ watch(() => store.heroes?.length, (newCount) => {
 </script>
 
 <style scoped>
+@reference "@/style.css";
+
 /* Custom faction colors */
 :root {
     --nature-green: #10b981;

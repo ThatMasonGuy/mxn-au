@@ -3,8 +3,7 @@ import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 // import { visualizer } from 'rollup-plugin-visualizer';
 
-import tailwind from "tailwindcss";
-import autoprefixer from "autoprefixer";
+import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
   server: {
@@ -16,11 +15,6 @@ export default defineConfig({
       },
     },
   },
-  css: {
-    postcss: {
-      plugins: [tailwind(), autoprefixer()],
-    },
-  },
   plugins: [
     vue({
       template: {
@@ -28,7 +22,8 @@ export default defineConfig({
           isCustomElement: tag => tag === 'lottie-player'
         }
       }
-    })
+    }),
+    tailwindcss(),
     // Uncomment to analyze bundle after successful build:
     // visualizer({
     //   filename: './dist/bundle-stats.html',
@@ -44,30 +39,57 @@ export default defineConfig({
   },
   build: {
     chunkSizeWarningLimit: 1000,
-
-    rollupOptions: {
+  
+    rolldownOptions: {
       output: {
-        manualChunks: {
-          // Core vendor chunk - Vue ecosystem
-          'vue-vendor': ['vue', 'vue-router', 'pinia'],
-
-          // External heavy libraries
-          'firebase': ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/storage', 'firebase/analytics'],
-          'codemirror': ['codemirror', '@codemirror/state', '@codemirror/view', '@codemirror/commands', '@codemirror/language', '@codemirror/lang-javascript', '@codemirror/lang-json', '@codemirror/lang-markdown', '@codemirror/lang-html', '@codemirror/lang-css', '@codemirror/lang-sql'],
-          'xterm': ['xterm', 'xterm-addon-fit', 'xterm-addon-web-links'],
-          'utils': ['marked', 'dompurify', 'html2canvas', 'papaparse', 'crypto-js'],
-
-          // Charts (large)
-          'charts': ['echarts', 'vue-echarts', 'chart.js'],
-
-          // XLSX (very large - 332KB)
-          'xlsx': ['xlsx'],
-
-          // UI components
-          'ui': ['radix-vue', 'vaul-vue', '@heroicons/vue', 'lucide-vue-next'],
-
-          // Date libraries
-          'date': ['date-fns', 'date-fns-tz', 'luxon'],
+        codeSplitting: {
+          groups: [
+            {
+              name: 'vue-vendor',
+              test: /[\\/]node_modules[\\/](vue|vue-router|pinia)[\\/]/,
+              priority: 90,
+            },
+            {
+              name: 'firebase',
+              test: /[\\/]node_modules[\\/](@firebase|firebase)[\\/]/,
+              priority: 80,
+            },
+            {
+              name: 'codemirror',
+              test: /[\\/]node_modules[\\/](@codemirror|codemirror)[\\/]/,
+              priority: 80,
+            },
+            {
+              name: 'xterm',
+              test: /[\\/]node_modules[\\/](xterm|xterm-addon-fit|xterm-addon-web-links)[\\/]/,
+              priority: 80,
+            },
+            {
+              name: 'charts',
+              test: /[\\/]node_modules[\\/](echarts|zrender|vue-echarts|chart\.js)[\\/]/,
+              priority: 80,
+            },
+            {
+              name: 'xlsx',
+              test: /[\\/]node_modules[\\/]xlsx[\\/]/,
+              priority: 80,
+            },
+            {
+              name: 'date',
+              test: /[\\/]node_modules[\\/](date-fns|date-fns-tz|luxon)[\\/]/,
+              priority: 70,
+            },
+            {
+              name: 'utils',
+              test: /[\\/]node_modules[\\/](marked|markdown-it|dompurify|html2canvas|papaparse|crypto-js)[\\/]/,
+              priority: 70,
+            },
+            {
+              name: 'ui',
+              test: /[\\/]node_modules[\\/](radix-vue|reka-ui|vaul-vue|@heroicons|lucide-vue-next)[\\/]/,
+              priority: 60,
+            },
+          ],
         },
       },
     },
