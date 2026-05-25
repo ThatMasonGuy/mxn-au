@@ -1,111 +1,21 @@
 <template>
     <LayoutComponent :header="true" :footer="true">
         <ToolBannerComponent
-            title="SDA Price Calculator"
+            title="Participant SDA Funding Details"
             subtitle="Location-adjusted annual SDA amounts per participant"
             gradient="from-purple-600 to-pink-500"
+            spacious
         >
             <template #actions>
-                <div class="flex items-center gap-2 mt-1">
-                    <span v-if="store.config" class="text-xs text-white/60 font-mono bg-white/10 px-2 py-1 rounded-md">
-                        {{ store.config.financialYear }}
-                    </span>
-                    <button
-                        v-if="isAdmin || !store.hasData"
-                        @click="showAdminPanel = !showAdminPanel"
-                        class="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-white font-medium transition-all border border-white/20"
-                    >
-                        <ArrowUpTrayIcon class="w-3.5 h-3.5" />
-                        {{ showAdminPanel ? 'Close' : 'Update Dataset' }}
-                    </button>
+                <div v-if="store.config" class="text-left sm:text-right sm:pb-0.5">
+                    <p class="text-xs font-mono text-white/75">
+                        {{ store.config.financialYear }} - {{ formatDate(store.config.importedAt) }}
+                    </p>
                 </div>
             </template>
         </ToolBannerComponent>
 
-        <main class="max-w-5xl mx-auto px-4 py-6 sm:py-8 space-y-5">
-
-            <!-- Admin Upload Panel -->
-            <Transition name="expand">
-                <div v-if="isAdmin && showAdminPanel" class="bg-white rounded-2xl shadow-md border border-purple-100 overflow-hidden">
-                    <div class="px-5 py-4 bg-gradient-to-r from-purple-50 to-pink-50 border-b border-purple-100 flex flex-wrap items-center gap-2">
-                        <ArrowUpTrayIcon class="w-4 h-4 text-purple-600 flex-shrink-0" />
-                        <h2 class="font-semibold text-purple-800 text-sm">Update Pricing Dataset</h2>
-                        <span v-if="store.config" class="ml-auto text-xs text-purple-500">
-                            Current: {{ store.config.financialYear }} - {{ formatDate(store.config.importedAt) }}
-                        </span>
-                    </div>
-                    <div class="p-5">
-                        <p class="text-sm text-gray-500 mb-4">
-                            Upload the <strong class="text-gray-700">NDIS SDA Price Calculator</strong> (.xlsx) published annually by the NDIA.
-                            All users will see the new data immediately.
-                        </p>
-
-                        <!-- File Drop Zone -->
-                        <div
-                            v-if="!uploadPreview && uploadStatus !== 'parsing'"
-                            @dragover.prevent="dragOver = true"
-                            @dragleave="dragOver = false"
-                            @drop.prevent="onDrop"
-                            class="border-2 border-dashed rounded-xl py-10 px-6 text-center transition-all cursor-pointer"
-                            :class="dragOver ? 'border-purple-400 bg-purple-50 scale-[1.01]' : 'border-gray-200 hover:border-purple-300 hover:bg-purple-50/40'"
-                            @click="fileInput.click()"
-                        >
-                            <DocumentArrowUpIcon class="w-9 h-9 mx-auto text-gray-300 mb-3" />
-                            <p class="text-sm text-gray-600 font-medium">Drop the Excel file here or tap to browse</p>
-                            <p class="text-xs text-gray-400 mt-1">NDIS SDA Price Calculator 20XX-XX.xlsx</p>
-                            <input ref="fileInput" type="file" accept=".xlsx" class="hidden" @change="onFileSelect" />
-                        </div>
-
-                        <!-- Parsing indicator -->
-                        <div v-if="uploadStatus === 'parsing'" class="flex items-center justify-center gap-3 py-8 text-gray-500">
-                            <div class="w-5 h-5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
-                            <span class="text-sm">Extracting pricing data...</span>
-                        </div>
-
-                        <!-- Preview -->
-                        <div v-if="uploadPreview" class="space-y-4">
-                            <div class="rounded-xl border p-4 space-y-2"
-                                :class="uploadPreview.valid ? 'border-green-200 bg-green-50' : 'border-amber-200 bg-amber-50'">
-                                <p class="text-sm font-semibold" :class="uploadPreview.valid ? 'text-green-800' : 'text-amber-800'">
-                                    {{ uploadPreview.valid ? 'Ready to import' : 'Warnings detected - review before importing' }}
-                                </p>
-                                <ul class="text-sm space-y-0.5 text-gray-600">
-                                    <li>Financial year: <strong class="text-gray-800">{{ uploadPreview.financialYear }}</strong></li>
-                                    <li>Benchmark tables: <strong class="text-gray-800">8</strong></li>
-                                    <li>Locations: <strong class="text-gray-800">{{ uploadPreview.locationFactors.newBuild.length }}</strong> SA4 regions</li>
-                                    <li>MRRC (single): <strong class="text-gray-800">{{ formatCurrency(uploadPreview.mrrc.single.perAnnum) }}/yr</strong></li>
-                                </ul>
-                                <ul v-if="uploadPreview.warnings.length" class="text-sm text-amber-700 space-y-0.5 mt-2">
-                                    <li v-for="w in uploadPreview.warnings" :key="w" class="flex gap-1.5">
-                                        <ExclamationTriangleIcon class="w-4 h-4 flex-shrink-0 mt-0.5" />
-                                        {{ w }}
-                                    </li>
-                                </ul>
-                            </div>
-
-                            <div class="flex flex-wrap gap-3">
-                                <button
-                                    @click="confirmUpload"
-                                    :disabled="store.uploading"
-                                    class="flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium transition-colors disabled:opacity-50"
-                                >
-                                    <div v-if="store.uploading" class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                    <CloudArrowUpIcon v-else class="w-4 h-4" />
-                                    {{ store.uploading ? 'Saving...' : 'Save to Firebase' }}
-                                </button>
-                                <button
-                                    @click="cancelUpload"
-                                    class="px-4 py-2 rounded-xl border border-gray-200 text-gray-600 text-sm hover:bg-gray-50 transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                            </div>
-
-                            <p v-if="store.error" class="text-sm text-red-500">{{ store.error }}</p>
-                        </div>
-                    </div>
-                </div>
-            </Transition>
+        <main class="relative z-10 max-w-5xl mx-auto px-4 -mt-5 sm:-mt-6 pb-6 sm:pb-8 space-y-5">
 
             <!-- Loading -->
             <div v-if="store.loading" class="flex items-center justify-center py-24 gap-3 text-gray-400">
@@ -119,11 +29,8 @@
                     <TableCellsIcon class="w-7 h-7 text-purple-300" />
                 </div>
                 <h2 class="text-base font-semibold text-gray-700 mb-2">No pricing data loaded</h2>
-                <p v-if="isAdmin" class="text-sm text-gray-400 max-w-xs mx-auto">
-                    Use the <strong class="text-purple-600">Update Dataset</strong> button above to upload the NDIS SDA Price Calculator.
-                </p>
-                <p v-else class="text-sm text-gray-400 max-w-xs mx-auto">
-                    Ask your administrator to upload the NDIS SDA Price Calculator dataset.
+                <p class="text-sm text-gray-400 max-w-xs mx-auto">
+                    Upload or manage the NDIS SDA Price Calculator dataset in the Everhomes admin section.
                 </p>
             </div>
 
@@ -132,20 +39,49 @@
 
                 <!-- Dwelling Details -->
                 <div class="bg-white rounded-2xl shadow-md border border-gray-100 p-5 sm:p-6">
-                    <h2 class="text-base font-semibold text-gray-800 mb-4">Dwelling Details</h2>
+                    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-5">
+                        <div class="min-w-0">
+                            <h2 class="text-base font-semibold text-gray-800">Dwelling Details</h2>
+                            <p class="text-sm text-gray-500 mt-1">
+                                {{ advancedMode ? 'Advanced pricing inputs are editable.' : 'Default funding assumptions are applied.' }}
+                            </p>
+                        </div>
+                        <button
+                            @click="toggleAdvancedMode"
+                            class="self-start inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-purple-100 bg-purple-50 text-xs font-semibold text-purple-700 hover:bg-purple-100 transition-colors"
+                        >
+                            <AdjustmentsHorizontalIcon class="w-3.5 h-3.5" />
+                            {{ advancedMode ? 'Default mode' : 'Advanced mode' }}
+                        </button>
+                    </div>
 
-                    <!-- Stock Type segmented control -->
-                    <div class="flex rounded-xl border border-gray-200 bg-gray-50 p-1 gap-1 mb-5">
+                    <!-- Stock Type options -->
+                    <div v-if="advancedMode" class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
                         <button
                             v-for="opt in stockTypeOptions" :key="opt.value"
                             @click="setStockType(opt.value)"
-                            class="flex-1 px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap"
-                            :class="stockType === opt.value
-                                ? 'bg-white text-purple-700 shadow-sm border border-gray-200'
-                                : 'text-gray-500 hover:text-gray-700'"
+                            class="relative text-left rounded-xl border px-4 py-3 pr-10 text-sm transition-all"
+                            :class="optionCardClass(stockType, opt.value)"
                         >
-                            {{ opt.label }}
+                            <span
+                                v-if="stockType === opt.value"
+                                class="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-purple-600 text-white shadow-sm"
+                            >
+                                <CheckIcon class="w-3.5 h-3.5" />
+                            </span>
+                            <span class="block text-[11px] font-semibold uppercase tracking-wide mb-1" :class="optionBylineClass(stockType, opt.value)">
+                                Build Type
+                            </span>
+                            <span class="block font-semibold">{{ opt.label }}</span>
                         </button>
+                    </div>
+
+                    <!-- Default pinned assumptions -->
+                    <div v-else class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+                        <div v-for="item in defaultAssumptions" :key="item.label" class="rounded-xl bg-purple-50/70 border border-purple-100 px-4 py-3">
+                            <p class="text-[11px] font-semibold uppercase tracking-wide text-purple-400 mb-1">{{ item.label }}</p>
+                            <p class="text-sm font-semibold text-purple-800">{{ item.value }}</p>
+                        </div>
                     </div>
 
                     <!-- Selects grid -->
@@ -182,47 +118,71 @@
                     </div>
 
                     <!-- Toggle options -->
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-gray-100">
+                    <div
+                        class="grid grid-cols-1 gap-4 pt-4 border-t border-gray-100"
+                        :class="advancedMode ? 'sm:grid-cols-3' : 'sm:grid-cols-1'"
+                    >
 
                         <!-- OOA (hidden for Basic) -->
-                        <div v-if="designCategory !== 'basic'" class="space-y-2">
+                        <div v-if="advancedMode && designCategory !== 'basic'" class="space-y-2">
                             <label class="block text-xs font-semibold uppercase tracking-wide text-gray-400">OOA</label>
-                            <div class="flex rounded-lg border border-gray-200 bg-gray-50 p-0.5 gap-0.5">
+                            <div class="grid grid-cols-1 gap-2">
                                 <button v-for="opt in ooaOptions" :key="opt.value"
                                     @click="ooa = opt.value"
-                                    class="flex-1 px-3 py-2 rounded-md text-sm font-medium transition-all border"
-                                    :class="ooa === opt.value
-                                        ? 'bg-white text-purple-700 shadow-sm border-gray-200'
-                                        : 'text-gray-500 hover:text-gray-700 border-transparent'"
-                                >{{ opt.label }}</button>
+                                    class="relative text-left px-4 pt-3 pb-[30px] pr-10 rounded-xl text-sm transition-all border"
+                                    :class="optionCardClass(ooa, opt.value)"
+                                >
+                                    <span
+                                        v-if="ooa === opt.value"
+                                        class="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-purple-600 text-white shadow-sm"
+                                    >
+                                        <CheckIcon class="w-3.5 h-3.5" />
+                                    </span>
+                                    <span class="block font-semibold">{{ opt.label }}</span>
+                                </button>
                             </div>
                         </div>
 
                         <!-- Sprinklers -->
                         <div class="space-y-2">
                             <label class="block text-xs font-semibold uppercase tracking-wide text-gray-400">Sprinklers</label>
-                            <div class="flex rounded-lg border border-gray-200 bg-gray-50 p-0.5 gap-0.5">
+                            <div class="grid grid-cols-1 gap-2" :class="advancedMode ? '' : 'sm:grid-cols-2'">
                                 <button v-for="opt in sprinklerOptions" :key="opt.value"
                                     @click="sprinklers = opt.value"
-                                    class="flex-1 px-3 py-2 rounded-md text-sm font-medium transition-all border"
-                                    :class="sprinklers === opt.value
-                                        ? 'bg-white text-purple-700 shadow-sm border-gray-200'
-                                        : 'text-gray-500 hover:text-gray-700 border-transparent'"
-                                >{{ opt.label }}</button>
+                                    class="relative text-left px-4 py-3 pr-10 rounded-xl text-sm transition-all border"
+                                    :class="optionCardClass(sprinklers, opt.value)"
+                                >
+                                    <span
+                                        v-if="sprinklers === opt.value"
+                                        class="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-purple-600 text-white shadow-sm"
+                                    >
+                                        <CheckIcon class="w-3.5 h-3.5" />
+                                    </span>
+                                    <span class="block font-semibold">{{ opt.label }}</span>
+                                    <span class="block text-xs mt-0.5" :class="optionBylineClass(sprinklers, opt.value)">
+                                        {{ opt.byline }}
+                                    </span>
+                                </button>
                             </div>
                         </div>
 
                         <!-- ITC (New Build only) -->
-                        <div v-if="stockType === 'newBuild'" class="space-y-2">
+                        <div v-if="advancedMode && stockType === 'newBuild'" class="space-y-2">
                             <label class="block text-xs font-semibold uppercase tracking-wide text-gray-400">Input Tax Credits</label>
-                            <div class="flex rounded-lg border border-gray-200 bg-gray-50 p-0.5 gap-0.5">
+                            <div class="grid grid-cols-1 gap-2">
                                 <button v-for="opt in itcOptions" :key="opt.value"
                                     @click="itc = opt.value"
-                                    class="flex-1 px-3 py-2 rounded-md text-sm font-medium transition-all border"
-                                    :class="itc === opt.value
-                                        ? 'bg-white text-purple-700 shadow-sm border-gray-200'
-                                        : 'text-gray-500 hover:text-gray-700 border-transparent'"
-                                >{{ opt.label }}</button>
+                                    class="relative text-left px-4 pt-3 pb-[30px] pr-10 rounded-xl text-sm transition-all border"
+                                    :class="optionCardClass(itc, opt.value)"
+                                >
+                                    <span
+                                        v-if="itc === opt.value"
+                                        class="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-purple-600 text-white shadow-sm"
+                                    >
+                                        <CheckIcon class="w-3.5 h-3.5" />
+                                    </span>
+                                    <span class="block font-semibold">{{ opt.label }}</span>
+                                </button>
                             </div>
                         </div>
 
@@ -338,83 +298,20 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
-import * as XLSX from 'xlsx'
+import { ref, computed, onMounted } from 'vue'
 import LayoutComponent from '@/features/everhomes/components/layouts/LayoutComponent.vue'
 import ToolBannerComponent from '@/features/everhomes/components/ui/ToolBannerComponent.vue'
 import SmartInput from '@/features/everhomes/components/ui/SmartInput.vue'
 import { useSdaPriceStore } from '@/features/everhomes/stores/useSdaPriceStore'
-import { useMainStore } from '@/shared/stores/useMainStore'
-import { extractSdaPricingData } from '@/features/everhomes/utils/sdaPriceExtractor'
 import {
-    ArrowUpTrayIcon,
-    DocumentArrowUpIcon,
-    CloudArrowUpIcon,
     ExclamationTriangleIcon,
     TableCellsIcon,
     ChevronDownIcon,
+    AdjustmentsHorizontalIcon,
+    CheckIcon,
 } from '@heroicons/vue/24/outline'
 
 const store = useSdaPriceStore()
-const mainStore = useMainStore()
-
-const isAdmin = computed(() => mainStore.userRoles.includes('admin'))
-
-// Admin upload state
-const showAdminPanel = ref(false)
-const dragOver = ref(false)
-const fileInput = ref(null)
-const uploadStatus = ref(null)   // null | 'parsing' | 'preview'
-const uploadPreview = ref(null)
-const pendingFile = ref(null)
-
-function onDrop(e) {
-    dragOver.value = false
-    const file = e.dataTransfer.files[0]
-    if (file) processFile(file)
-}
-
-function onFileSelect(e) {
-    const file = e.target.files[0]
-    if (file) processFile(file)
-}
-
-async function processFile(file) {
-    pendingFile.value = file
-    uploadStatus.value = 'parsing'
-    uploadPreview.value = null
-    try {
-        const buffer = await file.arrayBuffer()
-        const workbook = XLSX.read(buffer, { type: 'array' })
-        uploadPreview.value = extractSdaPricingData(workbook, file.name)
-        uploadStatus.value = 'preview'
-    } catch (err) {
-        uploadStatus.value = null
-        alert(`Failed to parse file: ${err.message}`)
-    }
-}
-
-async function confirmUpload() {
-    if (!uploadPreview.value || !pendingFile.value) return
-    try {
-        await store.uploadData(
-            uploadPreview.value,
-            pendingFile.value.name,
-            mainStore.user?.email ?? 'unknown'
-        )
-        cancelUpload()
-        showAdminPanel.value = false
-    } catch {
-        // error shown via store.error
-    }
-}
-
-function cancelUpload() {
-    uploadStatus.value = null
-    uploadPreview.value = null
-    pendingFile.value = null
-    if (fileInput.value) fileInput.value.value = ''
-}
 
 // Calculator state
 const stockType = ref('newBuild')
@@ -427,6 +324,7 @@ const mrrcType = ref('single')
 const location = ref('')
 const showQldOnly = ref(true)
 const showAdvancedResults = ref(false)
+const advancedMode = ref(false)
 
 // Static option lists
 const stockTypeOptions = [
@@ -511,8 +409,8 @@ const ooaOptions = [
     { label: 'With OOA', value: 'withOOA' },
 ]
 const sprinklerOptions = [
-    { label: 'Without Spr.', value: 'noSprinklers' },
-    { label: 'With Spr.', value: 'withSprinklers' },
+    { label: 'Without Sprinklers', byline: 'Pre-Approval', value: 'noSprinklers' },
+    { label: 'With Sprinklers', byline: 'Quote', value: 'withSprinklers' },
 ]
 const itcOptions = [
     { label: 'Not Claimed', value: 'itcNotClaimed' },
@@ -521,6 +419,12 @@ const itcOptions = [
 const mrrcTypeOptions = [
     { label: 'Single', value: 'single' },
     { label: 'Couple', value: 'couple' },
+]
+
+const defaultAssumptions = [
+    { label: 'Stock Type', value: 'New Build' },
+    { label: 'OOA', value: 'With OOA' },
+    { label: 'Input Tax Credits', value: 'Not Claimed' },
 ]
 
 // Derived option lists
@@ -601,6 +505,16 @@ const netToProvider = computed(() => {
     return adjustedAmount.value - mrrcAmount.value
 })
 
+function optionCardClass(currentValue, optionValue) {
+    return currentValue === optionValue
+        ? 'bg-purple-50/80 text-purple-950 shadow-sm border-purple-600 ring-2 ring-purple-500/25'
+        : 'bg-white text-gray-600 hover:bg-gray-50 hover:text-gray-800 hover:border-gray-300 border-gray-200'
+}
+
+function optionBylineClass(currentValue, optionValue) {
+    return currentValue === optionValue ? 'text-purple-700' : 'text-gray-500'
+}
+
 // Cascade resets
 function setStockType(val) {
     stockType.value = val
@@ -608,6 +522,23 @@ function setStockType(val) {
     if (!dwellings.includes(dwelling.value)) dwelling.value = dwellings[0] || ''
     const cats = CATEGORY_SETS[val] || []
     if (!cats.includes(designCategory.value)) designCategory.value = cats[0] || ''
+}
+
+function applyDefaultModePins() {
+    stockType.value = 'newBuild'
+    ooa.value = 'withOOA'
+    itc.value = 'itcNotClaimed'
+
+    const dwellings = DWELLING_SETS.newBuild
+    if (!dwellings.includes(dwelling.value)) dwelling.value = dwellings[0] || ''
+
+    const cats = CATEGORY_SETS.newBuild
+    if (!cats.includes(designCategory.value)) designCategory.value = cats[0] || ''
+}
+
+function toggleAdvancedMode() {
+    advancedMode.value = !advancedMode.value
+    if (!advancedMode.value) applyDefaultModePins()
 }
 
 function onDwellingChange() {
@@ -629,10 +560,7 @@ function onDwellingChange() {
 onMounted(async () => {
     await store.fetchData()
 
-    if (!store.hasData) {
-        showAdminPanel.value = true
-        return
-    }
+    if (!store.hasData) return
 
     // Resolve to a location name that actually exists in the Firestore dataset.
     // dwelling & designCategory use static option lists so they never need this.

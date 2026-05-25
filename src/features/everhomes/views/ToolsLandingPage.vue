@@ -474,7 +474,7 @@ const tools = [
     },
     {
         id: 'sda-return',
-        title: 'SDA Price Calculator',
+        title: 'Participant SDA Funding Details',
         byline: 'Location-adjusted annual SDA amounts per participant',
         link: '/everhomes/sda-returns',
         icon: Building2,
