@@ -109,7 +109,7 @@ export function extractSdaPricingData(workbook, filename) {
     )
 
     const benchmarks = {
-        // New Builds: 4 variants (sprinklers × ITC)
+        // New Builds: 4 variants (sprinklers x ITC)
         newBuild_noSprinklers_itcClaimed:     extractNewBuildRows(benchmarkRows, 10),
         newBuild_withSprinklers_itcClaimed:   extractNewBuildRows(benchmarkRows, 25),
         newBuild_noSprinklers_itcNotClaimed:  extractNewBuildRows(benchmarkRows, 40),
@@ -129,7 +129,7 @@ export function extractSdaPricingData(workbook, filename) {
 
     const mrrc = extractMrrc(workbook.Sheets['MRRC'])
 
-    const fyMatch = filename.match(/(\d{4}[-–]\d{2,4})/)
+    const fyMatch = filename.match(/(\d{4}(?:-|\u2013)\d{2,4})/)
     const financialYear = fyMatch ? fyMatch[1] : 'Unknown'
 
     const warnings = []
@@ -138,7 +138,7 @@ export function extractSdaPricingData(workbook, filename) {
     if (locationFactors.newBuild.length < 80)
         warnings.push(`Expected ~89 locations, found ${locationFactors.newBuild.length}`)
     if (!mrrc.single.perAnnum)
-        warnings.push('Could not extract MRRC figures — check the MRRC sheet')
+        warnings.push('Could not extract MRRC figures - check the MRRC sheet')
 
     return { benchmarks, locationFactors, mrrc, financialYear, warnings, valid: warnings.length === 0 }
 }

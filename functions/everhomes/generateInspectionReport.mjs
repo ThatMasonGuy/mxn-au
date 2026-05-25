@@ -55,13 +55,22 @@ function getActiveStatusItems(groups, itemStatuses, itemInputs) {
     .filter((item) => !item.type && itemIsVisible(item, itemStatuses, itemInputs));
 }
 
+function getRoomType(room = {}) {
+  const type = room.type ?? room.itemsKey ?? room.key;
+  return type === "ooa" ? "bedroom" : type;
+}
+
+function getRoomGroups(schema, room) {
+  return schema.items[getRoomType(room)] ?? schema.fallback;
+}
+
 // Aggregate item-level stats across all rooms, respecting showIf conditions.
 function computeItemStats(rooms, schema) {
   let total = 0, ok = 0, attention = 0, issues = 0, na = 0, unchecked = 0;
   for (const room of rooms) {
     const itemStatuses = room.items ?? {};
     const itemInputs = room.inputs ?? {};
-    const groups = schema.items[room.type] ?? schema.fallback;
+    const groups = getRoomGroups(schema, room);
     const activeItems = getActiveStatusItems(groups, itemStatuses, itemInputs);
     for (const item of activeItems) {
       total++;
@@ -809,7 +818,7 @@ async function buildPDF({
       let y = 102;
 
       // ── Checklist items ───────────────────────────────────────────
-      const groups = schema.items[room.type] ?? schema.fallback;
+      const groups = getRoomGroups(schema, room);
       const itemStatuses = room.items ?? {};
       const itemInputs = room.inputs ?? {};
 
@@ -1491,7 +1500,7 @@ function buildEmailHtml({
   for (const room of rooms) {
     const itemStatuses = room.items ?? {};
     const itemInputs = room.inputs ?? {};
-    const groups = schema.items[room.type] ?? schema.fallback;
+    const groups = getRoomGroups(schema, room);
     for (const group of groups) {
       for (const item of group.items) {
         if (!itemIsVisible(item, itemStatuses, itemInputs)) continue;

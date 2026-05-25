@@ -31,7 +31,7 @@
                         <ArrowUpTrayIcon class="w-4 h-4 text-purple-600 flex-shrink-0" />
                         <h2 class="font-semibold text-purple-800 text-sm">Update Pricing Dataset</h2>
                         <span v-if="store.config" class="ml-auto text-xs text-purple-500">
-                            Current: {{ store.config.financialYear }} · {{ formatDate(store.config.importedAt) }}
+                            Current: {{ store.config.financialYear }} - {{ formatDate(store.config.importedAt) }}
                         </span>
                     </div>
                     <div class="p-5">
@@ -59,7 +59,7 @@
                         <!-- Parsing indicator -->
                         <div v-if="uploadStatus === 'parsing'" class="flex items-center justify-center gap-3 py-8 text-gray-500">
                             <div class="w-5 h-5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
-                            <span class="text-sm">Extracting pricing data…</span>
+                            <span class="text-sm">Extracting pricing data...</span>
                         </div>
 
                         <!-- Preview -->
@@ -67,7 +67,7 @@
                             <div class="rounded-xl border p-4 space-y-2"
                                 :class="uploadPreview.valid ? 'border-green-200 bg-green-50' : 'border-amber-200 bg-amber-50'">
                                 <p class="text-sm font-semibold" :class="uploadPreview.valid ? 'text-green-800' : 'text-amber-800'">
-                                    {{ uploadPreview.valid ? '✓ Ready to import' : '⚠ Warnings detected — review before importing' }}
+                                    {{ uploadPreview.valid ? 'Ready to import' : 'Warnings detected - review before importing' }}
                                 </p>
                                 <ul class="text-sm space-y-0.5 text-gray-600">
                                     <li>Financial year: <strong class="text-gray-800">{{ uploadPreview.financialYear }}</strong></li>
@@ -91,7 +91,7 @@
                                 >
                                     <div v-if="store.uploading" class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                                     <CloudArrowUpIcon v-else class="w-4 h-4" />
-                                    {{ store.uploading ? 'Saving…' : 'Save to Firebase' }}
+                                    {{ store.uploading ? 'Saving...' : 'Save to Firebase' }}
                                 </button>
                                 <button
                                     @click="cancelUpload"
@@ -110,7 +110,7 @@
             <!-- Loading -->
             <div v-if="store.loading" class="flex items-center justify-center py-24 gap-3 text-gray-400">
                 <div class="w-5 h-5 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />
-                <span class="text-sm">Loading pricing data…</span>
+                <span class="text-sm">Loading pricing data...</span>
             </div>
 
             <!-- No data state -->
@@ -130,7 +130,7 @@
             <!-- Calculator -->
             <template v-else>
 
-                <!-- ── Dwelling Details ─────────────────────────────────────────── -->
+                <!-- Dwelling Details -->
                 <div class="bg-white rounded-2xl shadow-md border border-gray-100 p-5 sm:p-6">
                     <h2 class="text-base font-semibold text-gray-800 mb-4">Dwelling Details</h2>
 
@@ -239,14 +239,14 @@
                     </div>
                 </div>
 
-                <!-- ── Results ─────────────────────────────────────────────────── -->
+                <!-- Results -->
                 <div v-if="!isNACombo && benchmarkAmount !== null" class="rounded-2xl shadow-md overflow-hidden">
 
                     <!-- Hero result -->
                     <div class="bg-gradient-to-br from-purple-600 to-pink-500 px-6 py-7 text-center text-white">
                         <p class="text-xs font-semibold uppercase tracking-widest text-white/70 mb-2">Adjusted SDA Amount</p>
                         <p class="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight">{{ formatCurrency(adjustedAmount) }}</p>
-                        <p class="text-sm text-white/60 mt-2">per participant / year · {{ store.config?.financialYear }}</p>
+                        <p class="text-sm text-white/60 mt-2">per participant / year - {{ store.config?.financialYear }}</p>
                     </div>
 
                     <div class="bg-white p-5 sm:p-6 space-y-4">
@@ -259,7 +259,7 @@
                             </div>
                             <div class="rounded-xl bg-gray-50 border border-gray-100 p-4">
                                 <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-400 mb-1">Location Factor</p>
-                                <p class="text-xl font-bold text-gray-800">× {{ locationFactor?.toFixed(2) ?? '—' }}</p>
+                                <p class="text-xl font-bold text-gray-800">x {{ locationFactor?.toFixed(2) ?? '-' }}</p>
                                 <p class="text-xs text-gray-400 mt-0.5 truncate">{{ location }}</p>
                             </div>
                         </div>
@@ -267,7 +267,7 @@
                         <!-- Equation bar -->
                         <div class="flex flex-wrap items-center justify-center gap-1.5 px-4 py-3 bg-purple-50 rounded-xl text-sm text-purple-700 font-medium">
                             <span>{{ formatCurrency(benchmarkAmount) }}</span>
-                            <span class="text-purple-400">×</span>
+                            <span class="text-purple-400">x</span>
                             <span>{{ locationFactor?.toFixed(2) }}</span>
                             <span class="text-purple-400">=</span>
                             <span class="font-bold">{{ formatCurrency(adjustedAmount) }}<span class="font-normal text-purple-400">/yr</span></span>
@@ -306,7 +306,7 @@
                                     <!-- MRRC + Net cards -->
                                     <div class="grid grid-cols-2 gap-3">
                                         <div class="rounded-xl bg-gray-50 border border-gray-100 p-4">
-                                            <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-400 mb-1">MRRC · {{ mrrcType === 'single' ? 'Single' : 'Couple' }}</p>
+                                            <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-400 mb-1">MRRC - {{ mrrcType === 'single' ? 'Single' : 'Couple' }}</p>
                                             <p class="text-xl font-bold text-gray-800">{{ formatCurrency(mrrcAmount) }}</p>
                                             <p class="text-xs text-gray-400 mt-0.5">max contribution / yr</p>
                                         </div>
@@ -320,7 +320,7 @@
                                     <!-- Net equation bar -->
                                     <div class="flex flex-wrap items-center justify-center gap-1.5 px-4 py-3 bg-green-50 rounded-xl text-sm text-green-700 font-medium">
                                         <span>{{ formatCurrency(adjustedAmount) }}</span>
-                                        <span class="text-green-400">−</span>
+                                        <span class="text-green-400">-</span>
                                         <span>{{ formatCurrency(mrrcAmount) }} MRRC</span>
                                         <span class="text-green-400">=</span>
                                         <span class="font-bold">{{ formatCurrency(netToProvider) }}<span class="font-normal text-green-400">/yr</span></span>
@@ -360,7 +360,7 @@ const mainStore = useMainStore()
 
 const isAdmin = computed(() => mainStore.userRoles.includes('admin'))
 
-// ── Admin upload state ────────────────────────────────────────────────────────
+// Admin upload state
 const showAdminPanel = ref(false)
 const dragOver = ref(false)
 const fileInput = ref(null)
@@ -416,7 +416,7 @@ function cancelUpload() {
     if (fileInput.value) fileInput.value.value = ''
 }
 
-// ── Calculator state ──────────────────────────────────────────────────────────
+// Calculator state
 const stockType = ref('newBuild')
 const dwelling = ref('Apartment, 1 bedroom, 1 resident')
 const designCategory = ref('improvedLiveability')
@@ -428,7 +428,7 @@ const location = ref('')
 const showQldOnly = ref(true)
 const showAdvancedResults = ref(false)
 
-// ── Static option lists ───────────────────────────────────────────────────────
+// Static option lists
 const stockTypeOptions = [
     { label: 'New Build', value: 'newBuild' },
     { label: 'Existing Stock', value: 'existingStock' },
@@ -523,7 +523,7 @@ const mrrcTypeOptions = [
     { label: 'Couple', value: 'couple' },
 ]
 
-// ── Derived option lists ──────────────────────────────────────────────────────
+// Derived option lists
 const dwellingOptions = computed(() =>
     (DWELLING_SETS[stockType.value] || []).map(d => ({ label: d, value: d }))
 )
@@ -539,7 +539,7 @@ const locationSelectOptions = computed(() => {
     return names.map(n => ({ label: n, value: n }))
 })
 
-// ── Lookup helpers ────────────────────────────────────────────────────────────
+// Lookup helpers
 const tableKey = computed(() => {
     if (stockType.value === 'newBuild')
         return `newBuild_${sprinklers.value}_${itc.value}`
@@ -554,7 +554,7 @@ const benchmarkKey = computed(() => {
     return `${designCategory.value}${ooaSuffix}`
 })
 
-// ── Direct state reads — no getter-function indirection so Vue tracks deps reliably ──
+// Direct state reads - no getter-function indirection so Vue tracks deps reliably.
 const currentDwellingRow = computed(() => {
     const table = store.benchmarks[tableKey.value]
     if (!table) return null
@@ -601,7 +601,7 @@ const netToProvider = computed(() => {
     return adjustedAmount.value - mrrcAmount.value
 })
 
-// ── Cascade resets ────────────────────────────────────────────────────────────
+// Cascade resets
 function setStockType(val) {
     stockType.value = val
     const dwellings = DWELLING_SETS[val] || []
@@ -625,7 +625,7 @@ function onDwellingChange() {
     }
 }
 
-// ── Init ──────────────────────────────────────────────────────────────────────
+// Init
 onMounted(async () => {
     await store.fetchData()
 
@@ -634,7 +634,7 @@ onMounted(async () => {
         return
     }
 
-    // Location — resolve to a name that actually exists in the Firestore dataset.
+    // Resolve to a location name that actually exists in the Firestore dataset.
     // dwelling & designCategory use static option lists so they never need this.
     const names = store.locationNames
     const isValidLocation = location.value && names.includes(location.value)
@@ -644,9 +644,9 @@ onMounted(async () => {
     }
 })
 
-// ── Formatting ────────────────────────────────────────────────────────────────
+// Formatting
 function formatCurrency(val) {
-    if (val === null || val === undefined) return '—'
+    if (val === null || val === undefined) return '-'
     return new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(val)
 }
 

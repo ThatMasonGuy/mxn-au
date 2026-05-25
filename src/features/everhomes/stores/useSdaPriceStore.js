@@ -1,10 +1,10 @@
 // Firestore collection: everhomesSdaPricing
 //
 // Documents written on import:
-//   config                                   — metadata + MRRC
-//   benchmarks_{tableKey}                    — 8 documents
-//   locationFactors_newBuild                 — new build location factors
-//   locationFactors_other                    — existing + legacy location factors
+//   config                                   - metadata + MRRC
+//   benchmarks_{tableKey}                    - 8 documents
+//   locationFactors_newBuild                 - new build location factors
+//   locationFactors_other                    - existing + legacy location factors
 //
 // Required Firestore security rules:
 //   match /everhomesSdaPricing/{docId} {

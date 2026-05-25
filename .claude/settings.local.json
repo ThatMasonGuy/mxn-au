@@ -22,7 +22,16 @@
       "WebFetch(domain:dev.to)",
       "Bash(firebase deploy *)",
       "Bash(npx vite *)",
-      "Bash(firebase functions:log --only fetchTweet)"
+      "Bash(firebase functions:log --only fetchTweet)",
+      "Bash(npx vue-tsc *)",
+      "Bash(node -e \"const l = require\\('lucide-vue-next'\\); ['DollarSign','Banknote','Building2','ClipboardCheck','ClipboardList','QrCode','Wrench','Search','ArrowRight','House','Settings','X'].forEach\\(n => console.log\\(n, n in l ? 'OK' : 'MISSING'\\)\\)\")",
+      "Bash(npm install *)",
+      "Bash(git -C /c/mason/mxn-au status)",
+      "Bash(git -C /c/mason/mxn-au diff --stat)",
+      "Bash(git -C /c/mason/mxn-au add functions/index.mjs functions/package-lock.json functions/package.json functions/everhomes/regenerateReport.mjs src/features/everhomes/components/SubmitModal.vue src/features/everhomes/views/admin/EverhomesAdminPage.vue)",
+      "Bash(git -C /c/mason/mxn-au commit -m ' *)",
+      "Bash(git -C /c/mason/mxn-au add src/features/everhomes/views/admin/EverhomesAdminPage.vue)",
+      "Bash(git -C /c/mason/mxn-au add src/features/everhomes/components/SubmitModal.vue)"
     ]
   }
 }

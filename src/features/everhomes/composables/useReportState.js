@@ -178,6 +178,15 @@ export function useReportState(schema) {
         return schemaItems[resolvedKey] ?? schemaFallback
     }
 
+    function getSectionType(section) {
+        if (!section) return ''
+        return section.type ??
+               section.itemsKey ??
+               section.meta?.itemsKey ??
+               poolByKey[section.key]?.itemsKey ??
+               section.key
+    }
+
     // Returns all status-checkable items in a section, flattened from groups.
     function getStatusItems(sectionKey) {
         return getItemDefinitions(sectionKey).flatMap((g) =>
@@ -237,13 +246,13 @@ export function useReportState(schema) {
         const sections = []
 
         for (const s of schemaSections.forced) {
-            sections.push({ id: `section-${s.key}`, key: s.key, label: s.label, meta: s })
+            sections.push({ id: `section-${s.key}`, key: s.key, type: s.itemsKey ?? s.key, label: s.label, meta: s })
             seedSectionData(`section-${s.key}`, s.key)
         }
 
         for (const s of schemaSections.pool) {
             if (store.setup.selectedOptional.includes(s.key)) {
-                sections.push({ id: `section-${s.key}`, key: s.key, label: s.label, meta: s })
+                sections.push({ id: `section-${s.key}`, key: s.key, type: s.itemsKey ?? s.key, label: s.label, meta: s })
                 seedSectionData(`section-${s.key}`, s.key)
             }
         }
@@ -263,7 +272,7 @@ export function useReportState(schema) {
 
         // Forced sections — sorted into their orderGroup bucket
         for (const s of schemaSections.forced) {
-            const entry = { id: `section-${s.key}`, key: s.key, label: s.label, meta: s }
+            const entry = { id: `section-${s.key}`, key: s.key, type: s.itemsKey ?? s.key, label: s.label, meta: s }
             seedSectionData(`section-${s.key}`, s.key)
             switch (s.orderGroup) {
                 case 'first': first.push(entry); break
@@ -278,7 +287,7 @@ export function useReportState(schema) {
             if (s.multipleAllowed) continue // multi-instance rooms handled below
             if (!store.setup.selectedOptional.includes(s.key)) continue
 
-            const entry = { id: `section-${s.key}`, key: s.key, label: s.label, meta: s }
+            const entry = { id: `section-${s.key}`, key: s.key, type: s.itemsKey ?? s.key, label: s.label, meta: s }
             seedSectionData(`section-${s.key}`, s.key)
             switch (s.orderGroup) {
                 case 'first': first.push(entry); break
@@ -298,7 +307,7 @@ export function useReportState(schema) {
             const legacySectionId = `${room.key}_${count}`
             const label = room.label || `${poolEntry.label} ${count}`
 
-            rooms.push({ id: sectionId, key: room.key, label, isOOA: room.isOOA ?? false, isEnsuite: false, meta: poolEntry })
+            rooms.push({ id: sectionId, key: room.key, type: poolEntry.itemsKey ?? room.key, label, isOOA: room.isOOA ?? false, isEnsuite: false, meta: poolEntry })
             migrateLegacySectionData(sectionId, [legacySectionId])
             seedSectionData(sectionId, poolEntry.itemsKey ?? room.key)
 
@@ -308,7 +317,7 @@ export function useReportState(schema) {
                 const ensuiteId    = `ensuite_${room.id}`
                 const legacyEnsuiteId = `ensuite_${count}`
                 const ensuiteLabel = `${label} — Ensuite`
-                rooms.push({ id: ensuiteId, key: 'ensuite', label: ensuiteLabel, isOOA: false, isEnsuite: true, meta: ensuitePoolEntry })
+                rooms.push({ id: ensuiteId, key: 'ensuite', type: 'ensuite', label: ensuiteLabel, isOOA: false, isEnsuite: true, meta: ensuitePoolEntry })
                 migrateLegacySectionData(ensuiteId, [legacyEnsuiteId])
                 seedSectionData(ensuiteId, 'ensuite')
             }
@@ -319,7 +328,7 @@ export function useReportState(schema) {
             const sectionId = `bathroom_${i + 1}`
             const label     = store.setup.bathrooms > 1 ? `Bathroom ${i + 1}` : 'Bathroom'
             const poolEntry = poolByKey['bathroom']
-            rooms.push({ id: sectionId, key: 'bathroom', label, isOOA: false, isEnsuite: false, meta: poolEntry })
+            rooms.push({ id: sectionId, key: 'bathroom', type: 'bathroom', label, isOOA: false, isEnsuite: false, meta: poolEntry })
             seedSectionData(sectionId, 'bathroom')
         }
 
@@ -875,6 +884,7 @@ export function useReportState(schema) {
         const sections = store.checklistSections.map((section) => ({
             id:        section.id,
             key:       section.key,
+            type:      getSectionType(section),
             label:     section.label,
             isOOA:     section.isOOA     ?? false,
             isEnsuite: section.isEnsuite ?? false,
