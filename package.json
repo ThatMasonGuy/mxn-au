@@ -33,7 +33,6 @@
     "@vueuse/core": "^14.3.0",
     "@vvo/tzdb": "^6.183.0",
     "axios": "^1.16.1",
-    "chart.js": "^4.4.9",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "codemirror": "^6.0.2",
@@ -71,7 +70,6 @@
     "vue-echarts": "^8.0.1",
     "vue-router": "^5.0.7",
     "vue-sonner": "^2.0.9",
-    "vue3-grid-layout": "^1.0.0",
     "word-list-json": "^0.2.0",
     "world-countries": "^5.1.0",
     "xlsx": "file:vendor/xlsx-0.20.3.tgz",
@@ -80,7 +78,6 @@
     "xterm-addon-web-links": "^0.9.0"
   },
   "devDependencies": {
-    "@tailwindcss/typography": "^0.5.16",
     "@tailwindcss/vite": "^4.3.0",
     "@vitejs/plugin-vue": "^6.0.7",
     "autoprefixer": "^10.4.19",

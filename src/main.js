@@ -6,39 +6,14 @@ import { createPinia } from 'pinia';
 import piniaPluginPersistedstate from 'pinia-plugin-persistedstate';
 
 import "./style.css";
-import VueECharts from 'vue-echarts';
-import * as echarts from 'echarts/core';
-import { BarChart, LineChart, ScatterChart, PieChart } from 'echarts/charts';
-import {
-  TitleComponent,
-  TooltipComponent,
-  GridComponent,
-  LegendComponent,
-  DatasetComponent,
-} from 'echarts/components';
-import { CanvasRenderer } from 'echarts/renderers';
-
-echarts.use([
-  TitleComponent,
-  TooltipComponent,
-  GridComponent,
-  LegendComponent,
-  DatasetComponent,
-  BarChart,
-  LineChart,
-  ScatterChart,
-  PieChart,
-  CanvasRenderer
-]);
+import echartsPlugin from '@/shared/plugins/echarts';
 
 const app = createApp(App);
-app.component('v-chart', VueECharts);
+app.use(echartsPlugin);
 
 const pinia = createPinia();
 pinia.use(piniaPluginPersistedstate);
 app.use(pinia);
 
-(async () => {
-  app.use(router)
-  app.mount('#app')
-})()
+app.use(router);
+app.mount('#app');

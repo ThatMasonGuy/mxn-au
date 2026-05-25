@@ -416,7 +416,7 @@
           >
             <div
               v-html="renderedMarkdown"
-              class="prose prose-invert !prose-p:my-1 !prose-li:my-0.5 !prose-h2:mt-4 !prose-h2:mb-2 !prose-h3:mt-3 !prose-h3:mb-1 !prose-ul:mt-1 !prose-ul:mb-1 text-gray-200 leading-relaxed"
+              class="prose prose-invert text-gray-200 leading-relaxed"
               style="column-count: 1"
             />
 
