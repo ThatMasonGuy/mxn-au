@@ -21,7 +21,7 @@
     "jszip": "^3.10.1",
     "openai": "^6.39.0",
     "pdfkit": "^0.18.0",
-    "resend": "^6.12.3",
+    "resend": "^6.12.4",
     "sharp": "^0.34.5"
   },
   "devDependencies": {
