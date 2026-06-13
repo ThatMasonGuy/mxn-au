@@ -49,7 +49,7 @@
           </button>
         </div>
 
-        <div v-else class="grid gap-4">
+        <div v-else class="flex flex-col gap-4">
           <div v-for="server in servers" :key="server.id" @click="selectServer(server)" class="server-card"
             :class="{ 'active': selectedServerId === server.id }">
 
@@ -77,7 +77,7 @@
               </div>
 
               <!-- Actions -->
-              <div class="flex items-center gap-2">
+              <div class="flex items-center gap-2 shrink-0">
                 <button @click.stop="editServer(server)" class="action-btn" title="Edit">
                   <PencilIcon class="w-4 h-4" />
                 </button>
@@ -574,6 +574,14 @@ defineExpose({ loadServers })
   border-color: rgba(63, 185, 80, 0.5);
 }
 
+/* Keep long names / proxy-command usernames from blowing out the card */
+.server-card h3,
+.server-card p {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .status-indicator {
   width: 8px;
   height: 8px;
@@ -619,7 +627,10 @@ defineExpose({ loadServers })
 }
 
 .btn-add {
-  padding: 7px 14px;
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 14px;
   background: rgba(63, 185, 80, 0.1);
   border: 1px solid rgba(63, 185, 80, 0.3);
   border-radius: 6px;
