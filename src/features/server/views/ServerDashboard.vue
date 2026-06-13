@@ -71,9 +71,14 @@
       <main class="terminal-area">
         <!-- Tab strip -->
         <div v-if="sessions.length" class="tab-strip">
-          <button v-for="s in sessions" :key="s.id" class="tab" :class="{ active: s.id === activeId }"
-            @click="setActive(s.id)" @mousedown.middle.prevent="closeSession(s.id)"
-            title="Middle-click to close">
+          <button v-for="s in sessions" :key="s.id" class="tab" :class="{
+            active: s.id === activeId,
+            dragging: dragId === s.id,
+            'drop-before': dropMarker && dropMarker.id === s.id && !dropMarker.after,
+            'drop-after': dropMarker && dropMarker.id === s.id && dropMarker.after
+          }" draggable="true" @click="setActive(s.id)" @mousedown.middle.prevent="closeSession(s.id)"
+            @dragstart="onDragStart(s.id, $event)" @dragover.prevent="onDragOver(s.id, $event)" @drop.prevent="onDrop"
+            @dragend="resetDrag" title="Drag to reorder · middle-click to close">
             <span class="tab-dot" :class="dotClass(s.status)"></span>
             <span class="tab-name">{{ tabLabel(s) }}</span>
             <span class="tab-close" title="Close session" @click.stop="closeSession(s.id)">
@@ -145,6 +150,10 @@ const activeId = ref(null)
 const paletteOpen = ref(false)
 const serverManagerRef = ref(null)
 
+// Tab drag-to-reorder state
+const dragId = ref(null)
+const dropMarker = ref(null) // { id, after }
+
 // Non-reactive map of session id -> Terminal component instance
 const termRefs = new Map()
 const setTermRef = (id, el) => {
@@ -212,6 +221,45 @@ const closeSession = (id) => {
   if (activeId.value === id) {
     activeId.value = sessions.value[Math.min(idx, sessions.value.length - 1)]?.id ?? null
   }
+}
+
+// ---- Drag-to-reorder tabs ----
+const onDragStart = (id, e) => {
+  dragId.value = id
+  e.dataTransfer.effectAllowed = 'move'
+  e.dataTransfer.setData('text/plain', id) // required for Firefox to start a drag
+}
+
+const onDragOver = (targetId, e) => {
+  if (!dragId.value || dragId.value === targetId) {
+    dropMarker.value = null
+    return
+  }
+  const rect = e.currentTarget.getBoundingClientRect()
+  dropMarker.value = { id: targetId, after: e.clientX > rect.left + rect.width / 2 }
+}
+
+const onDrop = () => {
+  const marker = dropMarker.value
+  if (dragId.value && marker) {
+    const arr = [...sessions.value]
+    const from = arr.findIndex(s => s.id === dragId.value)
+    if (from !== -1) {
+      const [moved] = arr.splice(from, 1)
+      let to = arr.findIndex(s => s.id === marker.id)
+      if (to !== -1) {
+        if (marker.after) to += 1
+        arr.splice(to, 0, moved)
+        sessions.value = arr
+      }
+    }
+  }
+  resetDrag()
+}
+
+const resetDrag = () => {
+  dragId.value = null
+  dropMarker.value = null
 }
 
 // Refit a tab when it becomes visible (it was display:none while hidden)
@@ -593,6 +641,23 @@ onUnmounted(() => {
   bottom: -1px;
   height: 2px;
   background: #3fb950;
+}
+
+.tab {
+  cursor: grab;
+}
+
+.tab.dragging {
+  opacity: 0.4;
+  cursor: grabbing;
+}
+
+.tab.drop-before {
+  box-shadow: inset 3px 0 0 #3fb950;
+}
+
+.tab.drop-after {
+  box-shadow: inset -3px 0 0 #3fb950;
 }
 
 .tab-dot {
