@@ -1,77 +1,104 @@
 <template>
-  <div class="server-manager">
-    <!-- Header -->
-    <div class="manager-header">
-      <h2 class="font-mono text-lg flex items-center gap-2">
-        <span class="text-emerald-400">&gt;</span>
-        <span>Server Connections</span>
-      </h2>
-
-      <button @click="showAddModal = true" class="btn-add">
-        <span class="font-mono text-sm">+ ADD SERVER</span>
+  <div class="server-manager" :class="{ 'is-collapsed': collapsed }">
+    <!-- COLLAPSED RAIL -->
+    <div v-if="collapsed" class="rail">
+      <button class="rail-btn" @click="emit('toggle')" title="Expand servers">
+        <ChevronDoubleRightIcon class="w-5 h-5" />
       </button>
-    </div>
 
-    <!-- Server List -->
-    <div class="server-list">
-      <div v-if="servers.length === 0" class="empty-state">
-        <ServerIcon class="w-16 h-16 text-gray-600 mb-4" />
-        <p class="text-gray-400 mb-4">No servers configured yet</p>
-        <button @click="showAddModal = true" class="btn-primary">
-          Add Your First Server
+      <div class="rail-servers">
+        <button v-for="server in servers" :key="server.id" class="rail-server"
+          :class="{ active: selectedServerId === server.id }" @click="selectServer(server)"
+          :title="`${server.name} — ${server.username}@${server.host}`">
+          <span class="rail-initials">{{ initials(server) }}</span>
+          <span class="rail-dot" :class="server.status || 'unknown'"></span>
         </button>
       </div>
 
-      <div v-else class="grid gap-4">
-        <div v-for="server in servers" :key="server.id" @click="selectServer(server)" class="server-card"
-          :class="{ 'active': selectedServerId === server.id }">
+      <button class="rail-btn rail-add" @click="showAddModal = true" title="Add server">
+        <PlusIcon class="w-5 h-5" />
+      </button>
+    </div>
 
-          <!-- Server Info -->
-          <div class="flex items-start justify-between">
-            <div class="flex items-start gap-3 flex-1">
-              <!-- Status Indicator -->
-              <div class="status-indicator" :class="server.status || 'unknown'">
-              </div>
+    <!-- EXPANDED PANEL -->
+    <template v-else>
+      <!-- Header -->
+      <div class="manager-header">
+        <div class="flex items-center gap-2 min-w-0">
+          <button class="icon-btn" @click="emit('toggle')" title="Collapse">
+            <ChevronDoubleLeftIcon class="w-5 h-5" />
+          </button>
+          <h2 class="font-mono text-lg flex items-center gap-2 truncate">
+            <span class="text-emerald-400">&gt;</span>
+            <span>Servers</span>
+          </h2>
+        </div>
 
-              <div class="flex-1 min-w-0">
-                <h3 class="font-mono text-base text-gray-100 mb-1">
-                  {{ server.name }}
-                </h3>
-                <p class="font-mono text-xs text-gray-500 mb-2">
-                  {{ server.username }}@{{ server.host }}:{{ server.port || 22 }}
-                </p>
+        <button @click="showAddModal = true" class="btn-add">
+          <span class="font-mono text-sm">+ ADD</span>
+        </button>
+      </div>
 
-                <!-- Tags -->
-                <div class="flex flex-wrap gap-1.5">
-                  <span v-for="tag in server.tags" :key="tag" class="tag">
-                    {{ tag }}
-                  </span>
+      <!-- Server List -->
+      <div class="server-list">
+        <div v-if="servers.length === 0" class="empty-state">
+          <ServerIcon class="w-16 h-16 text-gray-600 mb-4" />
+          <p class="text-gray-400 mb-4">No servers configured yet</p>
+          <button @click="showAddModal = true" class="btn-primary">
+            Add Your First Server
+          </button>
+        </div>
+
+        <div v-else class="grid gap-4">
+          <div v-for="server in servers" :key="server.id" @click="selectServer(server)" class="server-card"
+            :class="{ 'active': selectedServerId === server.id }">
+
+            <!-- Server Info -->
+            <div class="flex items-start justify-between">
+              <div class="flex items-start gap-3 flex-1 min-w-0">
+                <!-- Status Indicator -->
+                <div class="status-indicator" :class="server.status || 'unknown'"></div>
+
+                <div class="flex-1 min-w-0">
+                  <h3 class="font-mono text-base text-gray-100 mb-1 truncate">
+                    {{ server.name }}
+                  </h3>
+                  <p class="font-mono text-xs text-gray-500 mb-2 truncate">
+                    {{ server.username }}@{{ server.host }}:{{ server.port || 22 }}
+                  </p>
+
+                  <!-- Tags -->
+                  <div class="flex flex-wrap gap-1.5">
+                    <span v-for="tag in server.tags" :key="tag" class="tag">
+                      {{ tag }}
+                    </span>
+                  </div>
                 </div>
               </div>
+
+              <!-- Actions -->
+              <div class="flex items-center gap-2">
+                <button @click.stop="editServer(server)" class="action-btn" title="Edit">
+                  <PencilIcon class="w-4 h-4" />
+                </button>
+
+                <button @click.stop="confirmDelete(server)" class="action-btn text-red-400 hover:bg-red-500/10"
+                  title="Delete">
+                  <TrashIcon class="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
-            <!-- Actions -->
-            <div class="flex items-center gap-2">
-              <button @click.stop="editServer(server)" class="action-btn" title="Edit">
-                <PencilIcon class="w-4 h-4" />
-              </button>
-
-              <button @click.stop="confirmDelete(server)" class="action-btn text-red-400 hover:bg-red-500/10"
-                title="Delete">
-                <TrashIcon class="w-4 h-4" />
-              </button>
+            <!-- Last Connected -->
+            <div v-if="server.lastConnected" class="mt-3 pt-3 border-t border-white/5">
+              <p class="text-xs text-gray-500 font-mono">
+                Last connected: {{ formatDate(server.lastConnected) }}
+              </p>
             </div>
-          </div>
-
-          <!-- Last Connected -->
-          <div v-if="server.lastConnected" class="mt-3 pt-3 border-t border-white/5">
-            <p class="text-xs text-gray-500 font-mono">
-              Last connected: {{ formatDate(server.lastConnected) }}
-            </p>
           </div>
         </div>
       </div>
-    </div>
+    </template>
 
     <!-- Add/Edit Server Modal -->
     <Teleport to="body">
@@ -202,12 +229,23 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { ServerIcon, PencilIcon, TrashIcon, XMarkIcon } from '@heroicons/vue/24/outline'
+import { ref, onMounted } from 'vue'
+import {
+  ServerIcon, PencilIcon, TrashIcon, XMarkIcon,
+  PlusIcon, ChevronDoubleLeftIcon, ChevronDoubleRightIcon
+} from '@heroicons/vue/24/outline'
 import { useServers } from '@/features/server/composables/useServers'
 import { encryptCredential } from '@/shared/utils/crypto'
+import { toast } from 'vue-sonner'
 
-const emit = defineEmits(['serverSelected'])
+defineProps({
+  collapsed: {
+    type: Boolean,
+    default: false
+  }
+})
+
+const emit = defineEmits(['serverSelected', 'toggle'])
 
 // Get server management functions
 const { addServer, updateServer, deleteServer: deleteServerFromDb, getServers } = useServers()
@@ -248,6 +286,14 @@ const loadServers = async () => {
   }
 }
 
+// Initials for the collapsed rail (e.g. "Oracle VPS" -> "OV")
+const initials = (server) => {
+  const name = (server.name || '?').trim()
+  const parts = name.split(/\s+/).map(w => w[0]).filter(Boolean)
+  if (parts.length >= 2) return (parts[0] + parts[1]).toUpperCase()
+  return name.slice(0, 2).toUpperCase()
+}
+
 // Select server
 const selectServer = (server) => {
   selectedServerId.value = server.id
@@ -263,18 +309,18 @@ const editServer = (server) => {
     password: '', // Don't load encrypted password
     privateKey: '' // Don't load encrypted key
   }
-  showModal.value = true
+  showAddModal.value = true
 }
 
 // Save server (add or update)
 const saveServer = async () => {
-  try { 
+  try {
     // Process tags
     const tags = formData.value.tagsInput
       .split(',')
       .map(t => t.trim())
       .filter(t => t.length > 0)
-    
+
     const serverData = {
       name: formData.value.name,
       host: formData.value.host,
@@ -285,39 +331,36 @@ const saveServer = async () => {
     }
 
     // Encrypt and add credentials
-    // After encryption, make sure to REMOVE the old fields
     if (formData.value.authMethod === 'password') {
       if (!formData.value.password) {
-        alert('Password is required!')
+        toast.error('Password is required')
         return
       }
       serverData.encryptedPassword = await encryptCredential(formData.value.password)
-      // Remove key fields if switching from key to password
       delete serverData.encryptedKey
     } else {
       // SSH Key
       if (!formData.value.privateKey) {
-        alert('Private key is required!')
+        toast.error('Private key is required')
         return
       }
       serverData.encryptedKey = await encryptCredential(formData.value.privateKey)
-      // Remove password fields if switching from password to key
       delete serverData.encryptedPassword
     }
 
     if (editingServer.value) {
-      // Update existing
       await updateServer(editingServer.value.id, serverData)
+      toast.success('Server updated')
     } else {
-      // Add new
       await addServer(serverData)
+      toast.success('Server added')
     }
 
     await loadServers()
     closeModal()
   } catch (error) {
     console.error('Error saving server:', error)
-    alert('Failed to save server. Check console for details.')
+    toast.error('Failed to save server')
   }
 }
 
@@ -337,8 +380,10 @@ const deleteServer = async () => {
     }
 
     deleteConfirm.value = null
+    toast.success('Server deleted')
   } catch (error) {
     console.error('Error deleting server:', error)
+    toast.error('Failed to delete server')
   }
 }
 
@@ -358,31 +403,145 @@ const formatDate = (date) => {
     'day'
   )
 }
+
+// Allow the parent to refresh the list after a connection updates status
+defineExpose({ loadServers })
 </script>
 
 <style scoped>
 .server-manager {
   background: #0d1117;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
   overflow: hidden;
   height: 100%;
+  width: 100%;
   display: flex;
   flex-direction: column;
 }
 
+/* ---- Collapsed rail ---- */
+.rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 0;
+  height: 100%;
+}
+
+.rail-servers {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  width: 100%;
+  min-height: 0;
+}
+
+.rail-btn {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: #8b949e;
+  transition: all 0.2s;
+}
+
+.rail-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #c9d1d9;
+}
+
+.rail-add {
+  color: #3fb950;
+}
+
+.rail-server {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #8b949e;
+  transition: all 0.2s;
+}
+
+.rail-server:hover {
+  border-color: rgba(63, 185, 80, 0.4);
+  color: #c9d1d9;
+}
+
+.rail-server.active {
+  border: 2px solid #3fb950;
+  color: #3fb950;
+}
+
+.rail-initials {
+  font-family: monospace;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.rail-dot {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 2px solid #0d1117;
+}
+
+.rail-dot.online {
+  background: #3fb950;
+}
+
+.rail-dot.offline {
+  background: #6e7681;
+}
+
+.rail-dot.unknown {
+  background: #d29922;
+}
+
+/* ---- Expanded panel ---- */
 .manager-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  gap: 8px;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   background: rgba(255, 255, 255, 0.02);
+}
+
+.icon-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: #8b949e;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.icon-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #c9d1d9;
 }
 
 .server-list {
   flex: 1;
-  padding: 20px;
+  padding: 16px;
   overflow-y: auto;
   overflow-x: hidden;
   min-height: 0;
@@ -399,7 +558,7 @@ const formatDate = (date) => {
 .server-card {
   padding: 16px;
   background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s;
@@ -407,12 +566,12 @@ const formatDate = (date) => {
 
 .server-card:hover {
   background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(16, 185, 129, 0.3);
+  border-color: rgba(63, 185, 80, 0.3);
 }
 
 .server-card.active {
-  background: rgba(16, 185, 129, 0.1);
-  border-color: rgba(16, 185, 129, 0.5);
+  background: rgba(63, 185, 80, 0.1);
+  border-color: rgba(63, 185, 80, 0.5);
 }
 
 .status-indicator {
@@ -424,27 +583,27 @@ const formatDate = (date) => {
 }
 
 .status-indicator.online {
-  background: #10b981;
-  box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+  background: #3fb950;
+  box-shadow: 0 0 8px rgba(63, 185, 80, 0.5);
 }
 
 .status-indicator.offline {
-  background: #6b7280;
+  background: #6e7681;
 }
 
 .status-indicator.unknown {
-  background: #f59e0b;
+  background: #d29922;
 }
 
 .tag {
   display: inline-block;
   padding: 2px 8px;
-  background: rgba(16, 185, 129, 0.1);
-  border: 1px solid rgba(16, 185, 129, 0.2);
+  background: rgba(63, 185, 80, 0.1);
+  border: 1px solid rgba(63, 185, 80, 0.2);
   border-radius: 4px;
   font-size: 0.75rem;
   font-family: monospace;
-  color: #10b981;
+  color: #3fb950;
 }
 
 .action-btn {
@@ -460,22 +619,23 @@ const formatDate = (date) => {
 }
 
 .btn-add {
-  padding: 8px 16px;
-  background: rgba(16, 185, 129, 0.1);
-  border: 1px solid rgba(16, 185, 129, 0.3);
+  padding: 7px 14px;
+  background: rgba(63, 185, 80, 0.1);
+  border: 1px solid rgba(63, 185, 80, 0.3);
   border-radius: 6px;
-  color: #10b981;
+  color: #3fb950;
+  flex-shrink: 0;
   transition: all 0.2s;
 }
 
 .btn-add:hover {
-  background: rgba(16, 185, 129, 0.2);
-  border-color: #10b981;
+  background: rgba(63, 185, 80, 0.2);
+  border-color: #3fb950;
 }
 
 .btn-primary {
   padding: 10px 20px;
-  background: #10b981;
+  background: #3fb950;
   color: #0d1117;
   font-weight: 600;
   border-radius: 6px;
@@ -484,7 +644,7 @@ const formatDate = (date) => {
 }
 
 .btn-primary:hover {
-  background: #059669;
+  background: #2ea043;
 }
 
 .btn-secondary {
@@ -560,7 +720,7 @@ const formatDate = (date) => {
   margin-bottom: 8px;
   font-size: 0.875rem;
   font-family: monospace;
-  color: #10b981;
+  color: #3fb950;
 }
 
 .form-input {
@@ -576,7 +736,7 @@ const formatDate = (date) => {
 
 .form-input:focus {
   outline: none;
-  border-color: rgba(16, 185, 129, 0.5);
+  border-color: rgba(63, 185, 80, 0.5);
   background: rgba(255, 255, 255, 0.04);
 }
 

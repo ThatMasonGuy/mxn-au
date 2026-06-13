@@ -1,293 +1,255 @@
 <template>
   <div class="dashboard">
-    <!-- Top Bar -->
-    <div class="top-bar">
-      <div class="breadcrumb">
-        <span class="text-emerald-400">mxn.au</span>
-        <span class="opacity-40">/</span>
-        <span>server</span>
-        <span class="opacity-40" v-if="currentServer">/</span>
-        <span class="text-emerald-400" v-if="currentServer">{{ currentServer.name }}</span>
-      </div>
-
-      <div class="flex items-center gap-4">
-        <!-- Quick Actions -->
-        <button @click="showServerManager = !showServerManager" class="top-btn"
-          :class="{ 'active': showServerManager }">
-          <ServerIcon class="w-4 h-4" />
-          <span class="font-mono text-sm">SERVERS</span>
+    <!-- COMMAND BAR -->
+    <header class="command-bar">
+      <!-- Left: rail toggle + breadcrumb -->
+      <div class="cb-left">
+        <button class="cb-icon" @click="toggleRail" :title="railCollapsed ? 'Show servers' : 'Hide servers'">
+          <Bars3Icon class="w-5 h-5" />
         </button>
-
-        <button @click="showAliases = !showAliases" class="top-btn" :class="{ 'active': showAliases }">
-          <BookmarkIcon class="w-4 h-4" />
-          <span class="font-mono text-sm">ALIASES</span>
-        </button>
-
-        <button @click="showCommandPalette = true" class="top-btn" title="Command Palette (Ctrl+K)">
-          <CommandLineIcon class="w-4 h-4" />
-          <span class="font-mono text-sm">QUICK CMD</span>
-        </button>
-
-        <!-- User -->
-        <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5">
-          <div class="w-2 h-2 rounded-full bg-emerald-400"></div>
-          <span class="font-mono text-sm text-gray-300">{{ userName }}</span>
+        <div class="breadcrumb">
+          <span class="text-emerald-400">mxn.au</span>
+          <span class="sep">/</span>
+          <span>server</span>
+          <template v-if="currentServer">
+            <span class="sep">/</span>
+            <span class="text-emerald-400">{{ currentServer.name }}</span>
+          </template>
+          <span v-if="currentServer && currentPath" class="path">{{ currentPath }}</span>
         </div>
       </div>
-    </div>
 
-    <!-- Main Content -->
-    <div class="main-content">
-      <!-- Sidebar (Server Manager) -->
-      <transition name="slide-right">
-        <aside v-if="showServerManager" class="sidebar">
-          <ServerManager @server-selected="handleServerSelected" />
-        </aside>
-      </transition>
+      <!-- Center: connection state -->
+      <div class="cb-center">
+        <template v-if="currentServer">
+          <span class="conn-pill" :class="statusMeta.cls">
+            <span class="conn-dot" :class="statusMeta.cls"></span>{{ statusMeta.label }}
+          </span>
+          <span v-if="isConnected" class="session">{{ sessionDuration }}</span>
+        </template>
+        <span v-else class="conn-pill warn">
+          <span class="conn-dot warn"></span>Demo mode
+        </span>
+      </div>
 
-      <!-- Sidebar (Alias Manager) -->
-      <transition name="slide-left">
-        <aside v-if="showAliases" class="sidebar-right">
-          <AliasManager />
-        </aside>
-      </transition>
+      <!-- Right: actions -->
+      <div class="cb-right">
+        <template v-if="currentServer">
+          <button v-if="!isConnected" class="cb-btn" @click="connect">CONNECT</button>
+          <button v-else class="cb-btn danger" @click="disconnect">DISCONNECT</button>
+          <button class="cb-icon" @click="clearTerminal" title="Clear terminal">
+            <BackspaceIcon class="w-5 h-5" />
+          </button>
+        </template>
 
-      <!-- Terminal Area -->
-      <main class="terminal-area" :class="{ 'full-width': !showServerManager && !showAliases }">
-        <!-- Demo Terminal (No Server Selected) -->
-        <div v-if="!currentServer" class="h-full flex flex-col">
-          <div class="demo-info-bar">
-            <div class="flex items-center gap-2">
-              <div class="w-2 h-2 rounded-full bg-yellow-500"></div>
-              <span class="font-mono text-sm text-yellow-400">Demo Mode</span>
-            </div>
-            <span class="text-sm text-gray-400">
-              Try it out! Select a server from the sidebar to connect for real.
-            </span>
-          </div>
+        <button class="cb-icon" @click="paletteOpen = true" title="Command palette (Ctrl+K)">
+          <CommandLineIcon class="w-5 h-5" />
+        </button>
+        <button class="cb-icon" :class="{ active: aliasesOpen }" @click="toggleAliases" title="Aliases">
+          <BookmarkIcon class="w-5 h-5" />
+        </button>
 
-          <div class="flex-1">
-            <DemoTerminal />
-          </div>
+        <div class="user">
+          <span class="user-dot"></span>
+          <span class="font-mono text-sm">{{ userName }}</span>
         </div>
+      </div>
+    </header>
 
-        <!-- Real Terminal (Server Selected) -->
-        <div v-else class="h-full flex flex-col">
-          <!-- Terminal Controls Bar -->
-          <div class="terminal-controls">
-            <div class="flex items-center gap-4">
-              <div class="flex items-center gap-2">
-                <div class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" v-if="terminalConnected"></div>
-                <div class="w-2 h-2 rounded-full bg-gray-500" v-else></div>
-                <span class="font-mono text-sm text-gray-400">
-                  {{ terminalConnected ? 'Connected' : 'Disconnected' }}
-                </span>
-              </div>
+    <!-- BODY -->
+    <div class="body">
+      <!-- Server rail (collapsible) -->
+      <aside class="rail" :style="{ width: railCollapsed ? '56px' : '340px' }">
+        <ServerManager ref="serverManagerRef" :collapsed="railCollapsed" @server-selected="handleServerSelected"
+          @toggle="toggleRail" />
+      </aside>
 
-              <div class="h-4 w-px bg-white/10"></div>
+      <!-- Terminal area -->
+      <main class="terminal-area">
+        <Terminal v-if="currentServer" ref="terminalRef" :key="currentServer.id" :server-id="currentServer.id"
+          :server-name="currentServer.name" :auto-connect="true" @status-change="onStatusChange"
+          @command-executed="onCommandExecuted" @path-changed="handlePathChanged" />
+        <DemoTerminal v-else />
 
-              <button @click="connectTerminal" v-if="!terminalConnected" class="control-btn">
-                <span class="font-mono text-sm">CONNECT</span>
-              </button>
-
-              <button @click="disconnectTerminal" v-else class="control-btn text-red-400">
-                <span class="font-mono text-sm">DISCONNECT</span>
-              </button>
-
-              <button @click="clearTerminal" class="control-btn">
-                <span class="font-mono text-sm">CLEAR</span>
-              </button>
-
-              <button @click="showQuickCommands = !showQuickCommands" class="control-btn">
-                <span class="font-mono text-sm">QUICK CMDS</span>
-              </button>
+        <!-- Aliases slide-over -->
+        <div v-if="aliasesOpen" class="aliases-scrim" @click="toggleAliases"></div>
+        <transition name="slide-left">
+          <aside v-if="aliasesOpen" class="aliases-panel">
+            <div class="panel-head">
+              <span class="font-mono text-sm text-emerald-400">Aliases</span>
+              <button @click="toggleAliases" class="panel-close" title="Close">×</button>
             </div>
-
-            <div class="flex items-center gap-2">
-              <span class="font-mono text-xs text-gray-500">
-                Session: {{ sessionDuration }}
-              </span>
+            <div class="panel-body">
+              <AliasManager />
             </div>
-          </div>
-
-          <!-- Terminal Component -->
-          <div class="flex-1 relative">
-            <Terminal ref="terminalRef" :server-id="currentServer.id" :server-name="currentServer.name"
-              :auto-connect="autoConnect" @command-executed="handleCommandExecuted" @disconnected="handleDisconnected"
-              @path-changed="handlePathChanged" />
-
-            <!-- Quick Commands Panel -->
-            <transition name="slide-left">
-              <div v-if="showQuickCommands" class="quick-commands-panel">
-                <div class="panel-header">
-                  <span class="font-mono text-sm text-emerald-400">Quick Commands</span>
-                  <button @click="showQuickCommands = false" class="text-gray-400 hover:text-gray-200">×</button>
-                </div>
-
-                <div class="panel-body">
-                  <div v-for="cmd in quickCommands" :key="cmd.name" @click="executeQuickCommand(cmd.command)"
-                    class="quick-cmd-item">
-                    <div class="flex items-start gap-3">
-                      <component :is="cmd.icon" class="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
-                      <div class="flex-1 min-w-0">
-                        <div class="font-mono text-sm text-gray-200 mb-1">{{ cmd.name }}</div>
-                        <div class="font-mono text-xs text-gray-500 truncate">{{ cmd.command }}</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <button @click="addCustomCommand" class="add-cmd-btn">
-                    + Add Custom Command
-                  </button>
-                </div>
-              </div>
-            </transition>
-          </div>
-        </div>
+          </aside>
+        </transition>
       </main>
     </div>
 
-    <!-- Command Palette Modal -->
-    <Teleport to="body">
-      <transition name="modal">
-        <div v-if="showCommandPalette" class="modal-overlay" @click.self="showCommandPalette = false">
-          <div class="command-palette">
-            <div class="palette-search">
-              <CommandLineIcon class="w-5 h-5 text-gray-400" />
-              <input v-model="paletteSearch" ref="paletteInput" type="text" placeholder="Type a command or search..."
-                class="palette-input" @keydown.esc="showCommandPalette = false" @keydown.enter="executeFromPalette" />
-            </div>
-
-            <div class="palette-results">
-              <div v-if="filteredPaletteCommands.length === 0" class="text-center text-gray-500 py-8">
-                No commands found
-              </div>
-
-              <div v-for="(cmd, idx) in filteredPaletteCommands" :key="idx" @click="executePaletteCommand(cmd)"
-                class="palette-item">
-                <component :is="cmd.icon" class="w-5 h-5 text-emerald-400" />
-                <div class="flex-1">
-                  <div class="font-mono text-sm">{{ cmd.name }}</div>
-                  <div class="font-mono text-xs text-gray-500">{{ cmd.command }}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </transition>
-    </Teleport>
+    <!-- Command palette -->
+    <CommandPalette v-model:open="paletteOpen" :items="paletteItems" @select="handlePaletteSelect"
+      @raw="handlePaletteRaw" />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import {
-  ServerIcon,
+  Bars3Icon,
+  BackspaceIcon,
   CommandLineIcon,
+  BookmarkIcon,
+  PlayIcon,
+  StopIcon,
   CpuChipIcon,
-  FolderOpenIcon,
-  ArrowPathIcon,
   ChartBarIcon,
+  ArrowPathIcon,
   DocumentTextIcon,
-  BookmarkIcon
+  FolderOpenIcon,
 } from '@heroicons/vue/24/outline'
 import Terminal from '@/features/server/components/Terminal.vue'
 import DemoTerminal from '@/features/server/components/DemoTerminal.vue'
 import ServerManager from '@/features/server/components/ServerManager.vue'
 import AliasManager from '@/features/server/components/AliasManager.vue'
+import CommandPalette from '@/features/server/components/CommandPalette.vue'
+import { useDashboardUi } from '@/features/server/composables/useDashboardUi'
+import { useServers } from '@/features/server/composables/useServers'
+import { useAliases } from '@/features/server/composables/useAliases'
 import { useMainStore } from '@/shared/stores/useMainStore'
 
-// State
-const currentServer = ref(null)
-const showServerManager = ref(true)
-const showQuickCommands = ref(false)
-const showCommandPalette = ref(false)
-const showAliases = ref(false)
-const terminalConnected = ref(false)
-const paletteSearch = ref('')
-const sessionStart = ref(null)
-const sessionDuration = ref('00:00:00')
-const autoConnect = ref(true)
+// UI state (rail collapse, aliases panel)
+const { isNarrow, railCollapsed, toggleRail, collapseRail, aliasesOpen, toggleAliases } = useDashboardUi()
 
-// Refs
-const terminalRef = ref(null)
-const paletteInput = ref(null)
+// Server / alias data
+const { updateServer } = useServers()
+const { aliases, loadAliases } = useAliases()
 
 // User
 const mainStore = useMainStore()
 const userName = computed(() => mainStore.user?.email?.split('@')[0] || 'Guest')
 
-// Quick commands (customizable per server)
-const quickCommands = ref([
-  {
-    name: 'System Status',
-    command: 'htop',
-    icon: CpuChipIcon
-  },
-  {
-    name: 'Disk Usage',
-    command: 'df -h',
-    icon: ChartBarIcon
-  },
-  {
-    name: 'Running Services',
-    command: 'systemctl list-units --type=service --state=running',
-    icon: ArrowPathIcon
-  },
-  {
-    name: 'Recent Logs',
-    command: 'journalctl -n 50',
-    icon: DocumentTextIcon
-  },
-  {
-    name: 'Current Directory',
-    command: 'ls -lah',
-    icon: FolderOpenIcon
+// Core state
+const currentServer = ref(null)
+const currentPath = ref('')
+const connStatus = ref('disconnected') // connecting | connected | disconnected | error
+const paletteOpen = ref(false)
+
+// Refs
+const terminalRef = ref(null)
+const serverManagerRef = ref(null)
+
+const isConnected = computed(() => connStatus.value === 'connected')
+
+const statusMeta = computed(() => {
+  switch (connStatus.value) {
+    case 'connected': return { label: 'Connected', cls: 'on' }
+    case 'connecting': return { label: 'Connecting…', cls: 'warn' }
+    case 'error': return { label: 'Error', cls: 'err' }
+    default: return { label: 'Disconnected', cls: 'off' }
   }
-])
+})
 
-// Palette commands (includes quick commands + other actions)
-const paletteCommands = computed(() => {
-  return [
-    ...quickCommands.value,
-    {
-      name: 'Connect to Server',
-      command: 'CONNECT',
-      icon: ServerIcon,
-      action: () => connectTerminal()
-    },
-    {
-      name: 'Disconnect',
-      command: 'DISCONNECT',
-      icon: ServerIcon,
-      action: () => disconnectTerminal()
+// ---- Quick commands (curated; custom reusable commands live in Aliases) ----
+const quickCommands = [
+  { name: 'System status', command: 'htop', icon: CpuChipIcon },
+  { name: 'Disk usage', command: 'df -h', icon: ChartBarIcon },
+  { name: 'Running services', command: 'systemctl list-units --type=service --state=running', icon: ArrowPathIcon },
+  { name: 'Recent logs', command: 'journalctl -n 50', icon: DocumentTextIcon },
+  { name: 'List directory', command: 'ls -lah', icon: FolderOpenIcon },
+]
+
+// ---- Unified command palette items ----
+const paletteItems = computed(() => {
+  const items = []
+
+  for (const [i, cmd] of quickCommands.entries()) {
+    items.push({
+      id: `q-${i}`, group: 'Quick commands', label: cmd.name, hint: cmd.command,
+      icon: cmd.icon, run: () => runCommand(cmd.command)
+    })
+  }
+
+  for (const alias of aliases.value) {
+    items.push({
+      id: `a-${alias.id}`, group: 'Aliases', label: alias.name, hint: alias.command,
+      icon: CommandLineIcon, run: () => runCommand(alias.command)
+    })
+  }
+
+  if (currentServer.value) {
+    if (isConnected.value) {
+      items.push({ id: 'act-dc', group: 'Actions', label: 'Disconnect', icon: StopIcon, run: disconnect })
+    } else {
+      items.push({ id: 'act-c', group: 'Actions', label: 'Connect', icon: PlayIcon, run: connect })
     }
-  ]
+    items.push({ id: 'act-clear', group: 'Actions', label: 'Clear terminal', icon: BackspaceIcon, run: clearTerminal })
+  }
+
+  return items
 })
 
-const filteredPaletteCommands = computed(() => {
-  if (!paletteSearch.value) return paletteCommands.value
+// ---- Server selection ----
+const handleServerSelected = (server) => {
+  currentServer.value = server
+  currentPath.value = ''
+  connStatus.value = 'connecting'
+  // On thin screens, collapse the rail so the terminal gets full width
+  if (isNarrow.value) collapseRail()
+}
 
-  const search = paletteSearch.value.toLowerCase()
-  return paletteCommands.value.filter(cmd =>
-    cmd.name.toLowerCase().includes(search) ||
-    cmd.command.toLowerCase().includes(search)
-  )
-})
+// ---- Connection state (single source of truth, driven by Terminal emits) ----
+const onStatusChange = (status) => {
+  connStatus.value = status
+  if (status === 'connected') {
+    startSessionTimer()
+    markConnected()
+  } else {
+    stopSessionTimer()
+  }
+}
 
-// Session timer
+const markConnected = async () => {
+  if (!currentServer.value?.id) return
+  try {
+    await updateServer(currentServer.value.id, { lastConnected: new Date(), status: 'online' })
+    // Refresh the rail so the status dot reflects the live connection
+    serverManagerRef.value?.loadServers?.()
+  } catch (error) {
+    console.warn('Could not update server status:', error)
+  }
+}
+
+const onCommandExecuted = () => { /* reserved for future command history */ }
+const handlePathChanged = (path) => { currentPath.value = path }
+
+// ---- Terminal actions ----
+const connect = () => terminalRef.value?.connect()
+const disconnect = () => terminalRef.value?.disconnect()
+const clearTerminal = () => terminalRef.value?.clearTerminal()
+const runCommand = (command) => {
+  if (!currentServer.value) return
+  terminalRef.value?.executeCommand(command)
+}
+
+// ---- Palette ----
+const handlePaletteSelect = (item) => item.run?.()
+const handlePaletteRaw = (text) => runCommand(text)
+
+// ---- Session timer ----
+const sessionDuration = ref('00:00:00')
+let sessionStart = null
 let sessionInterval = null
 
 const startSessionTimer = () => {
-  sessionStart.value = Date.now()
-
+  if (sessionInterval) return
+  sessionStart = Date.now()
   sessionInterval = setInterval(() => {
-    const elapsed = Date.now() - sessionStart.value
-    const hours = Math.floor(elapsed / 3600000)
-    const minutes = Math.floor((elapsed % 3600000) / 60000)
-    const seconds = Math.floor((elapsed % 60000) / 1000)
-
-    sessionDuration.value = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+    const elapsed = Date.now() - sessionStart
+    const h = Math.floor(elapsed / 3600000)
+    const m = Math.floor((elapsed % 3600000) / 60000)
+    const s = Math.floor((elapsed % 60000) / 1000)
+    sessionDuration.value = [h, m, s].map(n => String(n).padStart(2, '0')).join(':')
   }, 1000)
 }
 
@@ -299,134 +261,22 @@ const stopSessionTimer = () => {
   sessionDuration.value = '00:00:00'
 }
 
-// Handle server selection
-const handleServerSelected = (server) => {
-  currentServer.value = server
-  terminalConnected.value = false
-  stopSessionTimer()
-
-  // Give the Terminal component time to mount and initialize
-  nextTick(() => {
-    setTimeout(() => {
-      if (autoConnect.value && terminalRef.value && terminalRef.value.connect) {
-        connectTerminal()
-      }
-    }, 200) // Increase to 200ms
-  })
-}
-
-// Terminal actions
-const connectTerminal = () => {
-  if (terminalRef.value && terminalRef.value.connect) {
-    terminalRef.value.connect()
-    terminalConnected.value = true
-    startSessionTimer()
-  } else {
-    console.error('Terminal ref not available')
-  }
-}
-
-const disconnectTerminal = () => {
-  if (terminalRef.value) {
-    terminalRef.value.disconnect()
-  }
-}
-
-const clearTerminal = () => {
-  if (terminalRef.value) {
-    terminalRef.value.clearTerminal()
-  }
-}
-
-const handleDisconnected = () => {
-  terminalConnected.value = false
-  stopSessionTimer()
-}
-
-const handleCommandExecuted = (command) => {
-  // TODO: Save to command history in Firestore
-  console.log('Command executed:', command)
-}
-
-const handlePathChanged = (path) => {
-  console.log('Path changed:', path)
-}
-
-// Quick command execution
-const executeQuickCommand = (command) => {
-  if (terminalRef.value) {
-    terminalRef.value.executeCommand(command)
-    showQuickCommands.value = false
-  }
-}
-
-// Command palette
-const executePaletteCommand = (cmd) => {
-  if (cmd.action) {
-    cmd.action()
-  } else if (terminalRef.value) {
-    terminalRef.value.executeCommand(cmd.command)
-  }
-  showCommandPalette.value = false
-  paletteSearch.value = ''
-}
-
-const executeFromPalette = () => {
-  if (filteredPaletteCommands.value.length > 0) {
-    executePaletteCommand(filteredPaletteCommands.value[0])
-  } else if (paletteSearch.value.trim() && terminalRef.value) {
-    terminalRef.value.executeCommand(paletteSearch.value.trim())
-    showCommandPalette.value = false
-    paletteSearch.value = ''
-  }
-}
-
-const addCustomCommand = () => {
-  const name = prompt('Command name:')
-  const command = prompt('Command:')
-
-  if (name && command) {
-    quickCommands.value.push({
-      name,
-      command,
-      icon: CommandLineIcon
-    })
-
-    // TODO: Save to Firestore
-  }
-}
-
-// Keyboard shortcuts
+// ---- Keyboard ----
 const handleKeyboard = (e) => {
-  // Ctrl+K or Cmd+K for command palette
   if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
     e.preventDefault()
-    showCommandPalette.value = true
-    nextTick(() => {
-      paletteInput.value?.focus()
-    })
+    paletteOpen.value = true
   }
 }
 
-// Lifecycle
 onMounted(() => {
+  loadAliases()
   window.addEventListener('keydown', handleKeyboard)
 })
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyboard)
   stopSessionTimer()
-})
-
-// Watch command palette
-watch(showCommandPalette, (show) => {
-  if (show) {
-    nextTick(() => {
-      paletteInput.value?.focus()
-    })
-  } else {
-    paletteSearch.value = ''
-  }
 })
 </script>
 
@@ -437,298 +287,288 @@ watch(showCommandPalette, (show) => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  color: #c9d1d9;
 }
 
-.top-bar {
+/* ---- Command bar ---- */
+.command-bar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 12px 20px;
-  background: rgba(255, 255, 255, 0.02);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  gap: 16px;
+  padding: 10px 14px;
+  background: #161b22;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
 }
 
-.breadcrumb {
-  font-family: monospace;
-  font-size: 1rem;
+.cb-left {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #e5e7eb;
+  flex: 1;
+  min-width: 0;
 }
 
-.top-btn {
+.cb-center {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.cb-right {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 12px;
+  flex: 1;
+  justify-content: flex-end;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: monospace;
+  font-size: 0.9rem;
+  min-width: 0;
+}
+
+.breadcrumb .sep {
+  color: #484f58;
+}
+
+.breadcrumb .path {
+  color: #6e7681;
+  font-size: 0.8rem;
+  margin-left: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cb-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  color: #9ca3af;
-  transition: all 0.2s;
+  color: #8b949e;
+  flex-shrink: 0;
+  transition: all 0.15s;
 }
 
-.top-btn:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(16, 185, 129, 0.3);
-  color: #10b981;
+.cb-icon:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #c9d1d9;
 }
 
-.top-btn.active {
-  background: rgba(16, 185, 129, 0.1);
-  border-color: rgba(16, 185, 129, 0.3);
-  color: #10b981;
+.cb-icon.active {
+  background: rgba(63, 185, 80, 0.12);
+  color: #3fb950;
 }
 
-.main-content {
+.cb-btn {
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-family: monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  color: #3fb950;
+  background: rgba(63, 185, 80, 0.1);
+  border: 1px solid rgba(63, 185, 80, 0.3);
+  transition: all 0.15s;
+}
+
+.cb-btn:hover {
+  background: rgba(63, 185, 80, 0.2);
+}
+
+.cb-btn.danger {
+  color: #ff7b72;
+  background: rgba(248, 81, 73, 0.1);
+  border-color: rgba(248, 81, 73, 0.3);
+}
+
+.cb-btn.danger:hover {
+  background: rgba(248, 81, 73, 0.2);
+}
+
+/* Connection pill */
+.conn-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-family: monospace;
+  font-size: 0.78rem;
+  border: 1px solid transparent;
+}
+
+.conn-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.conn-pill.on {
+  color: #3fb950;
+  background: rgba(63, 185, 80, 0.12);
+  border-color: rgba(63, 185, 80, 0.3);
+}
+
+.conn-dot.on {
+  background: #3fb950;
+  animation: pulse 1.8s ease-in-out infinite;
+}
+
+.conn-pill.warn {
+  color: #d29922;
+  background: rgba(210, 153, 34, 0.12);
+  border-color: rgba(210, 153, 34, 0.3);
+}
+
+.conn-dot.warn {
+  background: #d29922;
+}
+
+.conn-pill.err {
+  color: #ff7b72;
+  background: rgba(248, 81, 73, 0.12);
+  border-color: rgba(248, 81, 73, 0.3);
+}
+
+.conn-dot.err {
+  background: #ff7b72;
+}
+
+.conn-pill.off {
+  color: #8b949e;
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.conn-dot.off {
+  background: #6e7681;
+}
+
+.session {
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: #6e7681;
+}
+
+.user {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #c9d1d9;
+  margin-left: 4px;
+}
+
+.user-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #3fb950;
+}
+
+/* ---- Body ---- */
+.body {
   flex: 1;
   display: flex;
   overflow: hidden;
   min-height: 0;
 }
 
-.sidebar {
-  width: 400px;
+.rail {
   flex-shrink: 0;
-  border-right: 1px solid rgba(255, 255, 255, 0.05);
-  overflow-y: auto;
-  overflow-x: hidden;
-  background: rgba(0, 0, 0, 0.2);
-}
-
-.sidebar-right {
-  width: 400px;
-  flex-shrink: 0;
-  border-left: 1px solid rgba(255, 255, 255, 0.05);
-  overflow-y: auto;
-  overflow-x: hidden;
-  background: rgba(0, 0, 0, 0.2);
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+  transition: width 0.25s ease;
 }
 
 .terminal-area {
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  transition: all 0.3s;
-  min-height: 0;
+  position: relative;
   min-width: 0;
-}
-
-.terminal-area.full-width {
-  width: 100%;
-}
-
-.demo-info-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 20px;
-  background: rgba(245, 158, 11, 0.05);
-  border-bottom: 1px solid rgba(245, 158, 11, 0.2);
-}
-
-.no-server-state {
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  padding: 40px;
 }
 
-.terminal-controls {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 20px;
-  background: rgba(255, 255, 255, 0.02);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+/* Aliases slide-over */
+.aliases-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 9;
 }
 
-.control-btn {
-  padding: 4px 12px;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.02);
-  color: #9ca3af;
-  transition: all 0.2s;
-  font-size: 0.75rem;
-}
-
-.control-btn:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: #e5e7eb;
-}
-
-.quick-commands-panel {
+.aliases-panel {
   position: absolute;
   right: 0;
   top: 0;
   bottom: 0;
-  width: 320px;
-  background: #161b22;
-  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  width: 400px;
+  max-width: 90%;
+  background: #0d1117;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   flex-direction: column;
   z-index: 10;
 }
 
-.panel-header {
+.panel-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
 }
 
-.panel-header button {
-  font-size: 24px;
+.panel-close {
+  font-size: 22px;
   line-height: 1;
-  padding: 0 8px;
+  color: #8b949e;
+  padding: 0 6px;
+}
+
+.panel-close:hover {
+  color: #e5e7eb;
 }
 
 .panel-body {
   flex: 1;
-  overflow-y: auto;
-  padding: 12px;
-}
-
-.quick-cmd-item {
-  padding: 12px;
-  margin-bottom: 8px;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.quick-cmd-item:hover {
-  background: rgba(16, 185, 129, 0.1);
-  border-color: rgba(16, 185, 129, 0.3);
-}
-
-.add-cmd-btn {
-  width: 100%;
-  padding: 10px;
-  margin-top: 8px;
-  background: rgba(16, 185, 129, 0.1);
-  border: 1px dashed rgba(16, 185, 129, 0.3);
-  border-radius: 6px;
-  color: #10b981;
-  font-family: monospace;
-  font-size: 0.875rem;
-  transition: all 0.2s;
-}
-
-.add-cmd-btn:hover {
-  background: rgba(16, 185, 129, 0.2);
-  border-style: solid;
-}
-
-.btn-primary {
-  padding: 12px 24px;
-  background: #10b981;
-  color: #0d1117;
-  font-weight: 600;
-  border-radius: 8px;
-  font-family: monospace;
-  transition: all 0.2s;
-}
-
-.btn-primary:hover {
-  background: #059669;
-  transform: translateY(-1px);
-}
-
-/* Command Palette */
-.command-palette {
-  width: 600px;
-  max-width: 90vw;
-  background: #161b22;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  min-height: 0;
 }
 
-.palette-search {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-}
+@keyframes pulse {
 
-.palette-input {
-  flex: 1;
-  background: transparent;
-  border: none;
-  outline: none;
-  color: #e5e7eb;
-  font-size: 1rem;
-  font-family: monospace;
-}
+  0%,
+  100% {
+    opacity: 1;
+  }
 
-.palette-results {
-  max-height: 400px;
-  overflow-y: auto;
-  padding: 8px;
-}
-
-.palette-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.palette-item:hover {
-  background: rgba(16, 185, 129, 0.1);
-}
-
-/* Transitions */
-.slide-right-enter-active,
-.slide-right-leave-active {
-  transition: transform 0.3s ease;
-}
-
-.slide-right-enter-from,
-.slide-right-leave-to {
-  transform: translateX(-100%);
+  50% {
+    opacity: 0.45;
+  }
 }
 
 .slide-left-enter-active,
 .slide-left-leave-active {
-  transition: transform 0.3s ease;
+  transition: transform 0.25s ease;
 }
 
 .slide-left-enter-from,
 .slide-left-leave-to {
   transform: translateX(100%);
-}
-
-.modal-enter-active,
-.modal-leave-active {
-  transition: opacity 0.3s ease;
-}
-
-.modal-enter-from,
-.modal-leave-to {
-  opacity: 0;
-}
-
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.8);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 50;
 }
 </style>

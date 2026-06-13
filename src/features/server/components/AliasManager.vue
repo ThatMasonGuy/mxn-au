@@ -332,7 +332,7 @@ const saveAlias = async () => {
     closeModal()
   } catch (error) {
     console.error('Error saving alias:', error)
-    alert('Failed to save alias. Check console for details.')
+    toast.error('Failed to save alias')
   }
 }
 
