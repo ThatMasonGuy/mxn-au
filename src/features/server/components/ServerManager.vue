@@ -9,7 +9,8 @@
       <div class="rail-servers">
         <button v-for="server in servers" :key="server.id" class="rail-server"
           :class="{ active: selectedServerId === server.id }" @click="selectServer(server)"
-          :title="`${server.name} — ${server.username}@${server.host}`">
+          @mousedown.middle.prevent="openNew(server)"
+          :title="`${server.name} — ${server.username}@${server.host}  ·  middle-click: new instance`">
           <span class="rail-initials">{{ initials(server) }}</span>
           <span class="rail-dot" :class="server.status || 'unknown'"></span>
         </button>
@@ -50,8 +51,9 @@
         </div>
 
         <div v-else class="flex flex-col gap-4">
-          <div v-for="server in servers" :key="server.id" @click="selectServer(server)" class="server-card"
-            :class="{ 'active': selectedServerId === server.id }">
+          <div v-for="server in servers" :key="server.id" @click="selectServer(server)"
+            @mousedown.middle.prevent="openNew(server)" class="server-card"
+            :class="{ 'active': selectedServerId === server.id }" title="Middle-click to open a second instance">
 
             <!-- Server Info -->
             <div class="flex items-start justify-between">
@@ -245,7 +247,7 @@ defineProps({
   }
 })
 
-const emit = defineEmits(['serverSelected', 'toggle'])
+const emit = defineEmits(['serverSelected', 'serverOpenNew', 'toggle'])
 
 // Get server management functions
 const { addServer, updateServer, deleteServer: deleteServerFromDb, getServers } = useServers()
@@ -294,10 +296,16 @@ const initials = (server) => {
   return name.slice(0, 2).toUpperCase()
 }
 
-// Select server
+// Select server (left click — focus existing session or open one)
 const selectServer = (server) => {
   selectedServerId.value = server.id
   emit('serverSelected', server)
+}
+
+// Middle click — always open an additional instance
+const openNew = (server) => {
+  selectedServerId.value = server.id
+  emit('serverOpenNew', server)
 }
 
 // Edit server

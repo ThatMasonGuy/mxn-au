@@ -63,8 +63,8 @@
     <div class="body">
       <!-- Server rail (collapsible) -->
       <aside class="rail" :style="{ width: railCollapsed ? '56px' : '340px' }">
-        <ServerManager ref="serverManagerRef" :collapsed="railCollapsed" @server-selected="openSession"
-          @toggle="toggleRail" />
+        <ServerManager ref="serverManagerRef" :collapsed="railCollapsed" @server-selected="focusOrOpen"
+          @server-open-new="openSession" @toggle="toggleRail" />
       </aside>
 
       <!-- Terminal area -->
@@ -72,9 +72,10 @@
         <!-- Tab strip -->
         <div v-if="sessions.length" class="tab-strip">
           <button v-for="s in sessions" :key="s.id" class="tab" :class="{ active: s.id === activeId }"
-            @click="setActive(s.id)">
+            @click="setActive(s.id)" @mousedown.middle.prevent="closeSession(s.id)"
+            title="Middle-click to close">
             <span class="tab-dot" :class="dotClass(s.status)"></span>
-            <span class="tab-name">{{ s.server.name }}</span>
+            <span class="tab-name">{{ tabLabel(s) }}</span>
             <span class="tab-close" title="Close session" @click.stop="closeSession(s.id)">
               <XMarkIcon class="w-3.5 h-3.5" />
             </span>
@@ -178,6 +179,25 @@ const openSession = (server) => {
   sessions.value.push({ id, server, status: 'connecting', path: '', startedAt: null, marked: false })
   activeId.value = id
   if (isNarrow.value) collapseRail()
+}
+
+// Left click: focus an existing session for this server, else open one
+const focusOrOpen = (server) => {
+  const existing = sessions.value.find(s => s.server.id === server.id)
+  if (existing) {
+    activeId.value = existing.id
+    if (isNarrow.value) collapseRail()
+  } else {
+    openSession(server)
+  }
+}
+
+// Tab label, numbered when a server has more than one open session
+const tabLabel = (session) => {
+  const same = sessions.value.filter(s => s.server.id === session.server.id)
+  if (same.length <= 1) return session.server.name
+  const n = same.findIndex(s => s.id === session.id) + 1
+  return `${session.server.name} #${n}`
 }
 
 const setActive = (id) => {
