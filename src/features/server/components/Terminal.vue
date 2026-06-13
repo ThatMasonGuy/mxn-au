@@ -326,13 +326,13 @@ const handleKeyEvent = (event) => {
     event.stopPropagation()
 
     navigator.clipboard.readText().then(text => {
-      if (connected.value && ws.value) {
-        ws.value.send(JSON.stringify({
-          type: 'input',
-          data: text
-        }))
+      if (connected.value && text) {
+        // Route through xterm's paste so bracketed-paste mode is honoured and
+        // line endings are normalised — multi-line / `\`-continued commands
+        // paste as one editable block instead of executing line-by-line.
+        terminal.value.paste(text)
       }
-    })
+    }).catch(() => { })
     return false
   }
 
@@ -359,13 +359,13 @@ const handleKeyEvent = (event) => {
     event.stopPropagation()
 
     navigator.clipboard.readText().then(text => {
-      if (connected.value && ws.value) {
-        ws.value.send(JSON.stringify({
-          type: 'input',
-          data: text
-        }))
+      if (connected.value && text) {
+        // Route through xterm's paste so bracketed-paste mode is honoured and
+        // line endings are normalised — multi-line / `\`-continued commands
+        // paste as one editable block instead of executing line-by-line.
+        terminal.value.paste(text)
       }
-    })
+    }).catch(() => { })
     return false
   }
 
