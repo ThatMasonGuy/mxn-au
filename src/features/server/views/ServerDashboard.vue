@@ -11,17 +11,17 @@
           <span class="text-emerald-400">mxn.au</span>
           <span class="sep">/</span>
           <span>server</span>
-          <template v-if="currentServer">
+          <template v-if="activeSession">
             <span class="sep">/</span>
-            <span class="text-emerald-400">{{ currentServer.name }}</span>
+            <span class="text-emerald-400">{{ activeSession.server.name }}</span>
           </template>
-          <span v-if="currentServer && currentPath" class="path">{{ currentPath }}</span>
+          <span v-if="activeSession && activeSession.path" class="path">{{ activeSession.path }}</span>
         </div>
       </div>
 
       <!-- Center: connection state -->
       <div class="cb-center">
-        <template v-if="currentServer">
+        <template v-if="activeSession">
           <span class="conn-pill" :class="statusMeta.cls">
             <span class="conn-dot" :class="statusMeta.cls"></span>{{ statusMeta.label }}
           </span>
@@ -34,10 +34,13 @@
 
       <!-- Right: actions -->
       <div class="cb-right">
-        <template v-if="currentServer">
+        <template v-if="activeSession">
           <button v-if="!isConnected" class="cb-btn" @click="connect">CONNECT</button>
           <button v-else class="cb-btn danger" @click="disconnect">DISCONNECT</button>
-          <button class="cb-icon" @click="clearTerminal" title="Clear terminal">
+          <button class="cb-icon" @click="openSearch" title="Find (Ctrl+Shift+F)">
+            <MagnifyingGlassIcon class="w-5 h-5" />
+          </button>
+          <button class="cb-icon" @click="clearActive" title="Clear terminal">
             <BackspaceIcon class="w-5 h-5" />
           </button>
         </template>
@@ -60,30 +63,48 @@
     <div class="body">
       <!-- Server rail (collapsible) -->
       <aside class="rail" :style="{ width: railCollapsed ? '56px' : '340px' }">
-        <ServerManager ref="serverManagerRef" :collapsed="railCollapsed" @server-selected="handleServerSelected"
+        <ServerManager ref="serverManagerRef" :collapsed="railCollapsed" @server-selected="openSession"
           @toggle="toggleRail" />
       </aside>
 
       <!-- Terminal area -->
       <main class="terminal-area">
-        <Terminal v-if="currentServer" ref="terminalRef" :key="currentServer.id" :server-id="currentServer.id"
-          :server-name="currentServer.name" :auto-connect="true" @status-change="onStatusChange"
-          @command-executed="onCommandExecuted" @path-changed="handlePathChanged" />
-        <DemoTerminal v-else />
+        <!-- Tab strip -->
+        <div v-if="sessions.length" class="tab-strip">
+          <button v-for="s in sessions" :key="s.id" class="tab" :class="{ active: s.id === activeId }"
+            @click="setActive(s.id)">
+            <span class="tab-dot" :class="dotClass(s.status)"></span>
+            <span class="tab-name">{{ s.server.name }}</span>
+            <span class="tab-close" title="Close session" @click.stop="closeSession(s.id)">
+              <XMarkIcon class="w-3.5 h-3.5" />
+            </span>
+          </button>
+        </div>
 
-        <!-- Aliases slide-over -->
-        <div v-if="aliasesOpen" class="aliases-scrim" @click="toggleAliases"></div>
-        <transition name="slide-left">
-          <aside v-if="aliasesOpen" class="aliases-panel">
-            <div class="panel-head">
-              <span class="font-mono text-sm text-emerald-400">Aliases</span>
-              <button @click="toggleAliases" class="panel-close" title="Close">×</button>
-            </div>
-            <div class="panel-body">
-              <AliasManager />
-            </div>
-          </aside>
-        </transition>
+        <!-- Terminal panes (all mounted, only active shown) -->
+        <div class="term-stack">
+          <div v-for="s in sessions" :key="s.id" v-show="s.id === activeId" class="term-pane">
+            <Terminal :ref="el => setTermRef(s.id, el)" :server-id="s.server.id" :server-name="s.server.name"
+              :auto-connect="true" @status-change="(st) => onStatusChange(s.id, st)"
+              @path-changed="(p) => onPathChanged(s.id, p)" />
+          </div>
+
+          <DemoTerminal v-if="!sessions.length" />
+
+          <!-- Aliases slide-over -->
+          <div v-if="aliasesOpen" class="aliases-scrim" @click="toggleAliases"></div>
+          <transition name="slide-left">
+            <aside v-if="aliasesOpen" class="aliases-panel">
+              <div class="panel-head">
+                <span class="font-mono text-sm text-emerald-400">Aliases</span>
+                <button @click="toggleAliases" class="panel-close" title="Close">×</button>
+              </div>
+              <div class="panel-body">
+                <AliasManager />
+              </div>
+            </aside>
+          </transition>
+        </div>
       </main>
     </div>
 
@@ -94,19 +115,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import {
-  Bars3Icon,
-  BackspaceIcon,
-  CommandLineIcon,
-  BookmarkIcon,
-  PlayIcon,
-  StopIcon,
-  CpuChipIcon,
-  ChartBarIcon,
-  ArrowPathIcon,
-  DocumentTextIcon,
-  FolderOpenIcon,
+  Bars3Icon, BackspaceIcon, CommandLineIcon, BookmarkIcon, MagnifyingGlassIcon, XMarkIcon,
+  PlayIcon, StopIcon, CpuChipIcon, ChartBarIcon, ArrowPathIcon, DocumentTextIcon, FolderOpenIcon,
 } from '@heroicons/vue/24/outline'
 import Terminal from '@/features/server/components/Terminal.vue'
 import DemoTerminal from '@/features/server/components/DemoTerminal.vue'
@@ -118,39 +130,116 @@ import { useServers } from '@/features/server/composables/useServers'
 import { useAliases } from '@/features/server/composables/useAliases'
 import { useMainStore } from '@/shared/stores/useMainStore'
 
-// UI state (rail collapse, aliases panel)
 const { isNarrow, railCollapsed, toggleRail, collapseRail, aliasesOpen, toggleAliases } = useDashboardUi()
-
-// Server / alias data
 const { updateServer } = useServers()
 const { aliases, loadAliases } = useAliases()
 
-// User
 const mainStore = useMainStore()
 const userName = computed(() => mainStore.user?.email?.split('@')[0] || 'Guest')
 
-// Core state
-const currentServer = ref(null)
-const currentPath = ref('')
-const connStatus = ref('disconnected') // connecting | connected | disconnected | error
+// ---- Sessions (tabs) ----
+// session = { id, server, status, path, startedAt, marked }
+const sessions = ref([])
+const activeId = ref(null)
 const paletteOpen = ref(false)
-
-// Refs
-const terminalRef = ref(null)
 const serverManagerRef = ref(null)
 
-const isConnected = computed(() => connStatus.value === 'connected')
+// Non-reactive map of session id -> Terminal component instance
+const termRefs = new Map()
+const setTermRef = (id, el) => {
+  if (el) termRefs.set(id, el)
+  else termRefs.delete(id)
+}
+const activeTerm = () => termRefs.get(activeId.value)
+
+const activeSession = computed(() => sessions.value.find(s => s.id === activeId.value) || null)
+const isConnected = computed(() => activeSession.value?.status === 'connected')
 
 const statusMeta = computed(() => {
-  switch (connStatus.value) {
+  switch (activeSession.value?.status) {
     case 'connected': return { label: 'Connected', cls: 'on' }
     case 'connecting': return { label: 'Connecting…', cls: 'warn' }
+    case 'reconnecting': return { label: 'Reconnecting…', cls: 'warn' }
     case 'error': return { label: 'Error', cls: 'err' }
     default: return { label: 'Disconnected', cls: 'off' }
   }
 })
 
-// ---- Quick commands (curated; custom reusable commands live in Aliases) ----
+const dotClass = (status) => {
+  if (status === 'connected') return 'on'
+  if (status === 'connecting' || status === 'reconnecting') return 'warn'
+  if (status === 'error') return 'err'
+  return 'off'
+}
+
+// ---- Open / close / switch sessions ----
+const openSession = (server) => {
+  const id = crypto.randomUUID()
+  sessions.value.push({ id, server, status: 'connecting', path: '', startedAt: null, marked: false })
+  activeId.value = id
+  if (isNarrow.value) collapseRail()
+}
+
+const setActive = (id) => {
+  activeId.value = id
+}
+
+const closeSession = (id) => {
+  termRefs.get(id)?.disconnect()
+  const idx = sessions.value.findIndex(s => s.id === id)
+  if (idx === -1) return
+  sessions.value.splice(idx, 1)
+  if (activeId.value === id) {
+    activeId.value = sessions.value[Math.min(idx, sessions.value.length - 1)]?.id ?? null
+  }
+}
+
+// Refit a tab when it becomes visible (it was display:none while hidden)
+watch(activeId, (id) => {
+  if (!id) return
+  nextTick(() => termRefs.get(id)?.refit())
+})
+
+// ---- Per-session connection state ----
+const onStatusChange = (id, status) => {
+  const s = sessions.value.find(x => x.id === id)
+  if (!s) return
+  s.status = status
+  if (status === 'connected') {
+    if (!s.startedAt) s.startedAt = Date.now()
+    if (!s.marked) {
+      s.marked = true
+      markConnected(s)
+    }
+  } else if (status === 'disconnected') {
+    s.startedAt = null
+  }
+}
+
+const onPathChanged = (id, path) => {
+  const s = sessions.value.find(x => x.id === id)
+  if (s) s.path = path
+}
+
+const markConnected = async (session) => {
+  try {
+    await updateServer(session.server.id, { lastConnected: new Date(), status: 'online' })
+    serverManagerRef.value?.loadServers?.()
+  } catch (error) {
+    console.warn('Could not update server status:', error)
+  }
+}
+
+// ---- Active-terminal actions ----
+const connect = () => activeTerm()?.connect()
+const disconnect = () => activeTerm()?.disconnect()
+const clearActive = () => activeTerm()?.clearTerminal()
+const openSearch = () => activeTerm()?.openSearch()
+const runCommand = (command) => {
+  if (activeSession.value) activeTerm()?.executeCommand(command)
+}
+
+// ---- Quick commands + palette ----
 const quickCommands = [
   { name: 'System status', command: 'htop', icon: CpuChipIcon },
   { name: 'Disk usage', command: 'df -h', icon: ChartBarIcon },
@@ -159,107 +248,42 @@ const quickCommands = [
   { name: 'List directory', command: 'ls -lah', icon: FolderOpenIcon },
 ]
 
-// ---- Unified command palette items ----
 const paletteItems = computed(() => {
   const items = []
-
   for (const [i, cmd] of quickCommands.entries()) {
-    items.push({
-      id: `q-${i}`, group: 'Quick commands', label: cmd.name, hint: cmd.command,
-      icon: cmd.icon, run: () => runCommand(cmd.command)
-    })
+    items.push({ id: `q-${i}`, group: 'Quick commands', label: cmd.name, hint: cmd.command, icon: cmd.icon, run: () => runCommand(cmd.command) })
   }
-
   for (const alias of aliases.value) {
-    items.push({
-      id: `a-${alias.id}`, group: 'Aliases', label: alias.name, hint: alias.command,
-      icon: CommandLineIcon, run: () => runCommand(alias.command)
-    })
+    items.push({ id: `a-${alias.id}`, group: 'Aliases', label: alias.name, hint: alias.command, icon: CommandLineIcon, run: () => runCommand(alias.command) })
   }
-
-  if (currentServer.value) {
+  if (activeSession.value) {
     if (isConnected.value) {
       items.push({ id: 'act-dc', group: 'Actions', label: 'Disconnect', icon: StopIcon, run: disconnect })
     } else {
       items.push({ id: 'act-c', group: 'Actions', label: 'Connect', icon: PlayIcon, run: connect })
     }
-    items.push({ id: 'act-clear', group: 'Actions', label: 'Clear terminal', icon: BackspaceIcon, run: clearTerminal })
+    items.push({ id: 'act-search', group: 'Actions', label: 'Find in terminal', icon: MagnifyingGlassIcon, run: openSearch })
+    items.push({ id: 'act-clear', group: 'Actions', label: 'Clear terminal', icon: BackspaceIcon, run: clearActive })
   }
-
   return items
 })
 
-// ---- Server selection ----
-const handleServerSelected = (server) => {
-  currentServer.value = server
-  currentPath.value = ''
-  connStatus.value = 'connecting'
-  // On thin screens, collapse the rail so the terminal gets full width
-  if (isNarrow.value) collapseRail()
-}
-
-// ---- Connection state (single source of truth, driven by Terminal emits) ----
-const onStatusChange = (status) => {
-  connStatus.value = status
-  if (status === 'connected') {
-    startSessionTimer()
-    markConnected()
-  } else {
-    stopSessionTimer()
-  }
-}
-
-const markConnected = async () => {
-  if (!currentServer.value?.id) return
-  try {
-    await updateServer(currentServer.value.id, { lastConnected: new Date(), status: 'online' })
-    // Refresh the rail so the status dot reflects the live connection
-    serverManagerRef.value?.loadServers?.()
-  } catch (error) {
-    console.warn('Could not update server status:', error)
-  }
-}
-
-const onCommandExecuted = () => { /* reserved for future command history */ }
-const handlePathChanged = (path) => { currentPath.value = path }
-
-// ---- Terminal actions ----
-const connect = () => terminalRef.value?.connect()
-const disconnect = () => terminalRef.value?.disconnect()
-const clearTerminal = () => terminalRef.value?.clearTerminal()
-const runCommand = (command) => {
-  if (!currentServer.value) return
-  terminalRef.value?.executeCommand(command)
-}
-
-// ---- Palette ----
 const handlePaletteSelect = (item) => item.run?.()
 const handlePaletteRaw = (text) => runCommand(text)
 
-// ---- Session timer ----
-const sessionDuration = ref('00:00:00')
-let sessionStart = null
-let sessionInterval = null
+// ---- Session timer (active session) ----
+const nowTick = ref(Date.now())
+let tickInterval = null
 
-const startSessionTimer = () => {
-  if (sessionInterval) return
-  sessionStart = Date.now()
-  sessionInterval = setInterval(() => {
-    const elapsed = Date.now() - sessionStart
-    const h = Math.floor(elapsed / 3600000)
-    const m = Math.floor((elapsed % 3600000) / 60000)
-    const s = Math.floor((elapsed % 60000) / 1000)
-    sessionDuration.value = [h, m, s].map(n => String(n).padStart(2, '0')).join(':')
-  }, 1000)
-}
-
-const stopSessionTimer = () => {
-  if (sessionInterval) {
-    clearInterval(sessionInterval)
-    sessionInterval = null
-  }
-  sessionDuration.value = '00:00:00'
-}
+const sessionDuration = computed(() => {
+  const s = activeSession.value
+  if (!s || s.status !== 'connected' || !s.startedAt) return '00:00:00'
+  const elapsed = nowTick.value - s.startedAt
+  const h = Math.floor(elapsed / 3600000)
+  const m = Math.floor((elapsed % 3600000) / 60000)
+  const sec = Math.floor((elapsed % 60000) / 1000)
+  return [h, m, sec].map(n => String(n).padStart(2, '0')).join(':')
+})
 
 // ---- Keyboard ----
 const handleKeyboard = (e) => {
@@ -271,12 +295,13 @@ const handleKeyboard = (e) => {
 
 onMounted(() => {
   loadAliases()
+  tickInterval = setInterval(() => { nowTick.value = Date.now() }, 1000)
   window.addEventListener('keydown', handleKeyboard)
 })
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyboard)
-  stopSessionTimer()
+  if (tickInterval) clearInterval(tickInterval)
 })
 </script>
 
@@ -495,11 +520,115 @@ onUnmounted(() => {
 
 .terminal-area {
   flex: 1;
-  position: relative;
   min-width: 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
+}
+
+/* ---- Tabs ---- */
+.tab-strip {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  padding: 6px 8px 0;
+  background: #0d1117;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px 8px;
+  border-radius: 8px 8px 0 0;
+  border: 1px solid transparent;
+  border-bottom: none;
+  color: #8b949e;
+  font-family: monospace;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+
+.tab:hover {
+  background: rgba(255, 255, 255, 0.03);
+  color: #c9d1d9;
+}
+
+.tab.active {
+  background: #0d1117;
+  border-color: rgba(255, 255, 255, 0.08);
+  color: #e5e7eb;
+  position: relative;
+}
+
+.tab.active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: #3fb950;
+}
+
+.tab-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.tab-dot.on {
+  background: #3fb950;
+}
+
+.tab-dot.warn {
+  background: #d29922;
+}
+
+.tab-dot.err {
+  background: #ff7b72;
+}
+
+.tab-dot.off {
+  background: #6e7681;
+}
+
+.tab-name {
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tab-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  color: #6e7681;
+  flex-shrink: 0;
+}
+
+.tab-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #e5e7eb;
+}
+
+.term-stack {
+  flex: 1;
+  position: relative;
+  min-height: 0;
+}
+
+.term-pane {
+  position: absolute;
+  inset: 0;
 }
 
 /* Aliases slide-over */
