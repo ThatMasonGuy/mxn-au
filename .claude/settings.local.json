@@ -58,7 +58,10 @@
       "Bash(awk -v RS='}' 'length\\($0\\)>0 {prefix=substr\\($0,1,4\\); count[prefix]++; size[prefix]+=length\\($0\\)} END{for\\(p in count\\) print size[p], count[p], p}' C:/mason/mxn-au/dist/assets/index-CvV88whf.css)",
       "Bash(gzip -c C:/mason/mxn-au/dist/assets/index-CvV88whf.css)",
       "Bash(ls \"C:/Users/MasonBartholomai/.claude/projects/\" 2>/dev/null)",
-      "Bash(npm ls *)"
+      "Bash(npm ls *)",
+      "Bash(python -c ' *)",
+      "Bash(pip install *)",
+      "Bash(node _test-extractor.mjs)"
     ]
   }
 }

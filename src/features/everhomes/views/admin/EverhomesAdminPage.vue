@@ -341,7 +341,7 @@
 
                 <!-- SDA Dataset tab -->
                 <section v-if="activeTab === 'sda'" class="grid gap-6 lg:grid-cols-2">
-                    <!-- Current dataset card -->
+                    <!-- Datasets list card -->
                     <article class="overflow-hidden rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-5 shadow-xl shadow-black/10 backdrop-blur sm:rounded-[2rem] sm:p-6">
                         <div class="mb-5 flex items-start justify-between gap-4 border-b border-white/[0.07] pb-5">
                             <div class="flex items-center gap-3">
@@ -350,10 +350,10 @@
                                 </div>
                                 <div>
                                     <p class="text-xs font-semibold uppercase tracking-[0.2em] text-violet-300/70">
-                                        Dataset
+                                        Datasets
                                     </p>
                                     <h2 class="mt-1 text-lg font-bold text-white">
-                                        Current SDA Dataset
+                                        SDA Pricing Datasets
                                     </h2>
                                 </div>
                             </div>
@@ -364,8 +364,32 @@
                             <span class="text-sm">Loading…</span>
                         </div>
 
-                        <div v-else-if="sdaStore.config" class="space-y-4">
-                            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div v-else-if="sdaStore.availableYears.length" class="space-y-4">
+                            <!-- Year pills -->
+                            <div class="flex flex-wrap gap-2">
+                                <button
+                                    v-for="year in sdaStore.availableYears"
+                                    :key="year"
+                                    type="button"
+                                    @click="sdaStore.setYear(year)"
+                                    class="inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs font-bold transition"
+                                    :class="year === sdaStore.selectedYear
+                                        ? 'border-violet-400/40 bg-violet-500/20 text-violet-100 shadow-sm shadow-violet-950/40'
+                                        : 'border-white/10 bg-white/[0.04] text-slate-400 hover:border-white/20 hover:text-slate-200'"
+                                >
+                                    <span>{{ year }}</span>
+                                    <span
+                                        v-if="year === sdaStore.latestYear"
+                                        class="rounded-full px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider"
+                                        :class="year === sdaStore.selectedYear ? 'bg-violet-400/30 text-violet-50' : 'bg-white/10 text-slate-500'"
+                                    >
+                                        Latest
+                                    </span>
+                                </button>
+                            </div>
+
+                            <!-- Selected dataset metadata -->
+                            <div v-if="sdaStore.config" class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                 <div class="rounded-2xl border border-white/10 bg-white/[0.045] p-4">
                                     <p class="mb-1 text-xs font-semibold text-slate-500">Financial Year</p>
                                     <p class="truncate text-sm font-bold text-white">{{ sdaStore.config.financialYear }}</p>
@@ -382,11 +406,24 @@
                                     <p class="mb-1 text-xs font-semibold text-slate-500">Source File</p>
                                     <p class="truncate text-sm font-bold text-white" :title="sdaStore.config.sourceFile">{{ sdaStore.config.sourceFile ?? '—' }}</p>
                                 </div>
+                                <div class="rounded-2xl border border-white/10 bg-white/[0.045] p-4">
+                                    <p class="mb-1 text-xs font-semibold text-slate-500">Benchmark tables</p>
+                                    <p class="truncate text-sm font-bold text-white">{{ Object.keys(sdaStore.benchmarks).length }}</p>
+                                </div>
+                                <div class="rounded-2xl border border-white/10 bg-white/[0.045] p-4">
+                                    <p class="mb-1 text-xs font-semibold text-slate-500">Appendix H tables</p>
+                                    <p class="truncate text-sm font-bold" :class="sdaStore.hasAppendixH ? 'text-white' : 'text-amber-300'">
+                                        {{ Object.keys(sdaStore.appendixH).length }}
+                                        <span v-if="!sdaStore.hasAppendixH" class="ml-1 text-[10px] font-medium text-amber-400/80">re-upload to populate</span>
+                                    </p>
+                                </div>
                             </div>
 
                             <div class="flex items-center gap-2 rounded-2xl border border-teal-400/20 bg-teal-400/10 px-4 py-3">
                                 <CheckCircle2 class="h-4 w-4 shrink-0 text-teal-300" />
-                                <span class="text-xs font-semibold text-teal-200">Dataset is active and serving all users</span>
+                                <span class="text-xs font-semibold text-teal-200">
+                                    {{ sdaStore.selectedYear }} is active and serving all users
+                                </span>
                             </div>
                         </div>
 
@@ -394,8 +431,8 @@
                             <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06]">
                                 <DatabaseZap class="h-5 w-5 text-slate-500" />
                             </div>
-                            <p class="text-sm font-semibold text-slate-300">No dataset loaded</p>
-                            <p class="mt-1 text-xs text-slate-600">Upload the NDIS SDA Price Calculator to get started</p>
+                            <p class="text-sm font-semibold text-slate-300">No datasets loaded</p>
+                            <p class="mt-1 text-xs text-slate-600">Upload an NDIS SDA Price Calculator to get started</p>
                         </div>
                     </article>
 
@@ -460,13 +497,17 @@
                                     </div>
                                     <div class="flex items-center justify-between rounded-xl bg-white/[0.045] px-3 py-2 text-xs">
                                         <span class="text-slate-500">Benchmark tables</span>
-                                        <span class="font-bold text-white">8</span>
+                                        <span class="font-bold text-white">{{ Object.keys(uploadPreview.benchmarks ?? {}).length }}</span>
+                                    </div>
+                                    <div class="flex items-center justify-between rounded-xl bg-white/[0.045] px-3 py-2 text-xs">
+                                        <span class="text-slate-500">Appendix H tables</span>
+                                        <span class="font-bold text-white">{{ Object.keys(uploadPreview.appendixH ?? {}).length }}</span>
                                     </div>
                                     <div class="flex items-center justify-between rounded-xl bg-white/[0.045] px-3 py-2 text-xs">
                                         <span class="text-slate-500">SA4 regions</span>
                                         <span class="font-bold text-white">{{ uploadPreview.locationFactors.newBuild.length }}</span>
                                     </div>
-                                    <div class="flex items-center justify-between rounded-xl bg-white/[0.045] px-3 py-2 text-xs">
+                                    <div class="flex items-center justify-between rounded-xl bg-white/[0.045] px-3 py-2 text-xs sm:col-span-2">
                                         <span class="text-slate-500">MRRC (single)</span>
                                         <span class="font-bold text-white">{{ formatCurrency(uploadPreview.mrrc?.single?.perAnnum) }}/yr</span>
                                     </div>
@@ -478,6 +519,17 @@
                                         {{ w }}
                                     </li>
                                 </ul>
+                            </div>
+
+                            <!-- Overwrite warning when uploading an existing year -->
+                            <div
+                                v-if="uploadOverwritesExistingYear"
+                                class="flex items-start gap-2 rounded-2xl border border-amber-400/25 bg-amber-400/10 px-4 py-3"
+                            >
+                                <AlertTriangle class="mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
+                                <p class="text-xs leading-5 text-amber-200">
+                                    <strong>{{ uploadPreview.financialYear }}</strong> already exists and will be overwritten with this upload.
+                                </p>
                             </div>
 
                             <div class="flex flex-wrap gap-3">
@@ -905,6 +957,11 @@ const dragOver      = ref(false)
 const uploadStatus  = ref(null)   // null | 'parsing' | 'preview'
 const uploadPreview = ref(null)
 const pendingFile   = ref(null)
+
+const uploadOverwritesExistingYear = computed(() => {
+    const fy = uploadPreview.value?.financialYear
+    return !!fy && fy !== 'Unknown' && sdaStore.availableYears.includes(fy)
+})
 
 function onDrop(e) {
     dragOver.value = false
