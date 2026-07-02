@@ -1,5 +1,5 @@
 const express = require('express')
-const admin = require('firebase-admin')
+const { getAuth } = require('firebase-admin/auth')
 const fs = require('fs')
 const fsp = require('fs/promises')
 const path = require('path')
@@ -279,7 +279,7 @@ async function requireAuth(req, res, next) {
   }
 
   try {
-    req.user = await admin.auth().verifyIdToken(token)
+    req.user = await getAuth().verifyIdToken(token)
     requireOperator(req.user)
     return next()
   } catch (error) {
@@ -1835,7 +1835,7 @@ async function verifySocketAuth(token) {
     error.statusCode = 401
     throw error
   }
-  const user = await admin.auth().verifyIdToken(token)
+  const user = await getAuth().verifyIdToken(token)
   return requireOperator(user)
 }
 

@@ -1,26 +1,41 @@
-// backend-server.js
+// backend-server.cjs
 
 const express = require('express')
 const { WebSocketServer } = require('ws')
 const { Client } = require('ssh2')
 const http = require('http')
 const cors = require('cors')
-const admin = require('firebase-admin')
-const minecraftRoutes = require('./minecraft-routes')
-const minecraftSetupRoutes = require('./minecraft-setup-routes')
-const { router: adminRouter, logConnection, recordLatency } = require('./backend-admin-routes')
+const { cert, getApps, initializeApp } = require('firebase-admin/app')
+const { getAuth } = require('firebase-admin/auth')
+const minecraftRoutes = require('./minecraft-routes.cjs')
+const minecraftSetupRoutes = require('./minecraft-setup-routes.cjs')
+const { router: adminRouter, logConnection, recordLatency } = require('./backend-admin-routes.cjs')
 
 // Load environment variables
 require('dotenv').config()
 
-// Initialize Firebase Admin
-admin.initializeApp({
-  credential: admin.credential.cert({
+function initFirebaseAdmin() {
+  if (getApps().length) return
+
+  const serviceAccount = {
     projectId: process.env.FIREBASE_PROJECT_ID,
     privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
     clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-  })
-})
+  }
+  const hasServiceAccount = serviceAccount.projectId && serviceAccount.privateKey && serviceAccount.clientEmail
+
+  if (hasServiceAccount) {
+    initializeApp({
+      credential: cert(serviceAccount),
+    })
+    return
+  }
+
+  initializeApp()
+  console.warn('Firebase service account env is incomplete; authenticated API calls require application default credentials or MINECRAFT_API_DISABLE_AUTH=true.')
+}
+
+initFirebaseAdmin()
 
 const app = express()
 const server = http.createServer(app)
@@ -95,7 +110,7 @@ wss.on('connection', (ws, req) => {
       if (data.type === 'auth') {
         try {
           // Verify Firebase token
-          const decodedToken = await admin.auth().verifyIdToken(data.token)
+          const decodedToken = await getAuth().verifyIdToken(data.token)
           authenticated = true
           sessionId = `${decodedToken.uid}_${Date.now()}`
           userId = decodedToken.uid

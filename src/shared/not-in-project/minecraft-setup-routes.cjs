@@ -1,5 +1,5 @@
 const express = require('express')
-const admin = require('firebase-admin')
+const { getAuth } = require('firebase-admin/auth')
 
 const router = express.Router()
 
@@ -33,7 +33,7 @@ async function requireAuth(req, res, next) {
   }
 
   try {
-    req.user = await admin.auth().verifyIdToken(token)
+    req.user = await getAuth().verifyIdToken(token)
     if (!isAuthorizedOperator(req.user)) {
       return res.status(403).json({
         message: 'Minecraft operator access denied',
