@@ -152,8 +152,23 @@ function updateSessionActivity(sessionId) {
     }
 }
 
+function recordLatency(sessionId, latency) {
+    if (!global.adminSessions) return
+
+    const session = global.adminSessions.get(sessionId)
+    if (session) {
+        session.latencyHistory = session.latencyHistory || []
+        session.latencyHistory.push({
+            latency,
+            timestamp: Date.now()
+        })
+        session.latencyHistory = session.latencyHistory.slice(-25)
+    }
+}
+
 module.exports = {
     router,
     logConnection,
-    updateSessionActivity
+    updateSessionActivity,
+    recordLatency
 }

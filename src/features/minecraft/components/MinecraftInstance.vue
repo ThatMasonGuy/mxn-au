@@ -1,1916 +1,2109 @@
 <template>
-  <div
-    class="min-h-screen text-gray-100
-           bg-[radial-gradient(1200px_circle_at_20%_10%,rgba(34,197,94,0.12),transparent_45%),radial-gradient(1000px_circle_at_85%_20%,rgba(59,130,246,0.10),transparent_40%),radial-gradient(900px_circle_at_70%_85%,rgba(168,85,247,0.10),transparent_40%),linear-gradient(135deg,#05060a_0%,#070914_35%,#07060c_100%)]"
-  >
-    <!-- Header -->
-    <div class="sticky top-0 z-10 border-b border-white/10 bg-black/30 backdrop-blur-xl">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        <div class="flex items-center justify-between gap-4">
-          <div class="flex items-center gap-4 min-w-0">
-            <Button
-              variant="ghost"
-              size="sm"
-              @click="goBack"
-              class="text-gray-200 hover:text-white hover:bg-white/10"
+  <div class="min-h-screen bg-[#090d12] text-slate-100">
+    <header class="sticky top-0 z-20 border-b border-white/10 bg-[#0c1118]/95 backdrop-blur">
+      <div class="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4 sm:px-6 lg:px-8">
+        <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div class="flex min-w-0 items-center gap-3">
+            <button
+              class="flex h-10 w-10 items-center justify-center rounded-md border border-white/10 bg-white/[0.04] text-slate-200 transition hover:border-white/20 hover:bg-white/[0.08]"
+              title="Back to servers"
+              @click="router.push('/minecraft')"
             >
-              <ArrowLeft class="w-4 h-4 mr-2" />
-              Back
-            </Button>
+              <ArrowLeft class="h-4 w-4" />
+            </button>
 
-            <div class="flex items-center gap-3 min-w-0">
-              <!-- status dot with subtle glow -->
-              <div class="relative shrink-0">
-                <div :class="['w-3 h-3 rounded-full', getStatusColor(instance?.status)]" />
-                <div :class="['absolute inset-0 rounded-full blur-md opacity-40', getStatusColor(instance?.status)]" />
+            <div class="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md border border-white/10 bg-black/25">
+              <img
+                v-if="detailIcon"
+                :src="detailIcon"
+                :alt="`${detail?.label || serverId} icon`"
+                class="h-full w-full object-cover [image-rendering:pixelated]"
+              />
+              <span v-else class="font-mono text-sm font-semibold text-emerald-100">{{ serverInitials(detail) }}</span>
+            </div>
+
+            <div class="min-w-0">
+              <div class="flex flex-wrap items-center gap-2">
+                <h1 class="truncate text-xl font-semibold tracking-tight text-white">{{ detail?.label || serverId }}</h1>
+                <span v-if="detail" class="rounded-md px-2 py-1 text-xs font-medium" :class="stateMeta(detail.state).pill">
+                  {{ stateMeta(detail.state).label }}
+                </span>
+                <span v-if="restartRequired" class="inline-flex items-center gap-1.5 rounded-md bg-amber-400/10 px-2 py-1 text-xs font-medium text-amber-200">
+                  <AlertTriangle class="h-3.5 w-3.5" />
+                  Restart pending
+                </span>
+                <span class="rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 font-mono text-xs text-slate-300">{{ serverId }}</span>
               </div>
+              <div class="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-400">
+                <span class="inline-flex items-center gap-1.5"><Globe2 class="h-3.5 w-3.5" />{{ detail?.host }}</span>
+                <span class="inline-flex items-center gap-1.5"><Boxes class="h-3.5 w-3.5" />{{ detail?.loader }} {{ detail?.version }}</span>
+                <span class="inline-flex items-center gap-1.5"><FolderRoot class="h-3.5 w-3.5" />{{ detail?.activeWorld }}</span>
+              </div>
+            </div>
+          </div>
 
+          <div class="flex flex-wrap gap-2">
+            <span
+              v-if="detail"
+              class="inline-flex h-10 items-center gap-2 rounded-md border px-3 text-sm"
+              :class="statusStreaming ? 'border-sky-400/25 bg-sky-400/10 text-sky-100' : 'border-white/10 bg-white/[0.04] text-slate-300'"
+            >
+              <span class="h-2 w-2 rounded-full" :class="statusStreaming ? 'bg-sky-300 animate-pulse' : 'bg-slate-500'" />
+              {{ statusStreaming ? 'Status live' : 'Status polling' }}
+            </span>
+
+            <span
+              v-if="detail"
+              class="inline-flex h-10 items-center gap-2 rounded-md border px-3 text-sm"
+              :class="logStreaming ? 'border-emerald-400/25 bg-emerald-400/10 text-emerald-100' : 'border-white/10 bg-white/[0.04] text-slate-300'"
+            >
+              <span class="h-2 w-2 rounded-full" :class="logStreaming ? 'bg-emerald-300 animate-pulse' : 'bg-slate-500'" />
+              {{ logStreaming ? 'Logs live' : 'Logs polling' }}
+            </span>
+
+            <button
+              class="inline-flex h-10 items-center gap-2 rounded-md border border-white/10 bg-white/[0.04] px-3 text-sm text-slate-100 transition hover:border-white/20 hover:bg-white/[0.08]"
+              title="Refresh server"
+              @click="refresh"
+            >
+              <RefreshCcw class="h-4 w-4" :class="{ 'animate-spin': refreshing }" />
+              Refresh
+            </button>
+
+            <button
+              v-if="detail && canWake(detail)"
+              class="inline-flex h-10 items-center gap-2 rounded-md border border-emerald-400/25 bg-emerald-400/10 px-3 text-sm text-emerald-100 transition hover:bg-emerald-400/15"
+              @click="runLifecycle('wake')"
+            >
+              <Play class="h-4 w-4" />
+              Wake
+            </button>
+
+            <button
+              v-if="detail && canRestart(detail)"
+              class="inline-flex h-10 items-center gap-2 rounded-md border border-sky-400/25 bg-sky-400/10 px-3 text-sm text-sky-100 transition hover:bg-sky-400/15"
+              @click="runLifecycle('restart')"
+            >
+              <RotateCw class="h-4 w-4" />
+              Restart
+            </button>
+
+            <button
+              v-if="detail && canSleep(detail)"
+              class="inline-flex h-10 items-center gap-2 rounded-md border border-rose-400/25 bg-rose-400/10 px-3 text-sm text-rose-100 transition hover:bg-rose-400/15"
+              @click="runLifecycle('sleep')"
+            >
+              <Square class="h-4 w-4" />
+              Sleep
+            </button>
+          </div>
+        </div>
+
+        <div v-if="minecraft.fallbackMode" class="rounded-md border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-sm text-amber-100">
+          API bridge unavailable: {{ minecraft.fallbackReason || 'using local registry snapshot' }}
+        </div>
+
+        <div v-if="minecraft.error" class="rounded-md border border-rose-400/20 bg-rose-400/10 px-3 py-2 text-sm text-rose-100">
+          {{ minecraft.error }}
+        </div>
+
+        <div v-if="restartRequired" class="rounded-md border border-amber-400/25 bg-amber-400/10 p-3">
+          <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div class="flex min-w-0 gap-3">
+              <AlertTriangle class="mt-0.5 h-5 w-5 shrink-0 text-amber-200" />
               <div class="min-w-0">
-                <div class="flex items-center gap-2 min-w-0">
-                  <h1 class="text-xl font-semibold tracking-tight truncate text-white">
-                    {{ instance?.name }}
-                  </h1>
-
-                  <!-- small badge that screams "this is an environment/instance" -->
-                  <span
-                    class="hidden sm:inline-flex items-center rounded-full px-2 py-0.5 text-[11px]
-                           bg-white/5 border border-white/10 text-gray-200/90"
-                  >
-                    Instance
-                  </span>
-                </div>
-
-                <!-- Instance "profile" line -->
-                <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-300/80">
-                  <span class="inline-flex items-center gap-2">
-                    <span class="rounded-full w-1 h-1 bg-gray-500"></span>
-                    Environment
-                  </span>
-                  <span class="text-gray-500">•</span>
-
-                  <span class="truncate">{{ instance?.serverType }} {{ instance?.version }}</span>
-
-                  <span class="text-gray-500">•</span>
-
-                  <span class="inline-flex items-center gap-2 min-w-0">
-                    <Server class="w-3 h-3 text-gray-300/80 shrink-0" />
-                    <span class="truncate">{{ serverName || 'Loading...' }}</span>
-                  </span>
-                </div>
+                <div class="font-semibold text-amber-50">Restart required</div>
+                <p class="mt-1 text-sm text-amber-100/80">
+                  {{ pendingRestartReasons.length }} pending {{ pendingRestartReasons.length === 1 ? 'change' : 'changes' }} will apply after this server restarts or wakes.
+                </p>
               </div>
             </div>
-          </div>
-
-          <!-- Control Buttons -->
-          <div class="flex items-center gap-2 shrink-0">
-            <Button
-              v-if="instance?.status === 'stopped'"
-              @click="startServer"
-              :disabled="loading"
-              class="bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-600/20 disabled:opacity-60"
-            >
-              <Play class="w-4 h-4 mr-2" />
-              Start Instance
-            </Button>
-
-            <Button
-              v-if="instance?.status === 'running'"
-              @click="showRestartDialog = true"
-              :disabled="loading"
-              variant="outline"
-              class="bg-white/5 border-white/10 text-gray-100 hover:bg-white/10 hover:border-white/20 disabled:opacity-60"
-            >
-              <RotateCw class="w-4 h-4 mr-2" />
-              Restart Instance
-            </Button>
-
-            <Button
-              v-if="instance?.status === 'running'"
-              @click="showStopDialog = true"
-              :disabled="loading"
-              variant="destructive"
-              class="bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/20 disabled:opacity-60"
-            >
-              <Square class="w-4 h-4 mr-2" />
-              Stop Instance
-            </Button>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger as-child>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  class="bg-white/5 border-white/10 text-gray-100 hover:bg-white/10 hover:border-white/20"
-                >
-                  <MoreVertical class="w-4 h-4" />
-                </Button>
-              </DropdownMenuTrigger>
-
-              <DropdownMenuContent
-                align="end"
-                class="bg-[#070914]/95 text-gray-100 border border-white/10 shadow-2xl backdrop-blur-xl"
+            <div class="flex flex-wrap gap-2">
+              <button class="settings-btn" @click="activeTab = 'activity'">
+                <Activity class="h-4 w-4" />
+                Activity
+              </button>
+              <button
+                class="settings-btn primary"
+                :disabled="!detail || (!canRestart(detail) && !canWake(detail))"
+                @click="applyPendingRestart"
               >
-                <DropdownMenuItem
-                  @click="openWorldManager"
-                  class="hover:bg-white/10 focus:bg-white/10"
-                >
-                  <Globe class="w-4 h-4 mr-2 text-purple-300" />
-                  Manage Worlds
-                </DropdownMenuItem>
-
-                <DropdownMenuItem
-                  @click="openConfigEditor"
-                  class="hover:bg-white/10 focus:bg-white/10"
-                >
-                  <Settings class="w-4 h-4 mr-2 text-blue-300" />
-                  Instance Configuration
-                </DropdownMenuItem>
-
-                <DropdownMenuItem
-                  @click="showBackupDialog = true"
-                  class="hover:bg-white/10 focus:bg-white/10"
-                >
-                  <Database class="w-4 h-4 mr-2 text-green-300" />
-                  Backup Active World
-                </DropdownMenuItem>
-
-                <DropdownMenuSeparator class="bg-white/10" />
-
-                <DropdownMenuItem
-                  @click="showDeleteDialog = true"
-                  class="text-red-300 hover:bg-red-500/10 focus:bg-red-500/10"
-                >
-                  <Trash2 class="w-4 h-4 mr-2" />
-                  Delete Instance
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Active Job Banner -->
-    <div v-if="activeJob" class="border-b border-white/10 bg-blue-500/10">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        <div class="flex items-center justify-between mb-3">
-          <div class="flex items-center gap-3">
-            <Loader2 class="w-5 h-5 animate-spin text-blue-200" />
-            <div>
-              <div class="font-semibold text-white">Instance Job: {{ activeJob.type }}</div>
-              <div class="text-sm text-gray-300/80">{{ activeJob.currentStageText || 'Processing...' }}</div>
+                <RotateCw class="h-4 w-4" />
+                {{ canWake(detail) ? 'Wake' : 'Restart' }}
+              </button>
             </div>
           </div>
-          <span class="text-sm text-gray-300/80">{{ activeJob.progress }}%</span>
-        </div>
-
-        <div class="w-full bg-white/10 rounded-full h-2 overflow-hidden">
-          <div
-            class="bg-blue-500 h-2 rounded-full transition-all duration-300 shadow-[0_0_20px_rgba(59,130,246,0.35)]"
-            :style="{ width: `${activeJob.progress}%` }"
-          />
         </div>
       </div>
-    </div>
+    </header>
 
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <!-- Loading State -->
-      <div v-if="!instance" class="text-center py-16">
-        <Loader2 class="w-8 h-8 animate-spin mx-auto text-green-300" />
-        <p class="text-gray-300/80 mt-4">Loading instance...</p>
+    <main class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      <div v-if="!detail" class="rounded-md border border-white/10 bg-white/[0.04] p-8 text-center text-slate-300">
+        Loading server...
       </div>
 
-      <div v-else class="space-y-6">
-        <!-- Instance Snapshot -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <!-- Environment Status -->
-          <Card class="bg-white/5 border border-white/10 backdrop-blur-xl shadow-xl shadow-black/30">
-            <CardHeader class="pb-3">
-              <CardTitle class="text-sm font-medium text-gray-300/80">Environment Status</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div class="flex items-center justify-between">
-                <span class="text-2xl font-semibold tracking-tight text-white">
-                  {{ getStatusText(instance.status) }}
-                </span>
-                <Server :class="['w-8 h-8', getStatusColor(instance.status)]" />
-              </div>
-              <div class="mt-3 text-xs text-gray-300/70">
-                Instance controls affect the whole environment.
-              </div>
-            </CardContent>
-          </Card>
+      <template v-else>
+        <section class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <div class="rounded-md border border-white/10 bg-[#0f151d] p-4">
+            <div class="flex items-center justify-between gap-3">
+              <span class="text-sm text-slate-400">Lifecycle</span>
+              <Activity class="h-4 w-4 text-emerald-300" />
+            </div>
+            <div class="mt-3 flex items-end justify-between gap-3">
+              <div class="text-2xl font-semibold text-white">{{ stateMeta(detail.state).label }}</div>
+              <div class="text-right text-xs text-slate-500">{{ formatDate(detail.stateSince) }}</div>
+            </div>
+          </div>
 
-          <!-- Player Capacity -->
-          <Card class="bg-white/5 border border-white/10 backdrop-blur-xl shadow-xl shadow-black/30">
-            <CardHeader class="pb-3">
-              <CardTitle class="text-sm font-medium text-gray-300/80">Player Pool</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div class="flex items-center justify-between">
-                <span class="text-2xl font-semibold tracking-tight text-white">
-                  {{ instance.vitals?.playersOnline || 0 }}/{{ instance.vitals?.maxPlayers || instance.maxPlayers }}
-                </span>
-                <Users class="w-8 h-8 text-blue-300" />
-              </div>
-              <div class="mt-3 text-xs text-gray-300/70">
-                Whitelist/roles live on the instance.
-              </div>
-            </CardContent>
-          </Card>
+          <div class="rounded-md border border-white/10 bg-[#0f151d] p-4">
+            <div class="flex items-center justify-between gap-3">
+              <span class="text-sm text-slate-400">Players</span>
+              <Users class="h-4 w-4 text-sky-300" />
+            </div>
+            <div class="mt-3 text-2xl font-semibold text-white">{{ detail.playersOnline }}/{{ detail.maxPlayers }}</div>
+          </div>
 
-          <!-- Active World -->
-          <Card class="bg-white/5 border border-white/10 backdrop-blur-xl shadow-xl shadow-black/30">
-            <CardHeader class="pb-3">
-              <CardTitle class="text-sm font-medium text-gray-300/80">Mounted World</CardTitle>
-            </CardHeader>
-            <CardContent>
+          <div class="rounded-md border border-white/10 bg-[#0f151d] p-4">
+            <div class="flex items-center justify-between gap-3">
+              <span class="text-sm text-slate-400">Uptime</span>
+              <Clock3 class="h-4 w-4 text-violet-300" />
+            </div>
+            <div class="mt-3 text-2xl font-semibold text-white">{{ formatDuration(detail.uptimeSeconds) }}</div>
+          </div>
+
+          <div class="rounded-md border border-white/10 bg-[#0f151d] p-4">
+            <div class="flex items-center justify-between gap-3">
+              <span class="text-sm text-slate-400">Mod Updates</span>
+              <PackageCheck class="h-4 w-4 text-amber-300" />
+            </div>
+            <div class="mt-3 text-2xl font-semibold text-white">{{ updateCount }}</div>
+          </div>
+        </section>
+
+        <nav class="mt-6 flex gap-2 overflow-x-auto border-b border-white/10 pb-2">
+          <button
+            v-for="tab in tabs"
+            :key="tab.id"
+            class="inline-flex h-10 shrink-0 items-center gap-2 rounded-md px-3 text-sm transition"
+            :class="activeTab === tab.id ? 'bg-white text-slate-950' : 'bg-white/[0.04] text-slate-300 hover:bg-white/[0.08] hover:text-white'"
+            @click="activeTab = tab.id"
+          >
+            <component :is="tab.icon" class="h-4 w-4" />
+            {{ tab.label }}
+          </button>
+        </nav>
+
+        <section v-if="activeTab === 'overview'" class="mt-6 grid gap-6 lg:grid-cols-[1fr_360px]">
+          <div class="space-y-6">
+            <div class="rounded-md border border-white/10 bg-[#0f151d] p-4">
+              <h2 class="font-semibold text-white">Vitals</h2>
+              <div class="mt-4 grid gap-5 md:grid-cols-3">
+                <MetricBar label="CPU" :value="detail.cpu || 0" tone="emerald" />
+                <MetricBar label="Memory" :value="detail.memory || 0" tone="sky" />
+                <MetricBar label="Disk" :value="detail.disk || 0" tone="violet" />
+              </div>
+            </div>
+
+            <div class="rounded-md border border-white/10 bg-[#0f151d] p-4">
               <div class="flex items-center justify-between gap-3">
-                <span class="text-2xl font-semibold tracking-tight text-white truncate">
-                  {{ getCurrentWorldName() }}
-                </span>
-                <Globe class="w-8 h-8 text-purple-300 shrink-0" />
+                <h2 class="font-semibold text-white">Recent Logs</h2>
+                <button class="text-sm text-sky-200 hover:text-sky-100" @click="activeTab = 'logs'">Open explorer</button>
               </div>
-              <div class="mt-3 text-xs text-gray-300/70">
-                Swap worlds without changing the environment.
+              <div class="mt-4 max-h-64 overflow-auto rounded-md border border-white/10 bg-black/30 p-3 font-mono text-xs leading-6 text-slate-300">
+                <div v-for="(line, index) in latestLogs" :key="index" class="whitespace-pre-wrap">{{ line }}</div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
-          <!-- Uptime -->
-          <Card class="bg-white/5 border border-white/10 backdrop-blur-xl shadow-xl shadow-black/30">
-            <CardHeader class="pb-3">
-              <CardTitle class="text-sm font-medium text-gray-300/80">Instance Uptime</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div class="flex items-center justify-between">
-                <span class="text-2xl font-semibold tracking-tight text-white">
-                  {{ formatUptime(instance.vitals?.uptime) }}
-                </span>
-                <Clock class="w-8 h-8 text-green-300" />
-              </div>
-              <div class="mt-3 text-xs text-gray-300/70">
-                Time since last environment boot.
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <!-- Tabs -->
-        <Tabs default-value="overview" class="w-full">
-          <TabsList class="grid w-full grid-cols-5 bg-white/5 border border-white/10 backdrop-blur-xl p-1 rounded-xl">
-            <TabsTrigger
-              value="overview"
-              class="rounded-lg text-gray-300 data-[state=active]:text-white data-[state=active]:bg-white/10 data-[state=active]:shadow"
-            >
-              Overview
-            </TabsTrigger>
-            <TabsTrigger
-              value="console"
-              class="rounded-lg text-gray-300 data-[state=active]:text-white data-[state=active]:bg-white/10 data-[state=active]:shadow"
-            >
-              Console
-            </TabsTrigger>
-            <TabsTrigger
-              value="files"
-              class="rounded-lg text-gray-300 data-[state=active]:text-white data-[state=active]:bg-white/10 data-[state=active]:shadow"
-            >
-              Files
-            </TabsTrigger>
-            <TabsTrigger
-              value="players"
-              class="rounded-lg text-gray-300 data-[state=active]:text-white data-[state=active]:bg-white/10 data-[state=active]:shadow"
-            >
-              Players
-            </TabsTrigger>
-            <TabsTrigger
-              value="settings"
-              class="rounded-lg text-gray-300 data-[state=active]:text-white data-[state=active]:bg-white/10 data-[state=active]:shadow"
-            >
-              Settings
-            </TabsTrigger>
-          </TabsList>
-
-          <!-- Overview -->
-          <TabsContent value="overview" class="space-y-6 mt-4">
-            <!-- World Slot (instance manager vibe) -->
-            <Card class="bg-white/5 border border-white/10 backdrop-blur-xl shadow-xl shadow-black/30">
-              <CardHeader class="pb-2">
-                <div class="flex items-center justify-between gap-3">
-                  <div>
-                    <CardTitle class="text-white">World Slot</CardTitle>
-                    <div class="text-xs text-gray-300/70 mt-1">
-                      This instance loads exactly one world at a time — swapable without changing rules/mods.
-                    </div>
-                  </div>
-
-                  <Button
-                    variant="outline"
-                    class="bg-white/5 border-white/10 text-gray-100 hover:bg-white/10 hover:border-white/20"
-                    @click="openWorldManager"
-                  >
-                    <Globe class="w-4 h-4 mr-2 text-purple-300" />
-                    Swap / Manage Worlds
-                  </Button>
+          <aside class="space-y-4">
+            <div class="rounded-md border border-white/10 bg-[#0f151d] p-4">
+              <h2 class="font-semibold text-white">Server</h2>
+              <dl class="mt-4 space-y-3 text-sm">
+                <div class="flex justify-between gap-4">
+                  <dt class="text-slate-400">Service</dt>
+                  <dd class="text-right font-mono text-slate-100">{{ detail.service }}</dd>
                 </div>
-              </CardHeader>
-
-              <CardContent class="pt-4">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div class="md:col-span-2">
-                    <div class="text-xs text-gray-300/70">Mounted World</div>
-                    <div class="mt-1 flex items-center gap-3">
-                      <div class="w-2.5 h-2.5 rounded-full bg-purple-400 shadow-[0_0_18px_rgba(168,85,247,0.35)]" />
-                      <div class="text-lg font-semibold text-white truncate">
-                        {{ getCurrentWorldName() }}
-                      </div>
-                    </div>
-
-                    <div class="mt-3 text-xs text-gray-300/70">
-                      Tip: Worlds are “content”. Instances are “policy + mods + identity”.
-                    </div>
-                  </div>
-
-                  <div class="bg-black/20 border border-white/10 rounded-xl p-4">
-                    <div class="text-xs text-gray-300/70">Instance Address</div>
-                    <div class="mt-2 flex items-center gap-2">
-                      <code class="bg-black/30 border border-white/10 px-2 py-1 rounded-md font-mono text-gray-100 text-xs">
-                        {{ instance.serverName }}:{{ instance.port }}
-                      </code>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        @click="copyAddress"
-                        class="text-gray-200 hover:text-white hover:bg-white/10"
-                      >
-                        <Copy class="w-3 h-3" />
-                      </Button>
-                    </div>
-
-                    <div class="mt-3 text-xs text-gray-300/70">
-                      Players connect to the instance, not a specific world.
-                    </div>
-                  </div>
+                <div class="flex justify-between gap-4">
+                  <dt class="text-slate-400">Public</dt>
+                  <dd class="font-mono text-slate-100">{{ detail.publicPort }}</dd>
                 </div>
-              </CardContent>
-            </Card>
-
-            <!-- Vitals -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card class="bg-white/5 border border-white/10 backdrop-blur-xl shadow-xl shadow-black/30">
-                <CardHeader>
-                  <CardTitle class="text-sm text-gray-200">CPU Usage</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div class="space-y-2">
-                    <div class="flex justify-between text-sm">
-                      <span class="text-gray-300/80">Current</span>
-                      <span class="font-semibold text-white">{{ instance.vitals?.cpu || 0 }}%</span>
-                    </div>
-                    <div class="w-full bg-white/10 rounded-full h-2 overflow-hidden">
-                      <div
-                        class="bg-green-500 h-2 rounded-full transition-all shadow-[0_0_18px_rgba(34,197,94,0.35)]"
-                        :style="{ width: `${instance.vitals?.cpu || 0}%` }"
-                      />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card class="bg-white/5 border border-white/10 backdrop-blur-xl shadow-xl shadow-black/30">
-                <CardHeader>
-                  <CardTitle class="text-sm text-gray-200">Memory Usage</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div class="space-y-2">
-                    <div class="flex justify-between text-sm">
-                      <span class="text-gray-300/80">Current</span>
-                      <span class="font-semibold text-white">{{ instance.vitals?.memory || 0 }}%</span>
-                    </div>
-                    <div class="w-full bg-white/10 rounded-full h-2 overflow-hidden">
-                      <div
-                        class="bg-blue-500 h-2 rounded-full transition-all shadow-[0_0_18px_rgba(59,130,246,0.35)]"
-                        :style="{ width: `${instance.vitals?.memory || 0}%` }"
-                      />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card class="bg-white/5 border border-white/10 backdrop-blur-xl shadow-xl shadow-black/30">
-                <CardHeader>
-                  <CardTitle class="text-sm text-gray-200">Disk Usage</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div class="space-y-2">
-                    <div class="flex justify-between text-sm">
-                      <span class="text-gray-300/80">Current</span>
-                      <span class="font-semibold text-white">{{ instance.vitals?.disk || 0 }}%</span>
-                    </div>
-                    <div class="w-full bg-white/10 rounded-full h-2 overflow-hidden">
-                      <div
-                        class="bg-purple-500 h-2 rounded-full transition-all shadow-[0_0_18px_rgba(168,85,247,0.35)]"
-                        :style="{ width: `${instance.vitals?.disk || 0}%` }"
-                      />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                <div class="flex justify-between gap-4">
+                  <dt class="text-slate-400">Backend</dt>
+                  <dd class="font-mono text-slate-100">{{ detail.backendPort }}</dd>
+                </div>
+                <div class="flex justify-between gap-4">
+                  <dt class="text-slate-400">RCON</dt>
+                  <dd class="font-mono text-slate-100">{{ detail.rconPort }}</dd>
+                </div>
+              </dl>
             </div>
 
-            <!-- Server/Instance Info -->
-            <Card class="bg-white/5 border border-white/10 backdrop-blur-xl shadow-xl shadow-black/30">
-              <CardHeader>
-                <CardTitle class="text-white">Instance Profile</CardTitle>
-              </CardHeader>
-
-              <CardContent class="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
-                <div>
-                  <span class="text-gray-300/80">Environment Type:</span>
-                  <p class="font-semibold mt-2 text-white">{{ instance?.serverType }}</p>
-                </div>
-
-                <div>
-                  <span class="text-gray-300/80">Version:</span>
-                  <p class="font-semibold mt-2 text-white">{{ instance.version }}</p>
-                </div>
-
-                <div>
-                  <span class="text-gray-300/80">Memory Allocated:</span>
-                  <p class="font-semibold mt-2 text-white">{{ instance.memory }}GB</p>
-                </div>
-
-                <div>
-                  <span class="text-gray-300/80">Created:</span>
-                  <p class="font-semibold mt-2 text-white">{{ formatDate(instance.createdAt) }}</p>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <!-- Console -->
-          <TabsContent value="console" class="space-y-4 mt-4">
-            <Card class="bg-white/5 border border-white/10 backdrop-blur-xl shadow-xl shadow-black/30">
-              <CardHeader>
-                <div class="flex items-center justify-between gap-3">
-                  <div>
-                    <CardTitle class="text-white">Instance Console</CardTitle>
-                    <div class="text-xs text-gray-300/70 mt-1">
-                      Commands target the active world running inside this instance.
-                    </div>
+            <div class="rounded-md border border-white/10 bg-[#0f151d] p-4">
+              <div class="flex items-center justify-between gap-3">
+                <h2 class="font-semibold text-white">Backups</h2>
+                <button class="rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-slate-100 hover:bg-white/[0.08]" @click="backupWorld">
+                  Snapshot
+                </button>
+              </div>
+              <div class="mt-4 space-y-2">
+                <div v-for="backup in detail.backups" :key="backup.id" class="rounded-md border border-white/10 bg-black/20 p-3 text-sm">
+                  <div class="flex items-center justify-between gap-3">
+                    <span class="font-medium text-white">{{ backup.label }}</span>
+                    <span class="rounded-md px-2 py-1 text-xs" :class="backup.status === 'success' ? 'bg-emerald-400/10 text-emerald-200' : 'bg-amber-400/10 text-amber-200'">
+                      {{ backup.status }}
+                    </span>
                   </div>
-
-                  <div class="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      @click="clearLogs"
-                      class="bg-white/5 border-white/10 text-gray-100 hover:bg-white/10 hover:border-white/20"
-                    >
-                      <Trash2 class="w-3 h-3 mr-2" />
-                      Clear
-                    </Button>
-
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      @click="toggleAutoScroll"
-                      class="bg-white/5 border-white/10 text-gray-100 hover:bg-white/10 hover:border-white/20"
-                    >
-                      {{ autoScroll ? 'Disable' : 'Enable' }} Auto-scroll
-                    </Button>
+                  <div class="mt-2 flex justify-between gap-3 text-xs text-slate-400">
+                    <span>{{ formatDate(backup.createdAt) }}</span>
+                    <span>{{ backup.size }}</span>
                   </div>
                 </div>
-              </CardHeader>
+              </div>
+            </div>
+          </aside>
+        </section>
 
-              <CardContent>
-                <div
-                  ref="consoleRef"
-                  class="bg-black/40 border border-white/10 rounded-xl p-4 h-96 overflow-y-auto font-mono text-xs space-y-1 text-gray-100"
+        <section v-if="activeTab === 'console'" class="mt-6 grid gap-6 xl:grid-cols-[1fr_360px]">
+          <div class="rounded-md border border-white/10 bg-[#0f151d] p-4">
+            <div class="flex items-center justify-between gap-3">
+              <h2 class="font-semibold text-white">RCON</h2>
+              <span class="rounded-md px-2 py-1 text-xs" :class="rconReady ? 'bg-emerald-400/10 text-emerald-200' : 'bg-slate-400/10 text-slate-300'">
+                {{ rconReady ? 'Ready' : 'Unavailable' }}
+              </span>
+            </div>
+
+            <div ref="consoleRef" class="mt-4 h-[440px] overflow-auto rounded-md border border-white/10 bg-black/40 p-3 font-mono text-xs leading-6 text-slate-300">
+              <div v-for="(line, index) in latestLogs" :key="index" class="whitespace-pre-wrap">{{ line }}</div>
+            </div>
+
+            <form class="mt-4 flex gap-2" @submit.prevent="submitCommand">
+              <input
+                v-model="command"
+                class="h-11 min-w-0 flex-1 rounded-md border border-white/10 bg-black/30 px-3 font-mono text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-sky-400/50"
+                placeholder="list"
+                :disabled="!rconReady"
+              >
+              <button
+                class="inline-flex h-11 items-center gap-2 rounded-md border border-sky-400/25 bg-sky-400/10 px-4 text-sm text-sky-100 transition hover:bg-sky-400/15 disabled:cursor-not-allowed disabled:opacity-40"
+                :disabled="!command.trim() || !rconReady"
+              >
+                <Send class="h-4 w-4" />
+                Send
+              </button>
+            </form>
+          </div>
+
+          <aside class="space-y-4">
+            <div class="rounded-md border border-white/10 bg-[#0f151d] p-4">
+              <h2 class="font-semibold text-white">Commands</h2>
+              <div class="mt-3 grid gap-2">
+                <button
+                  v-for="item in detail.allowedCommands"
+                  :key="item.name"
+                  class="rounded-md border px-3 py-2 text-left hover:bg-white/[0.08]"
+                  :class="commandTone(item.risk)"
+                  :title="item.description"
+                  @click="command = commandTemplate(item)"
                 >
-                  <div
-                    v-for="(log, index) in logs"
-                    :key="index"
-                    :class="getLogClass(log)"
+                  <div class="flex items-center justify-between gap-3">
+                    <span class="font-mono text-xs text-slate-100">{{ item.name }}</span>
+                    <span class="rounded-md bg-black/20 px-2 py-0.5 text-[11px] uppercase">{{ item.risk || 'safe' }}</span>
+                  </div>
+                  <div v-if="item.description" class="mt-1 text-xs text-slate-400">{{ item.description }}</div>
+                </button>
+              </div>
+            </div>
+
+            <div class="rounded-md border border-white/10 bg-[#0f151d] p-4">
+              <h2 class="font-semibold text-white">History</h2>
+              <div class="mt-3 space-y-2">
+                <button
+                  v-for="entry in detail.commandHistory"
+                  :key="`${entry.timestamp}-${entry.command}`"
+                  class="w-full rounded-md border border-white/10 bg-black/20 p-3 text-left hover:bg-white/[0.04]"
+                  @click="command = entry.command"
+                >
+                  <div class="font-mono text-xs text-slate-100">{{ entry.command }}</div>
+                  <div class="mt-1 truncate text-xs text-slate-500">{{ entry.output }}</div>
+                </button>
+                <div v-if="!detail.commandHistory.length" class="text-sm text-slate-500">No commands yet.</div>
+              </div>
+            </div>
+          </aside>
+        </section>
+
+        <section v-if="activeTab === 'players'" class="mt-6 space-y-4">
+          <div class="flex flex-col gap-3 rounded-md border border-white/10 bg-[#0f151d] p-4 md:flex-row md:items-center md:justify-between">
+            <div class="flex min-w-0 flex-1 gap-2">
+              <input
+                v-model="playerSearch"
+                class="h-10 min-w-0 flex-1 rounded-md border border-white/10 bg-black/30 px-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-sky-400/50"
+                placeholder="Search players"
+              >
+              <input
+                v-model="newPlayerName"
+                class="h-10 w-44 rounded-md border border-white/10 bg-black/30 px-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-emerald-400/50"
+                placeholder="Player name"
+              >
+            </div>
+            <button class="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-emerald-400/25 bg-emerald-400/10 px-3 text-sm text-emerald-100 hover:bg-emerald-400/15" @click="addWhitelist">
+              <UserPlus class="h-4 w-4" />
+              Whitelist
+            </button>
+          </div>
+
+          <div class="overflow-hidden rounded-md border border-white/10 bg-[#0f151d]">
+            <div v-for="player in filteredPlayers" :key="player.uuid || player.name" class="grid gap-3 border-b border-white/10 p-4 last:border-b-0 lg:grid-cols-[1fr_auto] lg:items-center">
+              <div class="min-w-0">
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="font-semibold text-white">{{ player.name }}</span>
+                  <span v-if="player.online" class="rounded-md bg-emerald-400/10 px-2 py-1 text-xs text-emerald-200">Online</span>
+                  <span v-if="player.op" class="rounded-md bg-amber-400/10 px-2 py-1 text-xs text-amber-200">OP</span>
+                  <span v-if="player.whitelisted" class="rounded-md bg-sky-400/10 px-2 py-1 text-xs text-sky-200">Whitelist</span>
+                  <span v-if="player.banned" class="rounded-md bg-rose-400/10 px-2 py-1 text-xs text-rose-200">Banned</span>
+                </div>
+                <div class="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
+                  <span>{{ player.permission }}</span>
+                  <span v-if="player.op">Level {{ player.opLevel || 4 }}</span>
+                  <span v-if="player.bypassesPlayerLimit">Bypasses cap</span>
+                  <span>{{ player.lastSeen }}</span>
+                  <span class="font-mono">{{ player.uuid }}</span>
+                </div>
+              </div>
+
+              <div class="flex flex-wrap gap-2">
+                <select
+                  v-if="player.op"
+                  class="h-9 rounded-md border border-white/10 bg-black/30 px-2 text-sm text-slate-100 outline-none focus:border-amber-400/50"
+                  :value="player.opLevel || 4"
+                  title="OP level"
+                  @change="changeOpLevel(player, $event)"
+                >
+                  <option :value="1">OP 1</option>
+                  <option :value="2">OP 2</option>
+                  <option :value="3">OP 3</option>
+                  <option :value="4">OP 4</option>
+                </select>
+                <button v-if="player.op" class="player-btn" @click="toggleOpBypass(player)">
+                  <ShieldCheck class="h-3.5 w-3.5" />
+                  {{ player.bypassesPlayerLimit ? 'Cap On' : 'Bypass Cap' }}
+                </button>
+                <button class="player-btn" @click="runPlayerAction(player, player.op ? 'deop' : 'op')">
+                  <Crown class="h-3.5 w-3.5" />
+                  {{ player.op ? 'Deop' : 'Op' }}
+                </button>
+                <button class="player-btn" @click="toggleWhitelist(player)">
+                  <ShieldCheck class="h-3.5 w-3.5" />
+                  {{ player.whitelisted ? 'Remove' : 'Allow' }}
+                </button>
+                <button class="player-btn" :disabled="!player.online" @click="runPlayerAction(player, 'kick')">
+                  <LogOut class="h-3.5 w-3.5" />
+                  Kick
+                </button>
+                <button class="player-btn danger" @click="runPlayerAction(player, player.banned ? 'pardon' : 'ban')">
+                  <Ban class="h-3.5 w-3.5" />
+                  {{ player.banned ? 'Pardon' : 'Ban' }}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid gap-4 xl:grid-cols-2">
+            <div class="rounded-md border border-white/10 bg-[#0f151d] p-4">
+              <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <h2 class="font-semibold text-white">Player Blacklist</h2>
+                  <p class="mt-1 text-sm text-slate-400">{{ bannedPlayersList.length }} banned players</p>
+                </div>
+                <form class="flex flex-col gap-2 sm:flex-row" @submit.prevent="addPlayerBlacklist">
+                  <input
+                    v-model="newBlacklistName"
+                    class="h-10 rounded-md border border-white/10 bg-black/30 px-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-rose-400/50"
+                    placeholder="Player name"
                   >
-                    <span class="text-gray-400">[{{ log.timestamp }}]</span>
-                    <span :class="getLogLevelClass(log.level)">{{ log.level }}:</span>
-                    <span class="text-gray-100">{{ log.message }}</span>
-                  </div>
-
-                  <div v-if="logs.length === 0" class="text-gray-400 text-center py-8">
-                    No logs available. Start the instance to see console output.
-                  </div>
-                </div>
-
-                <div class="mt-4 flex gap-2">
-                  <Input
-                    v-model="command"
-                    placeholder="Enter instance command..."
-                    @keyup.enter="sendCommand"
-                    :disabled="instance.status !== 'running'"
-                    class="font-mono bg-white/5 border-white/10 text-gray-100 placeholder:text-gray-500 focus-visible:ring-green-500/30"
-                  />
-                  <Button
-                    @click="sendCommand"
-                    :disabled="!command || instance.status !== 'running'"
-                    class="bg-white/5 border border-white/10 text-gray-100 hover:bg-white/10 hover:border-white/20 disabled:opacity-60"
+                  <input
+                    v-model="blacklistReason"
+                    class="h-10 rounded-md border border-white/10 bg-black/30 px-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-rose-400/50"
+                    placeholder="Reason"
                   >
-                    <Send class="w-4 h-4" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+                  <button class="player-btn danger" :disabled="!newBlacklistName.trim()">
+                    <Ban class="h-3.5 w-3.5" />
+                    Ban
+                  </button>
+                </form>
+              </div>
 
-          <!-- Files -->
-          <TabsContent value="files" class="mt-4 space-y-4">
-            <Card class="bg-white/5 border border-white/10 backdrop-blur-xl shadow-xl shadow-black/30">
-              <CardHeader class="pb-3">
-                <div class="flex items-start justify-between gap-3">
-                  <div>
-                    <CardTitle class="text-white">Instance Files</CardTitle>
-                    <div class="text-xs text-gray-300/70 mt-1">
-                      Mock file manager for the instance environment (world folder, configs, mods, logs).
+              <div class="mt-4 space-y-2">
+                <div v-if="!bannedPlayersList.length" class="rounded-md border border-white/10 bg-black/20 p-3 text-sm text-slate-500">
+                  No banned players.
+                </div>
+                <div v-for="entry in bannedPlayersList" :key="displayBanName(entry)" class="flex flex-col gap-3 rounded-md border border-white/10 bg-black/20 p-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div class="min-w-0">
+                    <div class="font-medium text-white">{{ displayBanName(entry) }}</div>
+                    <div class="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500">
+                      <span>{{ entry.reason || 'No reason' }}</span>
+                      <span>{{ formatDate(entry.created) }}</span>
                     </div>
                   </div>
+                  <button class="player-btn" @click="removePlayerBlacklist(entry)">
+                    <ShieldCheck class="h-3.5 w-3.5" />
+                    Pardon
+                  </button>
+                </div>
+              </div>
+            </div>
 
+            <div class="rounded-md border border-white/10 bg-[#0f151d] p-4">
+              <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <h2 class="font-semibold text-white">IP Blacklist</h2>
+                  <p class="mt-1 text-sm text-slate-400">{{ bannedIpsList.length }} banned addresses</p>
+                </div>
+                <form class="flex flex-col gap-2 sm:flex-row" @submit.prevent="addIpBlacklist">
+                  <input
+                    v-model="newBlacklistIp"
+                    class="h-10 rounded-md border border-white/10 bg-black/30 px-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-rose-400/50"
+                    placeholder="IP address"
+                  >
+                  <input
+                    v-model="blacklistReason"
+                    class="h-10 rounded-md border border-white/10 bg-black/30 px-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-rose-400/50"
+                    placeholder="Reason"
+                  >
+                  <button class="player-btn danger" :disabled="!newBlacklistIp.trim()">
+                    <Ban class="h-3.5 w-3.5" />
+                    Ban
+                  </button>
+                </form>
+              </div>
+
+              <div class="mt-4 space-y-2">
+                <div v-if="!bannedIpsList.length" class="rounded-md border border-white/10 bg-black/20 p-3 text-sm text-slate-500">
+                  No banned IPs.
+                </div>
+                <div v-for="entry in bannedIpsList" :key="displayBanIp(entry)" class="flex flex-col gap-3 rounded-md border border-white/10 bg-black/20 p-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div class="min-w-0">
+                    <div class="font-mono font-medium text-white">{{ displayBanIp(entry) }}</div>
+                    <div class="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500">
+                      <span>{{ entry.reason || 'No reason' }}</span>
+                      <span>{{ formatDate(entry.created) }}</span>
+                    </div>
+                  </div>
+                  <button class="player-btn" @click="removeIpBlacklist(entry)">
+                    <ShieldCheck class="h-3.5 w-3.5" />
+                    Pardon
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section v-if="activeTab === 'mods'" class="mt-6 space-y-4">
+          <div class="flex flex-col gap-3 rounded-md border border-white/10 bg-[#0f151d] p-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 class="font-semibold text-white">Mods</h2>
+              <p class="mt-1 text-sm text-slate-400">{{ enabledMods }} enabled, {{ disabledMods }} disabled</p>
+            </div>
+            <div class="flex flex-col gap-2 sm:flex-row">
+              <input
+                ref="modUploadInput"
+                class="hidden"
+                type="file"
+                accept=".jar,application/java-archive"
+                @change="uploadSelectedMod"
+              >
+              <form class="flex min-w-0 gap-2" @submit.prevent="searchMods">
+                <input
+                  v-model="modSearch"
+                  class="h-10 w-full rounded-md border border-white/10 bg-black/30 px-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-violet-400/50 sm:w-64"
+                  placeholder="Search Modrinth"
+                >
+                <button class="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-violet-400/25 bg-violet-400/10 px-3 text-sm text-violet-100 hover:bg-violet-400/15 disabled:cursor-not-allowed disabled:opacity-40" :disabled="!modSearch.trim() || minecraft.modSearchLoading">
+                  <SearchCheck class="h-4 w-4" :class="{ 'animate-pulse': minecraft.modSearchLoading }" />
+                  Search
+                </button>
+              </form>
+              <button
+                class="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-emerald-400/25 bg-emerald-400/10 px-3 text-sm text-emerald-100 hover:bg-emerald-400/15 disabled:cursor-not-allowed disabled:opacity-40"
+                :disabled="uploadingMod"
+                @click="selectModUpload"
+              >
+                <UploadCloud class="h-4 w-4" :class="{ 'animate-pulse': uploadingMod }" />
+                Upload
+              </button>
+              <button class="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-white/10 bg-white/[0.04] px-3 text-sm text-slate-100 hover:bg-white/[0.08]" @click="checkModUpdates">
+                <RefreshCcw class="h-4 w-4" />
+                Updates
+              </button>
+              <button
+                class="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-amber-400/25 bg-amber-400/10 px-3 text-sm text-amber-100 hover:bg-amber-400/15 disabled:cursor-not-allowed disabled:opacity-40"
+                :disabled="!updateCount || updatingAllMods"
+                @click="updateAllMods"
+              >
+                <Download class="h-4 w-4" :class="{ 'animate-pulse': updatingAllMods }" />
+                Update All
+              </button>
+            </div>
+          </div>
+
+          <div v-if="modUpdateSummary" class="rounded-md border border-white/10 bg-[#0f151d] p-4">
+            <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+              <div>
+                <h3 class="font-semibold text-white">Last Bulk Update</h3>
+                <p class="mt-1 text-sm text-slate-400">{{ formatDate(modUpdateSummary.timestamp) }}</p>
+              </div>
+              <div class="flex flex-wrap gap-2 text-xs">
+                <span class="rounded-md bg-emerald-400/10 px-2 py-1 text-emerald-200">{{ modUpdateSummary.updated.length }} updated</span>
+                <span class="rounded-md bg-rose-400/10 px-2 py-1 text-rose-200">{{ modUpdateSummary.failed.length }} failed</span>
+                <span class="rounded-md bg-slate-400/10 px-2 py-1 text-slate-300">{{ modUpdateSummary.skipped.length }} current/skipped</span>
+              </div>
+            </div>
+            <div v-if="modUpdateSummary.failed.length" class="mt-3 space-y-2">
+              <div v-for="failure in modUpdateSummary.failed" :key="failure.file" class="rounded-md border border-rose-400/20 bg-rose-400/10 p-3 text-sm text-rose-100">
+                <span class="font-mono">{{ failure.file }}</span>
+                <span class="text-rose-200"> - {{ failure.message }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="modBackups.length" class="rounded-md border border-white/10 bg-[#0f151d] p-4">
+            <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+              <div>
+                <h3 class="font-semibold text-white">Mod Backups</h3>
+                <p class="mt-1 text-sm text-slate-400">{{ modBackups.length }} rollback files from previous updates</p>
+              </div>
+            </div>
+            <div class="mt-3 grid gap-2 lg:grid-cols-2">
+              <div v-for="backup in modBackups" :key="backup.id || backup.file" class="rounded-md border border-white/10 bg-black/20 p-3">
+                <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div class="min-w-0">
+                    <div class="truncate font-mono text-xs text-slate-100">{{ backup.originalFile }}</div>
+                    <div class="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500">
+                      <span>{{ backup.size }}</span>
+                      <span>{{ formatDate(backup.createdAt) }}</span>
+                    </div>
+                  </div>
                   <div class="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      class="bg-white/5 border-white/10 text-gray-100 hover:bg-white/10 hover:border-white/20"
-                      @click="mockRefreshFiles"
+                    <button class="mod-btn" @click="restoreModBackup(backup)">
+                      <RotateCw class="h-3.5 w-3.5" />
+                      Restore
+                    </button>
+                    <button class="mod-btn danger" @click="deleteModBackup(backup)">
+                      <Trash2 class="h-3.5 w-3.5" />
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="modSearchResults.length" class="grid gap-3 lg:grid-cols-2">
+            <article v-for="project in modSearchResults" :key="project.projectId || project.slug" class="rounded-md border border-violet-400/15 bg-violet-400/[0.06] p-4">
+              <div class="flex gap-3">
+                <img v-if="project.iconUrl" :src="project.iconUrl" :alt="project.title" class="h-12 w-12 rounded-md object-cover">
+                <div class="min-w-0 flex-1">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <h3 class="truncate font-semibold text-white">{{ project.title }}</h3>
+                    <span class="rounded-md bg-white/[0.06] px-2 py-1 text-xs text-slate-300">{{ project.serverSide }}</span>
+                  </div>
+                  <p class="mt-1 line-clamp-2 text-sm text-slate-400">{{ project.description }}</p>
+                  <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
+                    <span>{{ formatNumber(project.downloads) }} downloads</span>
+                    <span>{{ project.latestVersion }}</span>
+                    <a class="text-violet-200 hover:text-violet-100" :href="project.href" target="_blank" rel="noreferrer">Modrinth</a>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mt-3 flex justify-end">
+                <button class="mod-btn" :disabled="installingProjectId === (project.projectId || project.slug)" @click="installModProject(project)">
+                  <Download class="h-3.5 w-3.5" />
+                  Install
+                </button>
+              </div>
+            </article>
+          </div>
+
+          <div class="grid gap-3">
+            <article v-for="mod in detail.mods" :key="mod.file" class="rounded-md border border-white/10 bg-[#0f151d] p-4">
+              <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div class="min-w-0">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <h3 class="font-semibold text-white">{{ mod.name || mod.id }}</h3>
+                    <span class="rounded-md px-2 py-1 text-xs" :class="mod.enabled ? 'bg-emerald-400/10 text-emerald-200' : 'bg-slate-400/10 text-slate-300'">
+                      {{ mod.enabled ? 'Enabled' : 'Disabled' }}
+                    </span>
+                    <span v-if="mod.updateAvailable" class="rounded-md bg-amber-400/10 px-2 py-1 text-xs text-amber-200">Update</span>
+                    <span v-if="mod.required" class="rounded-md bg-sky-400/10 px-2 py-1 text-xs text-sky-200">Required</span>
+                    <span v-if="modRequiredDependencyCount(mod)" class="rounded-md bg-cyan-400/10 px-2 py-1 text-xs text-cyan-200">
+                      {{ modRequiredDependencyCount(mod) }} required deps
+                    </span>
+                    <span v-else-if="modDependencyCount(mod)" class="rounded-md bg-cyan-400/10 px-2 py-1 text-xs text-cyan-200">
+                      {{ modDependencyCount(mod) }} deps
+                    </span>
+                  </div>
+                  <div class="mt-1 truncate font-mono text-xs text-slate-500">{{ mod.file }}</div>
+                  <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-400">
+                    <span>{{ mod.version }}</span>
+                    <span v-if="mod.latestVersion">Latest {{ mod.latestVersion }}</span>
+                    <a v-if="mod.modrinthSlug" class="text-violet-200 hover:text-violet-100" :href="modrinthHref(mod)" target="_blank" rel="noreferrer">Modrinth</a>
+                  </div>
+                  <div v-if="modDependencies(mod).length" class="mt-3 flex flex-wrap gap-2 text-xs">
+                    <span
+                      v-for="dependency in modDependencies(mod).slice(0, 4)"
+                      :key="`${mod.file}-${dependency.projectId || dependency.versionId || dependency.fileName || dependency.type}`"
+                      class="rounded-md px-2 py-1"
+                      :class="dependencyTone(dependency.type)"
                     >
-                      <RefreshCcw class="w-4 h-4 mr-2" />
-                      Refresh
-                    </Button>
-
-                    <Button
-                      size="sm"
-                      class="bg-white/5 border border-white/10 text-gray-100 hover:bg-white/10 hover:border-white/20"
-                      @click="showMockUpload = true"
-                    >
-                      <Upload class="w-4 h-4 mr-2" />
-                      Upload
-                    </Button>
-
-                    <Button
-                      size="sm"
-                      class="bg-white/5 border border-white/10 text-gray-100 hover:bg-white/10 hover:border-white/20"
-                      @click="showMockNewFolder = true"
-                    >
-                      <Plus class="w-4 h-4 mr-2" />
-                      New Folder
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-
-              <CardContent class="space-y-4">
-                <!-- Path + search -->
-                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                  <div class="flex items-center gap-2 min-w-0">
-                    <HardDrive class="w-4 h-4 text-purple-300 shrink-0" />
-                    <code class="text-xs bg-black/30 border border-white/10 px-2 py-1 rounded-md font-mono text-gray-100 truncate">
-                      /instance/{{ instance?.name || 'unknown' }}{{ mockCwd }}
-                    </code>
-
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      class="text-gray-200 hover:text-white hover:bg-white/10"
-                      :disabled="mockCwd === '/'"
-                      @click="mockGoUp"
-                    >
-                      Up
-                    </Button>
-                  </div>
-
-                  <div class="flex items-center gap-2">
-                    <div class="relative">
-                      <Search class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                      <Input
-                        v-model="mockFileSearch"
-                        placeholder="Search files..."
-                        class="pl-9 bg-white/5 border-white/10 text-gray-100 placeholder:text-gray-500 w-64"
-                      />
-                    </div>
-
-                    <Select v-model="mockFileScope">
-                      <SelectTrigger class="w-40 bg-white/5 border-white/10 text-gray-100">
-                        <SelectValue placeholder="Scope" />
-                      </SelectTrigger>
-                      <SelectContent class="bg-[#070914]/95 border border-white/10 text-gray-100">
-                        <SelectItem value="all">All</SelectItem>
-                        <SelectItem value="world">World</SelectItem>
-                        <SelectItem value="configs">Configs</SelectItem>
-                        <SelectItem value="mods">Mods</SelectItem>
-                        <SelectItem value="logs">Logs</SelectItem>
-                      </SelectContent>
-                    </Select>
+                      {{ dependencyLabel(dependency) }} - {{ dependency.type }}
+                    </span>
+                    <span v-if="modDependencies(mod).length > 4" class="rounded-md bg-white/[0.06] px-2 py-1 text-slate-300">
+                      +{{ modDependencies(mod).length - 4 }} more
+                    </span>
                   </div>
                 </div>
 
-                <!-- Split: tree + details -->
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                  <!-- File list -->
-                  <div class="lg:col-span-2 bg-black/20 border border-white/10 rounded-xl overflow-hidden">
-                    <div class="px-4 py-3 border-b border-white/10 flex items-center justify-between">
-                      <div class="text-sm text-gray-200 font-semibold">Directory</div>
-                      <div class="text-xs text-gray-300/70">{{ mockFilteredFiles.length }} items</div>
-                    </div>
+                <div class="flex flex-wrap gap-2">
+                  <button
+                    v-if="mod.updateAvailable"
+                    class="mod-btn"
+                    @click="updateMod(mod)"
+                  >
+                    <Download class="h-3.5 w-3.5" />
+                    Update
+                  </button>
+                  <button class="mod-btn" :disabled="mod.required && mod.enabled" @click="toggleMod(mod)">
+                    <Power class="h-3.5 w-3.5" />
+                    {{ mod.enabled ? 'Disable' : 'Enable' }}
+                  </button>
+                </div>
+              </div>
+            </article>
+          </div>
+        </section>
 
-                    <div class="divide-y divide-white/5">
-                      <button
-                        v-for="f in mockFilteredFiles"
-                        :key="f.path"
-                        class="w-full text-left px-4 py-3 hover:bg-white/5 transition flex items-center justify-between gap-3"
-                        :class="mockSelectedFile?.path === f.path ? 'bg-white/5' : ''"
-                        @click="mockSelectFile(f)"
-                        @dblclick="f.type === 'folder' ? mockEnterFolder(f) : null"
-                      >
-                        <div class="flex items-center gap-3 min-w-0">
-                          <component
-                            :is="mockFileIcon(f)"
-                            class="w-5 h-5 shrink-0"
-                            :class="f.type === 'folder' ? 'text-blue-300' : 'text-gray-300/80'"
-                          />
-                          <div class="min-w-0">
-                            <div class="text-sm text-white truncate">
-                              {{ f.name }}
-                            </div>
-                            <div class="text-xs text-gray-300/70 truncate">
-                              {{ f.type === 'folder' ? 'Folder' : f.mime }} • {{ f.scope }}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div class="flex items-center gap-3 shrink-0">
-                          <div class="text-xs text-gray-300/70 hidden sm:block">
-                            {{ f.type === 'folder' ? '-' : f.size }}
-                          </div>
-
-                          <div class="flex items-center gap-1">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              class="text-gray-200 hover:text-white hover:bg-white/10"
-                              @click.stop="mockPreviewFile(f)"
-                              :disabled="f.type === 'folder'"
-                            >
-                              <Eye class="w-4 h-4" />
-                            </Button>
-
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              class="text-gray-200 hover:text-white hover:bg-white/10"
-                              @click.stop="mockDownloadFile(f)"
-                              :disabled="f.type === 'folder'"
-                            >
-                              <Download class="w-4 h-4" />
-                            </Button>
-
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              class="text-gray-200 hover:text-white hover:bg-white/10"
-                              @click.stop="mockRenameFile(f)"
-                            >
-                              <Pencil class="w-4 h-4" />
-                            </Button>
-
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              class="text-red-300 hover:text-red-200 hover:bg-red-500/10"
-                              @click.stop="mockDeleteFile(f)"
-                            >
-                              <Trash class="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </button>
-                    </div>
+        <section v-if="activeTab === 'worlds'" class="mt-6 grid gap-6 lg:grid-cols-[1fr_360px]">
+          <div class="space-y-3">
+            <article v-for="world in detail.worlds" :key="world.id" class="rounded-md border border-white/10 bg-[#0f151d] p-4">
+              <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <h3 class="font-semibold text-white">{{ world.name }}</h3>
+                    <span v-if="world.active" class="rounded-md bg-emerald-400/10 px-2 py-1 text-xs text-emerald-200">Active</span>
+                    <span v-if="world.hasDatapacks" class="rounded-md bg-sky-400/10 px-2 py-1 text-xs text-sky-200">Datapacks</span>
                   </div>
+                  <div class="mt-1 font-mono text-xs text-slate-500">{{ world.path }}</div>
+                  <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-400">
+                    <span>{{ world.size }}</span>
+                    <span>{{ formatDate(world.updatedAt) }}</span>
+                  </div>
+                </div>
 
-                  <!-- Details panel -->
-                  <div class="bg-black/20 border border-white/10 rounded-xl overflow-hidden">
-                    <div class="px-4 py-3 border-b border-white/10">
-                      <div class="text-sm text-white font-semibold">Selection</div>
-                      <div class="text-xs text-gray-300/70">Metadata + actions</div>
+                <div class="flex flex-wrap gap-2">
+                  <button
+                    class="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-white/10 bg-white/[0.04] px-3 text-sm text-slate-100 hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-40"
+                    :disabled="downloadingArchiveId === `world:${world.id}`"
+                    @click="downloadWorld(world)"
+                  >
+                    <Download class="h-4 w-4" :class="{ 'animate-pulse': downloadingArchiveId === `world:${world.id}` }" />
+                    Download
+                  </button>
+                  <button
+                    class="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-white/10 bg-white/[0.04] px-3 text-sm text-slate-100 hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-40"
+                    :disabled="world.active"
+                    @click="switchWorld(world)"
+                  >
+                    <Shuffle class="h-4 w-4" />
+                    Switch
+                  </button>
+                  <button
+                    class="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-rose-400/25 bg-rose-400/10 px-3 text-sm text-rose-100 hover:bg-rose-400/15 disabled:cursor-not-allowed disabled:opacity-40"
+                    :disabled="world.active"
+                    @click="deleteWorld(world)"
+                  >
+                    <Trash2 class="h-4 w-4" />
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </article>
+          </div>
+
+          <aside class="space-y-4">
+            <div class="rounded-md border border-white/10 bg-[#0f151d] p-4">
+              <h2 class="font-semibold text-white">New World</h2>
+              <div class="mt-4 space-y-3">
+                <input
+                  v-model="newWorldName"
+                  class="h-10 w-full rounded-md border border-white/10 bg-black/30 px-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-emerald-400/50"
+                  placeholder="World name"
+                >
+                <button class="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md border border-emerald-400/25 bg-emerald-400/10 px-3 text-sm text-emerald-100 hover:bg-emerald-400/15 disabled:cursor-not-allowed disabled:opacity-40" :disabled="!newWorldName.trim()" @click="createWorld">
+                  <Plus class="h-4 w-4" />
+                  Create
+                </button>
+                <button class="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md border border-white/10 bg-white/[0.04] px-3 text-sm text-slate-100 hover:bg-white/[0.08]" @click="backupWorld">
+                  <DatabaseBackup class="h-4 w-4" />
+                  Snapshot Active
+                </button>
+              </div>
+            </div>
+
+            <div class="rounded-md border border-white/10 bg-[#0f151d] p-4">
+              <h2 class="font-semibold text-white">Backups</h2>
+              <div class="mt-4 space-y-2">
+                <div v-if="!detail.backups.length" class="rounded-md border border-white/10 bg-black/20 p-3 text-sm text-slate-500">
+                  No backups found.
+                </div>
+                <div v-for="backup in detail.backups" :key="backup.id" class="rounded-md border border-white/10 bg-black/20 p-3">
+                  <div class="flex items-center justify-between gap-3">
+                    <span class="truncate text-sm font-medium text-white">{{ backup.label || backup.id }}</span>
+                    <span class="rounded-md px-2 py-1 text-xs" :class="backup.status === 'success' ? 'bg-emerald-400/10 text-emerald-200' : 'bg-amber-400/10 text-amber-200'">
+                      {{ backup.status }}
+                    </span>
+                  </div>
+                  <div class="mt-2 flex justify-between gap-3 text-xs text-slate-500">
+                    <span>{{ formatDate(backup.createdAt) }}</span>
+                    <span>{{ backup.size }}</span>
+                  </div>
+                  <div class="mt-3 flex flex-wrap gap-2">
+                    <button class="player-btn" :disabled="downloadingArchiveId === `backup:${backup.id}`" @click="downloadBackup(backup)">
+                      <Download class="h-3.5 w-3.5" :class="{ 'animate-pulse': downloadingArchiveId === `backup:${backup.id}` }" />
+                      Download
+                    </button>
+                    <button class="player-btn" @click="restoreBackup(backup)">
+                      <RotateCw class="h-3.5 w-3.5" />
+                      Restore
+                    </button>
+                    <button class="player-btn danger" @click="deleteBackup(backup)">
+                      <Trash2 class="h-3.5 w-3.5" />
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </aside>
+        </section>
+
+        <section v-if="activeTab === 'logs'" class="mt-6 rounded-md border border-white/10 bg-[#0f151d] p-4">
+          <div class="flex flex-col gap-4">
+            <div class="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+              <div>
+                <h2 class="font-semibold text-white">Log Explorer</h2>
+                <p class="mt-1 text-sm text-slate-400">{{ selectedLogFile }} &middot; {{ filteredLogs.length }} lines</p>
+              </div>
+
+              <div class="grid gap-2 md:grid-cols-[220px_120px_1fr_auto_auto]">
+                <select v-model="selectedLogFile" class="setting-input">
+                  <option v-for="file in logFiles" :key="file.id || file.name" :value="file.name">
+                    {{ file.name }}
+                  </option>
+                </select>
+                <input
+                  v-model.number="logTail"
+                  class="setting-input"
+                  type="number"
+                  min="1"
+                  max="2000"
+                  title="Tail lines"
+                >
+                <input
+                  v-model="logSearch"
+                  class="setting-input"
+                  placeholder="Search logs"
+                >
+                <button class="settings-btn" :disabled="loadingExplorerLogs" @click="loadLogExplorer">
+                  <SearchCheck class="h-4 w-4" :class="{ 'animate-pulse': loadingExplorerLogs }" />
+                  Load
+                </button>
+                <button class="settings-btn" :disabled="exportingLogs" @click="exportLogFile">
+                  <Download class="h-4 w-4" :class="{ 'animate-pulse': exportingLogs }" />
+                  Export
+                </button>
+              </div>
+            </div>
+
+            <div class="flex gap-2 overflow-x-auto">
+              <button
+                v-for="file in logFiles"
+                :key="file.id || file.name"
+                class="shrink-0 rounded-md border px-3 py-2 text-left text-xs transition"
+                :class="selectedLogFile === file.name ? 'border-sky-400/30 bg-sky-400/10 text-sky-100' : 'border-white/10 bg-black/20 text-slate-400 hover:bg-white/[0.04]'"
+                @click="selectLogFile(file)"
+              >
+                <span class="block font-mono text-slate-100">{{ file.name }}</span>
+                <span class="mt-1 block">{{ file.size }} &middot; {{ formatDate(file.updatedAt) }}</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="mt-4 h-[620px] overflow-auto rounded-md border border-white/10 bg-black/40 p-3 font-mono text-xs leading-6 text-slate-300">
+            <div v-if="!filteredLogs.length" class="text-slate-500">No log lines matched.</div>
+            <div v-for="(line, index) in filteredLogs" :key="index" class="whitespace-pre-wrap" :class="logClass(line)">{{ line }}</div>
+          </div>
+        </section>
+
+        <section v-if="activeTab === 'activity'" class="mt-6 grid gap-6 lg:grid-cols-[1fr_360px]">
+          <div class="rounded-md border border-white/10 bg-[#0f151d] p-4">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <h2 class="font-semibold text-white">Activity</h2>
+                <p class="mt-1 text-sm text-slate-400">{{ activityItems.length }} recent panel actions</p>
+              </div>
+              <History class="h-4 w-4 text-slate-400" />
+            </div>
+
+            <div class="mt-4 space-y-2">
+              <div v-if="!activityItems.length" class="rounded-md border border-white/10 bg-black/20 p-3 text-sm text-slate-500">
+                No panel activity recorded yet.
+              </div>
+              <div v-for="entry in activityItems" :key="entry.id" class="rounded-md border border-white/10 bg-black/20 p-3">
+                <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <div class="min-w-0">
+                    <div class="flex flex-wrap items-center gap-2">
+                      <span class="font-medium text-white">{{ entry.label }}</span>
+                      <span class="rounded-md px-2 py-1 text-xs" :class="activityPill(entry)">
+                        {{ entry.status }}
+                      </span>
+                      <span v-if="entry.restartRequired" class="rounded-md bg-amber-400/10 px-2 py-1 text-xs text-amber-200">Restart</span>
+                      <span v-if="entry.clearsRestart" class="rounded-md bg-emerald-400/10 px-2 py-1 text-xs text-emerald-200">Applied</span>
                     </div>
-
-                    <div class="p-4 space-y-4">
-                      <div v-if="!mockSelectedFile" class="text-sm text-gray-300/80">
-                        Select a file or folder to see details.
-                      </div>
-
-                      <div v-else class="space-y-3">
-                        <div class="flex items-start gap-3">
-                          <component :is="mockFileIcon(mockSelectedFile)" class="w-6 h-6 text-gray-200 shrink-0" />
-                          <div class="min-w-0">
-                            <div class="text-white font-semibold truncate">{{ mockSelectedFile.name }}</div>
-                            <div class="text-xs text-gray-300/70 truncate">{{ mockSelectedFile.path }}</div>
-                          </div>
-                        </div>
-
-                        <Separator class="bg-white/10" />
-
-                        <div class="space-y-2 text-sm">
-                          <div class="flex justify-between text-gray-300/80">
-                            <span>Type</span>
-                            <span class="text-white">{{ mockSelectedFile.type }}</span>
-                          </div>
-                          <div class="flex justify-between text-gray-300/80">
-                            <span>Scope</span>
-                            <span class="text-white">{{ mockSelectedFile.scope }}</span>
-                          </div>
-                          <div class="flex justify-between text-gray-300/80" v-if="mockSelectedFile.type !== 'folder'">
-                            <span>Size</span>
-                            <span class="text-white">{{ mockSelectedFile.size }}</span>
-                          </div>
-                          <div class="flex justify-between text-gray-300/80">
-                            <span>Updated</span>
-                            <span class="text-white">{{ mockSelectedFile.updated }}</span>
-                          </div>
-                        </div>
-
-                        <Separator class="bg-white/10" />
-
-                        <div class="grid grid-cols-2 gap-2">
-                          <Button
-                            variant="outline"
-                            class="bg-white/5 border-white/10 text-gray-100 hover:bg-white/10 hover:border-white/20"
-                            @click="mockPreviewFile(mockSelectedFile)"
-                            :disabled="mockSelectedFile.type === 'folder'"
-                          >
-                            <Eye class="w-4 h-4 mr-2" />
-                            Preview
-                          </Button>
-                          <Button
-                            variant="outline"
-                            class="bg-white/5 border-white/10 text-gray-100 hover:bg-white/10 hover:border-white/20"
-                            @click="mockDownloadFile(mockSelectedFile)"
-                            :disabled="mockSelectedFile.type === 'folder'"
-                          >
-                            <Download class="w-4 h-4 mr-2" />
-                            Download
-                          </Button>
-                          <Button
-                            variant="outline"
-                            class="bg-white/5 border-white/10 text-gray-100 hover:bg-white/10 hover:border-white/20"
-                            @click="mockRenameFile(mockSelectedFile)"
-                          >
-                            <Pencil class="w-4 h-4 mr-2" />
-                            Rename
-                          </Button>
-                          <Button
-                            variant="outline"
-                            class="bg-red-600/30 border-red-500/30 text-red-100 hover:bg-red-500/25 hover:border-red-400/40"
-                            @click="mockDeleteFile(mockSelectedFile)"
-                          >
-                            <Trash class="w-4 h-4 mr-2" />
-                            Delete
-                          </Button>
-                        </div>
-
-                        <div class="text-xs text-gray-300/70">
-                          Future: permissions, server-side zip, log streaming, bulk operations.
-                        </div>
-                      </div>
+                    <div class="mt-1 text-sm text-slate-300">{{ entry.summary }}</div>
+                    <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
+                      <span>{{ formatDate(entry.timestamp) }}</span>
+                      <span>{{ entry.actor }}</span>
+                      <span v-if="entry.target" class="font-mono">{{ entry.target }}</span>
                     </div>
                   </div>
-                </div>
-
-                <!-- Mock Preview Drawer -->
-                <div v-if="showMockPreview" class="bg-black/20 border border-white/10 rounded-xl overflow-hidden">
-                  <div class="px-4 py-3 border-b border-white/10 flex items-center justify-between">
-                    <div class="text-sm text-white font-semibold">Preview</div>
-                    <Button variant="ghost" class="text-gray-200 hover:bg-white/10" @click="showMockPreview = false">
-                      Close
-                    </Button>
-                  </div>
-
-                  <div class="p-4">
-                    <pre class="bg-black/40 border border-white/10 rounded-xl p-4 text-xs text-gray-100 overflow-auto max-h-72">
-                      {{ mockPreviewText }}
-                    </pre>
+                  <div class="shrink-0 rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 font-mono text-xs text-slate-400">
+                    {{ entry.type }}
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
+          </div>
 
-            <!-- Upload Dialog (mock) -->
-            <Dialog v-model:open="showMockUpload">
-              <DialogContent class="bg-[#070914]/95 text-gray-100 border border-white/10 shadow-2xl backdrop-blur-xl">
-                <div class="space-y-3">
-                  <div class="text-lg font-semibold text-white">Upload Files (Mock)</div>
-                  <div class="text-sm text-gray-300/80">
-                    Later this will upload via agent/API. For now this is just the vision.
-                  </div>
-                  <div class="bg-black/20 border border-white/10 rounded-xl p-4 text-sm text-gray-300/80">
-                    Drop zone goes here • Choose destination folder • Progress bars • Cancel
-                  </div>
-                  <div class="flex justify-end gap-2">
-                    <Button variant="outline" class="bg-white/5 border-white/10 text-gray-100 hover:bg-white/10 hover:border-white/20" @click="showMockUpload = false">
-                      Close
-                    </Button>
-                  </div>
+          <aside class="space-y-4">
+            <div class="rounded-md border border-white/10 bg-[#0f151d] p-4">
+              <h2 class="font-semibold text-white">Pending Restart</h2>
+              <div class="mt-4 space-y-2">
+                <div v-if="!pendingRestartReasons.length" class="rounded-md border border-emerald-400/20 bg-emerald-400/10 p-3 text-sm text-emerald-100">
+                  No unapplied server changes.
                 </div>
-              </DialogContent>
-            </Dialog>
-
-            <!-- New Folder Dialog (mock) -->
-            <Dialog v-model:open="showMockNewFolder">
-              <DialogContent class="bg-[#070914]/95 text-gray-100 border border-white/10 shadow-2xl backdrop-blur-xl">
-                <div class="space-y-3">
-                  <div class="text-lg font-semibold text-white">New Folder (Mock)</div>
-                  <div class="text-sm text-gray-300/80">Creates a folder in the current directory.</div>
-                  <div class="flex items-center gap-2">
-                    <Input v-model="mockNewFolderName" placeholder="Folder name..." class="bg-white/5 border-white/10 text-gray-100 placeholder:text-gray-500" />
-                    <Button class="bg-white/5 border border-white/10 text-gray-100 hover:bg-white/10 hover:border-white/20" @click="mockCreateFolder">
-                      Create
-                    </Button>
-                  </div>
-                  <div class="flex justify-end">
-                    <Button variant="outline" class="bg-white/5 border-white/10 text-gray-100 hover:bg-white/10 hover:border-white/20" @click="showMockNewFolder = false">
-                      Close
-                    </Button>
-                  </div>
+                <div v-for="entry in pendingRestartReasons" :key="entry.id" class="rounded-md border border-amber-400/20 bg-amber-400/10 p-3">
+                  <div class="text-sm font-medium text-amber-50">{{ entry.summary }}</div>
+                  <div class="mt-1 text-xs text-amber-100/70">{{ formatDate(entry.timestamp) }}</div>
                 </div>
-              </DialogContent>
-            </Dialog>
-          </TabsContent>
+              </div>
+              <button
+                class="settings-btn primary mt-4 w-full"
+                :disabled="!pendingRestartReasons.length || (!canRestart(detail) && !canWake(detail))"
+                @click="applyPendingRestart"
+              >
+                <RotateCw class="h-4 w-4" />
+                {{ canWake(detail) ? 'Wake to apply' : 'Restart to apply' }}
+              </button>
+            </div>
+          </aside>
+        </section>
 
-          <!-- Players -->
-          <TabsContent value="players" class="mt-4 space-y-4">
-            <Card class="bg-white/5 border border-white/10 backdrop-blur-xl shadow-xl shadow-black/30">
-              <CardHeader class="pb-3">
-                <div class="flex items-start justify-between gap-3">
-                  <div>
-                    <CardTitle class="text-white">Player Set</CardTitle>
-                    <div class="text-xs text-gray-300/70 mt-1">
-                      Mock instance-level player controls (whitelist, ops, bans, roles, notes).
+        <section v-if="activeTab === 'settings'" class="mt-6 grid gap-6 xl:grid-cols-[1fr_360px]">
+          <form class="rounded-md border border-white/10 bg-[#0f151d] p-4" @submit.prevent="saveSettings">
+            <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <h2 class="font-semibold text-white">Access & Gameplay</h2>
+              <div class="flex gap-2">
+                <button type="button" class="settings-btn" :disabled="!settingsChanged || savingSettings" @click="resetSettingsDraft">
+                  <RefreshCcw class="h-4 w-4" />
+                  Reset
+                </button>
+                <button type="submit" class="settings-btn primary" :disabled="!settingsChanged || savingSettings">
+                  <Save class="h-4 w-4" :class="{ 'animate-pulse': savingSettings }" />
+                  Save
+                </button>
+              </div>
+            </div>
+
+            <div class="mt-5 grid gap-4 md:grid-cols-2">
+              <label class="settings-toggle">
+                <input v-model="settingsDraft['white-list']" type="checkbox">
+                <span>
+                  <span class="block font-medium text-white">Whitelist</span>
+                  <span class="text-xs text-slate-500">white-list</span>
+                </span>
+              </label>
+
+              <label class="settings-toggle">
+                <input v-model="settingsDraft['enforce-whitelist']" type="checkbox">
+                <span>
+                  <span class="block font-medium text-white">Enforce whitelist</span>
+                  <span class="text-xs text-slate-500">enforce-whitelist</span>
+                </span>
+              </label>
+
+              <label class="settings-toggle">
+                <input v-model="settingsDraft.pvp" type="checkbox">
+                <span>
+                  <span class="block font-medium text-white">PvP</span>
+                  <span class="text-xs text-slate-500">pvp</span>
+                </span>
+              </label>
+
+              <label class="grid gap-2">
+                <span class="text-sm text-slate-400">Difficulty</span>
+                <select v-model="settingsDraft.difficulty" class="setting-input">
+                  <option value="peaceful">Peaceful</option>
+                  <option value="easy">Easy</option>
+                  <option value="normal">Normal</option>
+                  <option value="hard">Hard</option>
+                </select>
+              </label>
+
+              <label class="grid gap-2">
+                <span class="text-sm text-slate-400">Max players</span>
+                <input v-model.number="settingsDraft['max-players']" class="setting-input" type="number" min="1" max="100">
+              </label>
+
+              <label class="grid gap-2">
+                <span class="text-sm text-slate-400">View distance</span>
+                <input v-model.number="settingsDraft['view-distance']" class="setting-input" type="number" min="2" max="32">
+              </label>
+
+              <label class="grid gap-2">
+                <span class="text-sm text-slate-400">Simulation distance</span>
+                <input v-model.number="settingsDraft['simulation-distance']" class="setting-input" type="number" min="2" max="32">
+              </label>
+
+              <label class="grid gap-2 md:col-span-2">
+                <span class="text-sm text-slate-400">MOTD</span>
+                <input v-model="settingsDraft.motd" class="setting-input" maxlength="120">
+              </label>
+            </div>
+          </form>
+
+          <aside class="space-y-6">
+            <div class="rounded-md border border-white/10 bg-[#0f151d] p-4">
+              <h2 class="font-semibold text-white">Paths</h2>
+              <dl class="mt-4 space-y-3 text-sm">
+                <div class="flex justify-between gap-4">
+                  <dt class="text-slate-400">Root</dt>
+                  <dd class="text-right font-mono text-slate-100">{{ detail.root }}</dd>
+                </div>
+                <div class="flex justify-between gap-4">
+                  <dt class="text-slate-400">Logs</dt>
+                  <dd class="text-right font-mono text-slate-100">{{ detail.root }}/logs/latest.log</dd>
+                </div>
+                <div class="flex justify-between gap-4">
+                  <dt class="text-slate-400">Mods</dt>
+                  <dd class="text-right font-mono text-slate-100">{{ detail.root }}/mods</dd>
+                </div>
+                <div class="flex justify-between gap-4">
+                  <dt class="text-slate-400">Backups</dt>
+                  <dd class="text-right font-mono text-slate-100">/mnt/storage-1/minecraft/backups/snapshots/{{ serverId }}</dd>
+                </div>
+              </dl>
+            </div>
+
+            <div class="rounded-md border border-white/10 bg-[#0f151d] p-4">
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <h2 class="font-semibold text-white">Integration Checks</h2>
+                  <p class="mt-1 text-sm text-slate-400">{{ diagnosticsStatusLabel }}</p>
+                </div>
+                <button class="settings-btn" :disabled="refreshingDiagnostics" @click="refreshDiagnostics">
+                  <RefreshCcw class="h-4 w-4" :class="{ 'animate-spin': refreshingDiagnostics }" />
+                  Check
+                </button>
+              </div>
+
+              <div class="mt-4 flex flex-wrap gap-2 text-xs">
+                <span class="rounded-md bg-emerald-400/10 px-2 py-1 text-emerald-200">{{ diagnosticsSummary.pass || 0 }} pass</span>
+                <span class="rounded-md bg-amber-400/10 px-2 py-1 text-amber-200">{{ diagnosticsSummary.warning || 0 }} warn</span>
+                <span class="rounded-md bg-rose-400/10 px-2 py-1 text-rose-200">{{ diagnosticsSummary.error || 0 }} error</span>
+                <span class="rounded-md bg-slate-400/10 px-2 py-1 text-slate-300">{{ diagnosticsSummary.info || 0 }} info</span>
+              </div>
+
+              <div class="mt-4 max-h-[420px] space-y-2 overflow-auto">
+                <div v-if="!diagnosticChecks.length" class="rounded-md border border-white/10 bg-black/20 p-3 text-sm text-slate-500">
+                  Checks have not loaded yet.
+                </div>
+                <div v-for="check in diagnosticChecks" :key="check.id" class="rounded-md border border-white/10 bg-black/20 p-3">
+                  <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                      <div class="font-medium text-white">{{ check.label }}</div>
+                      <div class="mt-1 text-xs text-slate-400">{{ check.message }}</div>
+                      <div v-if="check.path" class="mt-1 truncate font-mono text-xs text-slate-600">{{ check.path }}</div>
                     </div>
-                  </div>
-
-                  <div class="flex gap-2">
-                    <Button
-                      size="sm"
-                      class="bg-white/5 border border-white/10 text-gray-100 hover:bg-white/10 hover:border-white/20"
-                      @click="showMockAddPlayer = true"
-                    >
-                      <UserPlus class="w-4 h-4 mr-2" />
-                      Add Player
-                    </Button>
-
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      class="bg-white/5 border-white/10 text-gray-100 hover:bg-white/10 hover:border-white/20"
-                      @click="mockRefreshPlayers"
-                    >
-                      <RefreshCcw class="w-4 h-4 mr-2" />
-                      Refresh
-                    </Button>
+                    <span class="shrink-0 rounded-md px-2 py-1 text-xs" :class="diagnosticTone(check.status)">
+                      {{ check.status }}
+                    </span>
                   </div>
                 </div>
-              </CardHeader>
+              </div>
+            </div>
 
-              <CardContent class="space-y-4">
-                <!-- Filters -->
-                <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
-                  <div class="flex items-center gap-2">
-                    <div class="relative">
-                      <Search class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                      <Input
-                        v-model="mockPlayerSearch"
-                        placeholder="Search players..."
-                        class="pl-9 bg-white/5 border-white/10 text-gray-100 placeholder:text-gray-500 w-72"
-                      />
-                    </div>
-
-                    <Select v-model="mockPlayerFilter">
-                      <SelectTrigger class="w-44 bg-white/5 border-white/10 text-gray-100">
-                        <SelectValue placeholder="Filter" />
-                      </SelectTrigger>
-                      <SelectContent class="bg-[#070914]/95 border border-white/10 text-gray-100">
-                        <SelectItem value="all">All</SelectItem>
-                        <SelectItem value="online">Online</SelectItem>
-                        <SelectItem value="whitelisted">Whitelisted</SelectItem>
-                        <SelectItem value="ops">Operators</SelectItem>
-                        <SelectItem value="banned">Banned</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div class="flex items-center gap-4 text-xs text-gray-300/70">
-                    <div class="flex items-center gap-2">
-                      <div class="w-2.5 h-2.5 rounded-full bg-green-400 shadow-[0_0_18px_rgba(34,197,94,0.35)]" />
-                      Online: {{ mockPlayers.filter(p => p.online).length }}
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <div class="w-2.5 h-2.5 rounded-full bg-blue-400 shadow-[0_0_18px_rgba(59,130,246,0.35)]" />
-                      Whitelisted: {{ mockPlayers.filter(p => p.whitelisted).length }}
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <div class="w-2.5 h-2.5 rounded-full bg-red-400 shadow-[0_0_18px_rgba(239,68,68,0.35)]" />
-                      Banned: {{ mockPlayers.filter(p => p.banned).length }}
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Table -->
-                <div class="bg-black/20 border border-white/10 rounded-xl overflow-hidden">
-                  <div class="px-4 py-3 border-b border-white/10 flex items-center justify-between">
-                    <div class="text-sm font-semibold text-white">Players</div>
-                    <div class="text-xs text-gray-300/70">{{ mockFilteredPlayers.length }} records</div>
-                  </div>
-
-                  <div class="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow class="border-white/10">
-                          <TableHead class="text-gray-300/80">Player</TableHead>
-                          <TableHead class="text-gray-300/80">Status</TableHead>
-                          <TableHead class="text-gray-300/80">Access</TableHead>
-                          <TableHead class="text-gray-300/80">Role</TableHead>
-                          <TableHead class="text-gray-300/80">Last Seen</TableHead>
-                          <TableHead class="text-gray-300/80 text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-
-                      <TableBody>
-                        <TableRow
-                          v-for="p in mockFilteredPlayers"
-                          :key="p.id"
-                          class="border-white/5 hover:bg-white/5"
-                        >
-                          <TableCell class="text-white">
-                            <div class="flex items-center gap-3">
-                              <div class="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-sm font-semibold text-gray-100">
-                                {{ p.name.slice(0, 2).toUpperCase() }}
-                              </div>
-                              <div>
-                                <div class="font-semibold">{{ p.name }}</div>
-                                <div class="text-xs text-gray-300/70 font-mono">uuid: {{ p.uuid }}</div>
-                              </div>
-                            </div>
-                          </TableCell>
-
-                          <TableCell>
-                            <div class="inline-flex items-center gap-2">
-                              <span
-                                class="w-2.5 h-2.5 rounded-full"
-                                :class="p.online ? 'bg-green-400 shadow-[0_0_18px_rgba(34,197,94,0.35)]' : 'bg-gray-500'"
-                              />
-                              <span class="text-sm text-gray-100">{{ p.online ? 'Online' : 'Offline' }}</span>
-                            </div>
-                          </TableCell>
-
-                          <TableCell>
-                            <div class="flex flex-wrap gap-2">
-                              <Badge
-                                v-if="p.whitelisted"
-                                class="bg-blue-500/20 text-blue-100 border border-blue-400/30"
-                              >
-                                Whitelisted
-                              </Badge>
-                              <Badge
-                                v-if="p.op"
-                                class="bg-purple-500/20 text-purple-100 border border-purple-400/30"
-                              >
-                                OP
-                              </Badge>
-                              <Badge
-                                v-if="p.banned"
-                                class="bg-red-500/20 text-red-100 border border-red-400/30"
-                              >
-                                Banned
-                              </Badge>
-                              <Badge
-                                v-if="!p.whitelisted && !p.banned"
-                                class="bg-white/5 text-gray-200 border border-white/10"
-                              >
-                                Default
-                              </Badge>
-                            </div>
-                          </TableCell>
-
-                          <TableCell class="text-gray-100">
-                            <div class="flex items-center gap-2">
-                              <component
-                                :is="p.role === 'Owner' ? Crown : (p.role === 'Admin' ? Shield : ScrollText)"
-                                class="w-4 h-4 text-gray-300/80"
-                              />
-                              <span>{{ p.role }}</span>
-                            </div>
-                          </TableCell>
-
-                          <TableCell class="text-gray-300/80">{{ p.lastSeen }}</TableCell>
-
-                          <TableCell class="text-right">
-                            <div class="inline-flex items-center gap-1">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                class="text-gray-200 hover:text-white hover:bg-white/10"
-                                @click="mockOpenPlayer(p)"
-                              >
-                                <Eye class="w-4 h-4" />
-                              </Button>
-
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                class="text-blue-200 hover:text-blue-100 hover:bg-blue-500/10"
-                                @click="mockToggleWhitelist(p)"
-                              >
-                                <KeyRound class="w-4 h-4" />
-                              </Button>
-
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                class="text-purple-200 hover:text-purple-100 hover:bg-purple-500/10"
-                                @click="mockToggleOp(p)"
-                              >
-                                <Crown class="w-4 h-4" />
-                              </Button>
-
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                class="text-red-300 hover:text-red-200 hover:bg-red-500/10"
-                                @click="mockToggleBan(p)"
-                              >
-                                <Ban class="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-
-                        <TableRow v-if="mockFilteredPlayers.length === 0" class="border-white/5">
-                          <TableCell colspan="6" class="text-center py-10 text-gray-300/70">
-                            No players match your filters.
-                          </TableCell>
-                        </TableRow>
-                      </TableBody>
-                    </Table>
-                  </div>
-                </div>
-
-                <!-- Player detail (mock) -->
-                <div v-if="mockSelectedPlayer" class="bg-black/20 border border-white/10 rounded-xl overflow-hidden">
-                  <div class="px-4 py-3 border-b border-white/10 flex items-center justify-between">
-                    <div>
-                      <div class="text-sm font-semibold text-white">Player Profile</div>
-                      <div class="text-xs text-gray-300/70">Mock view — instance-level identity and permissions</div>
-                    </div>
-                    <Button variant="ghost" class="text-gray-200 hover:bg-white/10" @click="mockSelectedPlayer = null">
-                      Close
-                    </Button>
-                  </div>
-
-                  <div class="p-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
-                    <div class="lg:col-span-2 space-y-3">
-                      <div class="flex items-center gap-3">
-                        <div class="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-lg font-semibold text-white">
-                          {{ mockSelectedPlayer.name.slice(0, 2).toUpperCase() }}
-                        </div>
-                        <div>
-                          <div class="text-white font-semibold text-lg">{{ mockSelectedPlayer.name }}</div>
-                          <div class="text-xs text-gray-300/70 font-mono">uuid: {{ mockSelectedPlayer.uuid }}</div>
-                        </div>
-                      </div>
-
-                      <Separator class="bg-white/10" />
-
-                      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                        <div class="bg-white/5 border border-white/10 rounded-xl p-4">
-                          <div class="text-xs text-gray-300/70">Access</div>
-                          <div class="mt-2 flex flex-wrap gap-2">
-                            <Badge class="bg-blue-500/20 text-blue-100 border border-blue-400/30" v-if="mockSelectedPlayer.whitelisted">Whitelisted</Badge>
-                            <Badge class="bg-purple-500/20 text-purple-100 border border-purple-400/30" v-if="mockSelectedPlayer.op">OP</Badge>
-                            <Badge class="bg-red-500/20 text-red-100 border border-red-400/30" v-if="mockSelectedPlayer.banned">Banned</Badge>
-                            <Badge class="bg-white/5 text-gray-200 border border-white/10" v-if="!mockSelectedPlayer.whitelisted && !mockSelectedPlayer.banned">Default</Badge>
-                          </div>
-                        </div>
-
-                        <div class="bg-white/5 border border-white/10 rounded-xl p-4">
-                          <div class="text-xs text-gray-300/70">Role</div>
-                          <div class="mt-2 text-white font-semibold">{{ mockSelectedPlayer.role }}</div>
-                          <div class="mt-1 text-xs text-gray-300/70">Future: role groups per instance</div>
-                        </div>
-
-                        <div class="bg-white/5 border border-white/10 rounded-xl p-4">
-                          <div class="text-xs text-gray-300/70">Last Seen</div>
-                          <div class="mt-2 text-white font-semibold">{{ mockSelectedPlayer.lastSeen }}</div>
-                        </div>
-
-                        <div class="bg-white/5 border border-white/10 rounded-xl p-4">
-                          <div class="text-xs text-gray-300/70">Notes</div>
-                          <div class="mt-2 text-gray-200/90 text-sm">
-                            {{ mockSelectedPlayer.notes || 'No notes (yet).' }}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div class="space-y-3">
-                      <div class="bg-white/5 border border-white/10 rounded-xl p-4">
-                        <div class="text-sm font-semibold text-white">Quick Actions</div>
-                        <div class="text-xs text-gray-300/70 mt-1">
-                          Standard ops you’d expect in an instance manager.
-                        </div>
-
-                        <div class="mt-4 space-y-2">
-                          <div class="flex items-center justify-between">
-                            <div class="flex items-center gap-2 text-gray-200">
-                              <KeyRound class="w-4 h-4 text-blue-300" />
-                              Whitelist
-                            </div>
-                            <Switch :checked="mockSelectedPlayer.whitelisted" @update:checked="mockToggleWhitelist(mockSelectedPlayer)" />
-                          </div>
-
-                          <div class="flex items-center justify-between">
-                            <div class="flex items-center gap-2 text-gray-200">
-                              <Crown class="w-4 h-4 text-purple-300" />
-                              OP (Admin)
-                            </div>
-                            <Switch :checked="mockSelectedPlayer.op" @update:checked="mockToggleOp(mockSelectedPlayer)" />
-                          </div>
-
-                          <Separator class="bg-white/10" />
-
-                          <Button
-                            class="w-full bg-red-600/30 border border-red-500/30 text-red-100 hover:bg-red-500/25 hover:border-red-400/40"
-                            @click="mockToggleBan(mockSelectedPlayer)"
-                          >
-                            <Ban class="w-4 h-4 mr-2" />
-                            {{ mockSelectedPlayer.banned ? 'Unban Player' : 'Ban Player' }}
-                          </Button>
-
-                          <Button
-                            variant="outline"
-                            class="w-full bg-white/5 border-white/10 text-gray-100 hover:bg-white/10 hover:border-white/20"
-                            @click="mockKickPlayer(mockSelectedPlayer)"
-                            :disabled="!mockSelectedPlayer.online"
-                          >
-                            <UserMinus class="w-4 h-4 mr-2" />
-                            Kick (Mock)
-                          </Button>
-                        </div>
-                      </div>
-
-                      <div class="text-xs text-gray-300/70">
-                        Future: per-player permission nodes, history, infractions, chat logs, inventories, telemetry.
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <!-- Add Player Dialog (mock) -->
-            <Dialog v-model:open="showMockAddPlayer">
-              <DialogContent class="bg-[#070914]/95 text-gray-100 border border-white/10 shadow-2xl backdrop-blur-xl">
-                <div class="space-y-3">
-                  <div class="text-lg font-semibold text-white">Add Player (Mock)</div>
-                  <div class="text-sm text-gray-300/80">
-                    Later: lookup by username/UUID, invite flows, temp access, role assignment.
-                  </div>
-
-                  <div class="space-y-2">
-                    <Label class="text-gray-200">Username</Label>
-                    <Input v-model="mockNewPlayerName" placeholder="e.g. ThatMasonGuy" class="bg-white/5 border-white/10 text-gray-100 placeholder:text-gray-500" />
-                  </div>
-
-                  <div class="space-y-2">
-                    <Label class="text-gray-200">Access</Label>
-                    <Select v-model="mockNewPlayerAccess">
-                      <SelectTrigger class="bg-white/5 border-white/10 text-gray-100">
-                        <SelectValue placeholder="Choose..." />
-                      </SelectTrigger>
-                      <SelectContent class="bg-[#070914]/95 border border-white/10 text-gray-100">
-                        <SelectItem value="default">Default</SelectItem>
-                        <SelectItem value="whitelisted">Whitelisted</SelectItem>
-                        <SelectItem value="op">OP</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div class="flex justify-end gap-2">
-                    <Button variant="outline" class="bg-white/5 border-white/10 text-gray-100 hover:bg-white/10 hover:border-white/20" @click="showMockAddPlayer = false">
-                      Cancel
-                    </Button>
-                    <Button class="bg-white/5 border border-white/10 text-gray-100 hover:bg-white/10 hover:border-white/20" @click="mockAddPlayer">
-                      Add
-                    </Button>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </TabsContent>
-
-          <!-- Settings -->
-          <TabsContent value="settings" class="mt-4">
-            <Card class="bg-white/5 border border-white/10 backdrop-blur-xl shadow-xl shadow-black/30">
-              <CardHeader>
-                <CardTitle class="text-white">Instance Settings</CardTitle>
-              </CardHeader>
-
-              <CardContent class="space-y-6">
-                <div class="space-y-2">
-                  <Label htmlFor="instanceName" class="text-gray-200">Instance Name</Label>
-                  <Input
-                    id="instanceName"
-                    :model-value="instance.name"
-                    disabled
-                    class="bg-white/5 border-white/10 text-gray-100 disabled:opacity-70"
-                  />
-                </div>
-
-                <div class="space-y-2">
-                  <Label htmlFor="memory" class="text-gray-200">Memory Allocation (GB)</Label>
-                  <Input
-                    id="memory"
-                    type="number"
-                    :model-value="instance.memory"
-                    disabled
-                    class="bg-white/5 border-white/10 text-gray-100 disabled:opacity-70"
-                  />
-                </div>
-
-                <div class="space-y-2">
-                  <Label htmlFor="port" class="text-gray-200">Server Port</Label>
-                  <Input
-                    id="port"
-                    type="number"
-                    :model-value="instance.port"
-                    disabled
-                    class="bg-white/5 border-white/10 text-gray-100 disabled:opacity-70"
-                  />
-                </div>
-
-                <div class="flex items-center gap-2">
-                  <Checkbox :checked="instance.autoStart" disabled />
-                  <Label class="text-gray-200">Auto-start on boot</Label>
-                </div>
-
-                <div class="flex items-center gap-2">
-                  <Checkbox :checked="instance.autoRestart" disabled />
-                  <Label class="text-gray-200">Auto-restart on crash</Label>
-                </div>
-
-                <Alert class="bg-white/5 border border-white/10 text-gray-100">
-                  <Info class="h-4 w-4 text-blue-300" />
-                  <AlertTitle class="text-white">Settings are locked</AlertTitle>
-                  <AlertDescription class="text-gray-300/80">
-                    Configuration editing will be enabled in a future update
-                  </AlertDescription>
-                </Alert>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      </div>
-    </div>
-
-    <!-- Stop Confirmation Dialog -->
-    <AlertDialog v-model:open="showStopDialog">
-      <AlertDialogContent class="bg-[#070914]/95 text-gray-100 border border-white/10 shadow-2xl backdrop-blur-xl">
-        <AlertDialogHeader>
-          <AlertDialogTitle class="text-white">Stop Instance?</AlertDialogTitle>
-          <AlertDialogDescription class="text-gray-300/80">
-            This will gracefully shut down the environment. Players will be disconnected.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel class="bg-white/5 border border-white/10 text-gray-100 hover:bg-white/10 hover:border-white/20">
-            Cancel
-          </AlertDialogCancel>
-          <AlertDialogAction @click="stopServer" class="bg-red-600 hover:bg-red-700 text-white">
-            Stop Instance
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-
-    <!-- Restart Confirmation Dialog -->
-    <AlertDialog v-model:open="showRestartDialog">
-      <AlertDialogContent class="bg-[#070914]/95 text-gray-100 border border-white/10 shadow-2xl backdrop-blur-xl">
-        <AlertDialogHeader>
-          <AlertDialogTitle class="text-white">Restart Instance?</AlertDialogTitle>
-          <AlertDialogDescription class="text-gray-300/80">
-            The environment will shut down and reboot. This usually takes 30-60 seconds.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel class="bg-white/5 border border-white/10 text-gray-100 hover:bg-white/10 hover:border-white/20">
-            Cancel
-          </AlertDialogCancel>
-          <AlertDialogAction @click="restartServer" class="bg-orange-600 hover:bg-orange-700 text-white">
-            Restart Instance
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-
-    <!-- World Manager Dialog -->
-    <Dialog v-model:open="showWorldManager">
-      <DialogContent class="max-w-4xl max-h-[90vh] overflow-y-auto bg-[#070914]/95 text-gray-100 border border-white/10 shadow-2xl backdrop-blur-xl">
-        <MinecraftWorldManager
-          :instance="instance"
-          @close="showWorldManager = false"
-        />
-      </DialogContent>
-    </Dialog>
+            <div class="rounded-md border border-white/10 bg-[#0f151d] p-4">
+              <h2 class="font-semibold text-white">Actions</h2>
+              <div class="mt-4 grid gap-2">
+                <button class="settings-btn" @click="copyAddress">
+                  <Copy class="h-4 w-4" />
+                  Copy address
+                </button>
+                <button class="settings-btn" @click="backupWorld">
+                  <DatabaseBackup class="h-4 w-4" />
+                  Snapshot active world
+                </button>
+                <button class="settings-btn danger" @click="runLifecycle('restart')">
+                  <RotateCw class="h-4 w-4" />
+                  Restart server
+                </button>
+                <button class="settings-btn danger" @click="runLifecycle('sleep')">
+                  <Square class="h-4 w-4" />
+                  Sleep server
+                </button>
+              </div>
+            </div>
+          </aside>
+        </section>
+      </template>
+    </main>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useMinecraftStore } from '@/features/minecraft/stores/useMinecraftStore'
-import { useServers } from '@/features/server/composables/useServers'
-import { Button } from '@/shared/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card'
-import { Input } from '@/shared/components/ui/input'
-import { Label } from '@/shared/components/ui/label'
-import { Checkbox } from '@/shared/components/ui/checkbox'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui/tabs'
-import { Alert, AlertDescription, AlertTitle } from '@/shared/components/ui/alert'
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/shared/components/ui/alert-dialog'
-import { Dialog, DialogContent } from '@/shared/components/ui/dialog'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu'
-import MinecraftWorldManager from '@/features/minecraft/components/MinecraftWorldManager.vue'
-import { Badge } from '@/shared/components/ui/badge'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/shared/components/ui/table'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select'
-import { Separator } from '@/shared/components/ui/separator'
-import { Switch } from '@/shared/components/ui/switch'
 import {
+  Activity,
+  AlertTriangle,
   ArrowLeft,
-  Play,
-  Square,
-  RotateCw,
-  Loader2,
-  Server,
-  Users,
-  Clock,
-  Globe,
-  MoreVertical,
-  Settings,
-  Database,
-  Trash2,
+  Ban,
+  Boxes,
+  Clock3,
   Copy,
-  Send,
-  Info,
-  Layers,
+  Crown,
+  DatabaseBackup,
+  Download,
+  FolderRoot,
+  Globe2,
+  History,
+  LayoutDashboard,
+  ListTree,
+  LogOut,
+  Logs,
   Package,
-  Folder,
-  FolderOpen, 
-  FileText, 
-  Image as ImageIcon, 
-  FileArchive, 
-  FileCode2, 
-  HardDrive,
-  Upload, 
-  Download, 
-  RefreshCcw, 
-  Search, 
-  Plus, 
-  Pencil, 
-  Trash, 
-  Eye, 
-  Shield, 
+  PackageCheck,
+  Play,
+  Plus,
+  Power,
+  RefreshCcw,
+  RotateCw,
+  Save,
+  SearchCheck,
+  Send,
+  Settings,
+  ShieldCheck,
+  Shuffle,
+  Square,
+  Terminal,
+  Trash2,
+  UploadCloud,
   UserPlus,
-  UserMinus, 
-  Ban, 
-  CheckCircle2, 
-  XCircle, 
-  Crown, 
-  KeyRound, 
-  Globe2, 
-  ScrollText
+  Users,
 } from 'lucide-vue-next'
+import { useMinecraftStore } from '@/features/minecraft/stores/useMinecraftStore'
+import { useToast } from '@/shared/components/ui/toast'
+import MetricBar from '@/features/minecraft/components/MetricBar.vue'
 
 const route = useRoute()
 const router = useRouter()
-const minecraftStore = useMinecraftStore()
-const { getServers } = useServers()
+const minecraft = useMinecraftStore()
+const { toast } = useToast()
 
-const instanceId = route.params.id
-const serverId = route.query.serverId
-const instance = ref(null)
-const loading = ref(false)
-const serverName = ref('')
-const logs = ref([])
+const activeTab = ref('overview')
 const command = ref('')
+const logSearch = ref('')
+const logTail = ref(300)
+const selectedLogFile = ref('latest.log')
+const loadingExplorerLogs = ref(false)
+const exportingLogs = ref(false)
+const playerSearch = ref('')
+const modSearch = ref('')
+const newPlayerName = ref('')
+const newBlacklistName = ref('')
+const newBlacklistIp = ref('')
+const blacklistReason = ref('')
+const newWorldName = ref('')
+const settingsDraft = ref({})
+const savingSettings = ref(false)
+const installingProjectId = ref(null)
+const updatingAllMods = ref(false)
+const uploadingMod = ref(false)
+const downloadingArchiveId = ref(null)
+const modUploadInput = ref(null)
+const refreshingDiagnostics = ref(false)
 const consoleRef = ref(null)
-const autoScroll = ref(true)
+let pollHandle = null
 
-const showStopDialog = ref(false)
-const showRestartDialog = ref(false)
-const showDeleteDialog = ref(false)
-const showBackupDialog = ref(false)
-const showWorldManager = ref(false)
+const settingsKeys = [
+  'white-list',
+  'enforce-whitelist',
+  'pvp',
+  'difficulty',
+  'max-players',
+  'view-distance',
+  'simulation-distance',
+  'motd',
+]
 
-const activeJob = computed(() => {
-  return minecraftStore.jobs.find(j => 
-    j.instanceId === instanceId && 
-    (j.status === 'running' || j.status === 'pending')
+const serverId = computed(() => String(route.params.id || 'hc'))
+const detail = computed(() => minecraft.serverDetails[serverId.value] || null)
+const detailIcon = computed(() => detail.value ? minecraft.serverIconUrl(detail.value) : '')
+const refreshing = computed(() => minecraft.refreshingIds?.has(serverId.value))
+const rconReady = computed(() => ['alive', 'degraded'].includes(detail.value?.state))
+const logStreaming = computed(() => minecraft.streamingIds?.has(serverId.value))
+const statusStreaming = computed(() => minecraft.statusStreamingIds?.has(serverId.value))
+const latestLogs = computed(() => (detail.value?.logs || []).slice(-80))
+const logFiles = computed(() => detail.value?.logFiles || [])
+const diagnostics = computed(() => detail.value?.diagnostics || minecraft.diagnosticsByServer?.[serverId.value] || null)
+const diagnosticChecks = computed(() => diagnostics.value?.checks || [])
+const diagnosticsSummary = computed(() => diagnostics.value?.summary || { pass: 0, warning: 0, error: 0, info: 0 })
+const diagnosticsStatusLabel = computed(() => {
+  if (!diagnostics.value) return 'No runtime check yet'
+  if (diagnostics.value.status === 'ready') return `Ready at ${formatDate(diagnostics.value.checkedAt)}`
+  if (diagnostics.value.status === 'error') return `Needs attention at ${formatDate(diagnostics.value.checkedAt)}`
+  return `Warnings at ${formatDate(diagnostics.value.checkedAt)}`
+})
+
+const updateCount = computed(() => (detail.value?.mods || []).filter((mod) => mod.updateAvailable).length)
+const enabledMods = computed(() => (detail.value?.mods || []).filter((mod) => mod.enabled).length)
+const disabledMods = computed(() => (detail.value?.mods || []).filter((mod) => !mod.enabled).length)
+const modSearchResults = computed(() => minecraft.modSearchResults?.[serverId.value] || [])
+const modUpdateSummary = computed(() => minecraft.modUpdateSummaries?.[serverId.value] || null)
+const modBackups = computed(() => detail.value?.modBackups || [])
+const activityItems = computed(() => minecraft.activityForServer(serverId.value))
+const pendingRestartReasons = computed(() => minecraft.restartReasonsForServer(serverId.value))
+const restartRequired = computed(() => pendingRestartReasons.value.length > 0)
+const bannedPlayersList = computed(() => (detail.value?.bannedPlayers || []).filter((entry) => displayBanName(entry)))
+const bannedIpsList = computed(() => (detail.value?.bannedIps || []).filter((entry) => displayBanIp(entry)))
+const settingsChanged = computed(() => {
+  const current = detail.value?.settings || {}
+  return settingsKeys.some((key) => String(settingsDraft.value[key]) !== String(current[key] ?? ''))
+})
+
+const filteredLogs = computed(() => {
+  const query = logSearch.value.trim().toLowerCase()
+  const lines = detail.value?.exploredLogs || detail.value?.logs || []
+  if (!query) return lines
+  return lines.filter((line) => line.toLowerCase().includes(query))
+})
+
+const filteredPlayers = computed(() => {
+  const query = playerSearch.value.trim().toLowerCase()
+  const players = detail.value?.players || []
+  if (!query) return players
+  return players.filter((player) => (
+    player.name.toLowerCase().includes(query) ||
+    String(player.uuid || '').toLowerCase().includes(query) ||
+    String(player.permission || '').toLowerCase().includes(query)
+  ))
+})
+
+const tabs = [
+  { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+  { id: 'console', label: 'Console', icon: Terminal },
+  { id: 'players', label: 'Players', icon: Users },
+  { id: 'mods', label: 'Mods', icon: Package },
+  { id: 'worlds', label: 'Worlds', icon: ListTree },
+  { id: 'logs', label: 'Logs', icon: Logs },
+  { id: 'activity', label: 'Activity', icon: Activity },
+  { id: 'settings', label: 'Settings', icon: Settings },
+]
+
+const errorMessage = (error) => error?.message || String(error || 'Unexpected Minecraft error')
+const actionLabel = (action) => `${action.slice(0, 1).toUpperCase()}${action.slice(1)}`
+const commandTemplate = (item) => item.template || item.name || ''
+const commandTone = (risk = 'safe') => {
+  if (risk === 'destructive') return 'border-rose-400/20 bg-rose-400/10 text-rose-100'
+  if (risk === 'guarded') return 'border-amber-400/20 bg-amber-400/10 text-amber-100'
+  return 'border-white/10 bg-white/[0.04] text-slate-200'
+}
+
+const serverInitials = (server) => {
+  return String(server?.label || serverId.value || 'MC')
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase()
+}
+
+const runWithToast = async (action, options = {}) => {
+  try {
+    const result = await action()
+    if (options.success) {
+      toast({
+        title: options.success,
+        description: options.description,
+        variant: options.variant || 'success',
+      })
+    }
+    return result
+  } catch (error) {
+    toast({
+      title: options.error || 'Minecraft action failed',
+      description: errorMessage(error),
+      variant: 'destructive',
+    })
+    return null
+  }
+}
+
+const refresh = async () => {
+  minecraft.setSelectedServer(serverId.value)
+  await runWithToast(
+    () => minecraft.fetchServer(serverId.value),
+    { error: 'Server refresh failed' },
   )
-})
+}
 
-// Load server name
-async function loadServerName() {
-  if (!serverId) return
+const refreshDiagnostics = async () => {
+  refreshingDiagnostics.value = true
   try {
-    const servers = await getServers()
-    const server = servers.find(s => s.id === serverId)
-    if (server) {
-      serverName.value = server.name
-    }
-  } catch (error) {
-    console.error('Error loading server name:', error)
+    await runWithToast(
+      () => minecraft.fetchDiagnostics(serverId.value),
+      {
+        success: 'Diagnostics refreshed',
+        description: detail.value?.label,
+        error: 'Diagnostics failed',
+      },
+    )
+  } finally {
+    refreshingDiagnostics.value = false
   }
 }
 
-// Go back to dashboard with serverId
-function goBack() {
-  router.push(`/minecraft/dashboard?serverId=${serverId}`)
-}
-
-onMounted(async () => {
+const loadLogExplorer = async () => {
+  loadingExplorerLogs.value = true
   try {
-    await loadServerName()
-    await minecraftStore.fetchInstances(serverId)
-    await minecraftStore.fetchJobs(instanceId)
-    
-    instance.value = minecraftStore.getInstanceById(instanceId)
-    
-    minecraftStore.subscribeToInstances(serverId)
-    minecraftStore.subscribeToJobs(instanceId)
-    
-    // Mock logs for demonstration
-    generateMockLogs()
-  } catch (error) {
-    console.error('Error loading instance:', error)
+    await runWithToast(
+      () => minecraft.exploreLogs(serverId.value, {
+        file: selectedLogFile.value || 'latest.log',
+        tail: logTail.value || 300,
+        query: logSearch.value.trim(),
+      }),
+      { error: 'Log load failed' },
+    )
+  } finally {
+    loadingExplorerLogs.value = false
   }
-})
+}
 
-onUnmounted(() => {
-  minecraftStore.unsubscribeAll()
-})
+const selectLogFile = async (file) => {
+  selectedLogFile.value = file.name || file.id || 'latest.log'
+  await loadLogExplorer()
+}
 
-watch(() => minecraftStore.instances, () => {
-  instance.value = minecraftStore.getInstanceById(instanceId)
-}, { deep: true })
+const exportLogFile = async () => {
+  exportingLogs.value = true
+  try {
+    const result = await runWithToast(
+      () => minecraft.exportLogs(serverId.value, {
+        file: selectedLogFile.value || 'latest.log',
+        tail: logTail.value || 300,
+        query: logSearch.value.trim(),
+      }),
+      {
+        success: 'Log export ready',
+        description: selectedLogFile.value || 'latest.log',
+        error: 'Log export failed',
+      },
+    )
+    if (!result) return
+    const blob = new Blob([result.text || ''], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = result.filename || `minecraft-${serverId.value}-logs.txt`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(url)
+  } finally {
+    exportingLogs.value = false
+  }
+}
 
-watch(logs, async () => {
-  if (autoScroll.value) {
-    await nextTick()
-    if (consoleRef.value) {
-      consoleRef.value.scrollTop = consoleRef.value.scrollHeight
+const triggerDownload = (blob, filename) => {
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
+}
+
+const downloadWorld = async (world) => {
+  const archiveId = `world:${world.id}`
+  downloadingArchiveId.value = archiveId
+  try {
+    const result = await runWithToast(
+      () => minecraft.downloadWorldArchive(serverId.value, world),
+      {
+        success: 'World archive ready',
+        description: world.name || world.id,
+        error: 'World download failed',
+      },
+    )
+    if (result?.blob) {
+      triggerDownload(result.blob, result.filename || `minecraft-${serverId.value}-${world.id}.tar.gz`)
     }
+  } finally {
+    if (downloadingArchiveId.value === archiveId) downloadingArchiveId.value = null
   }
-}, { deep: true })
-
-const getStatusColor = (status) => {
-  const colors = {
-    running: 'text-green-400 animate-pulse',
-    stopped: 'text-gray-500',
-    starting: 'text-yellow-400 animate-pulse',
-    error: 'text-red-400'
-  }
-  return colors[status] || 'text-gray-500'
 }
 
-const getStatusText = (status) => {
-  const texts = {
-    running: 'Online',
-    stopped: 'Offline',
-    starting: 'Starting',
-    error: 'Error'
+const downloadBackup = async (backup) => {
+  const archiveId = `backup:${backup.id}`
+  downloadingArchiveId.value = archiveId
+  try {
+    const result = await runWithToast(
+      () => minecraft.downloadBackupArchive(serverId.value, backup),
+      {
+        success: 'Backup archive ready',
+        description: backup.label || backup.id,
+        error: 'Backup download failed',
+      },
+    )
+    if (result?.blob) {
+      triggerDownload(result.blob, result.filename || `minecraft-${serverId.value}-${backup.id}.tar.gz`)
+    }
+  } finally {
+    if (downloadingArchiveId.value === archiveId) downloadingArchiveId.value = null
   }
-  return texts[status] || status
 }
 
-const getCurrentWorldName = () => {
-  if (!instance.value?.activeWorld || !instance.value?.worlds) return 'None'
-  const world = instance.value.worlds.find(w => w.id === instance.value.activeWorld)
-  return world?.name || 'Unknown'
+const asBoolean = (value, fallback = false) => {
+  if (typeof value === 'boolean') return value
+  if (typeof value === 'string') {
+    if (value.toLowerCase() === 'true') return true
+    if (value.toLowerCase() === 'false') return false
+  }
+  return fallback
 }
 
-const formatUptime = (seconds) => {
-  if (!seconds) return '0m'
-  const days = Math.floor(seconds / 86400)
-  const hours = Math.floor((seconds % 86400) / 3600)
-  const minutes = Math.floor((seconds % 3600) / 60)
-  
-  if (days > 0) return `${days}d ${hours}h`
-  if (hours > 0) return `${hours}h ${minutes}m`
+const resetSettingsDraft = () => {
+  const settings = detail.value?.settings || {}
+  settingsDraft.value = {
+    'white-list': asBoolean(settings['white-list'], true),
+    'enforce-whitelist': asBoolean(settings['enforce-whitelist'], false),
+    pvp: asBoolean(settings.pvp, true),
+    difficulty: settings.difficulty || 'normal',
+    'max-players': Number(settings['max-players'] || detail.value?.maxPlayers || 20),
+    'view-distance': Number(settings['view-distance'] || 10),
+    'simulation-distance': Number(settings['simulation-distance'] || 10),
+    motd: settings.motd || '',
+  }
+}
+
+const saveSettings = async () => {
+  if (!detail.value || !settingsChanged.value) return
+  const ok = window.confirm(`Update server.properties for ${detail.value.label}?`)
+  if (!ok) return
+
+  savingSettings.value = true
+  try {
+    await runWithToast(
+      () => minecraft.updateSettings(serverId.value, { ...settingsDraft.value }, true),
+      {
+        success: 'Settings saved',
+        description: detail.value.label,
+        error: 'Settings update failed',
+      },
+    )
+  } finally {
+    savingSettings.value = false
+  }
+}
+
+const runLifecycle = async (action) => {
+  if (!detail.value) return
+  let confirmed = false
+  if (['sleep', 'stop', 'restart'].includes(action)) {
+    const ok = window.confirm(`${action.toUpperCase()} ${detail.value.label}?`)
+    if (!ok) return
+    confirmed = true
+  }
+  await runWithToast(
+    () => minecraft.lifecycleAction(serverId.value, action, confirmed),
+    {
+      success: `${actionLabel(action)} requested`,
+      description: detail.value.label,
+      error: `${actionLabel(action)} failed`,
+    },
+  )
+}
+
+const applyPendingRestart = async () => {
+  if (!detail.value) return
+  if (canWake(detail.value)) {
+    await runLifecycle('wake')
+    return
+  }
+  if (canRestart(detail.value)) {
+    await runLifecycle('restart')
+  }
+}
+
+const submitCommand = async () => {
+  const clean = command.value.trim()
+  if (!clean) return
+  if (commandNeedsConfirm(clean)) {
+    const ok = window.confirm(`Run RCON command: ${clean}?`)
+    if (!ok) return
+  }
+  const result = await runWithToast(
+    () => minecraft.sendCommand(serverId.value, clean, commandNeedsConfirm(clean)),
+    {
+      success: 'Command sent',
+      description: clean,
+      error: 'RCON command failed',
+    },
+  )
+  if (!result) return
+  command.value = ''
+  await nextTick()
+  if (consoleRef.value) consoleRef.value.scrollTop = consoleRef.value.scrollHeight
+}
+
+const runPlayerAction = async (player, action) => {
+  if (['ban', 'pardon'].includes(action)) {
+    const nextAction = action === 'ban' ? 'add' : 'remove'
+    const ok = window.confirm(`${action.toUpperCase()} ${player.name}?`)
+    if (!ok) return
+    await runWithToast(
+      () => minecraft.updatePlayerBlacklist(serverId.value, player.name, nextAction, '', true),
+      {
+        success: `${actionLabel(action)} requested`,
+        description: player.name,
+        error: `${actionLabel(action)} failed`,
+      },
+    )
+    return
+  }
+
+  if (['ban', 'pardon', 'kick', 'op', 'deop'].includes(action)) {
+    const ok = window.confirm(`${action.toUpperCase()} ${player.name}?`)
+    if (!ok) return
+  }
+  await runWithToast(
+    () => minecraft.runPlayerAction(serverId.value, player.name, action, {}, true),
+    {
+      success: `${actionLabel(action)} requested`,
+      description: player.name,
+      error: `${actionLabel(action)} failed`,
+    },
+  )
+}
+
+const changeOpLevel = async (player, event) => {
+  const level = Number(event.target.value)
+  const previous = player.opLevel || 4
+  if (level === previous) return
+
+  const ok = window.confirm(`Set ${player.name} to OP level ${level}?`)
+  if (!ok) {
+    event.target.value = previous
+    return
+  }
+
+  const result = await runWithToast(
+    () => minecraft.updateOpSettings(serverId.value, player.name, {
+      level,
+      bypassesPlayerLimit: player.bypassesPlayerLimit === true,
+    }, true),
+    {
+      success: 'OP settings updated',
+      description: `${player.name} level ${level}`,
+      error: 'OP settings failed',
+    },
+  )
+  if (!result) event.target.value = previous
+}
+
+const toggleOpBypass = async (player) => {
+  const next = player.bypassesPlayerLimit !== true
+  const ok = window.confirm(`${next ? 'Allow' : 'Remove'} player-limit bypass for ${player.name}?`)
+  if (!ok) return
+
+  await runWithToast(
+    () => minecraft.updateOpSettings(serverId.value, player.name, {
+      level: player.opLevel || 4,
+      bypassesPlayerLimit: next,
+    }, true),
+    {
+      success: 'OP settings updated',
+      description: player.name,
+      error: 'OP settings failed',
+    },
+  )
+}
+
+const toggleWhitelist = async (player) => {
+  const action = player.whitelisted ? 'remove' : 'add'
+  if (action === 'remove') {
+    const ok = window.confirm(`Remove ${player.name} from whitelist?`)
+    if (!ok) return
+  }
+  await runWithToast(
+    () => minecraft.updateWhitelist(serverId.value, player.name, action, action === 'remove'),
+    {
+      success: `Whitelist ${action}`,
+      description: player.name,
+      error: 'Whitelist update failed',
+    },
+  )
+}
+
+const addWhitelist = async () => {
+  const name = newPlayerName.value.trim()
+  if (!name) return
+  const result = await runWithToast(
+    () => minecraft.updateWhitelist(serverId.value, name, 'add', false),
+    {
+      success: 'Player whitelisted',
+      description: name,
+      error: 'Whitelist update failed',
+    },
+  )
+  if (!result) return
+  newPlayerName.value = ''
+}
+
+const addPlayerBlacklist = async () => {
+  const name = newBlacklistName.value.trim()
+  if (!name) return
+  const ok = window.confirm(`Ban ${name} from ${detail.value.label}?`)
+  if (!ok) return
+  const result = await runWithToast(
+    () => minecraft.updatePlayerBlacklist(serverId.value, name, 'add', blacklistReason.value.trim(), true),
+    {
+      success: 'Player banned',
+      description: name,
+      error: 'Player ban failed',
+    },
+  )
+  if (!result) return
+  newBlacklistName.value = ''
+  blacklistReason.value = ''
+}
+
+const removePlayerBlacklist = async (entry) => {
+  const name = displayBanName(entry)
+  if (!name) return
+  const ok = window.confirm(`Pardon ${name}?`)
+  if (!ok) return
+  await runWithToast(
+    () => minecraft.updatePlayerBlacklist(serverId.value, name, 'remove', '', true),
+    {
+      success: 'Player pardoned',
+      description: name,
+      error: 'Pardon failed',
+    },
+  )
+}
+
+const addIpBlacklist = async () => {
+  const target = newBlacklistIp.value.trim()
+  if (!target) return
+  const ok = window.confirm(`Ban IP ${target} from ${detail.value.label}?`)
+  if (!ok) return
+  const result = await runWithToast(
+    () => minecraft.updateIpBlacklist(serverId.value, target, 'add', blacklistReason.value.trim(), true),
+    {
+      success: 'IP banned',
+      description: target,
+      error: 'IP ban failed',
+    },
+  )
+  if (!result) return
+  newBlacklistIp.value = ''
+  blacklistReason.value = ''
+}
+
+const removeIpBlacklist = async (entry) => {
+  const target = displayBanIp(entry)
+  if (!target) return
+  const ok = window.confirm(`Pardon IP ${target}?`)
+  if (!ok) return
+  await runWithToast(
+    () => minecraft.updateIpBlacklist(serverId.value, target, 'remove', '', true),
+    {
+      success: 'IP pardoned',
+      description: target,
+      error: 'IP pardon failed',
+    },
+  )
+}
+
+const toggleMod = async (mod) => {
+  if (mod.enabled) {
+    const ok = window.confirm(`Disable ${mod.name || mod.file}?`)
+    if (!ok) return
+  }
+  await runWithToast(
+    () => minecraft.setModEnabled(serverId.value, mod, !mod.enabled, mod.enabled),
+    {
+      success: mod.enabled ? 'Mod disabled' : 'Mod enabled',
+      description: mod.name || mod.file,
+      error: 'Mod toggle failed',
+    },
+  )
+}
+
+const searchMods = async () => {
+  await runWithToast(
+    () => minecraft.searchMods(serverId.value, modSearch.value),
+    { error: 'Modrinth search failed' },
+  )
+}
+
+const checkModUpdates = async () => {
+  await runWithToast(
+    () => minecraft.checkModUpdates(serverId.value),
+    {
+      success: 'Mod check finished',
+      description: detail.value?.label,
+      error: 'Mod update check failed',
+    },
+  )
+}
+
+const installModProject = async (project) => {
+  const ok = window.confirm(`Install ${project.title || project.slug} on ${detail.value.label}?`)
+  if (!ok) return
+
+  installingProjectId.value = project.projectId || project.slug
+  try {
+    await runWithToast(
+      () => minecraft.installMod(serverId.value, project, true),
+      {
+        success: 'Mod installed',
+        description: project.title || project.slug,
+        error: 'Mod install failed',
+      },
+    )
+  } finally {
+    installingProjectId.value = null
+  }
+}
+
+const selectModUpload = () => {
+  modUploadInput.value?.click()
+}
+
+const uploadSelectedMod = async (event) => {
+  const file = event.target.files?.[0]
+  event.target.value = ''
+  if (!file || !detail.value) return
+
+  if (!file.name.toLowerCase().endsWith('.jar')) {
+    toast({
+      title: 'Upload blocked',
+      description: 'Select a .jar mod file.',
+      variant: 'destructive',
+    })
+    return
+  }
+
+  const ok = window.confirm(`Upload ${file.name} to ${detail.value.label}?`)
+  if (!ok) return
+
+  uploadingMod.value = true
+  try {
+    await runWithToast(
+      () => minecraft.uploadMod(serverId.value, file, true),
+      {
+        successTitle: 'Mod uploaded',
+        successDescription: `${file.name} is installed and will load after restart or wake.`,
+        errorTitle: 'Mod upload failed',
+      },
+    )
+  } finally {
+    uploadingMod.value = false
+  }
+}
+
+const updateMod = async (mod) => {
+  const ok = window.confirm(`Update ${mod.name || mod.file} from Modrinth?`)
+  if (!ok) return
+  await runWithToast(
+    () => minecraft.updateMod(serverId.value, mod, true),
+    {
+      success: 'Mod updated',
+      description: mod.name || mod.file,
+      error: 'Mod update failed',
+    },
+  )
+}
+
+const updateAllMods = async () => {
+  if (!updateCount.value) return
+  const ok = window.confirm(`Update ${updateCount.value} available mods on ${detail.value.label}?`)
+  if (!ok) return
+
+  updatingAllMods.value = true
+  try {
+    await runWithToast(
+      () => minecraft.updateAllMods(serverId.value, true),
+      {
+        success: 'Bulk update finished',
+        description: `${updateCount.value} mods checked`,
+        error: 'Bulk update failed',
+      },
+    )
+  } finally {
+    updatingAllMods.value = false
+  }
+}
+
+const restoreModBackup = async (backup) => {
+  const ok = window.confirm(`Restore ${backup.originalFile} from backup? The current mod file will be moved aside.`)
+  if (!ok) return
+  await runWithToast(
+    () => minecraft.restoreModBackup(serverId.value, backup, true),
+    {
+      success: 'Mod backup restored',
+      description: backup.originalFile,
+      error: 'Mod restore failed',
+    },
+  )
+}
+
+const deleteModBackup = async (backup) => {
+  const ok = window.confirm(`Delete mod backup ${backup.file || backup.id}?`)
+  if (!ok) return
+  await runWithToast(
+    () => minecraft.deleteModBackup(serverId.value, backup, true),
+    {
+      success: 'Mod backup deleted',
+      description: backup.file || backup.id,
+      error: 'Mod backup delete failed',
+    },
+  )
+}
+
+const switchWorld = async (world) => {
+  const ok = window.confirm(`Switch ${detail.value.label} to ${world.name}?`)
+  if (!ok) return
+  await runWithToast(
+    () => minecraft.switchWorld(serverId.value, world, true),
+    {
+      success: 'World switch queued',
+      description: world.name,
+      error: 'World switch failed',
+    },
+  )
+}
+
+const createWorld = async () => {
+  const name = newWorldName.value.trim()
+  if (!name) return
+  const ok = window.confirm(`Create new world ${name}?`)
+  if (!ok) return
+  const result = await runWithToast(
+    () => minecraft.createWorld(serverId.value, { name }, true),
+    {
+      success: 'World created',
+      description: name,
+      error: 'World create failed',
+    },
+  )
+  if (!result) return
+  newWorldName.value = ''
+}
+
+const deleteWorld = async (world) => {
+  const ok = window.confirm(`Delete world ${world.name}? This cannot be undone.`)
+  if (!ok) return
+  await runWithToast(
+    () => minecraft.deleteWorld(serverId.value, world, true),
+    {
+      success: 'World deleted',
+      description: world.name,
+      error: 'World delete failed',
+    },
+  )
+}
+
+const backupWorld = async () => {
+  await runWithToast(
+    () => minecraft.backupWorld(serverId.value),
+    {
+      success: 'Snapshot queued',
+      description: detail.value?.label,
+      error: 'Snapshot failed',
+    },
+  )
+}
+
+const restoreBackup = async (backup) => {
+  const ok = window.confirm(`Restore backup ${backup.label || backup.id}? This may replace the active world.`)
+  if (!ok) return
+  await runWithToast(
+    () => minecraft.restoreBackup(serverId.value, backup, true),
+    {
+      success: 'Backup restore queued',
+      description: backup.label || backup.id,
+      error: 'Backup restore failed',
+    },
+  )
+}
+
+const deleteBackup = async (backup) => {
+  const ok = window.confirm(`Delete backup ${backup.label || backup.id}?`)
+  if (!ok) return
+  await runWithToast(
+    () => minecraft.deleteBackup(serverId.value, backup, true),
+    {
+      success: 'Backup deleted',
+      description: backup.label || backup.id,
+      error: 'Backup delete failed',
+    },
+  )
+}
+
+const copyAddress = async () => {
+  if (!detail.value) return
+  await runWithToast(
+    () => navigator.clipboard.writeText(`${detail.value.host}:${detail.value.publicPort}`),
+    {
+      success: 'Address copied',
+      description: `${detail.value.host}:${detail.value.publicPort}`,
+      error: 'Copy failed',
+    },
+  )
+}
+
+const canWake = (server) => ['offline', 'hibernating', 'degraded'].includes(server?.state)
+const canRestart = (server) => ['alive', 'warming', 'degraded'].includes(server?.state)
+const canSleep = (server) => ['alive', 'warming', 'degraded'].includes(server?.state)
+
+const stateMeta = (state) => {
+  const states = {
+    alive: { label: 'Active', pill: 'bg-emerald-400/10 text-emerald-200', dot: 'bg-emerald-300' },
+    hibernating: { label: 'Sleeping', pill: 'bg-indigo-400/10 text-indigo-200', dot: 'bg-indigo-300' },
+    warming: { label: 'Warming', pill: 'bg-amber-400/10 text-amber-200', dot: 'bg-amber-300' },
+    stopping: { label: 'Stopping', pill: 'bg-orange-400/10 text-orange-200', dot: 'bg-orange-300' },
+    degraded: { label: 'Degraded', pill: 'bg-rose-400/10 text-rose-200', dot: 'bg-rose-300' },
+    offline: { label: 'Offline', pill: 'bg-slate-400/10 text-slate-300', dot: 'bg-slate-400' },
+  }
+  return states[state] || states.offline
+}
+
+const formatDate = (value) => {
+  if (!value) return 'Unknown'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
+
+const formatDuration = (seconds) => {
+  const total = Number(seconds || 0)
+  const days = Math.floor(total / 86400)
+  const hours = Math.floor((total % 86400) / 3600)
+  const minutes = Math.floor((total % 3600) / 60)
+  if (days) return `${days}d ${hours}h`
+  if (hours) return `${hours}h ${minutes}m`
   return `${minutes}m`
 }
 
-const formatDate = (date) => {
-  if (!date) return 'Unknown'
-  const d = date.toDate ? date.toDate() : new Date(date)
-  return d.toLocaleString()
+const formatNumber = (value) => Number(value || 0).toLocaleString()
+
+const displayBanName = (entry) => entry?.name || entry?.playerName || entry?.target || ''
+const displayBanIp = (entry) => entry?.ip || entry?.target || ''
+
+const commandNeedsConfirm = (value) => {
+  const first = value.trim().split(/\s+/)[0]?.toLowerCase()
+  const metadata = (detail.value?.allowedCommands || []).find((item) => item.name === first)
+  if (metadata) return metadata.requiresConfirmation === true || ['guarded', 'destructive'].includes(metadata.risk)
+  return ['stop', 'ban', 'ban-ip', 'kick', 'op', 'deop', 'whitelist', 'pardon', 'pardon-ip'].includes(first)
 }
 
-const startServer = async () => {
-  loading.value = true
-  try {
-    // API call to start server
-    console.log('Starting server...')
-    await minecraftStore.updateInstance(instanceId, { status: 'starting' })
-    setTimeout(() => {
-      minecraftStore.updateInstance(instanceId, { status: 'running' })
-    }, 3000)
-  } catch (error) {
-    console.error('Error starting server:', error)
-  } finally {
-    loading.value = false
+const modrinthHref = (mod) => `https://modrinth.com/mod/${mod.modrinthSlug}`
+
+const modDependencies = (mod) => Array.isArray(mod?.dependencies) ? mod.dependencies : []
+const modDependencyCount = (mod) => Number(mod?.dependencyCount ?? modDependencies(mod).length ?? 0)
+const modRequiredDependencyCount = (mod) => Number(mod?.requiredDependencyCount ?? modDependencies(mod).filter((dependency) => dependency.type === 'required').length ?? 0)
+const dependencyLabel = (dependency) => dependency.fileName || dependency.projectId || dependency.versionId || 'dependency'
+const dependencyTone = (type) => {
+  if (type === 'required') return 'bg-amber-400/10 text-amber-200'
+  if (type === 'optional') return 'bg-sky-400/10 text-sky-200'
+  if (type === 'embedded') return 'bg-emerald-400/10 text-emerald-200'
+  return 'bg-white/[0.06] text-slate-300'
+}
+
+const logClass = (line) => {
+  const lower = line.toLowerCase()
+  if (lower.includes('error') || lower.includes('exception')) return 'text-rose-300'
+  if (lower.includes('warn')) return 'text-amber-300'
+  if (lower.includes('rcon')) return 'text-sky-300'
+  return 'text-slate-300'
+}
+
+const activityPill = (entry) => {
+  if (entry.status === 'warning') return 'bg-amber-400/10 text-amber-200'
+  if (entry.status === 'error') return 'bg-rose-400/10 text-rose-200'
+  return 'bg-emerald-400/10 text-emerald-200'
+}
+
+const diagnosticTone = (status) => {
+  if (status === 'pass') return 'bg-emerald-400/10 text-emerald-200'
+  if (status === 'warning') return 'bg-amber-400/10 text-amber-200'
+  if (status === 'error') return 'bg-rose-400/10 text-rose-200'
+  return 'bg-slate-400/10 text-slate-300'
+}
+
+watch(serverId, async (newServerId, oldServerId) => {
+  if (oldServerId) {
+    minecraft.stopLogStream(oldServerId)
+    minecraft.stopStatusStream(oldServerId)
   }
-}
-
-const stopServer = async () => {
-  loading.value = true
-  try {
-    await minecraftStore.updateInstance(instanceId, { status: 'stopped' })
-    showStopDialog.value = false
-  } catch (error) {
-    console.error('Error stopping server:', error)
-  } finally {
-    loading.value = false
-  }
-}
-
-const restartServer = async () => {
-  loading.value = true
-  try {
-    await minecraftStore.updateInstance(instanceId, { status: 'starting' })
-    setTimeout(() => {
-      minecraftStore.updateInstance(instanceId, { status: 'running' })
-    }, 3000)
-    showRestartDialog.value = false
-  } catch (error) {
-    console.error('Error restarting server:', error)
-  } finally {
-    loading.value = false
-  }
-}
-
-const sendCommand = () => {
-  if (!command.value) return
-  
-  logs.value.push({
-    timestamp: new Date().toLocaleTimeString(),
-    level: 'COMMAND',
-    message: command.value
-  })
-  
-  command.value = ''
-}
-
-const copyAddress = () => {
-  const address = `${instance.value.serverName}:${instance.value.port}`
-  navigator.clipboard.writeText(address)
-}
-
-const clearLogs = () => {
-  logs.value = []
-}
-
-const toggleAutoScroll = () => {
-  autoScroll.value = !autoScroll.value
-}
-
-const openWorldManager = () => {
-  showWorldManager.value = true
-}
-
-const openConfigEditor = () => {
-  console.log('Open config editor')
-}
-
-const getLogClass = (log) => {
-  return 'hover:bg-gray-900/50 px-2 py-0.5 rounded'
-}
-
-const getLogLevelClass = (level) => {
-  const classes = {
-    INFO: 'text-green-400',
-    WARN: 'text-yellow-400',
-    ERROR: 'text-red-400',
-    DEBUG: 'text-blue-400',
-    COMMAND: 'text-purple-400'
-  }
-  return classes[level] || 'text-gray-400'
-}
-
-const generateMockLogs = () => {
-  logs.value = [
-    { timestamp: '12:00:01', level: 'INFO', message: 'Starting Minecraft server version 1.21.4' },
-    { timestamp: '12:00:02', level: 'INFO', message: 'Loading properties' },
-    { timestamp: '12:00:03', level: 'INFO', message: 'Preparing level "world"' },
-    { timestamp: '12:00:05', level: 'INFO', message: 'Preparing spawn area: 0%' },
-    { timestamp: '12:00:07', level: 'INFO', message: 'Preparing spawn area: 47%' },
-    { timestamp: '12:00:09', level: 'INFO', message: 'Preparing spawn area: 94%' },
-    { timestamp: '12:00:10', level: 'INFO', message: 'Done! For help, type "help"' }
-  ]
-}
-
-// ─────────────────────────────────────────────────────────────
-// MOCK FILE SYSTEM (UI-only vision)
-// ─────────────────────────────────────────────────────────────
-const mockCwd = ref('/')
-const mockFileSearch = ref('')
-const mockFileScope = ref('all')
-const mockSelectedFile = ref(null)
-const showMockPreview = ref(false)
-const mockPreviewText = ref('')
-const showMockUpload = ref(false)
-const showMockNewFolder = ref(false)
-const mockNewFolderName = ref('')
-
-const mockFiles = ref([
-  // Root
-  { type: 'folder', name: 'worlds', path: '/worlds', scope: 'world', updated: 'Today 11:12', size: '-' },
-  { type: 'folder', name: 'config', path: '/config', scope: 'configs', updated: 'Today 10:40', size: '-' },
-  { type: 'folder', name: 'mods', path: '/mods', scope: 'mods', updated: 'Yesterday 22:05', size: '-' },
-  { type: 'folder', name: 'logs', path: '/logs', scope: 'logs', updated: 'Today 11:53', size: '-' },
-  { type: 'file', name: 'server.properties', path: '/server.properties', scope: 'configs', mime: 'text/plain', updated: 'Today 09:18', size: '4.2 KB' },
-  { type: 'file', name: 'whitelist.json', path: '/whitelist.json', scope: 'configs', mime: 'application/json', updated: 'Today 09:19', size: '1.1 KB' },
-
-  // Worlds
-  { type: 'folder', name: 'world_main', path: '/worlds/world_main', scope: 'world', updated: 'Today 11:50', size: '-' },
-  { type: 'folder', name: 'world_hc', path: '/worlds/world_hc', scope: 'world', updated: 'Yesterday 21:12', size: '-' },
-
-  { type: 'file', name: 'level.dat', path: '/worlds/world_main/level.dat', scope: 'world', mime: 'application/octet-stream', updated: 'Today 11:50', size: '256 KB' },
-  { type: 'file', name: 'session.lock', path: '/worlds/world_main/session.lock', scope: 'world', mime: 'text/plain', updated: 'Today 11:50', size: '0.1 KB' },
-  { type: 'file', name: 'region', path: '/worlds/world_main/region', scope: 'world', mime: 'folder-like', updated: 'Today 11:50', size: '—' },
-
-  // Config
-  { type: 'file', name: 'fabric-loader.json', path: '/config/fabric-loader.json', scope: 'configs', mime: 'application/json', updated: 'Today 10:40', size: '2.6 KB' },
-  { type: 'file', name: 'ruleset.json', path: '/config/ruleset.json', scope: 'configs', mime: 'application/json', updated: 'Today 10:41', size: '3.0 KB' },
-
-  // Mods
-  { type: 'file', name: 'lithium-fabric.jar', path: '/mods/lithium-fabric.jar', scope: 'mods', mime: 'application/java-archive', updated: 'Yesterday 22:05', size: '1.3 MB' },
-  { type: 'file', name: 'ferritecore.jar', path: '/mods/ferritecore.jar', scope: 'mods', mime: 'application/java-archive', updated: 'Yesterday 22:05', size: '370 KB' },
-  { type: 'file', name: 'simple-voice-chat.jar', path: '/mods/simple-voice-chat.jar', scope: 'mods', mime: 'application/java-archive', updated: 'Yesterday 22:05', size: '6.4 MB' },
-
-  // Logs
-  { type: 'file', name: 'latest.log', path: '/logs/latest.log', scope: 'logs', mime: 'text/plain', updated: 'Today 11:53', size: '188 KB' },
-  { type: 'file', name: '2026-01-05-1.log.gz', path: '/logs/2026-01-05-1.log.gz', scope: 'logs', mime: 'application/gzip', updated: 'Today 06:00', size: '12.2 MB' },
-])
-
-const mockFilesInCwd = computed(() => {
-  const cwd = mockCwd.value
-  const isRoot = cwd === '/'
-  // show direct children only
-  return mockFiles.value.filter(f => {
-    const parent = isRoot ? '/' : cwd
-    if (!f.path.startsWith(parent)) return false
-    const rest = isRoot ? f.path.slice(1) : f.path.slice(parent.length + 1)
-    if (!rest) return false
-    return !rest.includes('/')
-  })
+  selectedLogFile.value = 'latest.log'
+  logSearch.value = ''
+  resetSettingsDraft()
+  await refresh()
+  minecraft.startLogStream(newServerId)
+  if (!minecraft.fallbackMode) minecraft.startStatusStream(newServerId, { interval: 5000 })
 })
 
-const mockFilteredFiles = computed(() => {
-  const q = mockFileSearch.value.trim().toLowerCase()
-  return mockFilesInCwd.value.filter(f => {
-    if (mockFileScope.value !== 'all' && f.scope !== mockFileScope.value) return false
-    if (!q) return true
-    return (f.name || '').toLowerCase().includes(q) || (f.path || '').toLowerCase().includes(q)
-  })
+watch(
+  () => detail.value?.settings,
+  () => {
+    if (activeTab.value !== 'settings' || !settingsChanged.value) {
+      resetSettingsDraft()
+    }
+  },
+  { deep: true, immediate: true },
+)
+
+watch(
+  logFiles,
+  (files) => {
+    if (!files.length) return
+    if (!files.some((file) => file.name === selectedLogFile.value)) {
+      selectedLogFile.value = files[0].name
+    }
+  },
+  { immediate: true },
+)
+
+onMounted(async () => {
+  await refresh()
+  resetSettingsDraft()
+  minecraft.startLogStream(serverId.value)
+  if (!minecraft.fallbackMode) minecraft.startStatusStream(serverId.value, { interval: 5000 })
+  pollHandle = window.setInterval(refresh, 12000)
 })
 
-function mockFileIcon(f) {
-  if (!f) return FileText
-  if (f.type === 'folder') return Folder
-  const mime = f.mime || ''
-  if (mime.includes('json')) return FileCode2
-  if (mime.includes('gzip')) return FileArchive
-  if (mime.includes('image')) return ImageIcon
-  if (mime.includes('java-archive')) return FileArchive
-  return FileText
-}
-
-function mockSelectFile(f) {
-  mockSelectedFile.value = f
-}
-
-function mockEnterFolder(f) {
-  if (f.type !== 'folder') return
-  mockCwd.value = f.path
-  mockSelectedFile.value = null
-  showMockPreview.value = false
-}
-
-function mockGoUp() {
-  if (mockCwd.value === '/') return
-  const parts = mockCwd.value.split('/').filter(Boolean)
-  parts.pop()
-  mockCwd.value = '/' + parts.join('/')
-  if (mockCwd.value === '/') mockCwd.value = '/'
-  mockSelectedFile.value = null
-  showMockPreview.value = false
-}
-
-function mockPreviewFile(f) {
-  if (!f || f.type === 'folder') return
-  showMockPreview.value = true
-
-  // mock content
-  if (f.name === 'server.properties') {
-    mockPreviewText.value =
-`# Minecraft server properties (mock)
-motd=${instance.value?.name || 'MC Instance'} — Instance Environment
-max-players=${instance.value?.maxPlayers || 20}
-level-name=${getCurrentWorldName()}
-difficulty=hard
-white-list=true
-spawn-protection=0`
-    return
-  }
-
-  if ((f.mime || '').includes('json')) {
-    mockPreviewText.value =
-`{
-  "mock": true,
-  "file": "${f.name}",
-  "instance": "${instance.value?.name || 'unknown'}",
-  "note": "This is placeholder content for the UI vision."
-}`
-    return
-  }
-
-  if (f.name.includes('.log')) {
-    mockPreviewText.value =
-`[12:00:01] [INFO] Starting Minecraft server
-[12:00:02] [INFO] Loading instance environment
-[12:00:03] [INFO] Mounting world: ${getCurrentWorldName()}
-[12:00:10] [INFO] Done! For help, type "help"`
-    return
-  }
-
-  mockPreviewText.value = `Preview not available for ${f.name} (mock).`
-}
-
-function mockDownloadFile(f) {
-  // mock only
-  console.log('Mock download:', f?.path)
-}
-
-function mockRenameFile(f) {
-  console.log('Mock rename:', f?.path)
-}
-
-function mockDeleteFile(f) {
-  console.log('Mock delete:', f?.path)
-  if (!f) return
-  // purely visual remove for mock
-  mockFiles.value = mockFiles.value.filter(x => x.path !== f.path)
-  if (mockSelectedFile.value?.path === f.path) mockSelectedFile.value = null
-}
-
-function mockRefreshFiles() {
-  console.log('Mock refresh files')
-}
-
-function mockCreateFolder() {
-  const name = mockNewFolderName.value.trim()
-  if (!name) return
-  const base = mockCwd.value === '/' ? '' : mockCwd.value
-  const path = `${base}/${name}`.replaceAll('//', '/')
-  mockFiles.value.unshift({
-    type: 'folder',
-    name,
-    path,
-    scope: 'all',
-    updated: 'Just now',
-    size: '-',
-  })
-  mockNewFolderName.value = ''
-  showMockNewFolder.value = false
-}
-
-
-// ─────────────────────────────────────────────────────────────
-// MOCK PLAYERS (UI-only vision)
-// ─────────────────────────────────────────────────────────────
-const mockPlayers = ref([
-  { id: 'p1', name: 'ThatMasonGuy', uuid: '0d00...cafe', online: true,  whitelisted: true,  op: true,  banned: false, role: 'Owner', lastSeen: 'Now', notes: 'Instance owner.' },
-  { id: 'p2', name: 'Dylan',       uuid: 'd1y1...b33f', online: false, whitelisted: true,  op: false, banned: false, role: 'Member', lastSeen: 'Yesterday 9:12 PM', notes: 'Roommate. Allowed to vibe.' },
-  { id: 'p3', name: 'Froggy',      uuid: 'fr0g...1234', online: false, whitelisted: true,  op: false, banned: false, role: 'Member', lastSeen: '2 days ago', notes: '' },
-  { id: 'p4', name: 'Velvet',      uuid: 'v3lv...eeee', online: false, whitelisted: false, op: false, banned: false, role: 'Guest', lastSeen: 'Never', notes: 'Pending invite.' },
-  { id: 'p5', name: 'GrieferAlt',  uuid: 'baad...f00d', online: false, whitelisted: false, op: false, banned: true,  role: 'Banned', lastSeen: '3 weeks ago', notes: 'Banned for obvious reasons.' },
-])
-
-const mockPlayerSearch = ref('')
-const mockPlayerFilter = ref('all')
-const mockSelectedPlayer = ref(null)
-
-const showMockAddPlayer = ref(false)
-const mockNewPlayerName = ref('')
-const mockNewPlayerAccess = ref('default')
-
-const mockFilteredPlayers = computed(() => {
-  const q = mockPlayerSearch.value.trim().toLowerCase()
-  return mockPlayers.value.filter(p => {
-    if (mockPlayerFilter.value === 'online' && !p.online) return false
-    if (mockPlayerFilter.value === 'whitelisted' && !p.whitelisted) return false
-    if (mockPlayerFilter.value === 'ops' && !p.op) return false
-    if (mockPlayerFilter.value === 'banned' && !p.banned) return false
-
-    if (!q) return true
-    return p.name.toLowerCase().includes(q) || p.uuid.toLowerCase().includes(q)
-  })
+onUnmounted(() => {
+  if (pollHandle) window.clearInterval(pollHandle)
+  minecraft.stopLogStream(serverId.value)
+  minecraft.stopStatusStream(serverId.value)
 })
-
-function mockOpenPlayer(p) {
-  mockSelectedPlayer.value = p
-}
-
-function mockToggleWhitelist(p) {
-  if (!p) return
-  p.whitelisted = !p.whitelisted
-  if (p.whitelisted && p.banned) p.banned = false
-  if (mockSelectedPlayer.value?.id === p.id) mockSelectedPlayer.value = { ...p }
-}
-
-function mockToggleOp(p) {
-  if (!p) return
-  p.op = !p.op
-  if (p.op) {
-    p.whitelisted = true
-    p.role = p.role === 'Owner' ? 'Owner' : 'Admin'
-  } else {
-    if (p.role === 'Admin') p.role = 'Member'
-  }
-  if (mockSelectedPlayer.value?.id === p.id) mockSelectedPlayer.value = { ...p }
-}
-
-function mockToggleBan(p) {
-  if (!p) return
-  p.banned = !p.banned
-  if (p.banned) {
-    p.online = false
-    p.whitelisted = false
-    p.op = false
-    p.role = 'Banned'
-  } else {
-    if (p.role === 'Banned') p.role = 'Guest'
-  }
-  if (mockSelectedPlayer.value?.id === p.id) mockSelectedPlayer.value = { ...p }
-}
-
-function mockKickPlayer(p) {
-  console.log('Mock kick:', p?.name)
-  if (!p) return
-  p.online = false
-  if (mockSelectedPlayer.value?.id === p.id) mockSelectedPlayer.value = { ...p }
-}
-
-function mockAddPlayer() {
-  const name = mockNewPlayerName.value.trim()
-  if (!name) return
-
-  const base = {
-    id: `p_${Math.random().toString(16).slice(2)}`,
-    name,
-    uuid: `${Math.random().toString(16).slice(2, 6)}...${Math.random().toString(16).slice(2, 6)}`,
-    online: false,
-    whitelisted: false,
-    op: false,
-    banned: false,
-    role: 'Guest',
-    lastSeen: 'Never',
-    notes: '',
-  }
-
-  if (mockNewPlayerAccess.value === 'whitelisted') base.whitelisted = true
-  if (mockNewPlayerAccess.value === 'op') {
-    base.whitelisted = true
-    base.op = true
-    base.role = 'Admin'
-  }
-
-  mockPlayers.value.unshift(base)
-  mockNewPlayerName.value = ''
-  mockNewPlayerAccess.value = 'default'
-  showMockAddPlayer.value = false
-}
-
-function mockRefreshPlayers() {
-  console.log('Mock refresh players')
-}
-
 </script>
+
+<style scoped>
+.player-btn,
+.mod-btn,
+.settings-btn {
+  display: inline-flex;
+  height: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  border-radius: 0.375rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 0 0.75rem;
+  font-size: 0.875rem;
+  color: rgb(226 232 240);
+  transition: background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+
+.player-btn:hover,
+.mod-btn:hover,
+.settings-btn:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.player-btn:disabled,
+.mod-btn:disabled,
+.settings-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.player-btn.danger,
+.mod-btn.danger,
+.settings-btn.danger {
+  border-color: rgba(251, 113, 133, 0.25);
+  background: rgba(251, 113, 133, 0.1);
+  color: rgb(255 228 230);
+}
+
+.settings-btn.primary {
+  border-color: rgba(52, 211, 153, 0.25);
+  background: rgba(52, 211, 153, 0.12);
+  color: rgb(209 250 229);
+}
+
+.player-btn.danger:hover,
+.mod-btn.danger:hover,
+.settings-btn.danger:hover {
+  background: rgba(251, 113, 133, 0.15);
+}
+
+.settings-btn.primary:hover {
+  background: rgba(52, 211, 153, 0.18);
+}
+
+.setting-input {
+  height: 2.5rem;
+  width: 100%;
+  border-radius: 0.375rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.3);
+  padding: 0 0.75rem;
+  color: white;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.setting-input:focus {
+  border-color: rgba(56, 189, 248, 0.5);
+}
+
+.settings-toggle {
+  display: flex;
+  min-height: 4rem;
+  align-items: center;
+  gap: 0.75rem;
+  border-radius: 0.375rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 0.75rem;
+}
+
+.settings-toggle input {
+  height: 1rem;
+  width: 1rem;
+  accent-color: rgb(52 211 153);
+}
+</style>

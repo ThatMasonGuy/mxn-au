@@ -52,6 +52,18 @@ const wss = new WebSocketServer({ server })
 const sessions = new Map()
 
 wss.on('connection', (ws, req) => {
+  if (minecraftRoutes.isStatusStreamRequest?.(req)) {
+    console.log('New Minecraft status stream from:', req.socket.remoteAddress)
+    minecraftRoutes.handleStatusStream(ws, req)
+    return
+  }
+
+  if (minecraftRoutes.isLogStreamRequest?.(req)) {
+    console.log('New Minecraft log stream from:', req.socket.remoteAddress)
+    minecraftRoutes.handleLogStream(ws, req)
+    return
+  }
+
   console.log('New WebSocket connection from:', req.socket.remoteAddress)
 
   let sshClient = null

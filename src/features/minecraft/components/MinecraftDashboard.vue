@@ -1,452 +1,489 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-gray-900 via-stone-900 to-gray-900 text-gray-100">
-    <!-- Header -->
-    <div class="border-b border-gray-800 bg-gray-900/50 backdrop-blur-sm sticky top-0 z-10">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center space-x-4">
-            <div class="w-10 h-10 bg-green-600 rounded flex items-center justify-center">
-              <Box class="w-6 h-6" />
-            </div>
-            <div>
-              <h1 class="text-2xl font-bold text-green-400">Minecraft Control</h1>
-              <div class="flex items-center gap-2 text-sm">
-                <Server class="w-3.5 h-3.5 text-gray-400" />
-                <span v-if="currentServer" class="text-gray-300">
-                  {{ currentServer.name }}
-                </span>
-                <span v-else class="text-gray-500">
-                  No server selected
-                </span>
-                <span class="text-gray-600">•</span>
-                <span class="text-gray-400">{{ instances.length }} instance{{ instances.length !== 1 ? 's' : '' }}</span>
+  <div class="min-h-screen bg-[#090d12] text-slate-100">
+    <header class="sticky top-0 z-20 border-b border-white/10 bg-[#0c1118]/95 backdrop-blur">
+      <div class="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4 sm:px-6 lg:px-8">
+        <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div class="min-w-0">
+            <div class="flex items-center gap-3">
+              <div class="flex h-10 w-10 items-center justify-center rounded-md border border-emerald-400/25 bg-emerald-400/10">
+                <Server class="h-5 w-5 text-emerald-300" />
+              </div>
+              <div>
+                <h1 class="text-xl font-semibold tracking-tight text-white">Minecraft Ops</h1>
+                <p class="truncate font-mono text-xs text-slate-400">{{ minecraft.apiEndpoint }}</p>
               </div>
             </div>
           </div>
 
-          <div class="flex items-center gap-3">
-            <!-- Server Selector -->
-            <select 
-              v-if="userServers.length > 0"
-              v-model="selectedServerId"
-              @change="handleServerChange"
-              class="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white hover:border-gray-600 transition-colors"
+          <div class="flex flex-wrap items-center gap-2">
+            <span
+              class="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-xs font-medium"
+              :class="minecraft.fallbackMode ? 'border-amber-400/30 bg-amber-400/10 text-amber-200' : 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200'"
             >
-              <option value="">Select Server</option>
-              <option v-for="server in userServers" :key="server.id" :value="server.id">
-                {{ server.name }}
-              </option>
-            </select>
-
-            <Button @click="showWizard = true" class="bg-green-600 hover:bg-green-700" :disabled="!selectedServerId">
-              <Plus class="w-4 h-4 mr-2" />
-              New Instance
-            </Button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- No Server Selected State -->
-    <div v-if="!selectedServerId && userServers.length > 0" class="text-center py-24">
-      <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gray-800 mb-6">
-        <Server class="w-10 h-10 text-gray-600" />
-      </div>
-      <h3 class="text-2xl font-semibold mb-2 text-white">Select a Server</h3>
-      <p class="text-gray-400 mb-8 max-w-md mx-auto">
-        Choose a server from the dropdown above to view and manage its Minecraft instances
-      </p>
-    </div>
-
-    <!-- No Servers Available -->
-    <div v-else-if="userServers.length === 0 && !loadingServers" class="text-center py-24">
-      <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gray-800 mb-6">
-        <ServerOff class="w-10 h-10 text-gray-600" />
-      </div>
-      <h3 class="text-2xl font-semibold mb-2 text-white">No Servers Found</h3>
-      <p class="text-gray-400 mb-8 max-w-md mx-auto">
-        You need to add a server before you can create Minecraft instances
-      </p>
-      <Button @click="$router.push('/servers')" class="bg-blue-600 hover:bg-blue-700">
-        <Plus class="w-4 h-4 mr-2" />
-        Add Server
-      </Button>
-    </div>
-
-    <!-- Active Jobs Banner -->
-    <div v-if="selectedServerId && activeJobs.length > 0" class="bg-blue-900/30 border-b border-blue-800/50">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center space-x-2">
-            <Loader2 class="w-4 h-4 animate-spin text-blue-400" />
-            <span class="text-sm text-blue-300">
-              {{ activeJobs.length }} job{{ activeJobs.length > 1 ? 's' : '' }} in progress
+              <span class="h-2 w-2 rounded-full" :class="minecraft.fallbackMode ? 'bg-amber-300' : 'bg-emerald-300'" />
+              {{ minecraft.fallbackMode ? 'Snapshot' : statusStreamCount ? `Live (${statusStreamCount})` : 'Live' }}
             </span>
+
+            <button
+              class="inline-flex h-10 items-center gap-2 rounded-md border border-white/10 bg-white/[0.04] px-3 text-sm text-slate-100 transition hover:border-white/20 hover:bg-white/[0.08]"
+              title="Refresh servers"
+              @click="refresh"
+            >
+              <RefreshCcw class="h-4 w-4" :class="{ 'animate-spin': minecraft.loading }" />
+              Refresh
+            </button>
           </div>
-          <Button variant="ghost" size="sm" @click="showJobsPanel = !showJobsPanel">
-            {{ showJobsPanel ? 'Hide' : 'Show' }} Details
-          </Button>
         </div>
 
-        <!-- Jobs Detail Panel -->
-        <div v-if="showJobsPanel" class="mt-4 space-y-2">
-          <div 
-            v-for="job in activeJobs" 
-            :key="job.id"
-            class="bg-gray-800/50 rounded-lg p-3"
-          >
-            <div class="flex items-center justify-between mb-2">
-              <div class="flex items-center space-x-2">
-                <span class="font-medium">{{ job.type }}</span>
-                <span class="text-xs text-gray-400">{{ job.instanceName }}</span>
+        <div v-if="minecraft.fallbackMode" class="rounded-md border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-sm text-amber-100">
+          API bridge unavailable: {{ minecraft.fallbackReason || 'using local registry snapshot' }}
+        </div>
+
+        <div v-if="minecraft.error" class="rounded-md border border-rose-400/20 bg-rose-400/10 px-3 py-2 text-sm text-rose-100">
+          {{ minecraft.error }}
+        </div>
+      </div>
+    </header>
+
+    <main class="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[1fr_360px] lg:px-8">
+      <section class="space-y-6">
+        <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div class="rounded-md border border-white/10 bg-white/[0.04] p-4">
+            <div class="flex items-center justify-between gap-3">
+              <span class="text-sm text-slate-400">Players</span>
+              <Users class="h-4 w-4 text-sky-300" />
+            </div>
+            <div class="mt-3 text-2xl font-semibold text-white">{{ minecraft.totals.players }}/{{ minecraft.totals.capacity }}</div>
+          </div>
+
+          <div class="rounded-md border border-white/10 bg-white/[0.04] p-4">
+            <div class="flex items-center justify-between gap-3">
+              <span class="text-sm text-slate-400">Active</span>
+              <Activity class="h-4 w-4 text-emerald-300" />
+            </div>
+            <div class="mt-3 text-2xl font-semibold text-white">{{ minecraft.totals.active }}</div>
+          </div>
+
+          <div class="rounded-md border border-white/10 bg-white/[0.04] p-4">
+            <div class="flex items-center justify-between gap-3">
+              <span class="text-sm text-slate-400">Sleeping</span>
+              <Moon class="h-4 w-4 text-indigo-300" />
+            </div>
+            <div class="mt-3 text-2xl font-semibold text-white">{{ minecraft.totals.sleeping }}</div>
+          </div>
+
+          <div class="rounded-md border border-white/10 bg-white/[0.04] p-4">
+            <div class="flex items-center justify-between gap-3">
+              <span class="text-sm text-slate-400">Updates</span>
+              <PackageCheck class="h-4 w-4 text-violet-300" />
+            </div>
+            <div class="mt-3 text-2xl font-semibold text-white">{{ minecraft.totals.updates }}</div>
+          </div>
+        </div>
+
+        <div class="space-y-3">
+          <div v-if="pendingRestartServers.length" class="rounded-md border border-amber-400/25 bg-amber-400/10 p-4">
+            <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div class="flex min-w-0 gap-3">
+                <AlertTriangle class="mt-0.5 h-5 w-5 shrink-0 text-amber-200" />
+                <div class="min-w-0">
+                  <h2 class="font-semibold text-amber-50">Pending restart</h2>
+                  <p class="mt-1 text-sm text-amber-100/80">
+                    {{ pendingRestartServers.map((server) => server.label).join(', ') }} need a restart or wake before recent changes are fully applied.
+                  </p>
+                </div>
               </div>
-              <span class="text-xs text-gray-400">{{ job.progress }}%</span>
-            </div>
-            <div class="w-full bg-gray-700 rounded-full h-2">
-              <div 
-                class="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                :style="{ width: `${job.progress}%` }"
-              />
-            </div>
-            <div v-if="job.currentStageText" class="text-xs text-gray-400 mt-2">
-              {{ job.currentStageText }}
+              <button
+                class="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-amber-300/25 bg-amber-300/10 px-3 text-sm text-amber-50 hover:bg-amber-300/15"
+                @click="openServer(pendingRestartServers[0].id)"
+              >
+                Open
+                <ArrowRight class="h-4 w-4" />
+              </button>
             </div>
           </div>
-        </div>
-      </div>
-    </div>
 
-    <!-- Main Content (only show if server selected) -->
-    <div v-if="selectedServerId" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <!-- Empty State -->
-      <div v-if="instances.length === 0 && !loading" class="text-center py-16">
-        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-800 mb-4">
-          <Server class="w-8 h-8 text-gray-600" />
-        </div>
-        <h3 class="text-xl font-semibold mb-2">No Minecraft Instances</h3>
-        <p class="text-gray-400 mb-6">Get started by creating your first Minecraft server on {{ currentServer?.name }}</p>
-        <Button @click="showWizard = true" class="bg-green-600 hover:bg-green-700">
-          <Plus class="w-4 h-4 mr-2" />
-          Create Instance
-        </Button>
-      </div>
-
-      <!-- Loading State -->
-      <div v-if="loading" class="text-center py-16">
-        <Loader2 class="w-8 h-8 animate-spin mx-auto text-green-400" />
-        <p class="text-gray-400 mt-4">Loading instances...</p>
-      </div>
-
-      <!-- Instances Grid -->
-      <div v-if="instances.length > 0 && !loading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div
-          v-for="instance in instances"
-          :key="instance.id"
-          class="bg-gray-800/50 border border-gray-700 rounded-lg overflow-hidden hover:border-green-600/50 transition-all cursor-pointer group"
-          @click="openInstance(instance)"
-        >
-          <!-- Status Banner -->
-          <div 
-            :class="[
-              'px-4 py-2 border-b',
-              getStatusColor(instance.status).bg,
-              getStatusColor(instance.status).border
-            ]"
+          <article
+            v-for="server in minecraft.servers"
+            :key="server.id"
+            class="rounded-md border bg-[#0f151d] p-4 transition hover:border-white/20"
+            :class="server.id === minecraft.selectedServerId ? 'border-emerald-400/35 shadow-[0_0_0_1px_rgba(52,211,153,0.12)]' : 'border-white/10'"
           >
-            <div class="flex items-center justify-between">
-              <div class="flex items-center space-x-2">
-                <div 
-                  :class="[
-                    'w-2 h-2 rounded-full',
-                    getStatusColor(instance.status).dot
-                  ]"
+            <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+              <button class="flex min-w-0 flex-1 items-start gap-3 text-left" @click="selectServer(server.id)">
+                <div class="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-md border border-white/10 bg-black/25">
+                  <img
+                    v-if="serverIcon(server)"
+                    :src="serverIcon(server)"
+                    :alt="`${server.label} icon`"
+                    class="h-full w-full object-cover [image-rendering:pixelated]"
+                  />
+                  <span v-else class="font-mono text-sm font-semibold text-emerald-100">{{ serverInitials(server) }}</span>
+                </div>
+                <div class="min-w-0">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <span class="text-lg font-semibold text-white">{{ server.label }}</span>
+                    <span class="rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 font-mono text-xs text-slate-300">{{ server.id }}</span>
+                    <span class="inline-flex items-center gap-2 rounded-md px-2 py-1 text-xs font-medium" :class="stateMeta(server.state).pill">
+                      <span class="h-1.5 w-1.5 rounded-full" :class="stateMeta(server.state).dot" />
+                      {{ stateMeta(server.state).label }}
+                    </span>
+                    <span v-if="restartReasonCount(server.id)" class="inline-flex items-center gap-1.5 rounded-md bg-amber-400/10 px-2 py-1 text-xs font-medium text-amber-200">
+                      <AlertTriangle class="h-3.5 w-3.5" />
+                      Restart
+                    </span>
+                  </div>
+                  <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-400">
+                    <span class="inline-flex items-center gap-1.5"><Globe2 class="h-3.5 w-3.5" />{{ server.host }}</span>
+                    <span class="inline-flex items-center gap-1.5"><Cable class="h-3.5 w-3.5" />{{ server.publicPort }} -> {{ server.backendPort }}</span>
+                    <span class="inline-flex items-center gap-1.5"><ShieldCheck class="h-3.5 w-3.5" />RCON {{ server.rconPort }}</span>
+                  </div>
+                </div>
+              </button>
+
+              <div class="grid min-w-[280px] grid-cols-3 gap-2 text-sm">
+                <div class="rounded-md border border-white/10 bg-black/20 px-3 py-2">
+                  <div class="text-xs text-slate-500">Players</div>
+                  <div class="mt-1 font-semibold text-slate-100">{{ server.playersOnline }}/{{ server.maxPlayers }}</div>
+                </div>
+                <div class="rounded-md border border-white/10 bg-black/20 px-3 py-2">
+                  <div class="text-xs text-slate-500">Mods</div>
+                  <div class="mt-1 font-semibold text-slate-100">{{ server.modCount }}</div>
+                </div>
+                <div class="rounded-md border border-white/10 bg-black/20 px-3 py-2">
+                  <div class="text-xs text-slate-500">Backup</div>
+                  <div class="mt-1 truncate font-semibold text-slate-100">{{ backupLabel(server) }}</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-4 flex flex-col gap-3 border-t border-white/10 pt-4 md:flex-row md:items-center md:justify-between">
+              <div class="min-w-0 truncate font-mono text-xs text-slate-400">{{ server.service }} - {{ server.activeWorld }}</div>
+
+              <div class="flex flex-wrap gap-2">
+                <button
+                  v-if="canWake(server)"
+                  class="inline-flex h-9 items-center gap-2 rounded-md border border-emerald-400/25 bg-emerald-400/10 px-3 text-sm text-emerald-100 transition hover:bg-emerald-400/15"
+                  @click="runLifecycle(server, 'wake')"
+                >
+                  <Play class="h-4 w-4" />
+                  Wake
+                </button>
+
+                <button
+                  v-if="canRestart(server)"
+                  class="inline-flex h-9 items-center gap-2 rounded-md border border-sky-400/25 bg-sky-400/10 px-3 text-sm text-sky-100 transition hover:bg-sky-400/15"
+                  @click="runLifecycle(server, 'restart')"
+                >
+                  <RotateCw class="h-4 w-4" />
+                  Restart
+                </button>
+
+                <button
+                  v-if="canSleep(server)"
+                  class="inline-flex h-9 items-center gap-2 rounded-md border border-rose-400/25 bg-rose-400/10 px-3 text-sm text-rose-100 transition hover:bg-rose-400/15"
+                  @click="runLifecycle(server, 'sleep')"
+                >
+                  <Square class="h-4 w-4" />
+                  Sleep
+                </button>
+
+                <button
+                  class="inline-flex h-9 items-center gap-2 rounded-md border border-white/10 bg-white/[0.04] px-3 text-sm text-slate-100 transition hover:border-white/20 hover:bg-white/[0.08]"
+                  @click="openServer(server.id)"
+                >
+                  Open
+                  <ArrowRight class="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <aside class="space-y-4">
+        <section class="rounded-md border border-white/10 bg-[#0f151d] p-4">
+          <div class="flex items-start justify-between gap-3">
+            <div class="flex min-w-0 items-start gap-3">
+              <div class="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md border border-white/10 bg-black/25">
+                <img
+                  v-if="selected && serverIcon(selected)"
+                  :src="serverIcon(selected)"
+                  :alt="`${selected.label} icon`"
+                  class="h-full w-full object-cover [image-rendering:pixelated]"
                 />
-                <span class="text-sm font-medium">{{ getStatusText(instance.status) }}</span>
+                <Server v-else class="h-5 w-5 text-emerald-300" />
               </div>
-              <Badge variant="outline" class="text-xs">
-                {{ instance.version }}
-              </Badge>
+              <div class="min-w-0">
+                <h2 class="truncate font-semibold text-white">{{ selected?.label || 'Server' }}</h2>
+                <p class="mt-1 truncate font-mono text-xs text-slate-400">{{ selected?.root }}</p>
+              </div>
             </div>
+            <span v-if="selected" class="rounded-md px-2 py-1 text-xs font-medium" :class="stateMeta(selected.state).pill">{{ stateMeta(selected.state).label }}</span>
           </div>
 
-          <!-- Content -->
-          <div class="p-4">
-            <h3 class="text-lg font-semibold mb-3 group-hover:text-green-400 transition-colors">
-              {{ instance.name }}
-            </h3>
+          <div v-if="selected" class="mt-4 space-y-3">
+            <MetricBar label="CPU" :value="selected.cpu || 0" tone="emerald" />
+            <MetricBar label="Memory" :value="selected.memory || 0" tone="sky" />
+            <MetricBar label="Disk" :value="selected.disk || 0" tone="violet" />
+          </div>
+        </section>
 
-            <div class="space-y-2 text-sm text-gray-400">
-              <div class="flex items-center space-x-2">
-                <Globe class="w-4 h-4" />
-                <span>{{ getWorldName(instance) }}</span>
-              </div>
-              
-              <div class="flex items-center space-x-2">
-                <Users class="w-4 h-4" />
-                <span>{{ instance.onlinePlayers || 0 }}/{{ instance.maxPlayers || 20 }}</span>
-              </div>
-
-              <div class="flex items-center space-x-2">
-                <Calendar class="w-4 h-4" />
-                <span>Created {{ formatDate(instance.createdAt) }}</span>
-              </div>
+        <section class="rounded-md border border-white/10 bg-[#0f151d] p-4">
+          <h2 class="font-semibold text-white">Maintenance</h2>
+          <div class="mt-4 space-y-3 text-sm">
+            <div class="flex items-center justify-between gap-3">
+              <span class="text-slate-400">Daily restart</span>
+              <span class="font-mono text-slate-100">{{ selected?.maintenance?.dailyRestart || '06:00' }}</span>
             </div>
-
-            <!-- Action Buttons -->
-            <div class="mt-4 pt-4 border-t border-gray-700 flex gap-2">
-              <Button
-                v-if="instance.status === 'stopped'"
-                @click.stop="startServer(instance.id)"
-                size="sm"
-                class="flex-1 bg-green-600 hover:bg-green-700"
+            <div class="flex items-center justify-between gap-3">
+              <span class="text-slate-400">Snapshots kept</span>
+              <span class="font-mono text-slate-100">{{ selected?.maintenance?.localSnapshotRetention || 2 }}</span>
+            </div>
+            <div class="flex items-center justify-between gap-3">
+              <span class="text-slate-400">Cron</span>
+              <span
+                class="rounded-md px-2 py-1 text-xs"
+                :class="selected?.maintenance?.cronMatched ? 'bg-emerald-400/10 text-emerald-200' : 'bg-amber-400/10 text-amber-200'"
               >
-                <Play class="w-4 h-4 mr-1" />
-                Start
-              </Button>
-              
-              <Button
-                v-if="instance.status === 'running'"
-                @click.stop="stopServer(instance.id)"
-                size="sm"
-                variant="outline"
-                class="flex-1"
+                {{ selected?.maintenance?.cronMatched ? 'Matched' : selected?.maintenance?.cronPresent === false ? 'Missing' : 'Pending' }}
+              </span>
+            </div>
+            <div class="flex items-center justify-between gap-3">
+              <span class="text-slate-400">Today snapshot</span>
+              <span
+                class="rounded-md px-2 py-1 text-xs"
+                :class="selected?.maintenance?.latestBackupToday ? 'bg-emerald-400/10 text-emerald-200' : 'bg-amber-400/10 text-amber-200'"
               >
-                <Square class="w-4 h-4 mr-1" />
-                Stop
-              </Button>
-
-              <Button
-                @click.stop="openInstance(instance)"
-                size="sm"
-                variant="outline"
-                class="flex-1"
-              >
-                <Settings class="w-4 h-4 mr-1" />
-                Manage
-              </Button>
+                {{ selected?.maintenance?.latestBackupToday ? 'Done' : 'Waiting' }}
+              </span>
+            </div>
+            <div class="flex items-center justify-between gap-3">
+              <span class="text-slate-400">Last backup</span>
+              <span class="text-right text-slate-100">{{ backupLabel(selected) }}</span>
             </div>
           </div>
-        </div>
-      </div>
-    </div>
+        </section>
 
-    <!-- Wizard Dialog -->
-    <Dialog v-model:open="showWizard">
-      <DialogContent class="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <MinecraftWizard 
-          :serverId="selectedServerId" 
-          :serverName="currentServer?.name"
-          @complete="handleWizardComplete" 
-          @close="showWizard = false" 
-        />
-      </DialogContent>
-    </Dialog>
+        <section class="rounded-md border border-white/10 bg-[#0f151d] p-4">
+          <div class="flex items-center justify-between gap-3">
+            <h2 class="font-semibold text-white">Recent Activity</h2>
+            <History class="h-4 w-4 text-slate-400" />
+          </div>
+          <div class="mt-4 space-y-2">
+            <div v-if="!recentActivity.length" class="rounded-md border border-white/10 bg-black/20 p-3 text-sm text-slate-500">
+              No panel activity yet.
+            </div>
+            <div v-for="entry in recentActivity" :key="entry.id" class="rounded-md border border-white/10 bg-black/20 p-3">
+              <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                  <div class="truncate text-sm font-medium text-slate-100">{{ entry.summary }}</div>
+                  <div class="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500">
+                    <span>{{ activityServerLabel(entry) }}</span>
+                    <span>{{ formatDate(entry.timestamp) }}</span>
+                  </div>
+                </div>
+                <span v-if="entry.restartRequired" class="rounded-md bg-amber-400/10 px-2 py-1 text-xs text-amber-200">Restart</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="rounded-md border border-white/10 bg-[#0f151d] p-4">
+          <h2 class="font-semibold text-white">Ports</h2>
+          <div class="mt-4 grid grid-cols-3 gap-2 text-center text-sm">
+            <div class="rounded-md border border-white/10 bg-black/20 p-3">
+              <div class="text-xs text-slate-500">Public</div>
+              <div class="mt-1 font-mono text-slate-100">{{ selected?.publicPort }}</div>
+            </div>
+            <div class="rounded-md border border-white/10 bg-black/20 p-3">
+              <div class="text-xs text-slate-500">Backend</div>
+              <div class="mt-1 font-mono text-slate-100">{{ selected?.backendPort }}</div>
+            </div>
+            <div class="rounded-md border border-white/10 bg-black/20 p-3">
+              <div class="text-xs text-slate-500">RCON</div>
+              <div class="mt-1 font-mono text-slate-100">{{ selected?.rconPort }}</div>
+            </div>
+          </div>
+        </section>
+      </aside>
+    </main>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
-import { useMinecraftStore } from '@/features/minecraft/stores/useMinecraftStore'
-import { useServers } from '@/features/server/composables/useServers'
-import { useMinecraftAPI } from '@/features/minecraft/composables/useMinecraftAPI'
-import { Button } from '@/shared/components/ui/button'
-import { Dialog, DialogContent } from '@/shared/components/ui/dialog'
-import { Badge } from '@/shared/components/ui/badge'
-import MinecraftWizard from '@/features/minecraft/components/MinecraftWizard.vue'
-import { 
-  Server,
-  ServerOff,
-  Plus, 
-  Loader2, 
-  Globe, 
-  Users, 
-  Calendar,
+import { computed, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
+import {
+  Activity,
+  AlertTriangle,
+  ArrowRight,
+  Cable,
+  Globe2,
+  History,
+  Moon,
+  PackageCheck,
   Play,
+  RefreshCcw,
+  RotateCw,
+  Server,
+  ShieldCheck,
   Square,
-  Settings,
-  Box
+  Users,
 } from 'lucide-vue-next'
+import { useMinecraftStore } from '@/features/minecraft/stores/useMinecraftStore'
+import { useToast } from '@/shared/components/ui/toast'
+import MetricBar from '@/features/minecraft/components/MetricBar.vue'
 
 const router = useRouter()
-const route = useRoute()
-const minecraftStore = useMinecraftStore()
-const { getServers } = useServers()
-const { startServer: apiStartServer, stopServer: apiStopServer } = useMinecraftAPI()
+const minecraft = useMinecraftStore()
+const { toast } = useToast()
+const selected = computed(() => minecraft.selectedServer)
+const pendingRestartServers = computed(() => minecraft.servers.filter((server) => restartReasonCount(server.id)))
+const recentActivity = computed(() => minecraft.activityFeed.slice(0, 6))
+const statusStreamCount = computed(() => minecraft.statusStreamingIds?.size || 0)
 
-const showWizard = ref(false)
-const showJobsPanel = ref(false)
-const loading = ref(true)
-const loadingServers = ref(true)
-const userServers = ref([])
-const selectedServerId = ref('')
+const errorMessage = (error) => error?.message || String(error || 'Unexpected Minecraft error')
 
-const instances = computed(() => minecraftStore.instances)
-const activeJobs = computed(() => minecraftStore.activeJobs)
-const currentServer = computed(() => userServers.value.find(s => s.id === selectedServerId.value))
-
-// Load user's servers
-async function loadServers() {
+const runWithToast = async (action, options = {}) => {
   try {
-    loadingServers.value = true
-    const servers = await getServers()
-    userServers.value = servers
-    
-    // Auto-select first server if available and none selected
-    if (servers.length > 0 && !selectedServerId.value) {
-      // Check if there's a serverId in query params
-      if (route.query.serverId) {
-        selectedServerId.value = route.query.serverId
-      } else {
-        selectedServerId.value = servers[0].id
-      }
+    const result = await action()
+    if (options.success) {
+      toast({
+        title: options.success,
+        description: options.description,
+        variant: options.variant || 'success',
+      })
     }
+    return result
   } catch (error) {
-    console.error('Error loading servers:', error)
-  } finally {
-    loadingServers.value = false
+    toast({
+      title: options.error || 'Minecraft action failed',
+      description: errorMessage(error),
+      variant: 'destructive',
+    })
+    return null
   }
 }
 
-// Watch for server changes and reload instances
-watch(selectedServerId, async (newServerId) => {
-  if (newServerId) {
-    loading.value = true
-    try {
-      await minecraftStore.fetchInstances(newServerId)
-      minecraftStore.subscribeToInstances(newServerId)
-      
-      // Update URL with serverId
-      router.replace({ 
-        path: '/minecraft/dashboard',
-        query: { serverId: newServerId }
-      })
-    } catch (error) {
-      console.error('Error loading instances:', error)
-    } finally {
-      loading.value = false
-    }
-  }
-})
+const refresh = async () => {
+  await runWithToast(
+    () => minecraft.refreshAll(),
+    { error: 'Refresh failed' },
+  )
+}
 
-function handleServerChange() {
-  // Server change is handled by the watch
+const selectServer = async (serverId) => {
+  minecraft.setSelectedServer(serverId)
+  await runWithToast(
+    () => minecraft.fetchServer(serverId),
+    { error: 'Server refresh failed' },
+  )
+}
+
+const openServer = (serverId) => {
+  router.push(`/minecraft/${serverId}`)
+}
+
+const serverIcon = (server) => minecraft.serverIconUrl(server)
+
+const serverInitials = (server) => {
+  return String(server?.label || server?.id || 'MC')
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase()
+}
+
+const restartReasonCount = (serverId) => minecraft.restartReasonsForServer(serverId).length
+
+const activityServerLabel = (entry) => {
+  return minecraft.servers.find((server) => server.id === entry.serverId)?.label || entry.serverId
+}
+
+const runLifecycle = async (server, action) => {
+  let confirmed = false
+  if (['sleep', 'stop', 'restart'].includes(action)) {
+    const ok = window.confirm(`${action.toUpperCase()} ${server.label}?`)
+    if (!ok) return
+    confirmed = true
+  }
+
+  await runWithToast(
+    () => minecraft.lifecycleAction(server.id, action, confirmed),
+    {
+      success: `${actionLabel(action)} requested`,
+      description: server.label,
+      error: `${actionLabel(action)} failed`,
+    },
+  )
+}
+
+const actionLabel = (action) => `${action.slice(0, 1).toUpperCase()}${action.slice(1)}`
+
+const canWake = (server) => ['offline', 'hibernating', 'degraded'].includes(server?.state)
+const canRestart = (server) => ['alive', 'warming', 'degraded'].includes(server?.state)
+const canSleep = (server) => ['alive', 'warming', 'degraded'].includes(server?.state)
+
+const startStatusStreams = () => {
+  if (minecraft.fallbackMode) return
+  minecraft.servers.forEach((server) => minecraft.startStatusStream(server.id, { interval: 5000 }))
+}
+
+const stateMeta = (state) => {
+  const states = {
+    alive: {
+      label: 'Active',
+      pill: 'bg-emerald-400/10 text-emerald-200',
+      dot: 'bg-emerald-300 shadow-[0_0_12px_rgba(110,231,183,0.7)]',
+    },
+    hibernating: {
+      label: 'Sleeping',
+      pill: 'bg-indigo-400/10 text-indigo-200',
+      dot: 'bg-indigo-300',
+    },
+    warming: {
+      label: 'Warming',
+      pill: 'bg-amber-400/10 text-amber-200',
+      dot: 'bg-amber-300 animate-pulse',
+    },
+    stopping: {
+      label: 'Stopping',
+      pill: 'bg-orange-400/10 text-orange-200',
+      dot: 'bg-orange-300 animate-pulse',
+    },
+    degraded: {
+      label: 'Degraded',
+      pill: 'bg-rose-400/10 text-rose-200',
+      dot: 'bg-rose-300',
+    },
+    offline: {
+      label: 'Offline',
+      pill: 'bg-slate-400/10 text-slate-300',
+      dot: 'bg-slate-400',
+    },
+  }
+  return states[state] || states.offline
+}
+
+const backupLabel = (server) => {
+  if (!server) return 'Unknown'
+  if (!server.lastBackupAt) return server.lastBackupStatus || 'Unknown'
+  const date = new Date(server.lastBackupAt)
+  if (Number.isNaN(date.getTime())) return server.lastBackupStatus || 'Unknown'
+  return date.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
 onMounted(async () => {
-  await loadServers()
+  await refresh()
+  startStatusStreams()
+  minecraft.startPolling(20000)
 })
 
 onUnmounted(() => {
-  minecraftStore.unsubscribeAll()
+  minecraft.stopAllStatusStreams()
+  minecraft.stopPolling()
 })
-
-const openInstance = (instance) => {
-  router.push(`/minecraft/${instance.id}?serverId=${selectedServerId.value}`)
-}
-
-const handleWizardComplete = (instance) => {
-  showWizard.value = false
-  router.push(`/minecraft/${instance.id}?serverId=${selectedServerId.value}`)
-}
-
-const startServer = async (instanceId) => {
-  try {
-    // Optimistically update UI
-    await minecraftStore.updateInstance(instanceId, { status: 'starting' })
-    
-    // Call backend API
-    await apiStartServer(selectedServerId.value, instanceId)
-    
-    console.log('Server started:', instanceId)
-  } catch (error) {
-    console.error('Failed to start server:', error)
-    // Revert status on error
-    await minecraftStore.updateInstance(instanceId, { status: 'stopped' })
-  }
-}
-
-const stopServer = async (instanceId) => {
-  try {
-    // Optimistically update UI
-    await minecraftStore.updateInstance(instanceId, { status: 'stopping' })
-    
-    // Call backend API
-    await apiStopServer(selectedServerId.value, instanceId)
-    
-    console.log('Server stopped:', instanceId)
-  } catch (error) {
-    console.error('Failed to stop server:', error)
-    // Revert status on error
-    await minecraftStore.updateInstance(instanceId, { status: 'running' })
-  }
-}
-
-const getStatusColor = (status) => {
-  const colors = {
-    running: {
-      bg: 'bg-green-900/30',
-      border: 'border-green-800/50',
-      dot: 'bg-green-400 animate-pulse'
-    },
-    stopped: {
-      bg: 'bg-gray-800/30',
-      border: 'border-gray-700/50',
-      dot: 'bg-gray-500'
-    },
-    installing: {
-      bg: 'bg-blue-900/30',
-      border: 'border-blue-800/50',
-      dot: 'bg-blue-400 animate-pulse'
-    },
-    error: {
-      bg: 'bg-red-900/30',
-      border: 'border-red-800/50',
-      dot: 'bg-red-400'
-    },
-    starting: {
-      bg: 'bg-yellow-900/30',
-      border: 'border-yellow-800/50',
-      dot: 'bg-yellow-400 animate-pulse'
-    },
-    stopping: {
-      bg: 'bg-orange-900/30',
-      border: 'border-orange-800/50',
-      dot: 'bg-orange-400 animate-pulse'
-    }
-  }
-  return colors[status] || colors.stopped
-}
-
-const getStatusText = (status) => {
-  const texts = {
-    running: 'Running',
-    stopped: 'Stopped',
-    installing: 'Installing',
-    error: 'Error',
-    starting: 'Starting',
-    stopping: 'Stopping'
-  }
-  return texts[status] || status
-}
-
-const getWorldName = (instance) => {
-  if (!instance.activeWorld || !instance.worlds) return 'No world'
-  const world = instance.worlds.find(w => w.id === instance.activeWorld)
-  return world?.name || 'Unknown'
-}
-
-const formatDate = (date) => {
-  if (!date) return 'Unknown'
-  const d = date.toDate ? date.toDate() : new Date(date)
-  return d.toLocaleDateString()
-}
-
-const formatUptime = (seconds) => {
-  if (!seconds) return '0m'
-  const hours = Math.floor(seconds / 3600)
-  const minutes = Math.floor((seconds % 3600) / 60)
-  if (hours > 0) return `${hours}h ${minutes}m`
-  return `${minutes}m`
-}
 </script>

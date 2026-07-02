@@ -1,35 +1,16 @@
-// src/routers/modules/minecraftRoutes.js
-import { ROLES } from '@/shared/constants/roles'
-
 export default [
   {
     path: '/minecraft',
     name: 'Minecraft',
-    component: () => import('@/features/minecraft/views/MC_Landing.vue'),
-    meta: {
-      requiresAuth: false,
-      role: null,
-      title: 'Minecraft Dashboard',
-      drawerRanking: 1,
-      drawerVisible: true,
-      layout: 'default',
-      description: 'Manage Minecraft servers, player stats, and logs.',
-      badge: '',
-      requiresOverlay: false,
-    },
-  },
-  {
-    path: '/minecraft/setup',
-    name: 'MinecraftSetup',
-    component: () => import('@/features/minecraft/components/MinecraftSetup.vue'),
+    component: () => import('@/features/minecraft/components/MinecraftDashboard.vue'),
     meta: {
       requiresAuth: true,
       role: null,
-      title: 'Minecraft Dashboard',
+      title: 'Minecraft Ops',
       drawerRanking: 1,
       drawerVisible: true,
       layout: 'default',
-      description: 'Manage Minecraft servers, player stats, and logs.',
+      description: 'Minecraft server operations.',
       badge: '',
       requiresOverlay: false,
     },
@@ -37,15 +18,31 @@ export default [
   {
     path: '/minecraft/dashboard',
     name: 'MinecraftDashboard',
-    component: () => import('@/features/minecraft/components/MinecraftDashboard.vue'),
+    redirect: '/minecraft',
     meta: {
       requiresAuth: true,
       role: null,
-      title: 'Minecraft Dashboard',
+      title: 'Minecraft Ops',
       drawerRanking: 1,
-      drawerVisible: true,
+      drawerVisible: false,
       layout: 'default',
-      description: 'Manage Minecraft servers, player stats, and logs.',
+      description: 'Minecraft server operations.',
+      badge: '',
+      requiresOverlay: false,
+    },
+  },
+  {
+    path: '/minecraft/setup',
+    name: 'MinecraftSetup',
+    redirect: '/minecraft',
+    meta: {
+      requiresAuth: true,
+      role: null,
+      title: 'Minecraft Ops',
+      drawerRanking: 1,
+      drawerVisible: false,
+      layout: 'default',
+      description: 'Minecraft server operations.',
       badge: '',
       requiresOverlay: false,
     },
@@ -57,13 +54,13 @@ export default [
     meta: {
       requiresAuth: true,
       role: null,
-      title: 'Minecraft Dashboard',
+      title: 'Minecraft Server',
       drawerRanking: 1,
-      drawerVisible: true,
+      drawerVisible: false,
       layout: 'default',
-      description: 'Manage Minecraft servers, player stats, and logs.',
+      description: 'Minecraft server detail.',
       badge: '',
       requiresOverlay: false,
     },
-  }
+  },
 ]
