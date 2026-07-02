@@ -1,0 +1,27 @@
+{
+    "name": "ssh-portal-backend",
+    "version": "1.0.0",
+    "description": "SSH relay and Minecraft control-plane backend for mxn.au",
+    "main": "backend-server.js",
+    "scripts": {
+        "start": "node backend-server.js",
+        "check": "node --check backend-server.js && node --check backend-admin-routes.js && node --check minecraft-routes.js && node --check minecraft-setup-routes.js",
+        "test": "npm run check"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "type": "commonjs",
+    "engines": {
+        "node": ">=20"
+    },
+    "dependencies": {
+        "cors": "^2.8.5",
+        "crypto-js": "^4.2.0",
+        "dotenv": "^17.2.3",
+        "express": "^5.2.1",
+        "firebase-admin": "^13.6.0",
+        "ssh2": "^1.17.0",
+        "ws": "^8.18.3"
+    }
+}
