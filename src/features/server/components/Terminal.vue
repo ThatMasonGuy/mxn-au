@@ -21,7 +21,7 @@
     </transition>
 
     <!-- Terminal Display -->
-    <div ref="terminalRef" class="terminal-display" @contextmenu.prevent="handleContextMenu"></div>
+    <div ref="terminalRef" class="terminal-display"></div>
 
     <!-- File Editor Modal -->
     <FileEditor :is-open="showFileEditor" :filename="editingFile.name" :filepath="editingFile.path"
@@ -180,14 +180,11 @@ const initTerminal = () => {
 
   terminal.value.onData(handleTerminalData)
 
-  // Copy-on-select (X11 style)
-  terminalRef.value.addEventListener('mouseup', handleMouseUp)
-
   if (keyHandlerDisposable) keyHandlerDisposable.dispose()
   keyHandlerDisposable = terminal.value.attachCustomKeyEventHandler(handleKeyEvent)
 
   terminal.value.writeln('\x1b[1;32m╔══════════════════════════════════════════╗\x1b[0m')
-  terminal.value.writeln('\x1b[1;32m║\x1b[0m    🚀 MXN.AU Server SSH Portal            \x1b[1;32m║\x1b[0m')
+  terminal.value.writeln('\x1b[1;32m║\x1b[0m    🚀 MXN.AU Server SSH Portal           \x1b[1;32m║\x1b[0m')
   terminal.value.writeln('\x1b[1;32m╚══════════════════════════════════════════╝\x1b[0m')
   terminal.value.writeln('')
   terminal.value.writeln('\x1b[33mReady to connect...\x1b[0m')
@@ -360,36 +357,74 @@ const handleKeyEvent = (event) => {
     event.preventDefault(); openSearch(); return false
   }
 
-  // Copy selection
-  if (event.ctrlKey && event.shiftKey && (event.key === 'C' || event.key === 'c')) {
-    const selection = terminal.value.getSelection()
-    if (selection) navigator.clipboard.writeText(selection).catch(() => { })
-    return false
+  // Copy selected terminal text without sending Ctrl+C to the remote shell.
+  if (event.ctrlKey && !event.altKey && !event.metaKey && (event.key === 'c' || event.key === 'C')) {
+    if (copyTerminalSelection()) {
+      event.preventDefault()
+      event.stopPropagation()
+      return false
+    }
+
+    // Ctrl+Shift+C is a copy shortcut only; plain Ctrl+C with no selection stays an interrupt.
+    if (event.shiftKey) {
+      event.preventDefault()
+      event.stopPropagation()
+      return false
+    }
   }
 
-  // Paste (Ctrl+V / Ctrl+Shift+V) — via xterm so bracketed paste is honoured
-  if (event.ctrlKey && (event.key === 'v' || event.key === 'V')) {
+  // Paste through xterm so multiline input stays one bracketed-paste payload.
+  if (event.ctrlKey && !event.altKey && !event.metaKey && (event.key === 'v' || event.key === 'V')) {
     event.preventDefault()
     event.stopPropagation()
-    navigator.clipboard.readText().then(text => {
-      if (connected.value && text) terminal.value.paste(text)
-    }).catch(() => { })
+    pasteFromClipboard()
     return false
   }
 
-  // Ctrl+C with no shift → always interrupt (copy is handled by select / Ctrl+Shift+C)
-  // Let xterm send \x03 by returning true.
+  // Plain Ctrl+C with no selection is handled by xterm as ETX / interrupt.
   return true
 }
 
-const handleMouseUp = () => {
+const copyTerminalSelection = () => {
   const selection = terminal.value?.getSelection()
-  if (selection) navigator.clipboard.writeText(selection).catch(() => { })
+  if (!selection) return false
+
+  copyTextToClipboard(selection)
+  return true
 }
 
-const handleContextMenu = () => {
+const copyTextToClipboard = async (text) => {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text)
+      return
+    }
+  } catch {
+    // Fall through to the textarea fallback.
+  }
+
+  const textarea = document.createElement('textarea')
+  textarea.value = text
+  textarea.setAttribute('readonly', '')
+  textarea.style.position = 'fixed'
+  textarea.style.top = '-9999px'
+  document.body.appendChild(textarea)
+  textarea.select()
+  try {
+    document.execCommand('copy')
+  } catch {
+    // Clipboard access can be blocked outside a user gesture or secure context.
+  } finally {
+    document.body.removeChild(textarea)
+    terminal.value?.focus()
+  }
+}
+
+const pasteFromClipboard = () => {
+  if (!connected.value || !terminal.value || !navigator.clipboard?.readText) return
+
   navigator.clipboard.readText().then(text => {
-    if (connected.value && text) terminal.value.paste(text)
+    if (connected.value && text) terminal.value?.paste(text)
   }).catch(() => { })
 }
 
@@ -508,7 +543,6 @@ const cleanup = () => {
   userClosed = true
   if (reconnectTimer) clearTimeout(reconnectTimer)
   window.removeEventListener('resize', handleResize)
-  terminalRef.value?.removeEventListener('mouseup', handleMouseUp)
   if (resizeObserver) {
     resizeObserver.disconnect()
     resizeObserver = null

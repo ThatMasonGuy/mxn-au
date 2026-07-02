@@ -163,7 +163,7 @@ const initTerminal = () => {
 
   // Welcome message
   terminal.value.writeln('\x1b[1;33m╔══════════════════════════════════════════╗\x1b[0m')
-  terminal.value.writeln('\x1b[1;33m║\x1b[0m    🎮 DEMO TERMINAL - NO BACKEND         \x1b[1;33m║\x1b[0m')
+  terminal.value.writeln('\x1b[1;33m║\x1b[0m    🎮 DEMO TERMINAL - NO BACKEND          \x1b[1;33m║\x1b[0m')
   terminal.value.writeln('\x1b[1;33m╚══════════════════════════════════════════╝\x1b[0m')
   terminal.value.writeln('')
   terminal.value.writeln('\x1b[33mThis is a simulated terminal. Try commands like:\x1b[0m')
