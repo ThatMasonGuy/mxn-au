@@ -1927,6 +1927,18 @@ const queryWithTab = (tab) => {
 
 const errorMessage = (error) => error?.message || String(error || 'Unexpected Minecraft error')
 const actionLabel = (action) => `${action.slice(0, 1).toUpperCase()}${action.slice(1)}`
+const lifecycleSuccessTitle = (result, action) => {
+  const state = result?.server?.state
+  const ready = result?.ready === true || state === 'alive'
+  if (['wake', 'start', 'restart'].includes(action) && !ready) return `${actionLabel(action)} requested`
+  if (action === 'wake') return 'Server woke'
+  if (action === 'start') return 'Server started'
+  if (action === 'restart') return 'Server restarted'
+  if (action === 'sleep') return 'Server sleeping'
+  if (action === 'stop') return 'Server stopped'
+  return `${actionLabel(action)} complete`
+}
+const lifecycleSuccessDescription = (result) => result?.message || result?.server?.label || detail.value?.label
 const actionKey = (...parts) => parts.map((part) => String(part ?? '').trim()).filter(Boolean).join(':')
 const namedActionKey = (scope, target, action) => actionKey(serverId.value, scope, target, action)
 const lifecycleActionKey = (action) => namedActionKey('lifecycle', action, 'run')
@@ -2206,10 +2218,12 @@ const serverInitials = (server) => {
 const runWithToast = async (action, options = {}) => {
   try {
     const result = await action()
-    if (options.success) {
+    const successTitle = typeof options.success === 'function' ? options.success(result) : options.success
+    const successDescription = typeof options.description === 'function' ? options.description(result) : options.description
+    if (successTitle) {
       toast({
-        title: options.success,
-        description: options.description,
+        title: successTitle,
+        description: successDescription,
         variant: options.variant || 'success',
       })
     }
@@ -2911,8 +2925,8 @@ const runLifecycle = async (action) => {
     return runWithToast(
       () => minecraft.lifecycleAction(serverId.value, action, confirmed),
       {
-        success: `${actionLabel(action)} requested`,
-        description: detail.value.label,
+        success: (result) => lifecycleSuccessTitle(result, action),
+        description: lifecycleSuccessDescription,
         error: `${actionLabel(action)} failed`,
       },
     )

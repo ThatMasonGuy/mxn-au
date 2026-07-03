@@ -160,84 +160,6 @@
             </div>
           </div>
 
-          <div class="rounded-md border border-white/10 bg-[#0f151d] p-4">
-            <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-              <div>
-                <h2 class="font-semibold text-white">Fleet Audit</h2>
-                <p class="mt-1 text-sm text-slate-400">
-                  {{ fleetAuditSummary.attention }} attention, {{ fleetAuditSummary.updates }} with updates, {{ fleetAuditSummary.restart }} pending restart
-                </p>
-              </div>
-              <div class="flex flex-wrap gap-2">
-                <button
-                  class="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-white/10 bg-white/[0.04] px-3 text-sm text-slate-100 transition hover:border-white/20 hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-40"
-                  :disabled="!minecraft.servers.length || checkingFleetDiagnostics"
-                  :title="checkingFleetDiagnostics ? `Checking ${fleetDiagnosticsProgress.current || 'servers'}` : 'Run diagnostics for every server'"
-                  @click="checkFleetDiagnostics"
-                >
-                  <RefreshCcw class="h-4 w-4" :class="{ 'animate-spin': checkingFleetDiagnostics }" />
-                  {{ fleetDiagnosticsLabel }}
-                </button>
-                <button
-                  class="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-white/10 bg-white/[0.04] px-3 text-sm text-slate-100 transition hover:border-white/20 hover:bg-white/[0.08]"
-                  @click="refresh"
-                >
-                  <RefreshCcw class="h-4 w-4" :class="{ 'animate-spin': minecraft.loading }" />
-                  Audit
-                </button>
-              </div>
-            </div>
-
-            <div class="mt-4 overflow-hidden rounded-md border border-white/10">
-              <div class="hidden grid-cols-[1.2fr_1fr_1fr_1fr_1fr_auto] gap-3 border-b border-white/10 bg-white/[0.03] px-3 py-2 text-xs uppercase tracking-wide text-slate-500 xl:grid">
-                <span>Server</span>
-                <span>Access</span>
-                <span>Gameplay</span>
-                <span>Mods</span>
-                <span>Backup</span>
-                <span class="text-right">Open</span>
-              </div>
-              <div v-for="row in fleetAuditRows" :key="row.id" class="grid gap-3 border-b border-white/10 p-3 last:border-b-0 xl:grid-cols-[1.2fr_1fr_1fr_1fr_1fr_auto] xl:items-center">
-                <div class="min-w-0">
-                  <div class="flex flex-wrap items-center gap-2">
-                    <span class="font-semibold text-white">{{ row.label }}</span>
-                    <span class="rounded-md px-2 py-1 text-xs" :class="row.toneClass">{{ row.status }}</span>
-                  </div>
-                  <div class="mt-1 truncate font-mono text-xs text-slate-500">{{ row.activeWorld }}</div>
-                </div>
-
-                <div class="text-sm">
-                  <div class="text-slate-100">{{ row.accessMode }}</div>
-                  <div class="mt-1 text-xs text-slate-500">{{ row.whitelistLabel }}</div>
-                </div>
-
-                <div class="text-sm">
-                  <div class="text-slate-100">{{ row.difficulty }} · {{ row.maxPlayers }} slots</div>
-                  <div class="mt-1 text-xs text-slate-500">{{ row.pvpLabel }}</div>
-                </div>
-
-                <div class="text-sm">
-                  <div class="text-slate-100">{{ row.modsLabel }}</div>
-                  <div class="mt-1 text-xs" :class="row.updateCount ? 'text-amber-200' : 'text-slate-500'">{{ row.updatesLabel }}</div>
-                </div>
-
-                <div class="text-sm">
-                  <div class="text-slate-100">{{ row.backupLabel }}</div>
-                  <div class="mt-1 text-xs" :class="row.backupOk ? 'text-slate-500' : 'text-amber-200'">{{ row.snapshotLabel }}</div>
-                </div>
-
-                <div class="flex flex-wrap justify-start gap-2 xl:justify-end">
-                  <button class="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-xs text-slate-100 hover:bg-white/[0.08]" @click="openServer(row.id, 'settings')">
-                    Settings
-                  </button>
-                  <button class="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-xs text-slate-100 hover:bg-white/[0.08]" @click="openServer(row.id, row.updateCount ? 'mods' : 'overview')">
-                    {{ row.updateCount ? 'Mods' : 'Open' }}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
           <article
             v-for="server in visibleServers"
             :key="server.id"
@@ -404,6 +326,75 @@
               <span class="text-slate-400">Last backup</span>
               <span class="text-right text-slate-100">{{ backupLabel(selected) }}</span>
             </div>
+            <div class="border-t border-white/10 pt-3">
+              <div class="flex items-center justify-between gap-3">
+                <div class="min-w-0">
+                  <div class="text-slate-400">Fleet audit</div>
+                  <div class="mt-1 truncate text-xs text-slate-500">
+                    {{ fleetAuditSummary.attention }} attention, {{ fleetAuditSummary.updates }} updates, {{ fleetAuditSummary.restart }} restart
+                  </div>
+                </div>
+                <button
+                  class="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-md border border-white/10 bg-white/[0.04] px-2.5 text-xs text-slate-100 hover:bg-white/[0.08]"
+                  @click="showFleetAudit = !showFleetAudit"
+                >
+                  {{ showFleetAudit ? 'Hide' : 'Open' }}
+                  <ArrowRight class="h-3.5 w-3.5 transition" :class="{ 'rotate-90': showFleetAudit }" />
+                </button>
+              </div>
+
+              <div v-if="showFleetAudit" class="mt-3 space-y-3">
+                <div class="flex flex-wrap gap-2">
+                  <button
+                    class="inline-flex h-8 items-center justify-center gap-1.5 rounded-md border border-white/10 bg-white/[0.04] px-2.5 text-xs text-slate-100 hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-40"
+                    :disabled="!minecraft.servers.length || checkingFleetDiagnostics"
+                    :title="checkingFleetDiagnostics ? `Checking ${fleetDiagnosticsProgress.current || 'servers'}` : 'Run diagnostics for every server'"
+                    @click="checkFleetDiagnostics"
+                  >
+                    <RefreshCcw class="h-3.5 w-3.5" :class="{ 'animate-spin': checkingFleetDiagnostics }" />
+                    {{ fleetDiagnosticsLabel }}
+                  </button>
+                  <button
+                    class="inline-flex h-8 items-center justify-center gap-1.5 rounded-md border border-white/10 bg-white/[0.04] px-2.5 text-xs text-slate-100 hover:bg-white/[0.08]"
+                    @click="refresh"
+                  >
+                    <RefreshCcw class="h-3.5 w-3.5" :class="{ 'animate-spin': minecraft.loading }" />
+                    Refresh
+                  </button>
+                </div>
+
+                <div class="space-y-2">
+                  <div v-for="row in fleetAuditRows" :key="row.id" class="rounded-md border border-white/10 bg-black/20 p-3">
+                    <div class="flex items-start justify-between gap-3">
+                      <div class="min-w-0">
+                        <div class="flex flex-wrap items-center gap-2">
+                          <span class="font-semibold text-white">{{ row.label }}</span>
+                          <span class="rounded-md px-2 py-0.5 text-[11px]" :class="row.toneClass">{{ row.status }}</span>
+                        </div>
+                        <div class="mt-1 truncate font-mono text-xs text-slate-500">{{ row.activeWorld }}</div>
+                      </div>
+                      <button class="rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-slate-100 hover:bg-white/[0.08]" @click="openServer(row.id, row.updateCount ? 'mods' : 'overview')">
+                        {{ row.updateCount ? 'Mods' : 'Open' }}
+                      </button>
+                    </div>
+                    <div class="mt-3 grid gap-2 text-xs text-slate-400">
+                      <div class="flex justify-between gap-3">
+                        <span>Access</span>
+                        <span class="text-right text-slate-200">{{ row.accessMode }}</span>
+                      </div>
+                      <div class="flex justify-between gap-3">
+                        <span>Mods</span>
+                        <span class="text-right" :class="row.updateCount ? 'text-amber-200' : 'text-slate-200'">{{ row.updatesLabel }}</span>
+                      </div>
+                      <div class="flex justify-between gap-3">
+                        <span>Backup</span>
+                        <span class="text-right" :class="row.backupOk ? 'text-slate-200' : 'text-amber-200'">{{ row.snapshotLabel }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -528,6 +519,7 @@ const backingUpFleet = ref(false)
 const fleetBackupProgress = ref({ done: 0, total: 0, current: '' })
 const checkingFleetDiagnostics = ref(false)
 const fleetDiagnosticsProgress = ref({ done: 0, total: 0, current: '' })
+const showFleetAudit = ref(false)
 const activeServerStates = new Set(['alive', 'warming', 'stopping'])
 const selected = computed(() => minecraft.selectedServer)
 const pendingRestartServers = computed(() => minecraft.servers.filter((server) => restartReasonCount(server.id)))
@@ -635,10 +627,12 @@ const errorMessage = (error) => error?.message || String(error || 'Unexpected Mi
 const runWithToast = async (action, options = {}) => {
   try {
     const result = await action()
-    if (options.success) {
+    const successTitle = typeof options.success === 'function' ? options.success(result) : options.success
+    const successDescription = typeof options.description === 'function' ? options.description(result) : options.description
+    if (successTitle) {
       toast({
-        title: options.success,
-        description: options.description,
+        title: successTitle,
+        description: successDescription,
         variant: options.variant || 'success',
       })
     }
@@ -652,6 +646,20 @@ const runWithToast = async (action, options = {}) => {
     return null
   }
 }
+
+const lifecycleSuccessTitle = (result, action) => {
+  const state = result?.server?.state
+  const ready = result?.ready === true || state === 'alive'
+  if (['wake', 'start', 'restart'].includes(action) && !ready) return `${actionLabel(action)} requested`
+  if (action === 'wake') return 'Server woke'
+  if (action === 'start') return 'Server started'
+  if (action === 'restart') return 'Server restarted'
+  if (action === 'sleep') return 'Server sleeping'
+  if (action === 'stop') return 'Server stopped'
+  return `${actionLabel(action)} complete`
+}
+
+const lifecycleSuccessDescription = (result, server) => result?.message || result?.server?.label || server?.label
 
 const refresh = async () => {
   await runWithToast(
@@ -1038,8 +1046,8 @@ const runLifecycle = async (server, action) => {
     return runWithToast(
       () => minecraft.lifecycleAction(server.id, action, confirmed),
       {
-        success: `${actionLabel(action)} requested`,
-        description: server.label,
+        success: (result) => lifecycleSuccessTitle(result, action),
+        description: (result) => lifecycleSuccessDescription(result, server),
         error: `${actionLabel(action)} failed`,
       },
     )
