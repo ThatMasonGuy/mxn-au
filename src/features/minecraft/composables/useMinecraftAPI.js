@@ -326,6 +326,8 @@ export const useMinecraftAPI = () => {
         if (options.markFallback !== false) {
           usingFallback.value = true
           lastFallbackReason.value = err.message
+        } else {
+          error.value = null
         }
         return fallback(err)
       }
@@ -596,13 +598,13 @@ export const useMinecraftAPI = () => {
 
   const getWorldDatapacks = (serverId, worldId) => request(
     `/servers/${serverId}/worlds/${encodeURIComponent(worldId)}/datapacks`,
-    {},
+    { markFallback: false },
     () => ({ worldId, packs: [] }),
   )
 
   const getResourcePacks = (serverId) => request(
     `/servers/${serverId}/resource-packs`,
-    {},
+    { markFallback: false },
     () => ({ resourcePacks: [] }),
   )
 
