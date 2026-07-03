@@ -163,28 +163,31 @@
               <div class="flex flex-wrap gap-2">
                 <button
                   v-if="canWake(server)"
-                  class="inline-flex h-9 items-center gap-2 rounded-md border border-emerald-400/25 bg-emerald-400/10 px-3 text-sm text-emerald-100 transition hover:bg-emerald-400/15"
+                  class="inline-flex h-9 items-center gap-2 rounded-md border border-emerald-400/25 bg-emerald-400/10 px-3 text-sm text-emerald-100 transition hover:bg-emerald-400/15 disabled:cursor-not-allowed disabled:opacity-40"
+                  :disabled="actionBusy(lifecycleActionKey(server, 'wake'))"
                   @click="runLifecycle(server, 'wake')"
                 >
-                  <Play class="h-4 w-4" />
+                  <Play class="h-4 w-4" :class="{ 'animate-pulse': actionBusy(lifecycleActionKey(server, 'wake')) }" />
                   Wake
                 </button>
 
                 <button
                   v-if="canRestart(server)"
-                  class="inline-flex h-9 items-center gap-2 rounded-md border border-sky-400/25 bg-sky-400/10 px-3 text-sm text-sky-100 transition hover:bg-sky-400/15"
+                  class="inline-flex h-9 items-center gap-2 rounded-md border border-sky-400/25 bg-sky-400/10 px-3 text-sm text-sky-100 transition hover:bg-sky-400/15 disabled:cursor-not-allowed disabled:opacity-40"
+                  :disabled="actionBusy(lifecycleActionKey(server, 'restart'))"
                   @click="runLifecycle(server, 'restart')"
                 >
-                  <RotateCw class="h-4 w-4" />
+                  <RotateCw class="h-4 w-4" :class="{ 'animate-spin': actionBusy(lifecycleActionKey(server, 'restart')) }" />
                   Restart
                 </button>
 
                 <button
                   v-if="canSleep(server)"
-                  class="inline-flex h-9 items-center gap-2 rounded-md border border-rose-400/25 bg-rose-400/10 px-3 text-sm text-rose-100 transition hover:bg-rose-400/15"
+                  class="inline-flex h-9 items-center gap-2 rounded-md border border-rose-400/25 bg-rose-400/10 px-3 text-sm text-rose-100 transition hover:bg-rose-400/15 disabled:cursor-not-allowed disabled:opacity-40"
+                  :disabled="actionBusy(lifecycleActionKey(server, 'sleep'))"
                   @click="runLifecycle(server, 'sleep')"
                 >
-                  <Square class="h-4 w-4" />
+                  <Square class="h-4 w-4" :class="{ 'animate-pulse': actionBusy(lifecycleActionKey(server, 'sleep')) }" />
                   Sleep
                 </button>
 
@@ -312,7 +315,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   Activity,
@@ -338,6 +341,7 @@ import MetricBar from '@/features/minecraft/components/MetricBar.vue'
 const router = useRouter()
 const minecraft = useMinecraftStore()
 const { toast } = useToast()
+const actionLocks = ref(new Set())
 const selected = computed(() => minecraft.selectedServer)
 const pendingRestartServers = computed(() => minecraft.servers.filter((server) => restartReasonCount(server.id)))
 const recentActivity = computed(() => minecraft.activityFeed.slice(0, 6))
@@ -399,26 +403,45 @@ const serverInitials = (server) => {
 
 const restartReasonCount = (serverId) => minecraft.restartReasonsForServer(serverId).length
 
+const actionKey = (...parts) => parts.map((part) => String(part ?? '').trim()).filter(Boolean).join(':')
+const lifecycleActionKey = (server, action) => actionKey(server?.id, 'lifecycle', action)
+const actionBusy = (key) => actionLocks.value.has(key)
+const withActionLock = async (key, action) => {
+  if (!key) return action()
+  if (actionBusy(key)) return null
+
+  actionLocks.value = new Set([...actionLocks.value, key])
+  try {
+    return await action()
+  } finally {
+    const next = new Set(actionLocks.value)
+    next.delete(key)
+    actionLocks.value = next
+  }
+}
+
 const activityServerLabel = (entry) => {
   return minecraft.servers.find((server) => server.id === entry.serverId)?.label || entry.serverId
 }
 
 const runLifecycle = async (server, action) => {
-  let confirmed = false
-  if (['sleep', 'stop', 'restart'].includes(action)) {
-    const ok = window.confirm(`${action.toUpperCase()} ${server.label}?`)
-    if (!ok) return
-    confirmed = true
-  }
+  await withActionLock(lifecycleActionKey(server, action), async () => {
+    let confirmed = false
+    if (['sleep', 'stop', 'restart'].includes(action)) {
+      const ok = window.confirm(`${action.toUpperCase()} ${server.label}?`)
+      if (!ok) return null
+      confirmed = true
+    }
 
-  await runWithToast(
-    () => minecraft.lifecycleAction(server.id, action, confirmed),
-    {
-      success: `${actionLabel(action)} requested`,
-      description: server.label,
-      error: `${actionLabel(action)} failed`,
-    },
-  )
+    return runWithToast(
+      () => minecraft.lifecycleAction(server.id, action, confirmed),
+      {
+        success: `${actionLabel(action)} requested`,
+        description: server.label,
+        error: `${actionLabel(action)} failed`,
+      },
+    )
+  })
 }
 
 const actionLabel = (action) => `${action.slice(0, 1).toUpperCase()}${action.slice(1)}`
