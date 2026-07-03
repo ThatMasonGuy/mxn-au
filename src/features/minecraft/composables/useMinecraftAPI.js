@@ -257,7 +257,7 @@ export const useMinecraftAPI = () => {
     return () => {
       stopped = true
       if (!ws) return
-      if (ws.readyState === WebSocket.CONNECTING) return
+      if ([WebSocket.CLOSING, WebSocket.CLOSED].includes(ws.readyState)) return
       ws.close()
     }
   }

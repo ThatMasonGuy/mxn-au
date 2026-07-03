@@ -7,6 +7,10 @@ import {
   getRegistryServer,
 } from '@/features/minecraft/data/personalServers'
 
+const STATUS_STREAM_MAX_RETRIES = 6
+const STATUS_STREAM_RETRY_BASE_MS = 1500
+const STATUS_STREAM_RETRY_MAX_MS = 30000
+
 function unwrap(payload, key) {
   if (Array.isArray(payload)) return payload
   if (Array.isArray(payload?.[key])) return payload[key]
@@ -290,6 +294,8 @@ export const useMinecraftStore = defineStore('minecraft', () => {
   const logStreamTokens = new Map()
   const statusStreamStops = new Map()
   const statusStreamTokens = new Map()
+  const statusStreamRetryTimers = new Map()
+  const statusStreamRetryCounts = new Map()
 
   const fallbackMode = computed(() => api.usingFallback.value)
   const fallbackReason = computed(() => api.lastFallbackReason.value)
@@ -884,6 +890,47 @@ export const useMinecraftStore = defineStore('minecraft', () => {
     statusStreamingIds.value = next
   }
 
+  function clearStatusStreamRetry(serverId) {
+    const timer = statusStreamRetryTimers.get(serverId)
+    if (timer) clearTimeout(timer)
+    statusStreamRetryTimers.delete(serverId)
+  }
+
+  function resetStatusStreamRetry(serverId) {
+    clearStatusStreamRetry(serverId)
+    statusStreamRetryCounts.delete(serverId)
+  }
+
+  function scheduleStatusStreamRetry(serverId, token, options = {}, reason = 'closed') {
+    if (fallbackMode.value || statusStreamTokens.get(serverId) !== token) return
+
+    clearStatusStreamRetry(serverId)
+    const retryCount = statusStreamRetryCounts.get(serverId) || 0
+    if (retryCount >= STATUS_STREAM_MAX_RETRIES) {
+      const message = `status stream stopped after ${STATUS_STREAM_MAX_RETRIES} reconnect attempts (${reason})`
+      appendLog(serverId, `[${new Date().toISOString()}] [panel/WARN]: ${message}`)
+      error.value = message
+      statusStreamTokens.delete(serverId)
+      statusStreamStops.delete(serverId)
+      setStatusStreaming(serverId, false)
+      return
+    }
+
+    const delay = Math.min(STATUS_STREAM_RETRY_BASE_MS * (2 ** retryCount), STATUS_STREAM_RETRY_MAX_MS)
+    statusStreamRetryCounts.set(serverId, retryCount + 1)
+    setStatusStreaming(serverId, false)
+
+    const timer = setTimeout(() => {
+      statusStreamRetryTimers.delete(serverId)
+      if (statusStreamTokens.get(serverId) !== token) return
+      startStatusStream(serverId, {
+        ...options,
+        retryAttempt: true,
+      })
+    }, delay)
+    statusStreamRetryTimers.set(serverId, timer)
+  }
+
   function applyStatusSnapshot(serverId, snapshot = {}, timestamp = new Date().toISOString()) {
     const incoming = snapshot.server || snapshot
     if (!incoming || typeof incoming !== 'object') return null
@@ -907,7 +954,11 @@ export const useMinecraftStore = defineStore('minecraft', () => {
 
   function startStatusStream(serverId, options = {}) {
     if (!serverId) return null
-    stopStatusStream(serverId)
+    const retryAttempt = options.retryAttempt === true
+    const streamOptions = { ...options }
+    delete streamOptions.retryAttempt
+    if (!retryAttempt) resetStatusStreamRetry(serverId)
+    stopStatusStream(serverId, { clearRetry: false })
     const token = `${serverId}:${Date.now()}:${Math.random()}`
     statusStreamTokens.set(serverId, token)
     setStatusStreaming(serverId, true)
@@ -920,6 +971,7 @@ export const useMinecraftStore = defineStore('minecraft', () => {
           return
         }
         if (event.type === 'status') {
+          resetStatusStreamRetry(serverId)
           applyStatusSnapshot(serverId, event, event.timestamp)
           return
         }
@@ -928,30 +980,36 @@ export const useMinecraftStore = defineStore('minecraft', () => {
           return
         }
         if (event.type === 'error') {
-          error.value = event.message
-          appendLog(serverId, `[${new Date().toISOString()}] [panel/ERROR]: ${event.message}`)
-          statusStreamTokens.delete(serverId)
+          const message = event.message || 'status stream socket error'
+          appendLog(serverId, `[${new Date().toISOString()}] [panel/WARN]: ${message}; reconnecting`)
+          const stop = statusStreamStops.get(serverId)
           statusStreamStops.delete(serverId)
-          setStatusStreaming(serverId, false)
+          if (stop) stop()
+          scheduleStatusStreamRetry(serverId, token, streamOptions, message)
           return
         }
         if (event.type === 'closed') {
-          statusStreamTokens.delete(serverId)
           statusStreamStops.delete(serverId)
-          setStatusStreaming(serverId, false)
+          scheduleStatusStreamRetry(serverId, token, streamOptions, 'closed')
         }
-      }, options)
+      }, streamOptions)
       statusStreamStops.set(serverId, stop)
       return stop
     } catch (err) {
       error.value = err.message
       statusStreamTokens.delete(serverId)
+      resetStatusStreamRetry(serverId)
       setStatusStreaming(serverId, false)
       return null
     }
   }
 
-  function stopStatusStream(serverId) {
+  function stopStatusStream(serverId, options = {}) {
+    if (options.clearRetry !== false) {
+      resetStatusStreamRetry(serverId)
+    } else {
+      clearStatusStreamRetry(serverId)
+    }
     const stop = statusStreamStops.get(serverId)
     statusStreamTokens.delete(serverId)
     if (stop) {
