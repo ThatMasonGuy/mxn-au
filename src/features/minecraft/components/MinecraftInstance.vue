@@ -635,6 +635,14 @@
               </button>
               <button
                 class="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-white/10 bg-white/[0.04] px-3 text-sm text-slate-100 hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-40"
+                :disabled="!visibleMods.length || exportingMods"
+                @click="exportMods"
+              >
+                <Download class="h-4 w-4" :class="{ 'animate-pulse': exportingMods }" />
+                Export
+              </button>
+              <button
+                class="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-white/10 bg-white/[0.04] px-3 text-sm text-slate-100 hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-40"
                 :disabled="actionBusy(namedActionKey('mods', 'updates', 'check'))"
                 @click="checkModUpdates"
               >
@@ -1490,6 +1498,7 @@ const diagnosticsSearch = ref('')
 const diagnosticsFilter = ref('all')
 const exportingDiagnostics = ref(false)
 const exportingConfig = ref(false)
+const exportingMods = ref(false)
 const settingsDraft = ref({})
 const savingSettings = ref(false)
 const installingProjectId = ref(null)
@@ -2166,6 +2175,84 @@ const clearServerActivity = () => {
     description: `${cleared} entries removed`,
     variant: 'success',
   })
+}
+
+const exportMods = () => {
+  exportingMods.value = true
+  try {
+    const exportedAt = new Date().toISOString()
+    const payload = {
+      serverId: serverId.value,
+      server: detail.value?.label || serverId.value,
+      exportedAt,
+      filters: {
+        installed: installedModFilter.value,
+        installedSearch: installedModSearch.value.trim(),
+        backup: modBackupFilter.value,
+        backupSearch: modBackupSearch.value.trim(),
+        modrinthSearch: modSearch.value.trim(),
+      },
+      totals: {
+        visibleMods: visibleMods.value.length,
+        mods: (detail.value?.mods || []).length,
+        enabled: enabledMods.value,
+        disabled: disabledMods.value,
+        updates: updateCount.value,
+        visibleBackups: visibleModBackups.value.length,
+        backups: modBackups.value.length,
+        searchResults: modSearchResults.value.length,
+      },
+      checkSummary: modCheckSummary.value,
+      lastBulkUpdate: modUpdateSummary.value,
+      mods: visibleMods.value.map((mod) => ({
+        name: modDisplayName(mod),
+        file: mod.file,
+        id: mod.id,
+        enabled: mod.enabled,
+        required: mod.required,
+        version: mod.version,
+        latestVersion: mod.latestVersion,
+        updateAvailable: mod.updateAvailable,
+        updateCheckedAt: mod.updateCheckedAt,
+        lookupStatus: mod.lookupStatus,
+        modrinthSlug: mod.modrinthSlug,
+        modrinthProjectId: mod.modrinthProjectId || mod.projectId,
+        modrinthVersionId: mod.modrinthVersionId || mod.versionId,
+        href: mod.modrinthSlug ? modrinthHref(mod) : '',
+        dependencyCount: modDependencyCount(mod),
+        requiredDependencyCount: modRequiredDependencyCount(mod),
+        optionalDependencyCount: modOptionalDependencyCount(mod),
+        dependencies: modDependencies(mod),
+      })),
+      backups: visibleModBackups.value.map((backup) => ({
+        id: backup.id,
+        file: backup.file,
+        originalFile: backup.originalFile,
+        size: backup.size,
+        createdAt: backup.createdAt || backup.updatedAt || backup.mtime || backup.timestamp,
+      })),
+      searchResults: modSearchResults.value.map((project) => ({
+        projectId: project.projectId,
+        slug: project.slug,
+        title: project.title,
+        description: project.description,
+        latestVersion: project.latestVersion,
+        serverSide: project.serverSide,
+        downloads: project.downloads,
+        href: project.href,
+      })),
+    }
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' })
+    const stamp = exportedAt.replace(/[:.]/g, '-')
+    triggerDownload(blob, `minecraft-${serverId.value}-mods-${stamp}.json`)
+    toast({
+      title: 'Mod manifest ready',
+      description: `${visibleMods.value.length} visible mods exported`,
+      variant: 'success',
+    })
+  } finally {
+    exportingMods.value = false
+  }
 }
 
 const exportCommandHistory = () => {
@@ -3054,6 +3141,7 @@ const modrinthHref = (mod) => `https://modrinth.com/mod/${mod.modrinthSlug}`
 const modDependencies = (mod) => Array.isArray(mod?.dependencies) ? mod.dependencies : []
 const modDependencyCount = (mod) => Number(mod?.dependencyCount ?? modDependencies(mod).length ?? 0)
 const modRequiredDependencyCount = (mod) => Number(mod?.requiredDependencyCount ?? modDependencies(mod).filter((dependency) => dependency.type === 'required').length ?? 0)
+const modOptionalDependencyCount = (mod) => Number(mod?.optionalDependencyCount ?? modDependencies(mod).filter((dependency) => dependency.type === 'optional').length ?? 0)
 const dependencyLabel = (dependency) => dependency.fileName || dependency.projectId || dependency.versionId || 'dependency'
 const dependencyTone = (type) => {
   if (type === 'required') return 'bg-amber-400/10 text-amber-200'
