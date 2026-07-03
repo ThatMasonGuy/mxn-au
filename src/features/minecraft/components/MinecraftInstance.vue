@@ -656,6 +656,23 @@
             >
           </div>
 
+          <div class="rounded-md border border-white/10 bg-[#0f151d] p-4">
+            <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <h3 class="font-semibold text-white">Modrinth Check</h3>
+                <p class="mt-1 text-sm text-slate-400">
+                  {{ modCheckSummary.checked ? `Last checked ${formatDate(modCheckSummary.checkedAt)}` : 'Run Updates to compare installed jars with Modrinth.' }}
+                </p>
+              </div>
+              <div class="flex flex-wrap gap-2 text-xs">
+                <span class="rounded-md bg-amber-400/10 px-2 py-1 text-amber-200">{{ modCheckSummary.available }} available</span>
+                <span class="rounded-md bg-emerald-400/10 px-2 py-1 text-emerald-200">{{ modCheckSummary.current }} current</span>
+                <span class="rounded-md bg-slate-400/10 px-2 py-1 text-slate-300">{{ modCheckSummary.notFound }} unknown</span>
+                <span v-if="modCheckSummary.errors" class="rounded-md bg-rose-400/10 px-2 py-1 text-rose-200">{{ modCheckSummary.errors }} errors</span>
+              </div>
+            </div>
+          </div>
+
           <div v-if="modUpdateSummary" class="rounded-md border border-white/10 bg-[#0f151d] p-4">
             <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
               <div>
@@ -1550,6 +1567,23 @@ const visibleMods = computed(() => {
 })
 const modSearchResults = computed(() => minecraft.modSearchResults?.[serverId.value] || [])
 const modUpdateSummary = computed(() => minecraft.modUpdateSummaries?.[serverId.value] || null)
+const modCheckSummary = computed(() => {
+  const mods = detail.value?.mods || []
+  const checkedMods = mods.filter((mod) => mod.updateCheckedAt || mod.lookupStatus)
+  const checkedAt = checkedMods
+    .map((mod) => new Date(mod.updateCheckedAt || 0).getTime())
+    .filter(Number.isFinite)
+    .sort((a, b) => b - a)[0]
+
+  return {
+    checked: checkedMods.length,
+    checkedAt: checkedAt ? new Date(checkedAt).toISOString() : '',
+    available: mods.filter((mod) => mod.updateAvailable).length,
+    current: checkedMods.filter((mod) => !mod.updateAvailable && (!mod.lookupStatus || mod.lookupStatus === 'ok')).length,
+    notFound: checkedMods.filter((mod) => mod.lookupStatus === 'not-found').length,
+    errors: checkedMods.filter((mod) => mod.lookupStatus && !['ok', 'not-found'].includes(mod.lookupStatus)).length,
+  }
+})
 const modBackups = computed(() => detail.value?.modBackups || [])
 const sortedModBackups = computed(() => [...modBackups.value].sort((a, b) => {
   const diff = comparableModBackupTime(b) - comparableModBackupTime(a)
