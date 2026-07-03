@@ -206,13 +206,13 @@
                 </button>
 
                 <button
-                  v-if="canSleep(server)"
+                  v-if="canStop(server)"
                   class="inline-flex h-9 items-center gap-2 rounded-md border border-rose-400/25 bg-rose-400/10 px-3 text-sm text-rose-100 transition hover:bg-rose-400/15 disabled:cursor-not-allowed disabled:opacity-40"
-                  :disabled="actionBusy(lifecycleActionKey(server, 'sleep'))"
-                  @click="runLifecycle(server, 'sleep')"
+                  :disabled="actionBusy(lifecycleActionKey(server, 'stop'))"
+                  @click="runLifecycle(server, 'stop')"
                 >
-                  <Square class="h-4 w-4" :class="{ 'animate-pulse': actionBusy(lifecycleActionKey(server, 'sleep')) }" />
-                  Sleep
+                  <Square class="h-4 w-4" :class="{ 'animate-pulse': actionBusy(lifecycleActionKey(server, 'stop')) }" />
+                  Stop
                 </button>
 
                 <button
@@ -582,7 +582,7 @@ const actionLabel = (action) => `${action.slice(0, 1).toUpperCase()}${action.sli
 
 const canStart = (server) => ['offline', 'hibernating', 'degraded'].includes(server?.state)
 const canRestart = (server) => ['alive', 'warming', 'degraded'].includes(server?.state)
-const canSleep = (server) => ['alive', 'warming', 'degraded'].includes(server?.state)
+const canStop = (server) => ['alive', 'warming', 'degraded'].includes(server?.state)
 
 const startStatusStreams = () => {
   if (minecraft.fallbackMode) return

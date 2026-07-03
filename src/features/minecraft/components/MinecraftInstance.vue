@@ -91,13 +91,13 @@
             </button>
 
             <button
-              v-if="detail && canSleep(detail)"
+              v-if="detail && canStop(detail)"
               class="inline-flex h-10 items-center gap-2 rounded-md border border-rose-400/25 bg-rose-400/10 px-3 text-sm text-rose-100 transition hover:bg-rose-400/15 disabled:cursor-not-allowed disabled:opacity-40"
-              :disabled="actionBusy(lifecycleActionKey('sleep'))"
-              @click="runLifecycle('sleep')"
+              :disabled="actionBusy(lifecycleActionKey('stop'))"
+              @click="runLifecycle('stop')"
             >
-              <Square class="h-4 w-4" :class="{ 'animate-pulse': actionBusy(lifecycleActionKey('sleep')) }" />
-              Sleep
+              <Square class="h-4 w-4" :class="{ 'animate-pulse': actionBusy(lifecycleActionKey('stop')) }" />
+              Stop
             </button>
           </div>
         </div>
@@ -1360,11 +1360,11 @@
                 </button>
                 <button
                   class="settings-btn danger"
-                  :disabled="!canSleep(detail) || actionBusy(lifecycleActionKey('sleep'))"
-                  @click="runLifecycle('sleep')"
+                  :disabled="!canStop(detail) || actionBusy(lifecycleActionKey('stop'))"
+                  @click="runLifecycle('stop')"
                 >
                   <Square class="h-4 w-4" />
-                  Sleep server
+                  Stop server
                 </button>
               </div>
             </div>
@@ -2724,7 +2724,7 @@ const copyAddress = async () => {
 
 const canStart = (server) => ['offline', 'hibernating', 'degraded'].includes(server?.state)
 const canRestart = (server) => ['alive', 'warming', 'degraded'].includes(server?.state)
-const canSleep = (server) => ['alive', 'warming', 'degraded'].includes(server?.state)
+const canStop = (server) => ['alive', 'warming', 'degraded'].includes(server?.state)
 
 const stateMeta = (state) => {
   const states = {
