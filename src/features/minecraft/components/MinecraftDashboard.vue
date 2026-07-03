@@ -103,8 +103,32 @@
             </div>
           </div>
 
+          <div class="rounded-md border border-white/10 bg-[#0f151d] p-4">
+            <div class="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+              <div class="relative min-w-0 flex-1">
+                <Search class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                <input
+                  v-model="serverSearch"
+                  class="h-10 w-full rounded-md border border-white/10 bg-black/30 pl-9 pr-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-sky-400/50"
+                  placeholder="Search servers"
+                >
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <button
+                  v-for="filter in serverFilters"
+                  :key="filter.id"
+                  class="rounded-md px-3 py-2 text-xs transition"
+                  :class="serverFilter === filter.id ? 'bg-white text-slate-950' : 'bg-white/[0.04] text-slate-300 hover:bg-white/[0.08] hover:text-white'"
+                  @click="serverFilter = filter.id"
+                >
+                  {{ filter.label }} {{ filter.count }}
+                </button>
+              </div>
+            </div>
+          </div>
+
           <article
-            v-for="server in minecraft.servers"
+            v-for="server in visibleServers"
             :key="server.id"
             class="rounded-md border bg-[#0f151d] p-4 transition hover:border-white/20"
             :class="server.id === minecraft.selectedServerId ? 'border-emerald-400/35 shadow-[0_0_0_1px_rgba(52,211,153,0.12)]' : 'border-white/10'"
@@ -201,6 +225,10 @@
               </div>
             </div>
           </article>
+
+          <div v-if="!visibleServers.length" class="rounded-md border border-white/10 bg-[#0f151d] p-6 text-center text-sm text-slate-500">
+            No servers match.
+          </div>
         </div>
       </section>
 
@@ -329,6 +357,7 @@ import {
   Play,
   RefreshCcw,
   RotateCw,
+  Search,
   Server,
   ShieldCheck,
   Square,
@@ -342,10 +371,27 @@ const router = useRouter()
 const minecraft = useMinecraftStore()
 const { toast } = useToast()
 const actionLocks = ref(new Set())
+const serverSearch = ref('')
+const serverFilter = ref('all')
+const activeServerStates = new Set(['alive', 'warming', 'stopping'])
 const selected = computed(() => minecraft.selectedServer)
 const pendingRestartServers = computed(() => minecraft.servers.filter((server) => restartReasonCount(server.id)))
 const recentActivity = computed(() => minecraft.activityFeed.slice(0, 6))
 const statusStreamCount = computed(() => minecraft.statusStreamingIds?.size || 0)
+const serverFilters = computed(() => {
+  const servers = minecraft.servers
+  return [
+    { id: 'all', label: 'All', count: servers.length },
+    { id: 'active', label: 'Active', count: servers.filter((server) => activeServerStates.has(server.state)).length },
+    { id: 'sleeping', label: 'Sleeping', count: servers.filter((server) => server.state === 'hibernating').length },
+    { id: 'attention', label: 'Attention', count: servers.filter((server) => server.state === 'degraded' || restartReasonCount(server.id)).length },
+    { id: 'updates', label: 'Updates', count: servers.filter((server) => Number(server.updateCount || 0) > 0).length },
+  ]
+})
+const visibleServers = computed(() => {
+  const query = serverSearch.value.trim().toLowerCase()
+  return minecraft.servers.filter((server) => serverMatchesFilter(server) && serverMatchesSearch(server, query))
+})
 
 const errorMessage = (error) => error?.message || String(error || 'Unexpected Minecraft error')
 
@@ -425,6 +471,28 @@ const withActionLock = async (key, action) => {
 
 const activityServerLabel = (entry) => {
   return minecraft.servers.find((server) => server.id === entry.serverId)?.label || entry.serverId
+}
+
+const serverMatchesFilter = (server) => {
+  if (serverFilter.value === 'active') return activeServerStates.has(server.state)
+  if (serverFilter.value === 'sleeping') return server.state === 'hibernating'
+  if (serverFilter.value === 'attention') return server.state === 'degraded' || restartReasonCount(server.id)
+  if (serverFilter.value === 'updates') return Number(server.updateCount || 0) > 0
+  return true
+}
+
+const serverMatchesSearch = (server, query) => {
+  if (!query) return true
+  return [
+    server?.label,
+    server?.id,
+    server?.host,
+    server?.service,
+    server?.activeWorld,
+    server?.publicPort,
+    server?.backendPort,
+    server?.rconPort,
+  ].some((value) => String(value || '').toLowerCase().includes(query))
 }
 
 const runLifecycle = async (server, action) => {
