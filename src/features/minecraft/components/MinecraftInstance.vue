@@ -353,19 +353,44 @@
             </div>
 
             <div class="rounded-md border border-white/10 bg-[#0f151d] p-4">
-              <h2 class="font-semibold text-white">History</h2>
+              <div class="flex items-center justify-between gap-3">
+                <h2 class="font-semibold text-white">History</h2>
+                <span class="text-xs text-slate-500">{{ visibleCommandHistory.length }}/{{ commandHistoryItems.length }}</span>
+              </div>
+              <div class="mt-3 flex flex-wrap gap-2">
+                <button
+                  v-for="filter in commandHistoryFilters"
+                  :key="filter.id"
+                  class="rounded-md px-2.5 py-1.5 text-xs transition"
+                  :class="commandHistoryFilter === filter.id ? 'bg-white text-slate-950' : 'bg-white/[0.04] text-slate-300 hover:bg-white/[0.08] hover:text-white'"
+                  @click="commandHistoryFilter = filter.id"
+                >
+                  {{ filter.label }} {{ filter.count }}
+                </button>
+              </div>
+              <input
+                v-model="commandHistorySearch"
+                class="mt-3 h-10 w-full rounded-md border border-white/10 bg-black/30 px-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-sky-400/50"
+                placeholder="Search history"
+              >
               <div class="mt-3 space-y-2">
                 <button
-                  v-for="entry in detail.commandHistory"
+                  v-for="entry in visibleCommandHistory"
                   :key="`${entry.timestamp}-${entry.command}`"
                   class="w-full rounded-md border border-white/10 bg-black/20 p-3 text-left hover:bg-white/[0.04] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-black/20"
                   :disabled="!rconReady"
                   @click="applyHistoryCommand(entry)"
                 >
-                  <div class="font-mono text-xs text-slate-100">{{ entry.command }}</div>
+                  <div class="flex items-center justify-between gap-3">
+                    <div class="min-w-0 truncate font-mono text-xs text-slate-100">{{ entry.command }}</div>
+                    <span class="shrink-0 rounded-md px-2 py-0.5 text-[11px] uppercase" :class="commandRiskPillTone(commandRisk(entry.command))">
+                      {{ commandRisk(entry.command) }}
+                    </span>
+                  </div>
                   <div class="mt-1 truncate text-xs text-slate-500">{{ entry.output }}</div>
                 </button>
-                <div v-if="!detail.commandHistory.length" class="text-sm text-slate-500">No commands yet.</div>
+                <div v-if="!commandHistoryItems.length" class="text-sm text-slate-500">No commands yet.</div>
+                <div v-else-if="!visibleCommandHistory.length" class="text-sm text-slate-500">No matching commands.</div>
               </div>
             </div>
           </aside>
@@ -1360,6 +1385,8 @@ const { toast } = useToast()
 
 const activeTab = ref('overview')
 const command = ref('')
+const commandHistorySearch = ref('')
+const commandHistoryFilter = ref('all')
 const logSearch = ref('')
 const logFilter = ref('all')
 const logTail = ref(300)
@@ -1411,6 +1438,9 @@ const settingsKeys = [
   'motd',
 ]
 
+const confirmationCommands = ['ban', 'ban-ip', 'kick', 'op', 'deop', 'whitelist', 'pardon', 'pardon-ip']
+const destructiveCommands = ['stop', 'save-off']
+
 const serverId = computed(() => String(route.params.id || 'hc'))
 const detail = computed(() => minecraft.serverDetails[serverId.value] || null)
 const detailIcon = computed(() => detail.value ? minecraft.serverIconUrl(detail.value) : '')
@@ -1445,6 +1475,21 @@ const diagnosticsStatusLabel = computed(() => {
 })
 
 const updateCount = computed(() => (detail.value?.mods || []).filter((mod) => mod.updateAvailable).length)
+const commandHistoryItems = computed(() => detail.value?.commandHistory || [])
+const commandHistoryFilters = computed(() => {
+  const items = commandHistoryItems.value
+  const countRisk = (risk) => items.filter((entry) => commandRisk(entry.command) === risk).length
+  return [
+    { id: 'all', label: 'All', count: items.length },
+    { id: 'safe', label: 'Safe', count: countRisk('safe') },
+    { id: 'guarded', label: 'Guarded', count: countRisk('guarded') },
+    { id: 'destructive', label: 'Destructive', count: countRisk('destructive') },
+  ]
+})
+const visibleCommandHistory = computed(() => {
+  const query = commandHistorySearch.value.trim().toLowerCase()
+  return commandHistoryItems.value.filter((entry) => commandHistoryMatchesFilter(entry) && commandHistoryMatchesSearch(entry, query))
+})
 const enabledMods = computed(() => (detail.value?.mods || []).filter((mod) => mod.enabled).length)
 const disabledMods = computed(() => (detail.value?.mods || []).filter((mod) => !mod.enabled).length)
 const installedModFilters = computed(() => {
@@ -1656,6 +1701,32 @@ const commandTone = (risk = 'safe') => {
   if (risk === 'destructive') return 'border-rose-400/20 bg-rose-400/10 text-rose-100'
   if (risk === 'guarded') return 'border-amber-400/20 bg-amber-400/10 text-amber-100'
   return 'border-white/10 bg-white/[0.04] text-slate-200'
+}
+const commandRiskPillTone = (risk = 'safe') => {
+  if (risk === 'destructive') return 'bg-rose-400/10 text-rose-200'
+  if (risk === 'guarded') return 'bg-amber-400/10 text-amber-200'
+  return 'bg-emerald-400/10 text-emerald-200'
+}
+const commandRisk = (value) => {
+  const first = String(value || '').trim().split(/\s+/)[0]?.toLowerCase()
+  const metadata = (detail.value?.allowedCommands || []).find((item) => item.name === first)
+  if (metadata?.risk) return metadata.risk
+  if (metadata?.requiresConfirmation) return 'guarded'
+  if (destructiveCommands.includes(first)) return 'destructive'
+  if (confirmationCommands.includes(first)) return 'guarded'
+  return 'safe'
+}
+const commandHistoryMatchesFilter = (entry) => {
+  if (commandHistoryFilter.value === 'all') return true
+  return commandRisk(entry?.command) === commandHistoryFilter.value
+}
+const commandHistoryMatchesSearch = (entry, query) => {
+  if (!query) return true
+  return [
+    entry?.command,
+    entry?.output,
+    entry?.timestamp,
+  ].some((value) => String(value || '').toLowerCase().includes(query))
 }
 const modDisplayName = (mod) => String(mod?.name || mod?.id || mod?.file || '')
 const playerMatchesFilter = (player) => {
@@ -2561,10 +2632,7 @@ const displayBanName = (entry) => entry?.name || entry?.playerName || entry?.tar
 const displayBanIp = (entry) => entry?.ip || entry?.target || ''
 
 const commandNeedsConfirm = (value) => {
-  const first = value.trim().split(/\s+/)[0]?.toLowerCase()
-  const metadata = (detail.value?.allowedCommands || []).find((item) => item.name === first)
-  if (metadata) return metadata.requiresConfirmation === true || ['guarded', 'destructive'].includes(metadata.risk)
-  return ['stop', 'ban', 'ban-ip', 'kick', 'op', 'deop', 'whitelist', 'pardon', 'pardon-ip'].includes(first)
+  return ['guarded', 'destructive'].includes(commandRisk(value))
 }
 
 const modrinthHref = (mod) => `https://modrinth.com/mod/${mod.modrinthSlug}`
