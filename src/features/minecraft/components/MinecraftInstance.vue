@@ -420,21 +420,48 @@
                 placeholder="Search history"
               >
               <div class="mt-3 space-y-2">
-                <button
+                <div
                   v-for="entry in visibleCommandHistory"
                   :key="`${entry.timestamp}-${entry.command}`"
-                  class="w-full rounded-md border border-white/10 bg-black/20 p-3 text-left hover:bg-white/[0.04] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-black/20"
-                  :disabled="!rconReady"
-                  @click="applyHistoryCommand(entry)"
+                  class="rounded-md border border-white/10 bg-black/20 p-3"
                 >
-                  <div class="flex items-center justify-between gap-3">
+                  <div class="flex items-start justify-between gap-3">
                     <div class="min-w-0 truncate font-mono text-xs text-slate-100">{{ entry.command }}</div>
                     <span class="shrink-0 rounded-md px-2 py-0.5 text-[11px] uppercase" :class="commandRiskPillTone(commandRisk(entry.command))">
                       {{ commandRisk(entry.command) }}
                     </span>
                   </div>
                   <div class="mt-1 truncate text-xs text-slate-500">{{ entry.output }}</div>
-                </button>
+                  <div class="mt-3 flex flex-wrap gap-2">
+                    <button
+                      class="settings-btn"
+                      :disabled="!rconReady"
+                      title="Put command in RCON input"
+                      @click="applyHistoryCommand(entry)"
+                    >
+                      <Terminal class="h-4 w-4" />
+                      Use
+                    </button>
+                    <button
+                      class="settings-btn"
+                      :disabled="!entry.command"
+                      title="Copy command"
+                      @click="copyHistoryCommand(entry)"
+                    >
+                      <Copy class="h-4 w-4" />
+                      Command
+                    </button>
+                    <button
+                      class="settings-btn"
+                      :disabled="!entry.output"
+                      title="Copy output"
+                      @click="copyHistoryOutput(entry)"
+                    >
+                      <Copy class="h-4 w-4" />
+                      Output
+                    </button>
+                  </div>
+                </div>
                 <div v-if="!commandHistoryItems.length" class="text-sm text-slate-500">No commands yet.</div>
                 <div v-else-if="!visibleCommandHistory.length" class="text-sm text-slate-500">No matching commands.</div>
               </div>
@@ -1974,6 +2001,42 @@ const applyHistoryCommand = (entry) => {
   if (!rconReady.value) return
   command.value = entry.command || ''
 }
+const copyTextToClipboard = async (value, title) => {
+  const text = String(value || '')
+  if (!text) return
+
+  try {
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text)
+    } else if (typeof document !== 'undefined') {
+      const textarea = document.createElement('textarea')
+      textarea.value = text
+      textarea.setAttribute('readonly', '')
+      textarea.style.position = 'fixed'
+      textarea.style.left = '-9999px'
+      document.body.appendChild(textarea)
+      textarea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textarea)
+    } else {
+      throw new Error('Clipboard unavailable')
+    }
+
+    toast({
+      title,
+      description: 'Copied to clipboard',
+      variant: 'success',
+    })
+  } catch (error) {
+    toast({
+      title: 'Copy failed',
+      description: errorMessage(error),
+      variant: 'destructive',
+    })
+  }
+}
+const copyHistoryCommand = (entry) => copyTextToClipboard(entry?.command, 'Command copied')
+const copyHistoryOutput = (entry) => copyTextToClipboard(entry?.output, 'Output copied')
 const updateCustomCommandsForServer = (items) => {
   const next = {
     ...customRconCommands.value,
