@@ -72,28 +72,31 @@
 
             <button
               v-if="detail && canWake(detail)"
-              class="inline-flex h-10 items-center gap-2 rounded-md border border-emerald-400/25 bg-emerald-400/10 px-3 text-sm text-emerald-100 transition hover:bg-emerald-400/15"
+              class="inline-flex h-10 items-center gap-2 rounded-md border border-emerald-400/25 bg-emerald-400/10 px-3 text-sm text-emerald-100 transition hover:bg-emerald-400/15 disabled:cursor-not-allowed disabled:opacity-40"
+              :disabled="actionBusy(lifecycleActionKey('wake'))"
               @click="runLifecycle('wake')"
             >
-              <Play class="h-4 w-4" />
+              <Play class="h-4 w-4" :class="{ 'animate-pulse': actionBusy(lifecycleActionKey('wake')) }" />
               Wake
             </button>
 
             <button
               v-if="detail && canRestart(detail)"
-              class="inline-flex h-10 items-center gap-2 rounded-md border border-sky-400/25 bg-sky-400/10 px-3 text-sm text-sky-100 transition hover:bg-sky-400/15"
+              class="inline-flex h-10 items-center gap-2 rounded-md border border-sky-400/25 bg-sky-400/10 px-3 text-sm text-sky-100 transition hover:bg-sky-400/15 disabled:cursor-not-allowed disabled:opacity-40"
+              :disabled="actionBusy(lifecycleActionKey('restart'))"
               @click="runLifecycle('restart')"
             >
-              <RotateCw class="h-4 w-4" />
+              <RotateCw class="h-4 w-4" :class="{ 'animate-spin': actionBusy(lifecycleActionKey('restart')) }" />
               Restart
             </button>
 
             <button
               v-if="detail && canSleep(detail)"
-              class="inline-flex h-10 items-center gap-2 rounded-md border border-rose-400/25 bg-rose-400/10 px-3 text-sm text-rose-100 transition hover:bg-rose-400/15"
+              class="inline-flex h-10 items-center gap-2 rounded-md border border-rose-400/25 bg-rose-400/10 px-3 text-sm text-rose-100 transition hover:bg-rose-400/15 disabled:cursor-not-allowed disabled:opacity-40"
+              :disabled="actionBusy(lifecycleActionKey('sleep'))"
               @click="runLifecycle('sleep')"
             >
-              <Square class="h-4 w-4" />
+              <Square class="h-4 w-4" :class="{ 'animate-pulse': actionBusy(lifecycleActionKey('sleep')) }" />
               Sleep
             </button>
           </div>
@@ -125,10 +128,10 @@
               </button>
               <button
                 class="settings-btn primary"
-                :disabled="!detail || (!canRestart(detail) && !canWake(detail))"
+                :disabled="!detail || (!canRestart(detail) && !canWake(detail)) || actionBusy(lifecycleActionKey(canWake(detail) ? 'wake' : 'restart'))"
                 @click="applyPendingRestart"
               >
-                <RotateCw class="h-4 w-4" />
+                <RotateCw class="h-4 w-4" :class="{ 'animate-spin': actionBusy(lifecycleActionKey(canWake(detail) ? 'wake' : 'restart')) }" />
                 {{ canWake(detail) ? 'Wake' : 'Restart' }}
               </button>
             </div>
@@ -241,7 +244,11 @@
             <div class="rounded-md border border-white/10 bg-[#0f151d] p-4">
               <div class="flex items-center justify-between gap-3">
                 <h2 class="font-semibold text-white">Backups</h2>
-                <button class="rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-slate-100 hover:bg-white/[0.08]" @click="backupWorld">
+                <button
+                  class="rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-slate-100 hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-40"
+                  :disabled="actionBusy(namedActionKey('world', 'active', 'backup'))"
+                  @click="backupWorld"
+                >
                   Snapshot
                 </button>
               </div>
@@ -285,9 +292,9 @@
               >
               <button
                 class="inline-flex h-11 items-center gap-2 rounded-md border border-sky-400/25 bg-sky-400/10 px-4 text-sm text-sky-100 transition hover:bg-sky-400/15 disabled:cursor-not-allowed disabled:opacity-40"
-                :disabled="!command.trim() || !rconReady"
+                :disabled="!command.trim() || !rconReady || actionBusy(namedActionKey('rcon', 'command', 'send'))"
               >
-                <Send class="h-4 w-4" />
+                <Send class="h-4 w-4" :class="{ 'animate-pulse': actionBusy(namedActionKey('rcon', 'command', 'send')) }" />
                 Send
               </button>
             </form>
@@ -348,7 +355,11 @@
                 placeholder="Player name"
               >
             </div>
-            <button class="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-emerald-400/25 bg-emerald-400/10 px-3 text-sm text-emerald-100 hover:bg-emerald-400/15" @click="addWhitelist">
+            <button
+              class="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-emerald-400/25 bg-emerald-400/10 px-3 text-sm text-emerald-100 hover:bg-emerald-400/15 disabled:cursor-not-allowed disabled:opacity-40"
+              :disabled="!newPlayerName.trim() || actionBusy(namedActionKey('whitelist', newPlayerName, 'add'))"
+              @click="addWhitelist"
+            >
               <UserPlus class="h-4 w-4" />
               Whitelist
             </button>
@@ -379,6 +390,7 @@
                   class="h-9 rounded-md border border-white/10 bg-black/30 px-2 text-sm text-slate-100 outline-none focus:border-amber-400/50"
                   :value="player.opLevel || 4"
                   title="OP level"
+                  :disabled="actionBusy(playerActionKey(player, 'op-level'))"
                   @change="changeOpLevel(player, $event)"
                 >
                   <option :value="1">OP 1</option>
@@ -386,23 +398,23 @@
                   <option :value="3">OP 3</option>
                   <option :value="4">OP 4</option>
                 </select>
-                <button v-if="player.op" class="player-btn" @click="toggleOpBypass(player)">
+                <button v-if="player.op" class="player-btn" :disabled="actionBusy(playerActionKey(player, 'op-bypass'))" @click="toggleOpBypass(player)">
                   <ShieldCheck class="h-3.5 w-3.5" />
                   {{ player.bypassesPlayerLimit ? 'Cap On' : 'Bypass Cap' }}
                 </button>
-                <button class="player-btn" @click="runPlayerAction(player, player.op ? 'deop' : 'op')">
+                <button class="player-btn" :disabled="actionBusy(playerActionKey(player, player.op ? 'deop' : 'op'))" @click="runPlayerAction(player, player.op ? 'deop' : 'op')">
                   <Crown class="h-3.5 w-3.5" />
                   {{ player.op ? 'Deop' : 'Op' }}
                 </button>
-                <button class="player-btn" @click="toggleWhitelist(player)">
+                <button class="player-btn" :disabled="actionBusy(playerActionKey(player, 'whitelist'))" @click="toggleWhitelist(player)">
                   <ShieldCheck class="h-3.5 w-3.5" />
                   {{ player.whitelisted ? 'Remove' : 'Allow' }}
                 </button>
-                <button class="player-btn" :disabled="!player.online" @click="runPlayerAction(player, 'kick')">
+                <button class="player-btn" :disabled="!player.online || actionBusy(playerActionKey(player, 'kick'))" @click="runPlayerAction(player, 'kick')">
                   <LogOut class="h-3.5 w-3.5" />
                   Kick
                 </button>
-                <button class="player-btn danger" @click="runPlayerAction(player, player.banned ? 'pardon' : 'ban')">
+                <button class="player-btn danger" :disabled="actionBusy(playerActionKey(player, player.banned ? 'pardon' : 'ban'))" @click="runPlayerAction(player, player.banned ? 'pardon' : 'ban')">
                   <Ban class="h-3.5 w-3.5" />
                   {{ player.banned ? 'Pardon' : 'Ban' }}
                 </button>
@@ -428,7 +440,7 @@
                     class="h-10 rounded-md border border-white/10 bg-black/30 px-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-rose-400/50"
                     placeholder="Reason"
                   >
-                  <button class="player-btn danger" :disabled="!newBlacklistName.trim()">
+                  <button class="player-btn danger" :disabled="!newBlacklistName.trim() || actionBusy(namedActionKey('blacklist-player', newBlacklistName, 'add'))">
                     <Ban class="h-3.5 w-3.5" />
                     Ban
                   </button>
@@ -447,7 +459,7 @@
                       <span>{{ formatDate(entry.created) }}</span>
                     </div>
                   </div>
-                  <button class="player-btn" @click="removePlayerBlacklist(entry)">
+                  <button class="player-btn" :disabled="actionBusy(namedActionKey('blacklist-player', displayBanName(entry), 'remove'))" @click="removePlayerBlacklist(entry)">
                     <ShieldCheck class="h-3.5 w-3.5" />
                     Pardon
                   </button>
@@ -472,7 +484,7 @@
                     class="h-10 rounded-md border border-white/10 bg-black/30 px-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-rose-400/50"
                     placeholder="Reason"
                   >
-                  <button class="player-btn danger" :disabled="!newBlacklistIp.trim()">
+                  <button class="player-btn danger" :disabled="!newBlacklistIp.trim() || actionBusy(namedActionKey('blacklist-ip', newBlacklistIp, 'add'))">
                     <Ban class="h-3.5 w-3.5" />
                     Ban
                   </button>
@@ -491,7 +503,7 @@
                       <span>{{ formatDate(entry.created) }}</span>
                     </div>
                   </div>
-                  <button class="player-btn" @click="removeIpBlacklist(entry)">
+                  <button class="player-btn" :disabled="actionBusy(namedActionKey('blacklist-ip', displayBanIp(entry), 'remove'))" @click="removeIpBlacklist(entry)">
                     <ShieldCheck class="h-3.5 w-3.5" />
                     Pardon
                   </button>
@@ -534,16 +546,20 @@
                 <UploadCloud class="h-4 w-4" :class="{ 'animate-pulse': uploadingMod }" />
                 Upload
               </button>
-              <button class="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-white/10 bg-white/[0.04] px-3 text-sm text-slate-100 hover:bg-white/[0.08]" @click="checkModUpdates">
-                <RefreshCcw class="h-4 w-4" />
+              <button
+                class="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-white/10 bg-white/[0.04] px-3 text-sm text-slate-100 hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-40"
+                :disabled="actionBusy(namedActionKey('mods', 'updates', 'check'))"
+                @click="checkModUpdates"
+              >
+                <RefreshCcw class="h-4 w-4" :class="{ 'animate-spin': actionBusy(namedActionKey('mods', 'updates', 'check')) }" />
                 Updates
               </button>
               <button
                 class="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-amber-400/25 bg-amber-400/10 px-3 text-sm text-amber-100 hover:bg-amber-400/15 disabled:cursor-not-allowed disabled:opacity-40"
-                :disabled="!updateCount || updatingAllMods"
+                :disabled="!updateCount || updatingAllMods || actionBusy(namedActionKey('mods', 'updates', 'all'))"
                 @click="updateAllMods"
               >
-                <Download class="h-4 w-4" :class="{ 'animate-pulse': updatingAllMods }" />
+                <Download class="h-4 w-4" :class="{ 'animate-pulse': updatingAllMods || actionBusy(namedActionKey('mods', 'updates', 'all')) }" />
                 Update All
               </button>
             </div>
@@ -600,11 +616,11 @@
                     </div>
                   </div>
                   <div class="flex gap-2">
-                    <button class="mod-btn" @click="restoreModBackup(backup)">
+                    <button class="mod-btn" :disabled="actionBusy(modBackupActionKey(backup, 'restore'))" @click="restoreModBackup(backup)">
                       <RotateCw class="h-3.5 w-3.5" />
                       Restore
                     </button>
-                    <button class="mod-btn danger" @click="deleteModBackup(backup)">
+                    <button class="mod-btn danger" :disabled="actionBusy(modBackupActionKey(backup, 'delete'))" @click="deleteModBackup(backup)">
                       <Trash2 class="h-3.5 w-3.5" />
                       Delete
                     </button>
@@ -633,7 +649,7 @@
               </div>
 
               <div class="mt-3 flex justify-end">
-                <button class="mod-btn" :disabled="installingProjectId === (project.projectId || project.slug)" @click="installModProject(project)">
+                <button class="mod-btn" :disabled="installingProjectId === (project.projectId || project.slug) || actionBusy(namedActionKey('mod-project', project.projectId || project.slug, 'install'))" @click="installModProject(project)">
                   <Download class="h-3.5 w-3.5" />
                   Install
                 </button>
@@ -687,12 +703,13 @@
                   <button
                     v-if="mod.updateAvailable"
                     class="mod-btn"
+                    :disabled="actionBusy(modActionKey(mod, 'update'))"
                     @click="updateMod(mod)"
                   >
                     <Download class="h-3.5 w-3.5" />
                     Update
                   </button>
-                  <button class="mod-btn" :disabled="mod.required && mod.enabled" @click="toggleMod(mod)">
+                  <button class="mod-btn" :disabled="(mod.required && mod.enabled) || actionBusy(modActionKey(mod, 'toggle'))" @click="toggleMod(mod)">
                     <Power class="h-3.5 w-3.5" />
                     {{ mod.enabled ? 'Disable' : 'Enable' }}
                   </button>
@@ -730,7 +747,7 @@
                   </button>
                   <button
                     class="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-white/10 bg-white/[0.04] px-3 text-sm text-slate-100 hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-40"
-                    :disabled="world.active"
+                    :disabled="world.active || actionBusy(worldActionKey(world, 'switch'))"
                     @click="switchWorld(world)"
                   >
                     <Shuffle class="h-4 w-4" />
@@ -738,7 +755,7 @@
                   </button>
                   <button
                     class="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-rose-400/25 bg-rose-400/10 px-3 text-sm text-rose-100 hover:bg-rose-400/15 disabled:cursor-not-allowed disabled:opacity-40"
-                    :disabled="world.active"
+                    :disabled="world.active || actionBusy(worldActionKey(world, 'delete'))"
                     @click="deleteWorld(world)"
                   >
                     <Trash2 class="h-4 w-4" />
@@ -758,11 +775,11 @@
                   class="h-10 w-full rounded-md border border-white/10 bg-black/30 px-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-emerald-400/50"
                   placeholder="World name"
                 >
-                <button class="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md border border-emerald-400/25 bg-emerald-400/10 px-3 text-sm text-emerald-100 hover:bg-emerald-400/15 disabled:cursor-not-allowed disabled:opacity-40" :disabled="!newWorldName.trim()" @click="createWorld">
+                <button class="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md border border-emerald-400/25 bg-emerald-400/10 px-3 text-sm text-emerald-100 hover:bg-emerald-400/15 disabled:cursor-not-allowed disabled:opacity-40" :disabled="!newWorldName.trim() || actionBusy(namedActionKey('world', newWorldName, 'create'))" @click="createWorld">
                   <Plus class="h-4 w-4" />
                   Create
                 </button>
-                <button class="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md border border-white/10 bg-white/[0.04] px-3 text-sm text-slate-100 hover:bg-white/[0.08]" @click="backupWorld">
+                <button class="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md border border-white/10 bg-white/[0.04] px-3 text-sm text-slate-100 hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-40" :disabled="actionBusy(namedActionKey('world', 'active', 'backup'))" @click="backupWorld">
                   <DatabaseBackup class="h-4 w-4" />
                   Snapshot Active
                 </button>
@@ -791,11 +808,11 @@
                       <Download class="h-3.5 w-3.5" :class="{ 'animate-pulse': downloadingArchiveId === `backup:${backup.id}` }" />
                       Download
                     </button>
-                    <button class="player-btn" @click="restoreBackup(backup)">
+                    <button class="player-btn" :disabled="actionBusy(backupActionKey(backup, 'restore'))" @click="restoreBackup(backup)">
                       <RotateCw class="h-3.5 w-3.5" />
                       Restore
                     </button>
-                    <button class="player-btn danger" @click="deleteBackup(backup)">
+                    <button class="player-btn danger" :disabled="actionBusy(backupActionKey(backup, 'delete'))" @click="deleteBackup(backup)">
                       <Trash2 class="h-3.5 w-3.5" />
                       Delete
                     </button>
@@ -918,10 +935,10 @@
               </div>
               <button
                 class="settings-btn primary mt-4 w-full"
-                :disabled="!pendingRestartReasons.length || (!canRestart(detail) && !canWake(detail))"
+                :disabled="!pendingRestartReasons.length || (!canRestart(detail) && !canWake(detail)) || actionBusy(lifecycleActionKey(canWake(detail) ? 'wake' : 'restart'))"
                 @click="applyPendingRestart"
               >
-                <RotateCw class="h-4 w-4" />
+                <RotateCw class="h-4 w-4" :class="{ 'animate-spin': actionBusy(lifecycleActionKey(canWake(detail) ? 'wake' : 'restart')) }" />
                 {{ canWake(detail) ? 'Wake to apply' : 'Restart to apply' }}
               </button>
             </div>
@@ -1069,15 +1086,15 @@
                   <Copy class="h-4 w-4" />
                   Copy address
                 </button>
-                <button class="settings-btn" @click="backupWorld">
+                <button class="settings-btn" :disabled="actionBusy(namedActionKey('world', 'active', 'backup'))" @click="backupWorld">
                   <DatabaseBackup class="h-4 w-4" />
                   Snapshot active world
                 </button>
-                <button class="settings-btn danger" @click="runLifecycle('restart')">
+                <button class="settings-btn danger" :disabled="actionBusy(lifecycleActionKey('restart'))" @click="runLifecycle('restart')">
                   <RotateCw class="h-4 w-4" />
                   Restart server
                 </button>
-                <button class="settings-btn danger" @click="runLifecycle('sleep')">
+                <button class="settings-btn danger" :disabled="actionBusy(lifecycleActionKey('sleep'))" @click="runLifecycle('sleep')">
                   <Square class="h-4 w-4" />
                   Sleep server
                 </button>
@@ -1161,6 +1178,7 @@ const installingProjectId = ref(null)
 const updatingAllMods = ref(false)
 const uploadingMod = ref(false)
 const downloadingArchiveId = ref(null)
+const actionLocks = ref(new Set())
 const modUploadInput = ref(null)
 const refreshingDiagnostics = ref(false)
 const overviewLogsRef = ref(null)
@@ -1277,6 +1295,28 @@ const tabs = [
 
 const errorMessage = (error) => error?.message || String(error || 'Unexpected Minecraft error')
 const actionLabel = (action) => `${action.slice(0, 1).toUpperCase()}${action.slice(1)}`
+const actionKey = (...parts) => parts.map((part) => String(part ?? '').trim()).filter(Boolean).join(':')
+const namedActionKey = (scope, target, action) => actionKey(serverId.value, scope, target, action)
+const lifecycleActionKey = (action) => namedActionKey('lifecycle', action, 'run')
+const playerActionKey = (player, action) => namedActionKey('player', player?.uuid || player?.name, action)
+const modActionKey = (mod, action) => namedActionKey('mod', mod?.file || mod?.id || mod?.name, action)
+const modBackupActionKey = (backup, action) => namedActionKey('mod-backup', backup?.file || backup?.id || backup?.originalFile, action)
+const worldActionKey = (world, action) => namedActionKey('world', world?.id || world?.name, action)
+const backupActionKey = (backup, action) => namedActionKey('backup', backup?.id || backup?.label, action)
+const actionBusy = (key) => actionLocks.value.has(key)
+const withActionLock = async (key, action) => {
+  if (!key) return action()
+  if (actionBusy(key)) return null
+
+  actionLocks.value = new Set([...actionLocks.value, key])
+  try {
+    return await action()
+  } finally {
+    const next = new Set(actionLocks.value)
+    next.delete(key)
+    actionLocks.value = next
+  }
+}
 const commandTemplate = (item) => item.template || item.name || ''
 const applyCommandTemplate = (item) => {
   if (!rconReady.value) return
@@ -1526,20 +1566,22 @@ const saveSettings = async () => {
 
 const runLifecycle = async (action) => {
   if (!detail.value) return
-  let confirmed = false
-  if (['sleep', 'stop', 'restart'].includes(action)) {
-    const ok = window.confirm(`${action.toUpperCase()} ${detail.value.label}?`)
-    if (!ok) return
-    confirmed = true
-  }
-  await runWithToast(
-    () => minecraft.lifecycleAction(serverId.value, action, confirmed),
-    {
-      success: `${actionLabel(action)} requested`,
-      description: detail.value.label,
-      error: `${actionLabel(action)} failed`,
-    },
-  )
+  await withActionLock(lifecycleActionKey(action), async () => {
+    let confirmed = false
+    if (['sleep', 'stop', 'restart'].includes(action)) {
+      const ok = window.confirm(`${action.toUpperCase()} ${detail.value.label}?`)
+      if (!ok) return null
+      confirmed = true
+    }
+    return runWithToast(
+      () => minecraft.lifecycleAction(serverId.value, action, confirmed),
+      {
+        success: `${actionLabel(action)} requested`,
+        description: detail.value.label,
+        error: `${actionLabel(action)} failed`,
+      },
+    )
+  })
 }
 
 const applyPendingRestart = async () => {
@@ -1556,51 +1598,54 @@ const applyPendingRestart = async () => {
 const submitCommand = async () => {
   const clean = command.value.trim()
   if (!clean) return
-  if (commandNeedsConfirm(clean)) {
-    const ok = window.confirm(`Run RCON command: ${clean}?`)
-    if (!ok) return
-  }
-  const result = await runWithToast(
-    () => minecraft.sendCommand(serverId.value, clean, commandNeedsConfirm(clean)),
-    {
-      success: 'Command sent',
-      description: clean,
-      error: 'RCON command failed',
-    },
-  )
+  const result = await withActionLock(namedActionKey('rcon', 'command', 'send'), async () => {
+    if (commandNeedsConfirm(clean)) {
+      const ok = window.confirm(`Run RCON command: ${clean}?`)
+      if (!ok) return null
+    }
+    return runWithToast(
+      () => minecraft.sendCommand(serverId.value, clean, commandNeedsConfirm(clean)),
+      {
+        success: 'Command sent',
+        description: clean,
+        error: 'RCON command failed',
+      },
+    )
+  })
   if (!result) return
   command.value = ''
   await scrollLogViewsToBottom()
 }
 
 const runPlayerAction = async (player, action) => {
-  if (['ban', 'pardon'].includes(action)) {
-    const nextAction = action === 'ban' ? 'add' : 'remove'
-    const ok = window.confirm(`${action.toUpperCase()} ${player.name}?`)
-    if (!ok) return
-    await runWithToast(
-      () => minecraft.updatePlayerBlacklist(serverId.value, player.name, nextAction, '', true),
+  await withActionLock(playerActionKey(player, action), async () => {
+    if (['ban', 'pardon'].includes(action)) {
+      const nextAction = action === 'ban' ? 'add' : 'remove'
+      const ok = window.confirm(`${action.toUpperCase()} ${player.name}?`)
+      if (!ok) return null
+      return runWithToast(
+        () => minecraft.updatePlayerBlacklist(serverId.value, player.name, nextAction, '', true),
+        {
+          success: `${actionLabel(action)} requested`,
+          description: player.name,
+          error: `${actionLabel(action)} failed`,
+        },
+      )
+    }
+
+    if (['kick', 'op', 'deop'].includes(action)) {
+      const ok = window.confirm(`${action.toUpperCase()} ${player.name}?`)
+      if (!ok) return null
+    }
+    return runWithToast(
+      () => minecraft.runPlayerAction(serverId.value, player.name, action, {}, true),
       {
         success: `${actionLabel(action)} requested`,
         description: player.name,
         error: `${actionLabel(action)} failed`,
       },
     )
-    return
-  }
-
-  if (['ban', 'pardon', 'kick', 'op', 'deop'].includes(action)) {
-    const ok = window.confirm(`${action.toUpperCase()} ${player.name}?`)
-    if (!ok) return
-  }
-  await runWithToast(
-    () => minecraft.runPlayerAction(serverId.value, player.name, action, {}, true),
-    {
-      success: `${actionLabel(action)} requested`,
-      description: player.name,
-      error: `${actionLabel(action)} failed`,
-    },
-  )
+  })
 }
 
 const changeOpLevel = async (player, event) => {
@@ -1608,71 +1653,77 @@ const changeOpLevel = async (player, event) => {
   const previous = player.opLevel || 4
   if (level === previous) return
 
-  const ok = window.confirm(`Set ${player.name} to OP level ${level}?`)
-  if (!ok) {
-    event.target.value = previous
-    return
-  }
+  const result = await withActionLock(playerActionKey(player, 'op-level'), async () => {
+    const ok = window.confirm(`Set ${player.name} to OP level ${level}?`)
+    if (!ok) {
+      event.target.value = previous
+      return null
+    }
 
-  const result = await runWithToast(
-    () => minecraft.updateOpSettings(serverId.value, player.name, {
-      level,
-      bypassesPlayerLimit: player.bypassesPlayerLimit === true,
-    }, true),
-    {
-      success: 'OP settings updated',
-      description: `${player.name} level ${level}`,
-      error: 'OP settings failed',
-    },
-  )
+    return runWithToast(
+      () => minecraft.updateOpSettings(serverId.value, player.name, {
+        level,
+        bypassesPlayerLimit: player.bypassesPlayerLimit === true,
+      }, true),
+      {
+        success: 'OP settings updated',
+        description: `${player.name} level ${level}`,
+        error: 'OP settings failed',
+      },
+    )
+  })
   if (!result) event.target.value = previous
 }
 
 const toggleOpBypass = async (player) => {
   const next = player.bypassesPlayerLimit !== true
-  const ok = window.confirm(`${next ? 'Allow' : 'Remove'} player-limit bypass for ${player.name}?`)
-  if (!ok) return
+  await withActionLock(playerActionKey(player, 'op-bypass'), async () => {
+    const ok = window.confirm(`${next ? 'Allow' : 'Remove'} player-limit bypass for ${player.name}?`)
+    if (!ok) return null
 
-  await runWithToast(
-    () => minecraft.updateOpSettings(serverId.value, player.name, {
-      level: player.opLevel || 4,
-      bypassesPlayerLimit: next,
-    }, true),
-    {
-      success: 'OP settings updated',
-      description: player.name,
-      error: 'OP settings failed',
-    },
-  )
+    return runWithToast(
+      () => minecraft.updateOpSettings(serverId.value, player.name, {
+        level: player.opLevel || 4,
+        bypassesPlayerLimit: next,
+      }, true),
+      {
+        success: 'OP settings updated',
+        description: player.name,
+        error: 'OP settings failed',
+      },
+    )
+  })
 }
 
 const toggleWhitelist = async (player) => {
   const action = player.whitelisted ? 'remove' : 'add'
-  if (action === 'remove') {
-    const ok = window.confirm(`Remove ${player.name} from whitelist?`)
-    if (!ok) return
-  }
-  await runWithToast(
-    () => minecraft.updateWhitelist(serverId.value, player.name, action, action === 'remove'),
-    {
-      success: `Whitelist ${action}`,
-      description: player.name,
-      error: 'Whitelist update failed',
-    },
-  )
+  await withActionLock(playerActionKey(player, 'whitelist'), async () => {
+    if (action === 'remove') {
+      const ok = window.confirm(`Remove ${player.name} from whitelist?`)
+      if (!ok) return null
+    }
+    return runWithToast(
+      () => minecraft.updateWhitelist(serverId.value, player.name, action, action === 'remove'),
+      {
+        success: `Whitelist ${action}`,
+        description: player.name,
+        error: 'Whitelist update failed',
+      },
+    )
+  })
 }
 
 const addWhitelist = async () => {
   const name = newPlayerName.value.trim()
   if (!name) return
-  const result = await runWithToast(
+  const result = await withActionLock(namedActionKey('whitelist', name, 'add'), () => runWithToast(
     () => minecraft.updateWhitelist(serverId.value, name, 'add', false),
     {
       success: 'Player whitelisted',
       description: name,
       error: 'Whitelist update failed',
     },
-  )
+  ))
   if (!result) return
   newPlayerName.value = ''
 }
@@ -1680,16 +1731,18 @@ const addWhitelist = async () => {
 const addPlayerBlacklist = async () => {
   const name = newBlacklistName.value.trim()
   if (!name) return
-  const ok = window.confirm(`Ban ${name} from ${detail.value.label}?`)
-  if (!ok) return
-  const result = await runWithToast(
-    () => minecraft.updatePlayerBlacklist(serverId.value, name, 'add', blacklistReason.value.trim(), true),
-    {
-      success: 'Player banned',
-      description: name,
-      error: 'Player ban failed',
-    },
-  )
+  const result = await withActionLock(namedActionKey('blacklist-player', name, 'add'), async () => {
+    const ok = window.confirm(`Ban ${name} from ${detail.value.label}?`)
+    if (!ok) return null
+    return runWithToast(
+      () => minecraft.updatePlayerBlacklist(serverId.value, name, 'add', blacklistReason.value.trim(), true),
+      {
+        success: 'Player banned',
+        description: name,
+        error: 'Player ban failed',
+      },
+    )
+  })
   if (!result) return
   newBlacklistName.value = ''
   blacklistReason.value = ''
@@ -1698,31 +1751,35 @@ const addPlayerBlacklist = async () => {
 const removePlayerBlacklist = async (entry) => {
   const name = displayBanName(entry)
   if (!name) return
-  const ok = window.confirm(`Pardon ${name}?`)
-  if (!ok) return
-  await runWithToast(
-    () => minecraft.updatePlayerBlacklist(serverId.value, name, 'remove', '', true),
-    {
-      success: 'Player pardoned',
-      description: name,
-      error: 'Pardon failed',
-    },
-  )
+  await withActionLock(namedActionKey('blacklist-player', name, 'remove'), async () => {
+    const ok = window.confirm(`Pardon ${name}?`)
+    if (!ok) return null
+    return runWithToast(
+      () => minecraft.updatePlayerBlacklist(serverId.value, name, 'remove', '', true),
+      {
+        success: 'Player pardoned',
+        description: name,
+        error: 'Pardon failed',
+      },
+    )
+  })
 }
 
 const addIpBlacklist = async () => {
   const target = newBlacklistIp.value.trim()
   if (!target) return
-  const ok = window.confirm(`Ban IP ${target} from ${detail.value.label}?`)
-  if (!ok) return
-  const result = await runWithToast(
-    () => minecraft.updateIpBlacklist(serverId.value, target, 'add', blacklistReason.value.trim(), true),
-    {
-      success: 'IP banned',
-      description: target,
-      error: 'IP ban failed',
-    },
-  )
+  const result = await withActionLock(namedActionKey('blacklist-ip', target, 'add'), async () => {
+    const ok = window.confirm(`Ban IP ${target} from ${detail.value.label}?`)
+    if (!ok) return null
+    return runWithToast(
+      () => minecraft.updateIpBlacklist(serverId.value, target, 'add', blacklistReason.value.trim(), true),
+      {
+        success: 'IP banned',
+        description: target,
+        error: 'IP ban failed',
+      },
+    )
+  })
   if (!result) return
   newBlacklistIp.value = ''
   blacklistReason.value = ''
@@ -1731,31 +1788,35 @@ const addIpBlacklist = async () => {
 const removeIpBlacklist = async (entry) => {
   const target = displayBanIp(entry)
   if (!target) return
-  const ok = window.confirm(`Pardon IP ${target}?`)
-  if (!ok) return
-  await runWithToast(
-    () => minecraft.updateIpBlacklist(serverId.value, target, 'remove', '', true),
-    {
-      success: 'IP pardoned',
-      description: target,
-      error: 'IP pardon failed',
-    },
-  )
+  await withActionLock(namedActionKey('blacklist-ip', target, 'remove'), async () => {
+    const ok = window.confirm(`Pardon IP ${target}?`)
+    if (!ok) return null
+    return runWithToast(
+      () => minecraft.updateIpBlacklist(serverId.value, target, 'remove', '', true),
+      {
+        success: 'IP pardoned',
+        description: target,
+        error: 'IP pardon failed',
+      },
+    )
+  })
 }
 
 const toggleMod = async (mod) => {
-  if (mod.enabled) {
-    const ok = window.confirm(`Disable ${mod.name || mod.file}?`)
-    if (!ok) return
-  }
-  await runWithToast(
-    () => minecraft.setModEnabled(serverId.value, mod, !mod.enabled, mod.enabled),
-    {
-      success: mod.enabled ? 'Mod disabled' : 'Mod enabled',
-      description: mod.name || mod.file,
-      error: 'Mod toggle failed',
-    },
-  )
+  await withActionLock(modActionKey(mod, 'toggle'), async () => {
+    if (mod.enabled) {
+      const ok = window.confirm(`Disable ${mod.name || mod.file}?`)
+      if (!ok) return null
+    }
+    return runWithToast(
+      () => minecraft.setModEnabled(serverId.value, mod, !mod.enabled, mod.enabled),
+      {
+        success: mod.enabled ? 'Mod disabled' : 'Mod enabled',
+        description: mod.name || mod.file,
+        error: 'Mod toggle failed',
+      },
+    )
+  })
 }
 
 const searchMods = async () => {
@@ -1766,33 +1827,36 @@ const searchMods = async () => {
 }
 
 const checkModUpdates = async () => {
-  await runWithToast(
+  await withActionLock(namedActionKey('mods', 'updates', 'check'), () => runWithToast(
     () => minecraft.checkModUpdates(serverId.value),
     {
       success: 'Mod check finished',
       description: detail.value?.label,
       error: 'Mod update check failed',
     },
-  )
+  ))
 }
 
 const installModProject = async (project) => {
-  const ok = window.confirm(`Install ${project.title || project.slug} on ${detail.value.label}?`)
-  if (!ok) return
+  const projectId = project.projectId || project.slug
+  await withActionLock(namedActionKey('mod-project', projectId, 'install'), async () => {
+    const ok = window.confirm(`Install ${project.title || project.slug} on ${detail.value.label}?`)
+    if (!ok) return null
 
-  installingProjectId.value = project.projectId || project.slug
-  try {
-    await runWithToast(
+    installingProjectId.value = projectId
+    try {
+      return await runWithToast(
       () => minecraft.installMod(serverId.value, project, true),
-      {
-        success: 'Mod installed',
-        description: project.title || project.slug,
-        error: 'Mod install failed',
-      },
-    )
-  } finally {
-    installingProjectId.value = null
-  }
+        {
+          success: 'Mod installed',
+          description: project.title || project.slug,
+          error: 'Mod install failed',
+        },
+      )
+    } finally {
+      installingProjectId.value = null
+    }
+  })
 }
 
 const selectModUpload = () => {
@@ -1832,142 +1896,160 @@ const uploadSelectedMod = async (event) => {
 }
 
 const updateMod = async (mod) => {
-  const ok = window.confirm(`Update ${mod.name || mod.file} from Modrinth?`)
-  if (!ok) return
-  await runWithToast(
-    () => minecraft.updateMod(serverId.value, mod, true),
-    {
-      success: 'Mod updated',
-      description: mod.name || mod.file,
-      error: 'Mod update failed',
-    },
-  )
+  await withActionLock(modActionKey(mod, 'update'), async () => {
+    const ok = window.confirm(`Update ${mod.name || mod.file} from Modrinth?`)
+    if (!ok) return null
+    return runWithToast(
+      () => minecraft.updateMod(serverId.value, mod, true),
+      {
+        success: 'Mod updated',
+        description: mod.name || mod.file,
+        error: 'Mod update failed',
+      },
+    )
+  })
 }
 
 const updateAllMods = async () => {
   if (!updateCount.value) return
-  const ok = window.confirm(`Update ${updateCount.value} available mods on ${detail.value.label}?`)
-  if (!ok) return
+  await withActionLock(namedActionKey('mods', 'updates', 'all'), async () => {
+    const ok = window.confirm(`Update ${updateCount.value} available mods on ${detail.value.label}?`)
+    if (!ok) return null
 
-  updatingAllMods.value = true
-  try {
-    await runWithToast(
-      () => minecraft.updateAllMods(serverId.value, true),
-      {
-        success: 'Bulk update finished',
-        description: `${updateCount.value} mods checked`,
-        error: 'Bulk update failed',
-      },
-    )
-  } finally {
-    updatingAllMods.value = false
-  }
+    updatingAllMods.value = true
+    try {
+      return await runWithToast(
+        () => minecraft.updateAllMods(serverId.value, true),
+        {
+          success: 'Bulk update finished',
+          description: `${updateCount.value} mods checked`,
+          error: 'Bulk update failed',
+        },
+      )
+    } finally {
+      updatingAllMods.value = false
+    }
+  })
 }
 
 const restoreModBackup = async (backup) => {
-  const ok = window.confirm(`Restore ${backup.originalFile} from backup? The current mod file will be moved aside.`)
-  if (!ok) return
-  await runWithToast(
-    () => minecraft.restoreModBackup(serverId.value, backup, true),
-    {
-      success: 'Mod backup restored',
-      description: backup.originalFile,
-      error: 'Mod restore failed',
-    },
-  )
+  await withActionLock(modBackupActionKey(backup, 'restore'), async () => {
+    const ok = window.confirm(`Restore ${backup.originalFile} from backup? The current mod file will be moved aside.`)
+    if (!ok) return null
+    return runWithToast(
+      () => minecraft.restoreModBackup(serverId.value, backup, true),
+      {
+        success: 'Mod backup restored',
+        description: backup.originalFile,
+        error: 'Mod restore failed',
+      },
+    )
+  })
 }
 
 const deleteModBackup = async (backup) => {
-  const ok = window.confirm(`Delete mod backup ${backup.file || backup.id}?`)
-  if (!ok) return
-  await runWithToast(
-    () => minecraft.deleteModBackup(serverId.value, backup, true),
-    {
-      success: 'Mod backup deleted',
-      description: backup.file || backup.id,
-      error: 'Mod backup delete failed',
-    },
-  )
+  await withActionLock(modBackupActionKey(backup, 'delete'), async () => {
+    const ok = window.confirm(`Delete mod backup ${backup.file || backup.id}?`)
+    if (!ok) return null
+    return runWithToast(
+      () => minecraft.deleteModBackup(serverId.value, backup, true),
+      {
+        success: 'Mod backup deleted',
+        description: backup.file || backup.id,
+        error: 'Mod backup delete failed',
+      },
+    )
+  })
 }
 
 const switchWorld = async (world) => {
-  const ok = window.confirm(`Switch ${detail.value.label} to ${world.name}?`)
-  if (!ok) return
-  await runWithToast(
-    () => minecraft.switchWorld(serverId.value, world, true),
-    {
-      success: 'World switch queued',
-      description: world.name,
-      error: 'World switch failed',
-    },
-  )
+  await withActionLock(worldActionKey(world, 'switch'), async () => {
+    const ok = window.confirm(`Switch ${detail.value.label} to ${world.name}?`)
+    if (!ok) return null
+    return runWithToast(
+      () => minecraft.switchWorld(serverId.value, world, true),
+      {
+        success: 'World switch queued',
+        description: world.name,
+        error: 'World switch failed',
+      },
+    )
+  })
 }
 
 const createWorld = async () => {
   const name = newWorldName.value.trim()
   if (!name) return
-  const ok = window.confirm(`Create new world ${name}?`)
-  if (!ok) return
-  const result = await runWithToast(
-    () => minecraft.createWorld(serverId.value, { name }, true),
-    {
-      success: 'World created',
-      description: name,
-      error: 'World create failed',
-    },
-  )
+  const result = await withActionLock(namedActionKey('world', name, 'create'), async () => {
+    const ok = window.confirm(`Create new world ${name}?`)
+    if (!ok) return null
+    return runWithToast(
+      () => minecraft.createWorld(serverId.value, { name }, true),
+      {
+        success: 'World created',
+        description: name,
+        error: 'World create failed',
+      },
+    )
+  })
   if (!result) return
   newWorldName.value = ''
 }
 
 const deleteWorld = async (world) => {
-  const ok = window.confirm(`Delete world ${world.name}? This cannot be undone.`)
-  if (!ok) return
-  await runWithToast(
-    () => minecraft.deleteWorld(serverId.value, world, true),
-    {
-      success: 'World deleted',
-      description: world.name,
-      error: 'World delete failed',
-    },
-  )
+  await withActionLock(worldActionKey(world, 'delete'), async () => {
+    const ok = window.confirm(`Delete world ${world.name}? This cannot be undone.`)
+    if (!ok) return null
+    return runWithToast(
+      () => minecraft.deleteWorld(serverId.value, world, true),
+      {
+        success: 'World deleted',
+        description: world.name,
+        error: 'World delete failed',
+      },
+    )
+  })
 }
 
 const backupWorld = async () => {
-  await runWithToast(
+  await withActionLock(namedActionKey('world', 'active', 'backup'), () => runWithToast(
     () => minecraft.backupWorld(serverId.value),
     {
       success: 'Snapshot queued',
       description: detail.value?.label,
       error: 'Snapshot failed',
     },
-  )
+  ))
 }
 
 const restoreBackup = async (backup) => {
-  const ok = window.confirm(`Restore backup ${backup.label || backup.id}? This may replace the active world.`)
-  if (!ok) return
-  await runWithToast(
-    () => minecraft.restoreBackup(serverId.value, backup, true),
-    {
-      success: 'Backup restore queued',
-      description: backup.label || backup.id,
-      error: 'Backup restore failed',
-    },
-  )
+  await withActionLock(backupActionKey(backup, 'restore'), async () => {
+    const ok = window.confirm(`Restore backup ${backup.label || backup.id}? This may replace the active world.`)
+    if (!ok) return null
+    return runWithToast(
+      () => minecraft.restoreBackup(serverId.value, backup, true),
+      {
+        success: 'Backup restore queued',
+        description: backup.label || backup.id,
+        error: 'Backup restore failed',
+      },
+    )
+  })
 }
 
 const deleteBackup = async (backup) => {
-  const ok = window.confirm(`Delete backup ${backup.label || backup.id}?`)
-  if (!ok) return
-  await runWithToast(
-    () => minecraft.deleteBackup(serverId.value, backup, true),
-    {
-      success: 'Backup deleted',
-      description: backup.label || backup.id,
-      error: 'Backup delete failed',
-    },
-  )
+  await withActionLock(backupActionKey(backup, 'delete'), async () => {
+    const ok = window.confirm(`Delete backup ${backup.label || backup.id}?`)
+    if (!ok) return null
+    return runWithToast(
+      () => minecraft.deleteBackup(serverId.value, backup, true),
+      {
+        success: 'Backup deleted',
+        description: backup.label || backup.id,
+        error: 'Backup delete failed',
+      },
+    )
+  })
 }
 
 const copyAddress = async () => {
