@@ -210,7 +210,18 @@
             <div class="rounded-md border border-white/10 bg-[#0f151d] p-4">
               <div class="flex items-center justify-between gap-3">
                 <h2 class="font-semibold text-white">Recent Logs</h2>
-                <button class="text-sm text-sky-200 hover:text-sky-100" @click="activeTab = 'logs'">Open explorer</button>
+                <div class="flex items-center gap-2">
+                  <button
+                    class="settings-btn"
+                    :disabled="!latestLogs.length"
+                    title="Copy recent logs"
+                    @click="copyRecentLogs"
+                  >
+                    <Copy class="h-4 w-4" />
+                    Copy
+                  </button>
+                  <button class="text-sm text-sky-200 hover:text-sky-100" @click="activeTab = 'logs'">Open explorer</button>
+                </div>
               </div>
               <div ref="overviewLogsRef" class="mt-4 max-h-64 overflow-auto rounded-md border border-white/10 bg-black/30 p-3 font-mono text-xs leading-6 text-slate-300">
                 <div v-for="(line, index) in latestLogs" :key="index" class="whitespace-pre-wrap">{{ line }}</div>
@@ -304,9 +315,20 @@
           <div class="rounded-md border border-white/10 bg-[#0f151d] p-4">
             <div class="flex items-center justify-between gap-3">
               <h2 class="font-semibold text-white">RCON</h2>
-              <span class="rounded-md px-2 py-1 text-xs" :class="rconReady ? 'bg-emerald-400/10 text-emerald-200' : 'bg-slate-400/10 text-slate-300'">
-                {{ rconReady ? 'Ready' : 'Unavailable' }}
-              </span>
+              <div class="flex items-center gap-2">
+                <button
+                  class="settings-btn"
+                  :disabled="!latestLogs.length"
+                  title="Copy console logs"
+                  @click="copyRecentLogs"
+                >
+                  <Copy class="h-4 w-4" />
+                  Copy
+                </button>
+                <span class="rounded-md px-2 py-1 text-xs" :class="rconReady ? 'bg-emerald-400/10 text-emerald-200' : 'bg-slate-400/10 text-slate-300'">
+                  {{ rconReady ? 'Ready' : 'Unavailable' }}
+                </span>
+              </div>
             </div>
 
             <div ref="consoleRef" class="mt-4 h-[440px] overflow-auto rounded-md border border-white/10 bg-black/40 p-3 font-mono text-xs leading-6 text-slate-300">
@@ -1123,7 +1145,7 @@
                 <p class="mt-1 text-sm text-slate-400">{{ selectedLogFile }} &middot; {{ filteredLogs.length }} lines</p>
               </div>
 
-              <div class="grid gap-2 md:grid-cols-[220px_120px_1fr_auto_auto]">
+              <div class="grid gap-2 md:grid-cols-[220px_120px_1fr_auto_auto_auto]">
                 <select v-model="selectedLogFile" class="setting-input">
                   <option v-for="file in logFiles" :key="file.id || file.name" :value="file.name">
                     {{ file.name }}
@@ -1145,6 +1167,10 @@
                 <button class="settings-btn" :disabled="loadingExplorerLogs" @click="loadLogExplorer">
                   <SearchCheck class="h-4 w-4" :class="{ 'animate-pulse': loadingExplorerLogs }" />
                   Load
+                </button>
+                <button class="settings-btn" :disabled="!filteredLogs.length" @click="copyFilteredLogs">
+                  <Copy class="h-4 w-4" />
+                  Copy
                 </button>
                 <button class="settings-btn" :disabled="exportingLogs" @click="exportLogFile">
                   <Download class="h-4 w-4" :class="{ 'animate-pulse': exportingLogs }" />
@@ -2037,6 +2063,9 @@ const copyTextToClipboard = async (value, title) => {
 }
 const copyHistoryCommand = (entry) => copyTextToClipboard(entry?.command, 'Command copied')
 const copyHistoryOutput = (entry) => copyTextToClipboard(entry?.output, 'Output copied')
+const copyLogLines = (lines, title) => copyTextToClipboard((lines || []).join('\n'), title)
+const copyRecentLogs = () => copyLogLines(latestLogs.value, 'Recent logs copied')
+const copyFilteredLogs = () => copyLogLines(filteredLogs.value, 'Log view copied')
 const updateCustomCommandsForServer = (items) => {
   const next = {
     ...customRconCommands.value,
