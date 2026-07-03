@@ -21,6 +21,16 @@ function asDetail(payload, serverId) {
   return payload
 }
 
+function settledErrorMessage(error) {
+  return error?.message || String(error || 'request failed')
+}
+
+function settledValue(result, fallback, label, failures) {
+  if (result.status === 'fulfilled') return result.value
+  failures.push(`${label}: ${settledErrorMessage(result.reason)}`)
+  return fallback
+}
+
 function logLine(entry) {
   if (typeof entry === 'string') return entry
   const timestamp = entry.timestamp || entry.time || new Date().toISOString()
@@ -558,22 +568,23 @@ export const useMinecraftStore = defineStore('minecraft', () => {
     error.value = null
 
     try {
+      const previous = serverDetails.value[serverId] || createFallbackDetail(serverId)
       const [
-        serverPayload,
-        statusPayload,
-        propertiesPayload,
-        logsPayload,
-        logFilesPayload,
-        activityPayload,
-        diagnosticsPayload,
-        maintenancePayload,
-        commandsPayload,
-        modsPayload,
-        modBackupsPayload,
-        playersPayload,
-        worldsPayload,
-        backupsPayload,
-      ] = await Promise.all([
+        serverResult,
+        statusResult,
+        propertiesResult,
+        logsResult,
+        logFilesResult,
+        activityResult,
+        diagnosticsResult,
+        maintenanceResult,
+        commandsResult,
+        modsResult,
+        modBackupsResult,
+        playersResult,
+        worldsResult,
+        backupsResult,
+      ] = await Promise.allSettled([
         api.getServer(serverId),
         api.getStatus(serverId),
         api.getProperties(serverId),
@@ -589,6 +600,53 @@ export const useMinecraftStore = defineStore('minecraft', () => {
         api.getWorlds(serverId),
         api.getBackups(serverId),
       ])
+      const results = [
+        serverResult,
+        statusResult,
+        propertiesResult,
+        logsResult,
+        logFilesResult,
+        activityResult,
+        diagnosticsResult,
+        maintenanceResult,
+        commandsResult,
+        modsResult,
+        modBackupsResult,
+        playersResult,
+        worldsResult,
+        backupsResult,
+      ]
+      const failures = []
+      const serverPayload = settledValue(serverResult, { server: previous }, 'server', failures)
+      const statusPayload = settledValue(statusResult, previous, 'status', failures)
+      const propertiesPayload = settledValue(propertiesResult, { settings: previous.settings }, 'properties', failures)
+      const logsPayload = settledValue(logsResult, { logs: previous.logs }, 'logs', failures)
+      const logFilesPayload = settledValue(logFilesResult, { files: previous.logFiles }, 'log files', failures)
+      const activityPayload = settledValue(activityResult, {
+        activity: activityForServer(serverId),
+        restartRequired: previous.restartRequired,
+        restartReasons: previous.restartReasons,
+      }, 'activity', failures)
+      const diagnosticsPayload = settledValue(diagnosticsResult, {
+        diagnostics: previous.diagnostics || diagnosticsByServer.value[serverId],
+      }, 'diagnostics', failures)
+      const maintenancePayload = settledValue(maintenanceResult, { maintenance: previous.maintenance }, 'maintenance', failures)
+      const commandsPayload = settledValue(commandsResult, { commands: previous.allowedCommands }, 'commands', failures)
+      const modsPayload = settledValue(modsResult, { mods: previous.mods }, 'mods', failures)
+      const modBackupsPayload = settledValue(modBackupsResult, { backups: previous.modBackups }, 'mod backups', failures)
+      const playersPayload = settledValue(playersResult, {
+        players: previous.players,
+        whitelist: previous.whitelist,
+        ops: previous.ops,
+        bannedPlayers: previous.bannedPlayers,
+        bannedIps: previous.bannedIps,
+      }, 'players', failures)
+      const worldsPayload = settledValue(worldsResult, { worlds: previous.worlds }, 'worlds', failures)
+      const backupsPayload = settledValue(backupsResult, { backups: previous.backups }, 'backups', failures)
+
+      if (failures.length === results.length) {
+        throw new Error(failures[0] || 'Server refresh failed')
+      }
 
       const server = asDetail(serverPayload, serverId)
       const status = statusPayload?.status || statusPayload || {}
@@ -603,7 +661,6 @@ export const useMinecraftStore = defineStore('minecraft', () => {
       const modBackups = unwrap(modBackupsPayload, 'backups')
       const worlds = unwrap(worldsPayload, 'worlds')
       const backups = unwrap(backupsPayload, 'backups')
-      const previous = serverDetails.value[serverId]
       const mergedMods = mergeModUpdateMetadata(mods, previous?.mods || [])
       mergeActivityEntries(serverId, activity)
       if (diagnostics) {
@@ -640,6 +697,9 @@ export const useMinecraftStore = defineStore('minecraft', () => {
         bannedPlayers: playersPayload?.bannedPlayers,
         bannedIps: playersPayload?.bannedIps,
       })
+      if (failures.length) {
+        error.value = `Partial Minecraft refresh: used cached data for ${failures.slice(0, 3).join('; ')}`
+      }
     } catch (err) {
       error.value = err.message
     } finally {
