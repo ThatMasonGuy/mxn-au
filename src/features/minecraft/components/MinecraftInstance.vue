@@ -549,6 +549,19 @@
             </div>
           </div>
 
+          <div class="flex flex-wrap gap-2 rounded-md border border-white/10 bg-[#0f151d] p-3">
+            <button
+              v-for="filter in installedModFilters"
+              :key="filter.id"
+              class="inline-flex h-9 items-center gap-2 rounded-md px-3 text-sm transition"
+              :class="installedModFilter === filter.id ? 'bg-white text-slate-950' : 'bg-white/[0.04] text-slate-300 hover:bg-white/[0.08] hover:text-white'"
+              @click="installedModFilter = filter.id"
+            >
+              <span>{{ filter.label }}</span>
+              <span class="rounded bg-black/10 px-1.5 py-0.5 text-xs">{{ filter.count }}</span>
+            </button>
+          </div>
+
           <div v-if="modUpdateSummary" class="rounded-md border border-white/10 bg-[#0f151d] p-4">
             <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
               <div>
@@ -629,7 +642,10 @@
           </div>
 
           <div class="grid gap-3">
-            <article v-for="mod in detail.mods" :key="mod.file" class="rounded-md border border-white/10 bg-[#0f151d] p-4">
+            <div v-if="!visibleMods.length" class="rounded-md border border-white/10 bg-[#0f151d] p-4 text-sm text-slate-500">
+              No installed mods match this filter.
+            </div>
+            <article v-for="mod in visibleMods" :key="mod.file" class="rounded-md border border-white/10 bg-[#0f151d] p-4">
               <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div class="min-w-0">
                   <div class="flex flex-wrap items-center gap-2">
@@ -1133,6 +1149,7 @@ const loadingExplorerLogs = ref(false)
 const exportingLogs = ref(false)
 const playerSearch = ref('')
 const modSearch = ref('')
+const installedModFilter = ref('all')
 const newPlayerName = ref('')
 const newBlacklistName = ref('')
 const newBlacklistIp = ref('')
@@ -1184,6 +1201,30 @@ const diagnosticsStatusLabel = computed(() => {
 const updateCount = computed(() => (detail.value?.mods || []).filter((mod) => mod.updateAvailable).length)
 const enabledMods = computed(() => (detail.value?.mods || []).filter((mod) => mod.enabled).length)
 const disabledMods = computed(() => (detail.value?.mods || []).filter((mod) => !mod.enabled).length)
+const installedModFilters = computed(() => {
+  const mods = detail.value?.mods || []
+  return [
+    { id: 'all', label: 'All', count: mods.length },
+    { id: 'updates', label: 'Updates', count: updateCount.value },
+    { id: 'enabled', label: 'Enabled', count: enabledMods.value },
+    { id: 'disabled', label: 'Disabled', count: disabledMods.value },
+  ]
+})
+const visibleMods = computed(() => {
+  const mods = [...(detail.value?.mods || [])]
+  const filtered = mods.filter((mod) => {
+    if (installedModFilter.value === 'updates') return mod.updateAvailable
+    if (installedModFilter.value === 'enabled') return mod.enabled
+    if (installedModFilter.value === 'disabled') return !mod.enabled
+    return true
+  })
+
+  return filtered.sort((a, b) => {
+    if (a.updateAvailable !== b.updateAvailable) return a.updateAvailable ? -1 : 1
+    if (a.enabled !== b.enabled) return a.enabled ? -1 : 1
+    return modDisplayName(a).localeCompare(modDisplayName(b), undefined, { numeric: true, sensitivity: 'base' })
+  })
+})
 const modSearchResults = computed(() => minecraft.modSearchResults?.[serverId.value] || [])
 const modUpdateSummary = computed(() => minecraft.modUpdateSummaries?.[serverId.value] || null)
 const modBackups = computed(() => detail.value?.modBackups || [])
@@ -1250,6 +1291,7 @@ const commandTone = (risk = 'safe') => {
   if (risk === 'guarded') return 'border-amber-400/20 bg-amber-400/10 text-amber-100'
   return 'border-white/10 bg-white/[0.04] text-slate-200'
 }
+const modDisplayName = (mod) => String(mod?.name || mod?.id || mod?.file || '')
 
 const comparableWorldName = (world) => String(world?.name || world?.id || world?.path || '')
 const comparableWorldTime = (world) => {
