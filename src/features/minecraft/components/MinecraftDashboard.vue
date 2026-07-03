@@ -95,7 +95,7 @@
               </div>
               <button
                 class="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-amber-300/25 bg-amber-300/10 px-3 text-sm text-amber-50 hover:bg-amber-300/15"
-                @click="openServer(pendingRestartServers[0].id)"
+                @click="openServer(pendingRestartServers[0].id, 'activity')"
               >
                 Open
                 <ArrowRight class="h-4 w-4" />
@@ -385,8 +385,11 @@ const selectServer = async (serverId) => {
   )
 }
 
-const openServer = (serverId) => {
-  router.push(`/minecraft/${serverId}`)
+const openServer = (serverId, tab = '') => {
+  router.push({
+    path: `/minecraft/${serverId}`,
+    query: tab ? { tab } : {},
+  })
 }
 
 const serverIcon = (server) => minecraft.serverIconUrl(server)
