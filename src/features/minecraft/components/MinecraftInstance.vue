@@ -333,7 +333,47 @@
           <aside class="space-y-4">
             <div class="rounded-md border border-white/10 bg-[#0f151d] p-4">
               <h2 class="font-semibold text-white">Commands</h2>
+              <form class="mt-3 flex gap-2" @submit.prevent="saveCustomCommand">
+                <input
+                  v-model="customCommandInput"
+                  class="h-10 min-w-0 flex-1 rounded-md border border-white/10 bg-black/30 px-3 font-mono text-sm text-white outline-none placeholder:text-slate-600 focus:border-sky-400/50"
+                  placeholder="save-all"
+                >
+                <button
+                  class="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-emerald-400/25 bg-emerald-400/10 px-3 text-sm text-emerald-100 hover:bg-emerald-400/15 disabled:cursor-not-allowed disabled:opacity-40"
+                  :disabled="!customCommandInput.trim()"
+                >
+                  <Plus class="h-4 w-4" />
+                  Save
+                </button>
+              </form>
+
+              <div v-if="customCommandItems.length" class="mt-3 space-y-2">
+                <h3 class="text-xs font-medium uppercase tracking-wide text-slate-500">Saved</h3>
+                <div v-for="item in customCommandItems" :key="item.id" class="flex gap-2">
+                  <button
+                    class="min-w-0 flex-1 rounded-md border px-3 py-2 text-left hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+                    :class="commandTone(commandRisk(item.command))"
+                    :disabled="!rconReady"
+                    @click="applyCustomCommand(item)"
+                  >
+                    <div class="flex items-center justify-between gap-3">
+                      <span class="truncate font-mono text-xs text-slate-100">{{ item.command }}</span>
+                      <span class="shrink-0 rounded-md bg-black/20 px-2 py-0.5 text-[11px] uppercase">{{ commandRisk(item.command) }}</span>
+                    </div>
+                  </button>
+                  <button
+                    class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-rose-400/25 bg-rose-400/10 text-rose-100 hover:bg-rose-400/15"
+                    title="Remove saved command"
+                    @click="removeCustomCommand(item)"
+                  >
+                    <Trash2 class="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+
               <div class="mt-3 grid gap-2">
+                <h3 class="text-xs font-medium uppercase tracking-wide text-slate-500">Built In</h3>
                 <button
                   v-for="item in detail.allowedCommands"
                   :key="item.name"
@@ -1468,6 +1508,27 @@ import { useMinecraftStore } from '@/features/minecraft/stores/useMinecraftStore
 import { useToast } from '@/shared/components/ui/toast'
 import MetricBar from '@/features/minecraft/components/MetricBar.vue'
 
+const CUSTOM_RCON_COMMANDS_STORAGE_KEY = 'mxn:minecraft:rcon-custom:v1'
+
+const canUseStorage = () => typeof window !== 'undefined' && Boolean(window.localStorage)
+const loadCustomRconCommands = () => {
+  if (!canUseStorage()) return {}
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(CUSTOM_RCON_COMMANDS_STORAGE_KEY) || '{}')
+    return parsed && typeof parsed === 'object' ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+const persistCustomRconCommands = (commands) => {
+  if (!canUseStorage()) return
+  try {
+    window.localStorage.setItem(CUSTOM_RCON_COMMANDS_STORAGE_KEY, JSON.stringify(commands))
+  } catch {
+    // Local saved commands are optional; RCON itself remains usable.
+  }
+}
+
 const route = useRoute()
 const router = useRouter()
 const minecraft = useMinecraftStore()
@@ -1475,9 +1536,11 @@ const { toast } = useToast()
 
 const activeTab = ref('overview')
 const command = ref('')
+const customCommandInput = ref('')
 const commandHistorySearch = ref('')
 const commandHistoryFilter = ref('all')
 const exportingCommandHistory = ref(false)
+const customRconCommands = ref(loadCustomRconCommands())
 const logSearch = ref('')
 const logFilter = ref('all')
 const logTail = ref(300)
@@ -1597,6 +1660,7 @@ const visibleCommandHistory = computed(() => {
   const query = commandHistorySearch.value.trim().toLowerCase()
   return commandHistoryItems.value.filter((entry) => commandHistoryMatchesFilter(entry) && commandHistoryMatchesSearch(entry, query))
 })
+const customCommandItems = computed(() => customRconCommands.value[serverId.value] || [])
 const enabledMods = computed(() => (detail.value?.mods || []).filter((mod) => mod.enabled).length)
 const disabledMods = computed(() => (detail.value?.mods || []).filter((mod) => !mod.enabled).length)
 const installedModFilters = computed(() => {
@@ -1825,9 +1889,40 @@ const applyCommandTemplate = (item) => {
   if (!rconReady.value) return
   command.value = commandTemplate(item)
 }
+const applyCustomCommand = (item) => {
+  if (!rconReady.value) return
+  command.value = item.command || ''
+}
 const applyHistoryCommand = (entry) => {
   if (!rconReady.value) return
   command.value = entry.command || ''
+}
+const updateCustomCommandsForServer = (items) => {
+  const next = {
+    ...customRconCommands.value,
+    [serverId.value]: items.slice(0, 24),
+  }
+  customRconCommands.value = next
+  persistCustomRconCommands(next)
+}
+const saveCustomCommand = () => {
+  const clean = customCommandInput.value.trim()
+  if (!clean) return
+  const existing = customCommandItems.value.filter((item) => item.command !== clean)
+  updateCustomCommandsForServer([{
+    id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    command: clean,
+    createdAt: new Date().toISOString(),
+  }, ...existing])
+  customCommandInput.value = ''
+  toast({
+    title: 'Command saved',
+    description: clean,
+    variant: 'success',
+  })
+}
+const removeCustomCommand = (item) => {
+  updateCustomCommandsForServer(customCommandItems.value.filter((saved) => saved.id !== item.id))
 }
 const commandTone = (risk = 'safe') => {
   if (risk === 'destructive') return 'border-rose-400/20 bg-rose-400/10 text-rose-100'
@@ -2340,7 +2435,9 @@ const exportCommandHistory = () => {
       totals: {
         visible: visibleCommandHistory.value.length,
         total: commandHistoryItems.value.length,
+        savedCommands: customCommandItems.value.length,
       },
+      savedCommands: customCommandItems.value,
       history: visibleCommandHistory.value,
     }
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' })
