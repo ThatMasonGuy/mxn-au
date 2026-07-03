@@ -11,6 +11,10 @@ const STATUS_STREAM_MAX_RETRIES = 6
 const STATUS_STREAM_RETRY_BASE_MS = 1500
 const STATUS_STREAM_RETRY_MAX_MS = 30000
 const MODRINTH_METADATA_STORAGE_KEY = 'mxn:minecraft:modrinth-metadata:v1'
+const SERVER_SNAPSHOT_STORAGE_KEY = 'mxn:minecraft:snapshots:v1'
+const SERVER_SNAPSHOT_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 7
+const SERVER_SNAPSHOT_LOG_LIMIT = 120
+const SERVER_SNAPSHOT_ACTIVITY_LIMIT = 80
 const PENDING_LIFECYCLE_HOLD_MS = 1000 * 90
 
 function unwrap(payload, key) {
@@ -284,6 +288,49 @@ function persistStoredModrinthMetadata(metadata) {
   persistStoredObject(MODRINTH_METADATA_STORAGE_KEY, metadata)
 }
 
+function compactSnapshotArray(items, limit, fromEnd = false) {
+  if (!Array.isArray(items)) return items
+  return fromEnd ? items.slice(-limit) : items.slice(0, limit)
+}
+
+function compactServerSnapshot(server) {
+  return { ...server }
+}
+
+function compactDetailSnapshot(detail) {
+  return {
+    ...detail,
+    logs: compactSnapshotArray(detail?.logs, SERVER_SNAPSHOT_LOG_LIMIT, true),
+    exploredLogs: compactSnapshotArray(detail?.exploredLogs, SERVER_SNAPSHOT_LOG_LIMIT, true),
+    activity: compactSnapshotArray(detail?.activity, SERVER_SNAPSHOT_ACTIVITY_LIMIT),
+    commandHistory: compactSnapshotArray(detail?.commandHistory, 30),
+  }
+}
+
+function loadStoredServerSnapshot() {
+  const snapshot = loadStoredObject(SERVER_SNAPSHOT_STORAGE_KEY)
+  const cachedAt = new Date(snapshot.cachedAt || 0).getTime()
+  if (!Number.isFinite(cachedAt) || Date.now() - cachedAt > SERVER_SNAPSHOT_MAX_AGE_MS) {
+    return null
+  }
+
+  const cachedServers = Array.isArray(snapshot.servers)
+    ? snapshot.servers.map(normalizeServer)
+    : []
+  const cachedDetails = Object.entries(snapshot.details || {}).reduce((details, [serverId, detail]) => {
+    details[serverId] = withDerivedModCounts(normalizeDetail(serverId, detail))
+    return details
+  }, {})
+
+  if (!cachedServers.length && !Object.keys(cachedDetails).length) return null
+
+  return {
+    cachedAt: new Date(cachedAt).toISOString(),
+    servers: cachedServers,
+    details: cachedDetails,
+  }
+}
+
 function activityTimestamp(value) {
   const date = new Date(value || Date.now())
   return Number.isNaN(date.getTime()) ? new Date().toISOString() : date.toISOString()
@@ -355,9 +402,10 @@ function modrinthMetadataFromMod(mod) {
 
 export const useMinecraftStore = defineStore('minecraft', () => {
   const api = useMinecraftAPI()
+  const cachedSnapshot = loadStoredServerSnapshot()
 
-  const servers = ref(createFallbackServers())
-  const serverDetails = ref({})
+  const servers = ref(cachedSnapshot?.servers?.length ? cachedSnapshot.servers : createFallbackServers())
+  const serverDetails = ref(cachedSnapshot?.details || {})
   const selectedServerId = ref('hc')
   const loading = ref(false)
   const error = ref(null)
@@ -383,6 +431,7 @@ export const useMinecraftStore = defineStore('minecraft', () => {
   const statusStreamRetryCounts = new Map()
   const pendingLifecycle = ref({})
   const pendingLifecycleTimers = new Map()
+  let serverSnapshotPersistTimer = null
 
   const fallbackMode = computed(() => api.usingFallback.value)
   const fallbackReason = computed(() => api.lastFallbackReason.value)
@@ -727,6 +776,29 @@ export const useMinecraftStore = defineStore('minecraft', () => {
     if (serverId) selectedServerId.value = serverId
   }
 
+  function persistServerSnapshot() {
+    const details = Object.entries(serverDetails.value).reduce((snapshot, [serverId, detail]) => {
+      snapshot[serverId] = compactDetailSnapshot(detail)
+      return snapshot
+    }, {})
+
+    persistStoredObject(SERVER_SNAPSHOT_STORAGE_KEY, {
+      cachedAt: new Date().toISOString(),
+      servers: servers.value.map(compactServerSnapshot),
+      details,
+    })
+  }
+
+  function queueServerSnapshotPersist() {
+    if (!canUseStorage()) return
+    if (serverSnapshotPersistTimer) return
+
+    serverSnapshotPersistTimer = window.setTimeout(() => {
+      serverSnapshotPersistTimer = null
+      persistServerSnapshot()
+    }, 1500)
+  }
+
   function mergeServer(server) {
     if (Array.isArray(server?.activity)) mergeActivityEntries(server.id, server.activity)
     const normalized = normalizeServer({
@@ -740,6 +812,7 @@ export const useMinecraftStore = defineStore('minecraft', () => {
       servers.value[index] = { ...servers.value[index], ...normalized }
     }
     queueServerIconFetch(normalized)
+    queueServerSnapshotPersist()
   }
 
   function mergeDetail(serverId, detail) {
@@ -754,6 +827,7 @@ export const useMinecraftStore = defineStore('minecraft', () => {
       [serverId]: normalized,
     }
     mergeServer(normalized)
+    queueServerSnapshotPersist()
   }
 
   async function fetchServers() {
@@ -783,6 +857,7 @@ export const useMinecraftStore = defineStore('minecraft', () => {
       if (!servers.value.some((server) => server.id === selectedServerId.value)) {
         selectedServerId.value = servers.value[0]?.id || 'hc'
       }
+      queueServerSnapshotPersist()
     } catch (err) {
       error.value = err.message
     } finally {
