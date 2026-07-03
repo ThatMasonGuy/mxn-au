@@ -835,11 +835,32 @@
 
             <div class="rounded-md border border-white/10 bg-[#0f151d] p-4">
               <h2 class="font-semibold text-white">Backups</h2>
-              <div class="mt-4 space-y-2">
+              <div class="mt-4 space-y-3">
+                <div class="flex flex-wrap gap-2">
+                  <button
+                    v-for="filter in backupFilters"
+                    :key="filter.id"
+                    class="inline-flex h-8 items-center gap-2 rounded-md px-2.5 text-xs transition"
+                    :class="backupFilter === filter.id ? 'bg-white text-slate-950' : 'bg-white/[0.04] text-slate-300 hover:bg-white/[0.08] hover:text-white'"
+                    @click="backupFilter = filter.id"
+                  >
+                    <span>{{ filter.label }}</span>
+                    <span class="rounded bg-black/10 px-1.5 py-0.5 text-[11px]">{{ filter.count }}</span>
+                  </button>
+                </div>
+                <input
+                  v-model="backupSearch"
+                  class="h-9 w-full rounded-md border border-white/10 bg-black/30 px-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-sky-400/50"
+                  placeholder="Filter backups"
+                >
+
                 <div v-if="!detail.backups.length" class="rounded-md border border-white/10 bg-black/20 p-3 text-sm text-slate-500">
                   No backups found.
                 </div>
-                <div v-for="backup in detail.backups" :key="backup.id" class="rounded-md border border-white/10 bg-black/20 p-3">
+                <div v-else-if="!visibleBackups.length" class="rounded-md border border-white/10 bg-black/20 p-3 text-sm text-slate-500">
+                  No backups match this filter.
+                </div>
+                <div v-for="backup in visibleBackups" :key="backup.id" class="rounded-md border border-white/10 bg-black/20 p-3">
                   <div class="flex items-center justify-between gap-3">
                     <span class="truncate text-sm font-medium text-white">{{ backup.label || backup.id }}</span>
                     <span class="rounded-md px-2 py-1 text-xs" :class="backup.status === 'success' ? 'bg-emerald-400/10 text-emerald-200' : 'bg-amber-400/10 text-amber-200'">
@@ -1223,6 +1244,8 @@ const blacklistReason = ref('')
 const newWorldName = ref('')
 const worldSearch = ref('')
 const worldFilter = ref('all')
+const backupSearch = ref('')
+const backupFilter = ref('all')
 const settingsDraft = ref({})
 const savingSettings = ref(false)
 const installingProjectId = ref(null)
@@ -1322,6 +1345,23 @@ const worldFilters = computed(() => {
 const visibleWorlds = computed(() => {
   const query = worldSearch.value.trim().toLowerCase()
   return sortedWorlds.value.filter((world) => worldMatchesFilter(world) && worldMatchesSearch(world, query))
+})
+const sortedBackups = computed(() => [...(detail.value?.backups || [])].sort((a, b) => {
+  const diff = comparableBackupTime(b) - comparableBackupTime(a)
+  if (diff) return diff
+  return comparableBackupName(b).localeCompare(comparableBackupName(a), undefined, { numeric: true, sensitivity: 'base' })
+}))
+const backupFilters = computed(() => {
+  const backups = detail.value?.backups || []
+  return [
+    { id: 'all', label: 'All', count: backups.length },
+    { id: 'success', label: 'Success', count: backups.filter((backup) => backup.status === 'success').length },
+    { id: 'attention', label: 'Attention', count: backups.filter((backup) => backup.status !== 'success').length },
+  ]
+})
+const visibleBackups = computed(() => {
+  const query = backupSearch.value.trim().toLowerCase()
+  return sortedBackups.value.filter((backup) => backupMatchesFilter(backup) && backupMatchesSearch(backup, query))
 })
 const settingsChanged = computed(() => {
   const current = detail.value?.settings || {}
@@ -1459,6 +1499,35 @@ const worldMatchesSearch = (world, query) => {
     world?.id,
     world?.path,
     world?.size,
+  ].some((value) => String(value || '').toLowerCase().includes(query))
+}
+const comparableBackupName = (backup) => String(backup?.label || backup?.id || backup?.path || '')
+const comparableBackupTime = (backup) => {
+  const candidates = [
+    backup?.createdAt,
+    backup?.updatedAt,
+    backup?.mtime,
+    backup?.timestamp,
+  ]
+  for (const value of candidates) {
+    const time = new Date(value).getTime()
+    if (Number.isFinite(time)) return time
+  }
+  return 0
+}
+const backupMatchesFilter = (backup) => {
+  if (backupFilter.value === 'success') return backup.status === 'success'
+  if (backupFilter.value === 'attention') return backup.status !== 'success'
+  return true
+}
+const backupMatchesSearch = (backup, query) => {
+  if (!query) return true
+  return [
+    backup?.label,
+    backup?.id,
+    backup?.status,
+    backup?.size,
+    backup?.path,
   ].some((value) => String(value || '').toLowerCase().includes(query))
 }
 const comparableWorldTime = (world) => {
