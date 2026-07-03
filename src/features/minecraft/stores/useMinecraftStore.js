@@ -10,6 +10,7 @@ import {
 const STATUS_STREAM_MAX_RETRIES = 6
 const STATUS_STREAM_RETRY_BASE_MS = 1500
 const STATUS_STREAM_RETRY_MAX_MS = 30000
+const MODRINTH_METADATA_STORAGE_KEY = 'mxn:minecraft:modrinth-metadata:v1'
 
 function unwrap(payload, key) {
   if (Array.isArray(payload)) return payload
@@ -53,6 +54,8 @@ function modIdentityKeys(mod) {
     mod?.fabricModId,
     mod?.modrinthProjectId,
     mod?.projectId,
+    mod?.modrinthSlug,
+    mod?.hash,
     mod?.name,
   ]
     .map((value) => String(value || '').trim().toLowerCase())
@@ -68,8 +71,45 @@ function hasModrinthUpdateMetadata(mod) {
     (latestVersion && latestVersion !== version) ||
     mod?.latestFile ||
     mod?.latestFileName ||
-    mod?.latestVersionId,
+    mod?.latestVersionId ||
+    mod?.lookupStatus ||
+    mod?.modrinthSlug ||
+    mod?.modrinthProjectId ||
+    mod?.modrinthIconUrl,
   )
+}
+
+function mergeModrinthMetadata(mod, previous, incomingHasMetadata) {
+  if (!previous) return mod
+
+  return {
+    ...mod,
+    updateAvailable: incomingHasMetadata ? mod.updateAvailable === true : previous.updateAvailable === true,
+    updateCheckedAt: mod.updateCheckedAt || previous.updateCheckedAt,
+    lookupStatus: mod.lookupStatus || previous.lookupStatus,
+    latestVersion: incomingHasMetadata ? (mod.latestVersion || previous.latestVersion) : previous.latestVersion,
+    latestFile: mod.latestFile || previous.latestFile,
+    latestFileName: mod.latestFileName || previous.latestFileName,
+    latestVersionId: mod.latestVersionId || previous.latestVersionId,
+    updateFile: mod.updateFile || previous.updateFile,
+    modrinthSlug: mod.modrinthSlug || previous.modrinthSlug,
+    modrinthProjectId: mod.modrinthProjectId || previous.modrinthProjectId,
+    projectId: mod.projectId || previous.projectId,
+    modrinthTitle: mod.modrinthTitle || previous.modrinthTitle,
+    modrinthDescription: mod.modrinthDescription || previous.modrinthDescription,
+    modrinthSummary: mod.modrinthSummary || previous.modrinthSummary,
+    modrinthIconUrl: mod.modrinthIconUrl || previous.modrinthIconUrl,
+    modrinthDownloads: mod.modrinthDownloads ?? previous.modrinthDownloads,
+    modrinthFollows: mod.modrinthFollows ?? previous.modrinthFollows,
+    modrinthCategories: Array.isArray(mod.modrinthCategories) && mod.modrinthCategories.length ? mod.modrinthCategories : previous.modrinthCategories,
+    clientSide: mod.clientSide || previous.clientSide,
+    serverSide: mod.serverSide || previous.serverSide,
+    href: mod.href || previous.href,
+    dependencies: Array.isArray(mod.dependencies) && mod.dependencies.length ? mod.dependencies : previous.dependencies,
+    dependencyCount: mod.dependencyCount ?? previous.dependencyCount,
+    requiredDependencyCount: mod.requiredDependencyCount ?? previous.requiredDependencyCount,
+    optionalDependencyCount: mod.optionalDependencyCount ?? previous.optionalDependencyCount,
+  }
 }
 
 function mergeModUpdateMetadata(incomingMods = [], previousMods = []) {
@@ -83,26 +123,9 @@ function mergeModUpdateMetadata(incomingMods = [], previousMods = []) {
   if (!previousByKey.size) return incomingMods
 
   return incomingMods.map((mod) => {
-    if (hasModrinthUpdateMetadata(mod)) return mod
+    const incomingHasMetadata = hasModrinthUpdateMetadata(mod)
     const previous = modIdentityKeys(mod).map((key) => previousByKey.get(key)).find(Boolean)
-    if (!previous) return mod
-
-    return {
-      ...mod,
-      updateAvailable: previous.updateAvailable === true,
-      updateCheckedAt: previous.updateCheckedAt,
-      latestVersion: previous.latestVersion,
-      latestFile: previous.latestFile,
-      latestFileName: previous.latestFileName,
-      latestVersionId: previous.latestVersionId,
-      modrinthSlug: mod.modrinthSlug || previous.modrinthSlug,
-      modrinthProjectId: mod.modrinthProjectId || previous.modrinthProjectId,
-      projectId: mod.projectId || previous.projectId,
-      dependencies: Array.isArray(mod.dependencies) && mod.dependencies.length ? mod.dependencies : previous.dependencies,
-      dependencyCount: mod.dependencyCount ?? previous.dependencyCount,
-      requiredDependencyCount: mod.requiredDependencyCount ?? previous.requiredDependencyCount,
-      optionalDependencyCount: mod.optionalDependencyCount ?? previous.optionalDependencyCount,
-    }
+    return mergeModrinthMetadata(mod, previous, incomingHasMetadata)
   })
 }
 
@@ -225,23 +248,39 @@ function canUseStorage() {
   return typeof window !== 'undefined' && Boolean(window.localStorage)
 }
 
-function loadStoredActivity() {
+function loadStoredObject(key) {
   if (!canUseStorage()) return {}
   try {
-    const parsed = JSON.parse(window.localStorage.getItem(ACTIVITY_STORAGE_KEY) || '{}')
+    const parsed = JSON.parse(window.localStorage.getItem(key) || '{}')
     return parsed && typeof parsed === 'object' ? parsed : {}
   } catch {
     return {}
   }
 }
 
-function persistActivity(activity) {
+function persistStoredObject(key, value) {
   if (!canUseStorage()) return
   try {
-    window.localStorage.setItem(ACTIVITY_STORAGE_KEY, JSON.stringify(activity))
+    window.localStorage.setItem(key, JSON.stringify(value))
   } catch {
-    // Local persistence is helpful, but the live API remains authoritative.
+    // Local persistence is opportunistic; the API remains authoritative.
   }
+}
+
+function loadStoredActivity() {
+  return loadStoredObject(ACTIVITY_STORAGE_KEY)
+}
+
+function persistActivity(activity) {
+  persistStoredObject(ACTIVITY_STORAGE_KEY, activity)
+}
+
+function loadStoredModrinthMetadata() {
+  return loadStoredObject(MODRINTH_METADATA_STORAGE_KEY)
+}
+
+function persistStoredModrinthMetadata(metadata) {
+  persistStoredObject(MODRINTH_METADATA_STORAGE_KEY, metadata)
 }
 
 function activityTimestamp(value) {
@@ -270,6 +309,49 @@ function normalizeActivityEntry(entry = {}, fallback = {}) {
   }
 }
 
+function cleanMetadataValue(value) {
+  if (Array.isArray(value)) return value.length ? value : undefined
+  if (value === undefined || value === null || value === '') return undefined
+  return value
+}
+
+function modrinthMetadataFromMod(mod) {
+  if (!hasModrinthUpdateMetadata(mod)) return null
+
+  const metadata = {
+    updateAvailable: mod.updateAvailable === true,
+    updateCheckedAt: cleanMetadataValue(mod.updateCheckedAt),
+    lookupStatus: cleanMetadataValue(mod.lookupStatus),
+    latestVersion: cleanMetadataValue(mod.latestVersion),
+    latestFile: cleanMetadataValue(mod.latestFile),
+    latestFileName: cleanMetadataValue(mod.latestFileName),
+    latestVersionId: cleanMetadataValue(mod.latestVersionId),
+    updateFile: cleanMetadataValue(mod.updateFile),
+    modrinthSlug: cleanMetadataValue(mod.modrinthSlug),
+    modrinthProjectId: cleanMetadataValue(mod.modrinthProjectId),
+    projectId: cleanMetadataValue(mod.projectId),
+    modrinthTitle: cleanMetadataValue(mod.modrinthTitle),
+    modrinthDescription: cleanMetadataValue(mod.modrinthDescription),
+    modrinthSummary: cleanMetadataValue(mod.modrinthSummary),
+    modrinthIconUrl: cleanMetadataValue(mod.modrinthIconUrl),
+    modrinthDownloads: cleanMetadataValue(mod.modrinthDownloads),
+    modrinthFollows: cleanMetadataValue(mod.modrinthFollows),
+    modrinthCategories: cleanMetadataValue(mod.modrinthCategories),
+    clientSide: cleanMetadataValue(mod.clientSide),
+    serverSide: cleanMetadataValue(mod.serverSide),
+    href: cleanMetadataValue(mod.href),
+    dependencies: cleanMetadataValue(mod.dependencies),
+    dependencyCount: cleanMetadataValue(mod.dependencyCount),
+    requiredDependencyCount: cleanMetadataValue(mod.requiredDependencyCount),
+    optionalDependencyCount: cleanMetadataValue(mod.optionalDependencyCount),
+  }
+
+  Object.keys(metadata).forEach((key) => {
+    if (metadata[key] === undefined) delete metadata[key]
+  })
+  return Object.keys(metadata).length ? metadata : null
+}
+
 export const useMinecraftStore = defineStore('minecraft', () => {
   const api = useMinecraftAPI()
 
@@ -286,6 +368,7 @@ export const useMinecraftStore = defineStore('minecraft', () => {
   const modSearchResults = ref({})
   const modSearchLoading = ref(false)
   const modUpdateSummaries = ref({})
+  const modrinthMetadata = ref(loadStoredModrinthMetadata())
   const operationTrail = ref(loadStoredActivity())
   const diagnosticsByServer = ref({})
   const iconUrls = ref({})
@@ -451,6 +534,50 @@ export const useMinecraftStore = defineStore('minecraft', () => {
     })
   }
 
+  function cachedModrinthMods(serverId) {
+    return Object.entries(modrinthMetadata.value[serverId] || {}).map(([key, metadata]) => ({
+      ...metadata,
+      file: key,
+      id: key,
+      name: key,
+    }))
+  }
+
+  function persistModrinthMods(serverId, mods = []) {
+    if (!serverId || !Array.isArray(mods) || !mods.length) return
+    const nextServer = { ...(modrinthMetadata.value[serverId] || {}) }
+    let changed = false
+
+    mods.forEach((mod) => {
+      const metadata = modrinthMetadataFromMod(mod)
+      if (!metadata) return
+
+      modIdentityKeys(mod).forEach((key) => {
+        nextServer[key] = {
+          ...nextServer[key],
+          ...metadata,
+        }
+        changed = true
+      })
+    })
+
+    if (!changed) return
+    modrinthMetadata.value = {
+      ...modrinthMetadata.value,
+      [serverId]: nextServer,
+    }
+    persistStoredModrinthMetadata(modrinthMetadata.value)
+  }
+
+  function hydrateModrinthMods(serverId, mods = [], previousMods = []) {
+    const merged = mergeModUpdateMetadata(mods, [
+      ...previousMods,
+      ...cachedModrinthMods(serverId),
+    ])
+    persistModrinthMods(serverId, merged)
+    return merged
+  }
+
   function preferredIconVariant(server) {
     return ['hibernating', 'offline'].includes(server?.state) ? 'frozen' : 'default'
   }
@@ -553,6 +680,7 @@ export const useMinecraftStore = defineStore('minecraft', () => {
       ...detail,
       ...operationalState(serverId),
     }))
+    persistModrinthMods(serverId, normalized.mods)
     serverDetails.value = {
       ...serverDetails.value,
       [serverId]: normalized,
@@ -693,7 +821,7 @@ export const useMinecraftStore = defineStore('minecraft', () => {
       const modBackups = unwrap(modBackupsPayload, 'backups')
       const worlds = unwrap(worldsPayload, 'worlds')
       const backups = unwrap(backupsPayload, 'backups')
-      const mergedMods = mergeModUpdateMetadata(mods, previous?.mods || [])
+      const mergedMods = hydrateModrinthMods(serverId, mods, previous?.mods || [])
       mergeActivityEntries(serverId, activity)
       if (diagnostics) {
         diagnosticsByServer.value = {
@@ -1389,11 +1517,12 @@ export const useMinecraftStore = defineStore('minecraft', () => {
   async function checkModUpdates(serverId) {
     const payload = await api.checkModUpdates(serverId)
     const checkedAt = payload?.checkedAt || new Date().toISOString()
-    const mods = unwrap(payload, 'mods').map((mod) => ({
+    const incomingMods = unwrap(payload, 'mods').map((mod) => ({
       ...mod,
       updateCheckedAt: mod.updateCheckedAt || checkedAt,
     }))
     const detail = serverDetails.value[serverId] || createFallbackDetail(serverId)
+    const mods = hydrateModrinthMods(serverId, incomingMods, detail.mods || [])
     mergeDetail(serverId, {
       ...detail,
       mods: mods.length ? mods : detail.mods,
@@ -1509,6 +1638,19 @@ export const useMinecraftStore = defineStore('minecraft', () => {
             version: result.latestVersion || item.latestVersion || item.version,
             latestVersion: result.latestVersion || item.latestVersion || item.version,
             updateAvailable: false,
+            modrinthProjectId: result.modrinthProjectId || item.modrinthProjectId,
+            projectId: result.projectId || item.projectId,
+            modrinthSlug: result.modrinthSlug || item.modrinthSlug,
+            modrinthTitle: result.modrinthTitle || item.modrinthTitle,
+            modrinthSummary: result.modrinthSummary || item.modrinthSummary,
+            modrinthDescription: result.modrinthDescription || item.modrinthDescription,
+            modrinthIconUrl: result.modrinthIconUrl || item.modrinthIconUrl,
+            modrinthDownloads: result.modrinthDownloads ?? item.modrinthDownloads,
+            modrinthFollows: result.modrinthFollows ?? item.modrinthFollows,
+            modrinthCategories: Array.isArray(result.modrinthCategories) ? result.modrinthCategories : item.modrinthCategories,
+            clientSide: result.clientSide || item.clientSide,
+            serverSide: result.serverSide || item.serverSide,
+            href: result.href || item.href,
             dependencies: Array.isArray(result.dependencies) ? result.dependencies : item.dependencies,
             dependencyCount: result.dependencyCount ?? item.dependencyCount,
             requiredDependencyCount: result.requiredDependencyCount ?? item.requiredDependencyCount,
@@ -1548,6 +1690,19 @@ export const useMinecraftStore = defineStore('minecraft', () => {
         version: updated.latestVersion || item.latestVersion || item.version,
         latestVersion: updated.latestVersion || item.latestVersion || item.version,
         updateAvailable: false,
+        modrinthProjectId: updated.modrinthProjectId || item.modrinthProjectId,
+        projectId: updated.projectId || item.projectId,
+        modrinthSlug: updated.modrinthSlug || item.modrinthSlug,
+        modrinthTitle: updated.modrinthTitle || item.modrinthTitle,
+        modrinthSummary: updated.modrinthSummary || item.modrinthSummary,
+        modrinthDescription: updated.modrinthDescription || item.modrinthDescription,
+        modrinthIconUrl: updated.modrinthIconUrl || item.modrinthIconUrl,
+        modrinthDownloads: updated.modrinthDownloads ?? item.modrinthDownloads,
+        modrinthFollows: updated.modrinthFollows ?? item.modrinthFollows,
+        modrinthCategories: Array.isArray(updated.modrinthCategories) ? updated.modrinthCategories : item.modrinthCategories,
+        clientSide: updated.clientSide || item.clientSide,
+        serverSide: updated.serverSide || item.serverSide,
+        href: updated.href || item.href,
         dependencies: Array.isArray(updated.dependencies) ? updated.dependencies : item.dependencies,
         dependencyCount: updated.dependencyCount ?? item.dependencyCount,
         requiredDependencyCount: updated.requiredDependencyCount ?? item.requiredDependencyCount,

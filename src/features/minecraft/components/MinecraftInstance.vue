@@ -443,21 +443,26 @@
         </section>
 
         <section v-if="activeTab === 'players'" class="mt-6 space-y-4">
-          <div class="flex flex-col gap-3 rounded-md border border-white/10 bg-[#0f151d] p-4 md:flex-row md:items-center md:justify-between">
-            <div class="flex min-w-0 flex-1 gap-2">
+          <div class="grid gap-3 rounded-md border border-white/10 bg-[#0f151d] p-4 xl:grid-cols-[1fr_auto] xl:items-end">
+            <div class="min-w-0">
+              <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Find Players</label>
               <input
                 v-model="playerSearch"
-                class="h-10 min-w-0 flex-1 rounded-md border border-white/10 bg-black/30 px-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-sky-400/50"
+                class="mt-2 h-10 w-full rounded-md border border-white/10 bg-black/30 px-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-sky-400/50"
                 placeholder="Search players"
               >
+            </div>
+            <form class="flex flex-col gap-2 sm:flex-row sm:items-end" @submit.prevent="addWhitelist">
+              <label class="min-w-0">
+                <span class="text-xs font-medium uppercase tracking-wide text-slate-500">Whitelist New Player</span>
               <input
                 v-model="newPlayerName"
-                class="h-10 w-44 rounded-md border border-white/10 bg-black/30 px-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-emerald-400/50"
-                placeholder="Player name"
+                  class="mt-2 h-10 w-full rounded-md border border-white/10 bg-black/30 px-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-emerald-400/50 sm:w-64"
+                  placeholder="Minecraft username"
               >
-            </div>
-            <div class="flex flex-wrap gap-2">
+              </label>
               <button
+                type="button"
                 class="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-white/10 bg-white/[0.04] px-3 text-sm text-slate-100 hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-40"
                 :disabled="!filteredPlayers.length || exportingAccess"
                 @click="exportAccess"
@@ -466,14 +471,14 @@
                 Export
               </button>
               <button
+                type="submit"
                 class="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-emerald-400/25 bg-emerald-400/10 px-3 text-sm text-emerald-100 hover:bg-emerald-400/15 disabled:cursor-not-allowed disabled:opacity-40"
                 :disabled="!newPlayerName.trim() || actionBusy(namedActionKey('whitelist', newPlayerName, 'add'))"
-                @click="addWhitelist"
               >
                 <UserPlus class="h-4 w-4" />
                 Whitelist
               </button>
-            </div>
+            </form>
           </div>
 
           <div class="flex flex-wrap gap-2 rounded-md border border-white/10 bg-[#0f151d] p-3">
@@ -824,6 +829,13 @@
                   <div class="flex flex-wrap items-center gap-2">
                     <h3 class="truncate font-semibold text-white">{{ project.title }}</h3>
                     <span class="rounded-md bg-white/[0.06] px-2 py-1 text-xs text-slate-300">{{ project.serverSide }}</span>
+                    <span
+                      v-if="project.compatibility"
+                      class="rounded-md px-2 py-1 text-xs"
+                      :class="project.compatibility === 'server-compatible' ? 'bg-emerald-400/10 text-emerald-200' : project.compatibility === 'loader-match' ? 'bg-sky-400/10 text-sky-200' : 'bg-amber-400/10 text-amber-200'"
+                    >
+                      {{ project.compatibility }}
+                    </span>
                   </div>
                   <p class="mt-1 line-clamp-2 text-sm text-slate-400">{{ project.description }}</p>
                   <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
@@ -849,39 +861,51 @@
             </div>
             <article v-for="mod in visibleMods" :key="mod.file" class="rounded-md border border-white/10 bg-[#0f151d] p-4">
               <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div class="min-w-0">
-                  <div class="flex flex-wrap items-center gap-2">
-                    <h3 class="font-semibold text-white">{{ mod.name || mod.id }}</h3>
-                    <span class="rounded-md px-2 py-1 text-xs" :class="mod.enabled ? 'bg-emerald-400/10 text-emerald-200' : 'bg-slate-400/10 text-slate-300'">
-                      {{ mod.enabled ? 'Enabled' : 'Disabled' }}
-                    </span>
-                    <span v-if="mod.updateAvailable" class="rounded-md bg-amber-400/10 px-2 py-1 text-xs text-amber-200">Update</span>
-                    <span v-if="mod.required" class="rounded-md bg-sky-400/10 px-2 py-1 text-xs text-sky-200">Required</span>
-                    <span v-if="modRequiredDependencyCount(mod)" class="rounded-md bg-cyan-400/10 px-2 py-1 text-xs text-cyan-200">
-                      {{ modRequiredDependencyCount(mod) }} required deps
-                    </span>
-                    <span v-else-if="modDependencyCount(mod)" class="rounded-md bg-cyan-400/10 px-2 py-1 text-xs text-cyan-200">
-                      {{ modDependencyCount(mod) }} deps
-                    </span>
+                <div class="flex min-w-0 gap-3">
+                  <div class="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md border border-white/10 bg-black/25">
+                    <img v-if="modIconUrl(mod)" :src="modIconUrl(mod)" :alt="modProjectTitle(mod)" class="h-full w-full object-cover">
+                    <Package v-else class="h-5 w-5 text-slate-500" />
                   </div>
-                  <div class="mt-1 truncate font-mono text-xs text-slate-500">{{ mod.file }}</div>
-                  <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-400">
-                    <span>{{ mod.version }}</span>
-                    <span v-if="mod.latestVersion">Latest {{ mod.latestVersion }}</span>
-                    <a v-if="mod.modrinthSlug" class="text-violet-200 hover:text-violet-100" :href="modrinthHref(mod)" target="_blank" rel="noreferrer">Modrinth</a>
-                  </div>
-                  <div v-if="modDependencies(mod).length" class="mt-3 flex flex-wrap gap-2 text-xs">
-                    <span
-                      v-for="dependency in modDependencies(mod).slice(0, 4)"
-                      :key="`${mod.file}-${dependency.projectId || dependency.versionId || dependency.fileName || dependency.type}`"
-                      class="rounded-md px-2 py-1"
-                      :class="dependencyTone(dependency.type)"
-                    >
-                      {{ dependencyLabel(dependency) }} - {{ dependency.type }}
-                    </span>
-                    <span v-if="modDependencies(mod).length > 4" class="rounded-md bg-white/[0.06] px-2 py-1 text-slate-300">
-                      +{{ modDependencies(mod).length - 4 }} more
-                    </span>
+                  <div class="min-w-0">
+                    <div class="flex flex-wrap items-center gap-2">
+                      <h3 class="font-semibold text-white">{{ modProjectTitle(mod) }}</h3>
+                      <span v-if="mod.modrinthTitle && mod.modrinthTitle !== (mod.name || mod.id)" class="rounded-md bg-violet-400/10 px-2 py-1 text-xs text-violet-200">
+                        {{ mod.name || mod.id }}
+                      </span>
+                      <span class="rounded-md px-2 py-1 text-xs" :class="mod.enabled ? 'bg-emerald-400/10 text-emerald-200' : 'bg-slate-400/10 text-slate-300'">
+                        {{ mod.enabled ? 'Enabled' : 'Disabled' }}
+                      </span>
+                      <span v-if="mod.updateAvailable" class="rounded-md bg-amber-400/10 px-2 py-1 text-xs text-amber-200">Update</span>
+                      <span v-if="mod.required" class="rounded-md bg-sky-400/10 px-2 py-1 text-xs text-sky-200">Required</span>
+                      <span v-if="modRequiredDependencyCount(mod)" class="rounded-md bg-cyan-400/10 px-2 py-1 text-xs text-cyan-200">
+                        {{ modRequiredDependencyCount(mod) }} required deps
+                      </span>
+                      <span v-else-if="modDependencyCount(mod)" class="rounded-md bg-cyan-400/10 px-2 py-1 text-xs text-cyan-200">
+                        {{ modDependencyCount(mod) }} deps
+                      </span>
+                    </div>
+                    <p v-if="modSummary(mod)" class="mt-1 line-clamp-2 text-sm text-slate-400">{{ modSummary(mod) }}</p>
+                    <div class="mt-1 truncate font-mono text-xs text-slate-500">{{ mod.file }}</div>
+                    <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-400">
+                      <span>{{ mod.version }}</span>
+                      <span v-if="mod.latestVersion">Latest {{ mod.latestVersion }}</span>
+                      <span v-if="mod.modrinthDownloads">{{ formatNumber(mod.modrinthDownloads) }} downloads</span>
+                      <span v-if="mod.modrinthFollows">{{ formatNumber(mod.modrinthFollows) }} follows</span>
+                      <a v-if="modrinthHref(mod)" class="text-violet-200 hover:text-violet-100" :href="modrinthHref(mod)" target="_blank" rel="noreferrer">Modrinth</a>
+                    </div>
+                    <div v-if="modDependencies(mod).length" class="mt-3 flex flex-wrap gap-2 text-xs">
+                      <span
+                        v-for="dependency in modDependencies(mod).slice(0, 4)"
+                        :key="`${mod.file}-${dependency.projectId || dependency.versionId || dependency.fileName || dependency.type}`"
+                        class="rounded-md px-2 py-1"
+                        :class="dependencyTone(dependency.type)"
+                      >
+                        {{ dependencyLabel(dependency) }} - {{ dependency.type }}
+                      </span>
+                      <span v-if="modDependencies(mod).length > 4" class="rounded-md bg-white/[0.06] px-2 py-1 text-slate-300">
+                        +{{ modDependencies(mod).length - 4 }} more
+                      </span>
+                    </div>
                   </div>
                 </div>
 
@@ -1996,7 +2020,10 @@ const commandHistoryMatchesSearch = (entry, query) => {
     entry?.timestamp,
   ].some((value) => String(value || '').toLowerCase().includes(query))
 }
-const modDisplayName = (mod) => String(mod?.name || mod?.id || mod?.file || '')
+const modDisplayName = (mod) => String(mod?.modrinthTitle || mod?.name || mod?.id || mod?.file || '')
+const modProjectTitle = (mod) => mod?.modrinthTitle || mod?.name || mod?.id || mod?.file || 'Unknown mod'
+const modIconUrl = (mod) => mod?.modrinthIconUrl || mod?.iconUrl || ''
+const modSummary = (mod) => mod?.modrinthSummary || mod?.modrinthDescription || mod?.description || ''
 const playerMatchesFilter = (player) => {
   if (playerFilter.value === 'online') return player.online
   if (playerFilter.value === 'ops') return player.op
@@ -2022,6 +2049,12 @@ const installedModMatchesQuery = (mod, query) => {
     mod?.version,
     mod?.latestVersion,
     mod?.modrinthSlug,
+    mod?.modrinthTitle,
+    mod?.modrinthSummary,
+    mod?.modrinthDescription,
+    mod?.modrinthProjectId,
+    mod?.projectId,
+    mod?.lookupStatus,
   ].some((value) => String(value || '').toLowerCase().includes(query))
 }
 const comparableModBackupName = (backup) => String(backup?.originalFile || backup?.file || backup?.id || '')
@@ -2408,7 +2441,13 @@ const exportMods = () => {
         modrinthSlug: mod.modrinthSlug,
         modrinthProjectId: mod.modrinthProjectId || mod.projectId,
         modrinthVersionId: mod.modrinthVersionId || mod.versionId,
-        href: mod.modrinthSlug ? modrinthHref(mod) : '',
+        modrinthTitle: mod.modrinthTitle,
+        modrinthSummary: mod.modrinthSummary,
+        modrinthDescription: mod.modrinthDescription,
+        modrinthIconUrl: mod.modrinthIconUrl,
+        modrinthDownloads: mod.modrinthDownloads,
+        modrinthFollows: mod.modrinthFollows,
+        href: modrinthHref(mod),
         dependencyCount: modDependencyCount(mod),
         requiredDependencyCount: modRequiredDependencyCount(mod),
         optionalDependencyCount: modOptionalDependencyCount(mod),
@@ -2428,6 +2467,7 @@ const exportMods = () => {
         description: project.description,
         latestVersion: project.latestVersion,
         serverSide: project.serverSide,
+        compatibility: project.compatibility,
         downloads: project.downloads,
         href: project.href,
       })),
@@ -2710,6 +2750,13 @@ const exportConfig = () => {
           version: mod.version,
           projectId: mod.projectId,
           modrinthSlug: mod.modrinthSlug,
+          modrinthProjectId: mod.modrinthProjectId,
+          modrinthTitle: mod.modrinthTitle,
+          modrinthSummary: mod.modrinthSummary,
+          modrinthDescription: mod.modrinthDescription,
+          modrinthIconUrl: mod.modrinthIconUrl,
+          modrinthDownloads: mod.modrinthDownloads,
+          modrinthFollows: mod.modrinthFollows,
           updateAvailable: mod.updateAvailable,
           latestVersion: mod.latestVersion,
           lookupStatus: mod.lookupStatus,
@@ -3394,7 +3441,10 @@ const commandNeedsConfirm = (value) => {
   return ['guarded', 'destructive'].includes(commandRisk(value))
 }
 
-const modrinthHref = (mod) => `https://modrinth.com/mod/${mod.modrinthSlug}`
+const modrinthHref = (mod) => {
+  const target = mod?.modrinthSlug || mod?.slug || mod?.modrinthProjectId || mod?.projectId
+  return target ? `https://modrinth.com/mod/${target}` : ''
+}
 
 const modDependencies = (mod) => Array.isArray(mod?.dependencies) ? mod.dependencies : []
 const modDependencyCount = (mod) => Number(mod?.dependencyCount ?? modDependencies(mod).length ?? 0)

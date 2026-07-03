@@ -27,6 +27,7 @@ const MAINTENANCE_CRON_PATH = process.env.MINECRAFT_MAINTENANCE_CRON || '/etc/cr
 const LOCAL_SNAPSHOT_RETENTION = Number(process.env.MINECRAFT_LOCAL_SNAPSHOT_RETENTION || 2)
 const ICON_CACHE_SECONDS = Number(process.env.MINECRAFT_ICON_CACHE_SECONDS || 300)
 const STATUS_STREAM_INTERVAL_MS = Number(process.env.MINECRAFT_STATUS_STREAM_INTERVAL_MS || 5000)
+const modrinthProjectCache = new Map()
 
 const registryWarnings = []
 
@@ -2187,6 +2188,33 @@ async function getModrinthProjectVersions(server, projectId) {
   return modrinthJson(`${MODRINTH_API_ROOT}/project/${encodeURIComponent(projectId)}/version?${params}`)
 }
 
+async function getModrinthProject(projectId) {
+  const key = String(projectId || '').trim()
+  if (!key) return null
+  if (modrinthProjectCache.has(key)) return modrinthProjectCache.get(key)
+  const project = await modrinthJson(`${MODRINTH_API_ROOT}/project/${encodeURIComponent(key)}`)
+  modrinthProjectCache.set(key, project)
+  return project
+}
+
+function modrinthProjectMetadata(project) {
+  if (!project) return {}
+  const slug = project.slug || project.id || project.project_id || ''
+  return {
+    modrinthSlug: slug,
+    modrinthTitle: project.title || project.name || '',
+    modrinthSummary: project.description || project.summary || '',
+    modrinthDescription: project.body || project.description || '',
+    modrinthIconUrl: project.icon_url || '',
+    modrinthDownloads: project.downloads,
+    modrinthFollows: project.followers,
+    modrinthCategories: project.categories || project.additional_categories || [],
+    clientSide: project.client_side || '',
+    serverSide: project.server_side || '',
+    href: slug ? `https://modrinth.com/mod/${slug}` : '',
+  }
+}
+
 async function listMods(server, options = {}) {
   const modsPath = path.join(server.root, 'mods')
   let entries = []
@@ -2227,7 +2255,10 @@ async function getModrinthCandidate(server, mod) {
   const current = await modrinthJson(`${MODRINTH_API_ROOT}/version_file/${mod.hash}?algorithm=sha1`)
   if (!current?.project_id) return null
 
-  const versions = await getModrinthProjectVersions(server, current.project_id)
+  const [versions, project] = await Promise.all([
+    getModrinthProjectVersions(server, current.project_id),
+    getModrinthProject(current.project_id).catch(() => null),
+  ])
   const latest = Array.isArray(versions) ? versions[0] : null
   const primaryFile = getPrimaryVersionFile(latest)
   if (!latest || !primaryFile) return null
@@ -2240,6 +2271,7 @@ async function getModrinthCandidate(server, mod) {
     filename: primaryFile.filename,
     sha1: primaryFile.hashes?.sha1,
     updateAvailable: latest.version_number !== mod.version,
+    ...modrinthProjectMetadata(project),
     ...dependencySummary(latest),
   }
 }
@@ -2253,6 +2285,18 @@ async function listModsWithUpdates(server) {
       return {
         ...mod,
         modrinthProjectId: candidate.projectId,
+        projectId: candidate.projectId,
+        modrinthSlug: candidate.modrinthSlug,
+        modrinthTitle: candidate.modrinthTitle,
+        modrinthSummary: candidate.modrinthSummary,
+        modrinthDescription: candidate.modrinthDescription,
+        modrinthIconUrl: candidate.modrinthIconUrl,
+        modrinthDownloads: candidate.modrinthDownloads,
+        modrinthFollows: candidate.modrinthFollows,
+        modrinthCategories: candidate.modrinthCategories,
+        clientSide: candidate.clientSide,
+        serverSide: candidate.serverSide,
+        href: candidate.href,
         latestVersion: candidate.latestVersion,
         updateAvailable: candidate.updateAvailable,
         updateFile: candidate.filename,
@@ -2453,22 +2497,87 @@ async function deleteModBackup(server, backupFile) {
   return { file: backupName }
 }
 
+function compactModrinthSearchText(value) {
+  return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '')
+}
+
+function modrinthSearchScore(hit, query, compatibility = 0) {
+  const cleanQuery = String(query || '').trim().toLowerCase()
+  const compactQuery = compactModrinthSearchText(cleanQuery)
+  const title = String(hit.title || '').toLowerCase()
+  const slug = String(hit.slug || '').toLowerCase()
+  const description = String(hit.description || '').toLowerCase()
+  const compactTitle = compactModrinthSearchText(title)
+  const compactSlug = compactModrinthSearchText(slug)
+
+  let score = Number(compatibility || 0)
+  if (title === cleanQuery || slug === cleanQuery) score += 10000
+  if (compactQuery && (compactTitle === compactQuery || compactSlug === compactQuery)) score += 9000
+  if (title.startsWith(cleanQuery) || slug.startsWith(cleanQuery)) score += 7000
+  if (compactQuery && (compactTitle.startsWith(compactQuery) || compactSlug.startsWith(compactQuery))) score += 6500
+  if (title.includes(cleanQuery) || slug.includes(cleanQuery)) score += 5000
+  if (compactQuery && (compactTitle.includes(compactQuery) || compactSlug.includes(compactQuery))) score += 4500
+  if (description.includes(cleanQuery)) score += 1000
+  score += Math.min(Number(hit.downloads || 0) / 100000, 100)
+  return score
+}
+
+async function modrinthSearchHits(query, facets, limit) {
+  const params = new URLSearchParams({
+    query,
+    facets: JSON.stringify(facets),
+    index: 'relevance',
+    limit: String(limit),
+  })
+  const payload = await modrinthJson(`${MODRINTH_API_ROOT}/search?${params}`)
+  return Array.isArray(payload.hits) ? payload.hits : []
+}
+
 async function searchModrinthProjects(server, query, limit = 8) {
-  const facets = [
+  const maxResults = Math.min(Math.max(Number(limit) || 8, 1), 20)
+  const strictFacets = [
     ['project_type:mod'],
     [`categories:${server.loader || 'fabric'}`],
     [`versions:${getModrinthGameVersion(server)}`],
     ['server_side:required', 'server_side:optional'],
   ]
-  const params = new URLSearchParams({
-    query,
-    facets: JSON.stringify(facets),
-    index: 'relevance',
-    limit: String(Math.min(Math.max(Number(limit) || 8, 1), 20)),
+  const relaxedFacets = [
+    ['project_type:mod'],
+    [`categories:${server.loader || 'fabric'}`],
+  ]
+  const broadFacets = [
+    ['project_type:mod'],
+  ]
+
+  const settled = await Promise.allSettled([
+    modrinthSearchHits(query, strictFacets, maxResults * 2),
+    modrinthSearchHits(query, relaxedFacets, maxResults * 2),
+    modrinthSearchHits(query, broadFacets, maxResults * 2),
+  ])
+  const byProject = new Map()
+
+  settled.forEach((result, index) => {
+    if (result.status !== 'fulfilled') return
+    const compatibility = index === 0 ? 3000 : index === 1 ? 1500 : 0
+    result.value.forEach((hit) => {
+      const key = hit.project_id || hit.slug
+      if (!key) return
+      const existing = byProject.get(key)
+      const scored = {
+        ...hit,
+        compatibility,
+        searchScore: modrinthSearchScore(hit, query, compatibility),
+      }
+      if (!existing || scored.searchScore > existing.searchScore) {
+        byProject.set(key, scored)
+      }
+    })
   })
-  const payload = await modrinthJson(`${MODRINTH_API_ROOT}/search?${params}`)
-  const hits = Array.isArray(payload.hits) ? payload.hits : []
-  return hits.map((hit) => ({
+
+  return Array.from(byProject.values())
+    .sort((a, b) => b.searchScore - a.searchScore)
+    .slice(0, maxResults)
+    .map((hit) => ({
     projectId: hit.project_id,
     slug: hit.slug,
     title: hit.title,
@@ -2481,6 +2590,7 @@ async function searchModrinthProjects(server, query, limit = 8) {
     clientSide: hit.client_side,
     categories: hit.display_categories || hit.categories || [],
     latestVersion: hit.latest_version,
+    compatibility: hit.compatibility >= 3000 ? 'server-compatible' : hit.compatibility >= 1500 ? 'loader-match' : 'broad-match',
     href: `https://modrinth.com/mod/${hit.slug || hit.project_id}`,
   }))
 }
@@ -2541,7 +2651,10 @@ async function installModrinthMod(server, projectId, versionId) {
   await fsp.writeFile(tempPath, bytes)
   await fsp.rename(tempPath, targetPath)
 
-  const modJson = await readFabricModJson(targetPath)
+  const [modJson, project] = await Promise.all([
+    readFabricModJson(targetPath),
+    getModrinthProject(version.project_id || projectId).catch(() => null),
+  ])
   const dependencies = dependencySummary(version)
   return {
     mod: {
@@ -2556,7 +2669,9 @@ async function installModrinthMod(server, projectId, versionId) {
       size: formatBytes(bytes.length),
       updatedAt: new Date().toISOString(),
       modrinthProjectId: version.project_id,
+      projectId: version.project_id,
       modrinthVersionId: version.id,
+      ...modrinthProjectMetadata(project),
       ...dependencies,
     },
     versionId: version.id,
@@ -2625,6 +2740,19 @@ async function updateModrinthMod(server, mod, knownCandidate = null) {
     previousFile: mod.file,
     backupFile: path.basename(backupPath),
     latestVersion: candidate.latestVersion,
+    modrinthProjectId: candidate.projectId,
+    projectId: candidate.projectId,
+    modrinthSlug: candidate.modrinthSlug,
+    modrinthTitle: candidate.modrinthTitle,
+    modrinthSummary: candidate.modrinthSummary,
+    modrinthDescription: candidate.modrinthDescription,
+    modrinthIconUrl: candidate.modrinthIconUrl,
+    modrinthDownloads: candidate.modrinthDownloads,
+    modrinthFollows: candidate.modrinthFollows,
+    modrinthCategories: candidate.modrinthCategories,
+    clientSide: candidate.clientSide,
+    serverSide: candidate.serverSide,
+    href: candidate.href,
     dependencies: candidate.dependencies || [],
     dependencyCount: candidate.dependencyCount || 0,
     requiredDependencyCount: candidate.requiredDependencyCount || 0,
