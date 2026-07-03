@@ -365,7 +365,23 @@
             </button>
           </div>
 
+          <div class="flex flex-wrap gap-2 rounded-md border border-white/10 bg-[#0f151d] p-3">
+            <button
+              v-for="filter in playerFilters"
+              :key="filter.id"
+              class="inline-flex h-9 items-center gap-2 rounded-md px-3 text-sm transition"
+              :class="playerFilter === filter.id ? 'bg-white text-slate-950' : 'bg-white/[0.04] text-slate-300 hover:bg-white/[0.08] hover:text-white'"
+              @click="playerFilter = filter.id"
+            >
+              <span>{{ filter.label }}</span>
+              <span class="rounded bg-black/10 px-1.5 py-0.5 text-xs">{{ filter.count }}</span>
+            </button>
+          </div>
+
           <div class="overflow-hidden rounded-md border border-white/10 bg-[#0f151d]">
+            <div v-if="!filteredPlayers.length" class="border-b border-white/10 p-4 text-sm text-slate-500">
+              No players match this filter.
+            </div>
             <div v-for="player in filteredPlayers" :key="player.uuid || player.name" class="grid gap-3 border-b border-white/10 p-4 last:border-b-0 lg:grid-cols-[1fr_auto] lg:items-center">
               <div class="min-w-0">
                 <div class="flex flex-wrap items-center gap-2">
@@ -1172,6 +1188,7 @@ const selectedLogFile = ref('latest.log')
 const loadingExplorerLogs = ref(false)
 const exportingLogs = ref(false)
 const playerSearch = ref('')
+const playerFilter = ref('all')
 const modSearch = ref('')
 const installedModFilter = ref('all')
 const installedModSearch = ref('')
@@ -1285,12 +1302,18 @@ const filteredLogs = computed(() => {
 const filteredPlayers = computed(() => {
   const query = playerSearch.value.trim().toLowerCase()
   const players = detail.value?.players || []
-  if (!query) return players
-  return players.filter((player) => (
-    player.name.toLowerCase().includes(query) ||
-    String(player.uuid || '').toLowerCase().includes(query) ||
-    String(player.permission || '').toLowerCase().includes(query)
-  ))
+  return players.filter((player) => playerMatchesFilter(player) && playerMatchesSearch(player, query))
+})
+
+const playerFilters = computed(() => {
+  const players = detail.value?.players || []
+  return [
+    { id: 'all', label: 'All', count: players.length },
+    { id: 'online', label: 'Online', count: players.filter((player) => player.online).length },
+    { id: 'ops', label: 'OPs', count: players.filter((player) => player.op).length },
+    { id: 'whitelist', label: 'Whitelist', count: players.filter((player) => player.whitelisted).length },
+    { id: 'banned', label: 'Banned', count: players.filter((player) => player.banned).length },
+  ]
 })
 
 const tabs = [
@@ -1355,6 +1378,22 @@ const commandTone = (risk = 'safe') => {
   return 'border-white/10 bg-white/[0.04] text-slate-200'
 }
 const modDisplayName = (mod) => String(mod?.name || mod?.id || mod?.file || '')
+const playerMatchesFilter = (player) => {
+  if (playerFilter.value === 'online') return player.online
+  if (playerFilter.value === 'ops') return player.op
+  if (playerFilter.value === 'whitelist') return player.whitelisted
+  if (playerFilter.value === 'banned') return player.banned
+  return true
+}
+const playerMatchesSearch = (player, query) => {
+  if (!query) return true
+  return [
+    player?.name,
+    player?.uuid,
+    player?.permission,
+    player?.lastSeen,
+  ].some((value) => String(value || '').toLowerCase().includes(query))
+}
 const installedModMatchesQuery = (mod, query) => {
   if (!query) return true
   return [
