@@ -1159,6 +1159,10 @@
             <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <h2 class="font-semibold text-white">Access & Gameplay</h2>
               <div class="flex gap-2">
+                <button type="button" class="settings-btn" :disabled="!detail || exportingConfig" @click="exportConfig">
+                  <Download class="h-4 w-4" :class="{ 'animate-pulse': exportingConfig }" />
+                  Export
+                </button>
                 <button type="button" class="settings-btn" :disabled="!settingsChanged || savingSettings" @click="resetSettingsDraft">
                   <RefreshCcw class="h-4 w-4" />
                   Reset
@@ -1463,6 +1467,7 @@ const exportingActivity = ref(false)
 const diagnosticsSearch = ref('')
 const diagnosticsFilter = ref('all')
 const exportingDiagnostics = ref(false)
+const exportingConfig = ref(false)
 const settingsDraft = ref({})
 const savingSettings = ref(false)
 const installingProjectId = ref(null)
@@ -2161,6 +2166,115 @@ const exportDiagnostics = () => {
     })
   } finally {
     exportingDiagnostics.value = false
+  }
+}
+
+const exportConfig = () => {
+  if (!detail.value) return
+  exportingConfig.value = true
+  try {
+    const exportedAt = new Date().toISOString()
+    const server = detail.value
+    const mods = server.mods || []
+    const players = server.players || []
+    const payload = {
+      serverId: serverId.value,
+      server: server.label || serverId.value,
+      exportedAt,
+      lifecycle: {
+        state: server.state,
+        stateSince: server.stateSince,
+        uptimeSeconds: server.uptimeSeconds,
+        restartRequired: restartRequired.value,
+        pendingRestart: pendingRestartReasons.value,
+      },
+      connection: {
+        host: server.host,
+        root: server.root,
+        service: server.service,
+        loader: server.loader,
+        version: server.version,
+        activeWorld: server.activeWorld,
+        ports: {
+          public: server.publicPort,
+          backend: server.backendPort,
+          rcon: server.rconPort,
+        },
+      },
+      settings: {
+        current: settingsKeys.reduce((acc, key) => {
+          acc[key] = settingCurrentValue(key)
+          return acc
+        }, {}),
+        draft: { ...settingsDraft.value },
+        pendingChanges: settingsChanges.value,
+      },
+      access: {
+        players: players.map((player) => ({
+          name: player.name,
+          uuid: player.uuid,
+          online: player.online,
+          operator: player.operator,
+          opLevel: player.opLevel,
+          whitelisted: player.whitelisted,
+          banned: player.banned,
+        })),
+        whitelist: server.whitelist || [],
+        ops: server.ops || [],
+        bannedPlayers: server.bannedPlayers || [],
+        bannedIps: server.bannedIps || [],
+      },
+      mods: {
+        total: mods.length,
+        enabled: enabledMods.value,
+        disabled: disabledMods.value,
+        updatesAvailable: updateCount.value,
+        checkSummary: modCheckSummary.value,
+        items: mods.map((mod) => ({
+          file: mod.file,
+          name: modDisplayName(mod),
+          enabled: mod.enabled,
+          version: mod.version,
+          projectId: mod.projectId,
+          modrinthSlug: mod.modrinthSlug,
+          updateAvailable: mod.updateAvailable,
+          latestVersion: mod.latestVersion,
+          lookupStatus: mod.lookupStatus,
+          updateCheckedAt: mod.updateCheckedAt,
+        })),
+      },
+      worlds: {
+        total: (server.worlds || []).length,
+        active: server.activeWorld,
+        items: sortedWorlds.value.map((world) => ({
+          id: world.id,
+          name: world.name,
+          active: world.active,
+          size: world.size,
+          updatedAt: world.updatedAt || world.lastPlayed || world.mtime || world.modifiedAt,
+          hasDatapacks: world.hasDatapacks,
+        })),
+      },
+      backups: {
+        total: (server.backups || []).length,
+        latest: sortedBackups.value[0] || null,
+      },
+      diagnostics: diagnostics.value ? {
+        status: diagnostics.value.status,
+        checkedAt: diagnostics.value.checkedAt,
+        summary: diagnosticsSummary.value,
+      } : null,
+    }
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' })
+    const stamp = exportedAt.replace(/[:.]/g, '-')
+    triggerDownload(blob, `minecraft-${serverId.value}-config-${stamp}.json`)
+    toast({
+      title: 'Config export ready',
+      description: server.label || serverId.value,
+      variant: 'success',
+    })
+  } finally {
+    exportingConfig.value = false
   }
 }
 
