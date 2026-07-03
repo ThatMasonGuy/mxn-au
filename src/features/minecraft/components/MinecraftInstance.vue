@@ -744,7 +744,31 @@
 
         <section v-if="activeTab === 'worlds'" class="mt-6 grid gap-6 lg:grid-cols-[1fr_360px]">
           <div class="space-y-3">
-            <article v-for="world in sortedWorlds" :key="world.id" class="rounded-md border border-white/10 bg-[#0f151d] p-4">
+            <div class="flex flex-col gap-3 rounded-md border border-white/10 bg-[#0f151d] p-3 md:flex-row md:items-center md:justify-between">
+              <div class="flex flex-wrap gap-2">
+                <button
+                  v-for="filter in worldFilters"
+                  :key="filter.id"
+                  class="inline-flex h-9 items-center gap-2 rounded-md px-3 text-sm transition"
+                  :class="worldFilter === filter.id ? 'bg-white text-slate-950' : 'bg-white/[0.04] text-slate-300 hover:bg-white/[0.08] hover:text-white'"
+                  @click="worldFilter = filter.id"
+                >
+                  <span>{{ filter.label }}</span>
+                  <span class="rounded bg-black/10 px-1.5 py-0.5 text-xs">{{ filter.count }}</span>
+                </button>
+              </div>
+              <input
+                v-model="worldSearch"
+                class="h-9 w-full rounded-md border border-white/10 bg-black/30 px-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-sky-400/50 md:w-64"
+                placeholder="Filter worlds"
+              >
+            </div>
+
+            <div v-if="!visibleWorlds.length" class="rounded-md border border-white/10 bg-[#0f151d] p-4 text-sm text-slate-500">
+              No worlds match this filter.
+            </div>
+
+            <article v-for="world in visibleWorlds" :key="world.id" class="rounded-md border border-white/10 bg-[#0f151d] p-4">
               <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
                   <div class="flex flex-wrap items-center gap-2">
@@ -1197,6 +1221,8 @@ const newBlacklistName = ref('')
 const newBlacklistIp = ref('')
 const blacklistReason = ref('')
 const newWorldName = ref('')
+const worldSearch = ref('')
+const worldFilter = ref('all')
 const settingsDraft = ref({})
 const savingSettings = ref(false)
 const installingProjectId = ref(null)
@@ -1284,6 +1310,19 @@ const sortedWorlds = computed(() => [...(detail.value?.worlds || [])].sort((a, b
   if (diff) return diff
   return comparableWorldName(b).localeCompare(comparableWorldName(a), undefined, { numeric: true, sensitivity: 'base' })
 }))
+const worldFilters = computed(() => {
+  const worlds = detail.value?.worlds || []
+  return [
+    { id: 'all', label: 'All', count: worlds.length },
+    { id: 'active', label: 'Active', count: worlds.filter((world) => world.active).length },
+    { id: 'inactive', label: 'Inactive', count: worlds.filter((world) => !world.active).length },
+    { id: 'datapacks', label: 'Datapacks', count: worlds.filter((world) => world.hasDatapacks).length },
+  ]
+})
+const visibleWorlds = computed(() => {
+  const query = worldSearch.value.trim().toLowerCase()
+  return sortedWorlds.value.filter((world) => worldMatchesFilter(world) && worldMatchesSearch(world, query))
+})
 const settingsChanged = computed(() => {
   const current = detail.value?.settings || {}
   return settingsKeys.some((key) => String(settingsDraft.value[key]) !== String(current[key] ?? ''))
@@ -1407,6 +1446,21 @@ const installedModMatchesQuery = (mod, query) => {
 }
 
 const comparableWorldName = (world) => String(world?.name || world?.id || world?.path || '')
+const worldMatchesFilter = (world) => {
+  if (worldFilter.value === 'active') return world.active
+  if (worldFilter.value === 'inactive') return !world.active
+  if (worldFilter.value === 'datapacks') return world.hasDatapacks
+  return true
+}
+const worldMatchesSearch = (world, query) => {
+  if (!query) return true
+  return [
+    world?.name,
+    world?.id,
+    world?.path,
+    world?.size,
+  ].some((value) => String(value || '').toLowerCase().includes(query))
+}
 const comparableWorldTime = (world) => {
   const candidates = [
     world?.updatedAt,
