@@ -941,6 +941,19 @@
                 <span class="mt-1 block">{{ file.size }} &middot; {{ formatDate(file.updatedAt) }}</span>
               </button>
             </div>
+
+            <div class="flex flex-wrap gap-2">
+              <button
+                v-for="filter in logFilters"
+                :key="filter.id"
+                class="inline-flex h-9 items-center gap-2 rounded-md px-3 text-sm transition"
+                :class="logFilter === filter.id ? 'bg-white text-slate-950' : 'bg-white/[0.04] text-slate-300 hover:bg-white/[0.08] hover:text-white'"
+                @click="logFilter = filter.id"
+              >
+                <span>{{ filter.label }}</span>
+                <span class="rounded bg-black/10 px-1.5 py-0.5 text-xs">{{ filter.count }}</span>
+              </button>
+            </div>
           </div>
 
           <div ref="explorerLogsRef" class="mt-4 h-[620px] overflow-auto rounded-md border border-white/10 bg-black/40 p-3 font-mono text-xs leading-6 text-slate-300">
@@ -1251,6 +1264,7 @@ const { toast } = useToast()
 const activeTab = ref('overview')
 const command = ref('')
 const logSearch = ref('')
+const logFilter = ref('all')
 const logTail = ref(300)
 const selectedLogFile = ref('latest.log')
 const loadingExplorerLogs = ref(false)
@@ -1409,14 +1423,28 @@ const settingsChanged = computed(() => {
   return settingsKeys.some((key) => String(settingsDraft.value[key]) !== String(current[key] ?? ''))
 })
 
-const filteredLogs = computed(() => {
-  const query = logSearch.value.trim().toLowerCase()
-  const followLiveLatest = (selectedLogFile.value || 'latest.log') === 'latest.log' && !query
-  const lines = followLiveLatest
+const activeLogLines = computed(() => {
+  const followLiveLatest = (selectedLogFile.value || 'latest.log') === 'latest.log' && !logSearch.value.trim()
+  return followLiveLatest
     ? detail.value?.logs || []
     : detail.value?.exploredLogs || detail.value?.logs || []
-  if (!query) return lines
-  return lines.filter((line) => line.toLowerCase().includes(query))
+})
+const logFilters = computed(() => {
+  const lines = activeLogLines.value
+  return [
+    { id: 'all', label: 'All', count: lines.length },
+    { id: 'errors', label: 'Errors', count: lines.filter((line) => logLineGroup(line) === 'errors').length },
+    { id: 'warnings', label: 'Warnings', count: lines.filter((line) => logLineGroup(line) === 'warnings').length },
+    { id: 'players', label: 'Players', count: lines.filter((line) => logLineGroup(line) === 'players').length },
+    { id: 'rcon', label: 'RCON', count: lines.filter((line) => logLineGroup(line) === 'rcon').length },
+    { id: 'panel', label: 'Panel', count: lines.filter((line) => logLineGroup(line) === 'panel').length },
+  ]
+})
+const filteredLogs = computed(() => {
+  const query = logSearch.value.trim().toLowerCase()
+  return activeLogLines.value.filter((line) => (
+    logMatchesFilter(line) && (!query || String(line || '').toLowerCase().includes(query))
+  ))
 })
 
 const filteredPlayers = computed(() => {
@@ -2377,11 +2405,28 @@ const dependencyTone = (type) => {
   return 'bg-white/[0.06] text-slate-300'
 }
 
+const logLineGroup = (line) => {
+  const lower = String(line || '').toLowerCase()
+  if (/\b(error|exception|failed|fatal)\b/.test(lower)) return 'errors'
+  if (/\b(warn|warning)\b/.test(lower)) return 'warnings'
+  if (lower.includes('rcon')) return 'rcon'
+  if (lower.includes('panel')) return 'panel'
+  if (/(joined the game|left the game|\bplayer\b|whitelist|deop|opped|banned|pardon|kick)/.test(lower)) return 'players'
+  return 'other'
+}
+
+const logMatchesFilter = (line) => {
+  if (logFilter.value === 'all') return true
+  return logLineGroup(line) === logFilter.value
+}
+
 const logClass = (line) => {
-  const lower = line.toLowerCase()
-  if (lower.includes('error') || lower.includes('exception')) return 'text-rose-300'
-  if (lower.includes('warn')) return 'text-amber-300'
-  if (lower.includes('rcon')) return 'text-sky-300'
+  const group = logLineGroup(line)
+  if (group === 'errors') return 'text-rose-300'
+  if (group === 'warnings') return 'text-amber-300'
+  if (group === 'rcon') return 'text-sky-300'
+  if (group === 'panel') return 'text-emerald-300'
+  if (group === 'players') return 'text-violet-300'
   return 'text-slate-300'
 }
 
