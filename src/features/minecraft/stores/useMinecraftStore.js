@@ -29,6 +29,69 @@ function logLine(entry) {
   return `[${timestamp}] [${level}]: ${message}`
 }
 
+function modIdentityKeys(mod) {
+  return [
+    mod?.file,
+    mod?.previousFile,
+    mod?.id,
+    mod?.modId,
+    mod?.fabricId,
+    mod?.fabricModId,
+    mod?.modrinthProjectId,
+    mod?.projectId,
+    mod?.name,
+  ]
+    .map((value) => String(value || '').trim().toLowerCase())
+    .filter(Boolean)
+}
+
+function hasModrinthUpdateMetadata(mod) {
+  const version = String(mod?.version || '')
+  const latestVersion = String(mod?.latestVersion || '')
+  return Boolean(
+    mod?.updateCheckedAt ||
+    mod?.updateAvailable === true ||
+    (latestVersion && latestVersion !== version) ||
+    mod?.latestFile ||
+    mod?.latestFileName ||
+    mod?.latestVersionId,
+  )
+}
+
+function mergeModUpdateMetadata(incomingMods = [], previousMods = []) {
+  if (!incomingMods.length || !previousMods.length) return incomingMods
+
+  const previousByKey = new Map()
+  previousMods.forEach((mod) => {
+    if (!hasModrinthUpdateMetadata(mod)) return
+    modIdentityKeys(mod).forEach((key) => previousByKey.set(key, mod))
+  })
+  if (!previousByKey.size) return incomingMods
+
+  return incomingMods.map((mod) => {
+    if (hasModrinthUpdateMetadata(mod)) return mod
+    const previous = modIdentityKeys(mod).map((key) => previousByKey.get(key)).find(Boolean)
+    if (!previous) return mod
+
+    return {
+      ...mod,
+      updateAvailable: previous.updateAvailable === true,
+      updateCheckedAt: previous.updateCheckedAt,
+      latestVersion: previous.latestVersion,
+      latestFile: previous.latestFile,
+      latestFileName: previous.latestFileName,
+      latestVersionId: previous.latestVersionId,
+      modrinthSlug: mod.modrinthSlug || previous.modrinthSlug,
+      modrinthProjectId: mod.modrinthProjectId || previous.modrinthProjectId,
+      projectId: mod.projectId || previous.projectId,
+      dependencies: Array.isArray(mod.dependencies) && mod.dependencies.length ? mod.dependencies : previous.dependencies,
+      dependencyCount: mod.dependencyCount ?? previous.dependencyCount,
+      requiredDependencyCount: mod.requiredDependencyCount ?? previous.requiredDependencyCount,
+      optionalDependencyCount: mod.optionalDependencyCount ?? previous.optionalDependencyCount,
+    }
+  })
+}
+
 function entryName(entry) {
   return entry?.name || entry?.playerName || entry?.target || ''
 }
@@ -516,6 +579,7 @@ export const useMinecraftStore = defineStore('minecraft', () => {
       const worlds = unwrap(worldsPayload, 'worlds')
       const backups = unwrap(backupsPayload, 'backups')
       const previous = serverDetails.value[serverId]
+      const mergedMods = mergeModUpdateMetadata(mods, previous?.mods || [])
       mergeActivityEntries(serverId, activity)
       if (diagnostics) {
         diagnosticsByServer.value = {
@@ -529,7 +593,7 @@ export const useMinecraftStore = defineStore('minecraft', () => {
         ...status,
         settings,
         diagnostics,
-        mods: mods.length ? mods : undefined,
+        mods: mergedMods.length ? mergedMods : undefined,
         modBackups,
         logs: logs.length ? logs : undefined,
         logFiles: logFiles.length ? logFiles : undefined,
@@ -543,6 +607,7 @@ export const useMinecraftStore = defineStore('minecraft', () => {
         exploredLogTail: previous?.exploredLogTail,
         worlds: worlds.length ? worlds : undefined,
         backups: backups.length ? backups : undefined,
+        updateCount: (mergedMods.length ? mergedMods : previous?.mods || []).filter((mod) => mod.updateAvailable).length,
         players: playersPayload?.players,
         whitelist: playersPayload?.whitelist,
         ops: playersPayload?.ops,
@@ -1138,7 +1203,11 @@ export const useMinecraftStore = defineStore('minecraft', () => {
 
   async function checkModUpdates(serverId) {
     const payload = await api.checkModUpdates(serverId)
-    const mods = unwrap(payload, 'mods')
+    const checkedAt = payload?.checkedAt || new Date().toISOString()
+    const mods = unwrap(payload, 'mods').map((mod) => ({
+      ...mod,
+      updateCheckedAt: mod.updateCheckedAt || checkedAt,
+    }))
     const detail = serverDetails.value[serverId] || createFallbackDetail(serverId)
     mergeDetail(serverId, {
       ...detail,

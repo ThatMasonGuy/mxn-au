@@ -209,7 +209,7 @@
                 <h2 class="font-semibold text-white">Recent Logs</h2>
                 <button class="text-sm text-sky-200 hover:text-sky-100" @click="activeTab = 'logs'">Open explorer</button>
               </div>
-              <div class="mt-4 max-h-64 overflow-auto rounded-md border border-white/10 bg-black/30 p-3 font-mono text-xs leading-6 text-slate-300">
+              <div ref="overviewLogsRef" class="mt-4 max-h-64 overflow-auto rounded-md border border-white/10 bg-black/30 p-3 font-mono text-xs leading-6 text-slate-300">
                 <div v-for="(line, index) in latestLogs" :key="index" class="whitespace-pre-wrap">{{ line }}</div>
               </div>
             </div>
@@ -300,10 +300,11 @@
                 <button
                   v-for="item in detail.allowedCommands"
                   :key="item.name"
-                  class="rounded-md border px-3 py-2 text-left hover:bg-white/[0.08]"
+                  class="rounded-md border px-3 py-2 text-left hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
                   :class="commandTone(item.risk)"
                   :title="item.description"
-                  @click="command = commandTemplate(item)"
+                  :disabled="!rconReady"
+                  @click="applyCommandTemplate(item)"
                 >
                   <div class="flex items-center justify-between gap-3">
                     <span class="font-mono text-xs text-slate-100">{{ item.name }}</span>
@@ -320,8 +321,9 @@
                 <button
                   v-for="entry in detail.commandHistory"
                   :key="`${entry.timestamp}-${entry.command}`"
-                  class="w-full rounded-md border border-white/10 bg-black/20 p-3 text-left hover:bg-white/[0.04]"
-                  @click="command = entry.command"
+                  class="w-full rounded-md border border-white/10 bg-black/20 p-3 text-left hover:bg-white/[0.04] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-black/20"
+                  :disabled="!rconReady"
+                  @click="applyHistoryCommand(entry)"
                 >
                   <div class="font-mono text-xs text-slate-100">{{ entry.command }}</div>
                   <div class="mt-1 truncate text-xs text-slate-500">{{ entry.output }}</div>
@@ -686,7 +688,7 @@
 
         <section v-if="activeTab === 'worlds'" class="mt-6 grid gap-6 lg:grid-cols-[1fr_360px]">
           <div class="space-y-3">
-            <article v-for="world in detail.worlds" :key="world.id" class="rounded-md border border-white/10 bg-[#0f151d] p-4">
+            <article v-for="world in sortedWorlds" :key="world.id" class="rounded-md border border-white/10 bg-[#0f151d] p-4">
               <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
                   <div class="flex flex-wrap items-center gap-2">
@@ -840,7 +842,7 @@
             </div>
           </div>
 
-          <div class="mt-4 h-[620px] overflow-auto rounded-md border border-white/10 bg-black/40 p-3 font-mono text-xs leading-6 text-slate-300">
+          <div ref="explorerLogsRef" class="mt-4 h-[620px] overflow-auto rounded-md border border-white/10 bg-black/40 p-3 font-mono text-xs leading-6 text-slate-300">
             <div v-if="!filteredLogs.length" class="text-slate-500">No log lines matched.</div>
             <div v-for="(line, index) in filteredLogs" :key="index" class="whitespace-pre-wrap" :class="logClass(line)">{{ line }}</div>
           </div>
@@ -1144,7 +1146,9 @@ const uploadingMod = ref(false)
 const downloadingArchiveId = ref(null)
 const modUploadInput = ref(null)
 const refreshingDiagnostics = ref(false)
+const overviewLogsRef = ref(null)
 const consoleRef = ref(null)
+const explorerLogsRef = ref(null)
 let pollHandle = null
 
 const settingsKeys = [
@@ -1188,6 +1192,11 @@ const pendingRestartReasons = computed(() => minecraft.restartReasonsForServer(s
 const restartRequired = computed(() => pendingRestartReasons.value.length > 0)
 const bannedPlayersList = computed(() => (detail.value?.bannedPlayers || []).filter((entry) => displayBanName(entry)))
 const bannedIpsList = computed(() => (detail.value?.bannedIps || []).filter((entry) => displayBanIp(entry)))
+const sortedWorlds = computed(() => [...(detail.value?.worlds || [])].sort((a, b) => {
+  const diff = comparableWorldTime(b) - comparableWorldTime(a)
+  if (diff) return diff
+  return comparableWorldName(b).localeCompare(comparableWorldName(a), undefined, { numeric: true, sensitivity: 'base' })
+}))
 const settingsChanged = computed(() => {
   const current = detail.value?.settings || {}
   return settingsKeys.some((key) => String(settingsDraft.value[key]) !== String(current[key] ?? ''))
@@ -1195,7 +1204,10 @@ const settingsChanged = computed(() => {
 
 const filteredLogs = computed(() => {
   const query = logSearch.value.trim().toLowerCase()
-  const lines = detail.value?.exploredLogs || detail.value?.logs || []
+  const followLiveLatest = (selectedLogFile.value || 'latest.log') === 'latest.log' && !query
+  const lines = followLiveLatest
+    ? detail.value?.logs || []
+    : detail.value?.exploredLogs || detail.value?.logs || []
   if (!query) return lines
   return lines.filter((line) => line.toLowerCase().includes(query))
 })
@@ -1225,10 +1237,48 @@ const tabs = [
 const errorMessage = (error) => error?.message || String(error || 'Unexpected Minecraft error')
 const actionLabel = (action) => `${action.slice(0, 1).toUpperCase()}${action.slice(1)}`
 const commandTemplate = (item) => item.template || item.name || ''
+const applyCommandTemplate = (item) => {
+  if (!rconReady.value) return
+  command.value = commandTemplate(item)
+}
+const applyHistoryCommand = (entry) => {
+  if (!rconReady.value) return
+  command.value = entry.command || ''
+}
 const commandTone = (risk = 'safe') => {
   if (risk === 'destructive') return 'border-rose-400/20 bg-rose-400/10 text-rose-100'
   if (risk === 'guarded') return 'border-amber-400/20 bg-amber-400/10 text-amber-100'
   return 'border-white/10 bg-white/[0.04] text-slate-200'
+}
+
+const comparableWorldName = (world) => String(world?.name || world?.id || world?.path || '')
+const comparableWorldTime = (world) => {
+  const candidates = [
+    world?.updatedAt,
+    world?.lastPlayed,
+    world?.createdAt,
+    world?.mtime,
+    world?.modifiedAt,
+  ]
+  for (const value of candidates) {
+    const time = new Date(value).getTime()
+    if (Number.isFinite(time)) return time
+  }
+
+  const match = comparableWorldName(world).match(/(\d+)(?!.*\d)/)
+  return match ? Number(match[1]) : 0
+}
+
+const scrollElementToBottom = (element) => {
+  if (!element) return
+  element.scrollTop = element.scrollHeight
+}
+
+const scrollLogViewsToBottom = async () => {
+  await nextTick()
+  if (activeTab.value === 'overview') scrollElementToBottom(overviewLogsRef.value)
+  if (activeTab.value === 'console') scrollElementToBottom(consoleRef.value)
+  if (activeTab.value === 'logs') scrollElementToBottom(explorerLogsRef.value)
 }
 
 const serverInitials = (server) => {
@@ -1297,6 +1347,7 @@ const loadLogExplorer = async () => {
       }),
       { error: 'Log load failed' },
     )
+    await scrollLogViewsToBottom()
   } finally {
     loadingExplorerLogs.value = false
   }
@@ -1477,8 +1528,7 @@ const submitCommand = async () => {
   )
   if (!result) return
   command.value = ''
-  await nextTick()
-  if (consoleRef.value) consoleRef.value.scrollTop = consoleRef.value.scrollHeight
+  await scrollLogViewsToBottom()
 }
 
 const runPlayerAction = async (player, action) => {
@@ -2003,12 +2053,44 @@ watch(
   { immediate: true },
 )
 
+watch(
+  rconReady,
+  (ready) => {
+    if (!ready) command.value = ''
+  },
+  { immediate: true },
+)
+
+watch(
+  () => activeTab.value,
+  () => {
+    scrollLogViewsToBottom()
+  },
+)
+
+watch(
+  () => [latestLogs.value.length, latestLogs.value[latestLogs.value.length - 1]],
+  () => {
+    scrollLogViewsToBottom()
+  },
+  { flush: 'post' },
+)
+
+watch(
+  () => [filteredLogs.value.length, filteredLogs.value[filteredLogs.value.length - 1]],
+  () => {
+    if (activeTab.value === 'logs') scrollLogViewsToBottom()
+  },
+  { flush: 'post' },
+)
+
 onMounted(async () => {
   await refresh()
   resetSettingsDraft()
   minecraft.startLogStream(serverId.value)
   if (!minecraft.fallbackMode) minecraft.startStatusStream(serverId.value, { interval: 5000 })
   pollHandle = window.setInterval(refresh, 12000)
+  await scrollLogViewsToBottom()
 })
 
 onUnmounted(() => {
