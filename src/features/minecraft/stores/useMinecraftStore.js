@@ -282,6 +282,7 @@ export const useMinecraftStore = defineStore('minecraft', () => {
   const pollHandle = ref(null)
   const streamingIds = ref(new Set())
   const statusStreamingIds = ref(new Set())
+  const statusStreamRetryingIds = ref(new Set())
   const modSearchResults = ref({})
   const modSearchLoading = ref(false)
   const modUpdateSummaries = ref({})
@@ -890,10 +891,18 @@ export const useMinecraftStore = defineStore('minecraft', () => {
     statusStreamingIds.value = next
   }
 
+  function setStatusStreamRetrying(serverId, retrying) {
+    const next = new Set(statusStreamRetryingIds.value)
+    if (retrying) next.add(serverId)
+    else next.delete(serverId)
+    statusStreamRetryingIds.value = next
+  }
+
   function clearStatusStreamRetry(serverId) {
     const timer = statusStreamRetryTimers.get(serverId)
     if (timer) clearTimeout(timer)
     statusStreamRetryTimers.delete(serverId)
+    setStatusStreamRetrying(serverId, false)
   }
 
   function resetStatusStreamRetry(serverId) {
@@ -919,9 +928,11 @@ export const useMinecraftStore = defineStore('minecraft', () => {
     const delay = Math.min(STATUS_STREAM_RETRY_BASE_MS * (2 ** retryCount), STATUS_STREAM_RETRY_MAX_MS)
     statusStreamRetryCounts.set(serverId, retryCount + 1)
     setStatusStreaming(serverId, false)
+    setStatusStreamRetrying(serverId, true)
 
     const timer = setTimeout(() => {
       statusStreamRetryTimers.delete(serverId)
+      setStatusStreamRetrying(serverId, false)
       if (statusStreamTokens.get(serverId) !== token) return
       startStatusStream(serverId, {
         ...options,
@@ -961,6 +972,7 @@ export const useMinecraftStore = defineStore('minecraft', () => {
     stopStatusStream(serverId, { clearRetry: false })
     const token = `${serverId}:${Date.now()}:${Math.random()}`
     statusStreamTokens.set(serverId, token)
+    setStatusStreamRetrying(serverId, false)
     setStatusStreaming(serverId, true)
 
     try {
@@ -1759,6 +1771,7 @@ export const useMinecraftStore = defineStore('minecraft', () => {
     refreshingIds,
     streamingIds,
     statusStreamingIds,
+    statusStreamRetryingIds,
     modSearchResults,
     modSearchLoading,
     modUpdateSummaries,

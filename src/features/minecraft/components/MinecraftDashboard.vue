@@ -18,10 +18,13 @@
           <div class="flex flex-wrap items-center gap-2">
             <span
               class="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-xs font-medium"
-              :class="minecraft.fallbackMode ? 'border-amber-400/30 bg-amber-400/10 text-amber-200' : 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200'"
+              :class="minecraft.fallbackMode || statusStreamRecoveringCount ? 'border-amber-400/30 bg-amber-400/10 text-amber-200' : 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200'"
             >
-              <span class="h-2 w-2 rounded-full" :class="minecraft.fallbackMode ? 'bg-amber-300' : 'bg-emerald-300'" />
-              {{ minecraft.fallbackMode ? 'Snapshot' : statusStreamCount ? `Live (${statusStreamCount})` : 'Live' }}
+              <span
+                class="h-2 w-2 rounded-full"
+                :class="minecraft.fallbackMode || statusStreamRecoveringCount ? 'bg-amber-300 animate-pulse' : 'bg-emerald-300'"
+              />
+              {{ minecraft.fallbackMode ? 'Snapshot' : statusStreamRecoveringCount ? `Recovering (${statusStreamRecoveringCount})` : statusStreamCount ? `Live (${statusStreamCount})` : 'Live' }}
             </span>
 
             <button
@@ -416,6 +419,7 @@ const activeServerStates = new Set(['alive', 'warming', 'stopping'])
 const selected = computed(() => minecraft.selectedServer)
 const pendingRestartServers = computed(() => minecraft.servers.filter((server) => restartReasonCount(server.id)))
 const statusStreamCount = computed(() => minecraft.statusStreamingIds?.size || 0)
+const statusStreamRecoveringCount = computed(() => minecraft.statusStreamRetryingIds?.size || 0)
 const serverFilters = computed(() => {
   const servers = minecraft.servers
   return [
@@ -536,6 +540,7 @@ const exportFleetSnapshot = () => {
       selectedServerId: selected.value?.id || '',
       visibleServerIds: visibleServers.value.map((server) => server.id),
       statusStreamCount: statusStreamCount.value,
+      statusStreamRecoveringCount: statusStreamRecoveringCount.value,
       servers,
       recentActivity: filteredActivity.value.slice(0, 40),
     }
