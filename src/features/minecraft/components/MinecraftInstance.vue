@@ -71,13 +71,13 @@
             </button>
 
             <button
-              v-if="detail && canWake(detail)"
+              v-if="detail && canStart(detail)"
               class="inline-flex h-10 items-center gap-2 rounded-md border border-emerald-400/25 bg-emerald-400/10 px-3 text-sm text-emerald-100 transition hover:bg-emerald-400/15 disabled:cursor-not-allowed disabled:opacity-40"
-              :disabled="actionBusy(lifecycleActionKey('wake'))"
-              @click="runLifecycle('wake')"
+              :disabled="actionBusy(lifecycleActionKey('start'))"
+              @click="runLifecycle('start')"
             >
-              <Play class="h-4 w-4" :class="{ 'animate-pulse': actionBusy(lifecycleActionKey('wake')) }" />
-              Wake
+              <Play class="h-4 w-4" :class="{ 'animate-pulse': actionBusy(lifecycleActionKey('start')) }" />
+              Start
             </button>
 
             <button
@@ -117,7 +117,7 @@
               <div class="min-w-0">
                 <div class="font-semibold text-amber-50">Restart required</div>
                 <p class="mt-1 text-sm text-amber-100/80">
-                  {{ pendingRestartReasons.length }} pending {{ pendingRestartReasons.length === 1 ? 'change' : 'changes' }} will apply after this server restarts or wakes.
+                  {{ pendingRestartReasons.length }} pending {{ pendingRestartReasons.length === 1 ? 'change' : 'changes' }} will apply after this server restarts or starts.
                 </p>
               </div>
             </div>
@@ -128,11 +128,11 @@
               </button>
               <button
                 class="settings-btn primary"
-                :disabled="!detail || (!canRestart(detail) && !canWake(detail)) || actionBusy(lifecycleActionKey(canWake(detail) ? 'wake' : 'restart'))"
+                :disabled="!detail || (!canRestart(detail) && !canStart(detail)) || actionBusy(lifecycleActionKey(canStart(detail) ? 'start' : 'restart'))"
                 @click="applyPendingRestart"
               >
-                <RotateCw class="h-4 w-4" :class="{ 'animate-spin': actionBusy(lifecycleActionKey(canWake(detail) ? 'wake' : 'restart')) }" />
-                {{ canWake(detail) ? 'Wake' : 'Restart' }}
+                <RotateCw class="h-4 w-4" :class="{ 'animate-spin': actionBusy(lifecycleActionKey(canStart(detail) ? 'start' : 'restart')) }" />
+                {{ canStart(detail) ? 'Start' : 'Restart' }}
               </button>
             </div>
           </div>
@@ -1144,11 +1144,11 @@
               </div>
               <button
                 class="settings-btn primary mt-4 w-full"
-                :disabled="!pendingRestartReasons.length || (!canRestart(detail) && !canWake(detail)) || actionBusy(lifecycleActionKey(canWake(detail) ? 'wake' : 'restart'))"
+                :disabled="!pendingRestartReasons.length || (!canRestart(detail) && !canStart(detail)) || actionBusy(lifecycleActionKey(canStart(detail) ? 'start' : 'restart'))"
                 @click="applyPendingRestart"
               >
-                <RotateCw class="h-4 w-4" :class="{ 'animate-spin': actionBusy(lifecycleActionKey(canWake(detail) ? 'wake' : 'restart')) }" />
-                {{ canWake(detail) ? 'Wake to apply' : 'Restart to apply' }}
+                <RotateCw class="h-4 w-4" :class="{ 'animate-spin': actionBusy(lifecycleActionKey(canStart(detail) ? 'start' : 'restart')) }" />
+                {{ canStart(detail) ? 'Start to apply' : 'Restart to apply' }}
               </button>
             </div>
           </aside>
@@ -1342,13 +1342,13 @@
                   Snapshot active world
                 </button>
                 <button
-                  v-if="canWake(detail)"
+                  v-if="canStart(detail)"
                   class="settings-btn primary"
-                  :disabled="actionBusy(lifecycleActionKey('wake'))"
-                  @click="runLifecycle('wake')"
+                  :disabled="actionBusy(lifecycleActionKey('start'))"
+                  @click="runLifecycle('start')"
                 >
-                  <Play class="h-4 w-4" :class="{ 'animate-pulse': actionBusy(lifecycleActionKey('wake')) }" />
-                  Wake server
+                  <Play class="h-4 w-4" :class="{ 'animate-pulse': actionBusy(lifecycleActionKey('start')) }" />
+                  Start server
                 </button>
                 <button
                   class="settings-btn danger"
@@ -2244,8 +2244,8 @@ const runLifecycle = async (action) => {
 
 const applyPendingRestart = async () => {
   if (!detail.value) return
-  if (canWake(detail.value)) {
-    await runLifecycle('wake')
+  if (canStart(detail.value)) {
+    await runLifecycle('start')
     return
   }
   if (canRestart(detail.value)) {
@@ -2544,7 +2544,7 @@ const uploadSelectedMod = async (event) => {
       () => minecraft.uploadMod(serverId.value, file, true),
       {
         successTitle: 'Mod uploaded',
-        successDescription: `${file.name} is installed and will load after restart or wake.`,
+        successDescription: `${file.name} is installed and will load after restart or start.`,
         errorTitle: 'Mod upload failed',
       },
     )
@@ -2722,7 +2722,7 @@ const copyAddress = async () => {
   )
 }
 
-const canWake = (server) => ['offline', 'hibernating', 'degraded'].includes(server?.state)
+const canStart = (server) => ['offline', 'hibernating', 'degraded'].includes(server?.state)
 const canRestart = (server) => ['alive', 'warming', 'degraded'].includes(server?.state)
 const canSleep = (server) => ['alive', 'warming', 'degraded'].includes(server?.state)
 

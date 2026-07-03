@@ -89,7 +89,7 @@
                 <div class="min-w-0">
                   <h2 class="font-semibold text-amber-50">Pending restart</h2>
                   <p class="mt-1 text-sm text-amber-100/80">
-                    {{ pendingRestartServers.map((server) => server.label).join(', ') }} need a restart or wake before recent changes are fully applied.
+                    {{ pendingRestartServers.map((server) => server.label).join(', ') }} need a restart or start before recent changes are fully applied.
                   </p>
                 </div>
               </div>
@@ -186,13 +186,13 @@
 
               <div class="flex flex-wrap gap-2">
                 <button
-                  v-if="canWake(server)"
+                  v-if="canStart(server)"
                   class="inline-flex h-9 items-center gap-2 rounded-md border border-emerald-400/25 bg-emerald-400/10 px-3 text-sm text-emerald-100 transition hover:bg-emerald-400/15 disabled:cursor-not-allowed disabled:opacity-40"
-                  :disabled="actionBusy(lifecycleActionKey(server, 'wake'))"
-                  @click="runLifecycle(server, 'wake')"
+                  :disabled="actionBusy(lifecycleActionKey(server, 'start'))"
+                  @click="runLifecycle(server, 'start')"
                 >
-                  <Play class="h-4 w-4" :class="{ 'animate-pulse': actionBusy(lifecycleActionKey(server, 'wake')) }" />
-                  Wake
+                  <Play class="h-4 w-4" :class="{ 'animate-pulse': actionBusy(lifecycleActionKey(server, 'start')) }" />
+                  Start
                 </button>
 
                 <button
@@ -580,7 +580,7 @@ const runLifecycle = async (server, action) => {
 
 const actionLabel = (action) => `${action.slice(0, 1).toUpperCase()}${action.slice(1)}`
 
-const canWake = (server) => ['offline', 'hibernating', 'degraded'].includes(server?.state)
+const canStart = (server) => ['offline', 'hibernating', 'degraded'].includes(server?.state)
 const canRestart = (server) => ['alive', 'warming', 'degraded'].includes(server?.state)
 const canSleep = (server) => ['alive', 'warming', 'degraded'].includes(server?.state)
 
