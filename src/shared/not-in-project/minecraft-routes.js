@@ -27,7 +27,10 @@ const MAINTENANCE_CRON_PATH = process.env.MINECRAFT_MAINTENANCE_CRON || '/etc/cr
 const LOCAL_SNAPSHOT_RETENTION = Number(process.env.MINECRAFT_LOCAL_SNAPSHOT_RETENTION || 2)
 const ICON_CACHE_SECONDS = Number(process.env.MINECRAFT_ICON_CACHE_SECONDS || 300)
 const STATUS_STREAM_INTERVAL_MS = Number(process.env.MINECRAFT_STATUS_STREAM_INTERVAL_MS || 5000)
+const MODRINTH_METADATA_CACHE_PATH = process.env.MINECRAFT_MODRINTH_CACHE_PATH || path.join(MINECRAFT_ROOT, 'panel-modrinth-cache.json')
 const modrinthProjectCache = new Map()
+let modrinthMetadataCache = null
+let modrinthMetadataCacheWrite = Promise.resolve()
 
 const registryWarnings = []
 
@@ -1060,6 +1063,7 @@ async function readJson(filePath, fallback) {
 
 async function writeJson(filePath, value) {
   const tempPath = `${filePath}.tmp.${Date.now()}`
+  await fsp.mkdir(path.dirname(filePath), { recursive: true })
   await fsp.writeFile(tempPath, `${JSON.stringify(value, null, 2)}\n`, 'utf8')
   await fsp.rename(tempPath, filePath)
 }
@@ -2215,6 +2219,173 @@ function modrinthProjectMetadata(project) {
   }
 }
 
+function modIdentityKeys(mod) {
+  return Array.from(new Set([
+    mod?.file,
+    mod?.previousFile,
+    mod?.id,
+    mod?.modId,
+    mod?.fabricId,
+    mod?.fabricModId,
+    mod?.modrinthProjectId,
+    mod?.projectId,
+    mod?.modrinthSlug,
+    mod?.hash,
+    mod?.name,
+  ]
+    .map((value) => String(value || '').trim().toLowerCase())
+    .filter(Boolean)))
+}
+
+function cleanModrinthCacheValue(value) {
+  if (Array.isArray(value)) return value.length ? value : undefined
+  if (value === undefined || value === null || value === '') return undefined
+  return value
+}
+
+function modrinthMetadataFromMod(mod) {
+  const version = String(mod?.version || '')
+  const latestVersion = String(mod?.latestVersion || '')
+  const hasMetadata = Boolean(
+    mod?.updateCheckedAt ||
+    mod?.updateAvailable === true ||
+    (latestVersion && latestVersion !== version) ||
+    mod?.lookupStatus ||
+    mod?.modrinthSlug ||
+    mod?.modrinthProjectId ||
+    mod?.modrinthIconUrl,
+  )
+  if (!hasMetadata) return null
+
+  const metadata = {
+    updateAvailable: mod.updateAvailable === true,
+    updateCheckedAt: cleanModrinthCacheValue(mod.updateCheckedAt),
+    lookupStatus: cleanModrinthCacheValue(mod.lookupStatus),
+    latestVersion: cleanModrinthCacheValue(mod.latestVersion),
+    latestFile: cleanModrinthCacheValue(mod.latestFile),
+    latestFileName: cleanModrinthCacheValue(mod.latestFileName),
+    latestVersionId: cleanModrinthCacheValue(mod.latestVersionId),
+    updateFile: cleanModrinthCacheValue(mod.updateFile),
+    modrinthSlug: cleanModrinthCacheValue(mod.modrinthSlug),
+    modrinthProjectId: cleanModrinthCacheValue(mod.modrinthProjectId),
+    projectId: cleanModrinthCacheValue(mod.projectId),
+    modrinthTitle: cleanModrinthCacheValue(mod.modrinthTitle),
+    modrinthDescription: cleanModrinthCacheValue(mod.modrinthDescription),
+    modrinthSummary: cleanModrinthCacheValue(mod.modrinthSummary),
+    modrinthIconUrl: cleanModrinthCacheValue(mod.modrinthIconUrl),
+    modrinthDownloads: cleanModrinthCacheValue(mod.modrinthDownloads),
+    modrinthFollows: cleanModrinthCacheValue(mod.modrinthFollows),
+    modrinthCategories: cleanModrinthCacheValue(mod.modrinthCategories),
+    clientSide: cleanModrinthCacheValue(mod.clientSide),
+    serverSide: cleanModrinthCacheValue(mod.serverSide),
+    href: cleanModrinthCacheValue(mod.href),
+    dependencies: cleanModrinthCacheValue(mod.dependencies),
+    dependencyCount: cleanModrinthCacheValue(mod.dependencyCount),
+    requiredDependencyCount: cleanModrinthCacheValue(mod.requiredDependencyCount),
+    optionalDependencyCount: cleanModrinthCacheValue(mod.optionalDependencyCount),
+  }
+
+  Object.keys(metadata).forEach((key) => {
+    if (metadata[key] === undefined) delete metadata[key]
+  })
+  return Object.keys(metadata).length ? metadata : null
+}
+
+function normalizeModrinthMetadataCache(raw) {
+  return {
+    version: 1,
+    updatedAt: raw?.updatedAt || null,
+    servers: raw && typeof raw.servers === 'object' && raw.servers ? raw.servers : {},
+  }
+}
+
+async function readModrinthMetadataCache() {
+  if (modrinthMetadataCache) return modrinthMetadataCache
+  modrinthMetadataCache = normalizeModrinthMetadataCache(await readJson(MODRINTH_METADATA_CACHE_PATH, {}))
+  return modrinthMetadataCache
+}
+
+async function writeModrinthMetadataCache(cache) {
+  modrinthMetadataCache = normalizeModrinthMetadataCache({
+    ...cache,
+    updatedAt: new Date().toISOString(),
+  })
+  await writeJson(MODRINTH_METADATA_CACHE_PATH, modrinthMetadataCache)
+}
+
+function mergeCachedModrinthMetadata(mod, cached) {
+  if (!cached) return mod
+  const cachedLatest = String(cached.latestVersion || '')
+  const currentVersion = String(mod.version || '')
+  const updateAvailable = cached.updateAvailable === true && (!cachedLatest || cachedLatest !== currentVersion)
+
+  return {
+    ...mod,
+    ...cached,
+    file: mod.file,
+    id: mod.id,
+    name: mod.name,
+    enabled: mod.enabled,
+    version: mod.version,
+    size: mod.size,
+    updatedAt: mod.updatedAt,
+    hash: mod.hash,
+    updateAvailable,
+    latestVersion: cached.latestVersion || mod.latestVersion,
+  }
+}
+
+async function hydrateModsWithModrinthCache(server, mods) {
+  if (!mods.length) return mods
+  const cache = await readModrinthMetadataCache()
+  const serverCache = cache.servers?.[server.id] || {}
+  if (!Object.keys(serverCache).length) return mods
+
+  return mods.map((mod) => {
+    const cached = modIdentityKeys(mod).map((key) => serverCache[key]).find(Boolean)
+    return mergeCachedModrinthMetadata(mod, cached)
+  })
+}
+
+async function rememberModrinthMetadata(server, mods) {
+  const records = (Array.isArray(mods) ? mods : [mods])
+    .map((mod) => ({ mod, metadata: modrinthMetadataFromMod(mod) }))
+    .filter((entry) => entry.mod && entry.metadata)
+  if (!records.length) return
+
+  modrinthMetadataCacheWrite = modrinthMetadataCacheWrite.catch(() => {}).then(async () => {
+    const cache = await readModrinthMetadataCache()
+    const nextServer = { ...(cache.servers?.[server.id] || {}) }
+
+    records.forEach(({ mod, metadata }) => {
+      const stored = {
+        ...metadata,
+        cachedAt: new Date().toISOString(),
+      }
+      modIdentityKeys({ ...mod, ...metadata }).forEach((key) => {
+        nextServer[key] = {
+          ...nextServer[key],
+          ...stored,
+        }
+      })
+    })
+
+    await writeModrinthMetadataCache({
+      ...cache,
+      servers: {
+        ...cache.servers,
+        [server.id]: nextServer,
+      },
+    })
+  })
+
+  try {
+    await modrinthMetadataCacheWrite
+  } catch (error) {
+    console.warn(`[minecraft-modrinth-cache] ${error.message}`)
+  }
+}
+
 async function listMods(server, options = {}) {
   const modsPath = path.join(server.root, 'mods')
   let entries = []
@@ -2246,7 +2417,7 @@ async function listMods(server, options = {}) {
       }
     }))
 
-  return mods.sort((a, b) => a.name.localeCompare(b.name))
+  return hydrateModsWithModrinthCache(server, mods.sort((a, b) => a.name.localeCompare(b.name)))
 }
 
 async function getModrinthCandidate(server, mod) {
@@ -2276,12 +2447,12 @@ async function getModrinthCandidate(server, mod) {
   }
 }
 
-async function listModsWithUpdates(server) {
+async function listModsWithUpdates(server, checkedAt = new Date().toISOString()) {
   const mods = await listMods(server, { includeHashes: true })
-  return Promise.all(mods.map(async (mod) => {
+  const checkedMods = await Promise.all(mods.map(async (mod) => {
     try {
       const candidate = await getModrinthCandidate(server, mod)
-      if (!candidate) return { ...mod, lookupStatus: 'not-found' }
+      if (!candidate) return { ...mod, lookupStatus: 'not-found', updateCheckedAt: checkedAt }
       return {
         ...mod,
         modrinthProjectId: candidate.projectId,
@@ -2299,6 +2470,7 @@ async function listModsWithUpdates(server) {
         href: candidate.href,
         latestVersion: candidate.latestVersion,
         updateAvailable: candidate.updateAvailable,
+        updateCheckedAt: checkedAt,
         updateFile: candidate.filename,
         lookupStatus: 'ok',
         dependencies: candidate.dependencies,
@@ -2307,9 +2479,11 @@ async function listModsWithUpdates(server) {
         optionalDependencyCount: candidate.optionalDependencyCount,
       }
     } catch (error) {
-      return { ...mod, lookupStatus: error.message }
+      return { ...mod, lookupStatus: error.message, updateCheckedAt: checkedAt }
     }
   }))
+  await rememberModrinthMetadata(server, checkedMods)
+  return checkedMods
 }
 
 async function listModBackups(server) {
@@ -2656,24 +2830,29 @@ async function installModrinthMod(server, projectId, versionId) {
     getModrinthProject(version.project_id || projectId).catch(() => null),
   ])
   const dependencies = dependencySummary(version)
+  const mod = {
+    id: modJson?.id || version.project_id || projectId,
+    name: modJson?.name || version.name || filename,
+    file: filename,
+    enabled: true,
+    version: String(modJson?.version || version.version_number || ''),
+    latestVersion: String(version.version_number || ''),
+    updateAvailable: false,
+    updateCheckedAt: new Date().toISOString(),
+    lookupStatus: 'ok',
+    required: false,
+    size: formatBytes(bytes.length),
+    updatedAt: new Date().toISOString(),
+    modrinthProjectId: version.project_id,
+    projectId: version.project_id,
+    modrinthVersionId: version.id,
+    ...modrinthProjectMetadata(project),
+    ...dependencies,
+  }
+  await rememberModrinthMetadata(server, mod)
+
   return {
-    mod: {
-      id: modJson?.id || version.project_id || projectId,
-      name: modJson?.name || version.name || filename,
-      file: filename,
-      enabled: true,
-      version: String(modJson?.version || version.version_number || ''),
-      latestVersion: String(version.version_number || ''),
-      updateAvailable: false,
-      required: false,
-      size: formatBytes(bytes.length),
-      updatedAt: new Date().toISOString(),
-      modrinthProjectId: version.project_id,
-      projectId: version.project_id,
-      modrinthVersionId: version.id,
-      ...modrinthProjectMetadata(project),
-      ...dependencies,
-    },
+    mod,
     versionId: version.id,
     versionNumber: version.version_number,
     file: filename,
@@ -2734,7 +2913,7 @@ async function updateModrinthMod(server, mod, knownCandidate = null) {
   await fsp.rename(source, backupPath)
   await fsp.rename(tempPath, targetPath)
 
-  return {
+  const result = {
     ok: true,
     file: path.basename(targetPath),
     previousFile: mod.file,
@@ -2759,6 +2938,16 @@ async function updateModrinthMod(server, mod, knownCandidate = null) {
     optionalDependencyCount: candidate.optionalDependencyCount || 0,
     restartRequired: true,
   }
+  await rememberModrinthMetadata(server, {
+    ...mod,
+    ...result,
+    version: result.latestVersion || mod.version,
+    latestVersion: result.latestVersion || mod.latestVersion,
+    updateAvailable: false,
+    updateCheckedAt: new Date().toISOString(),
+    lookupStatus: 'ok',
+  })
+  return result
 }
 
 async function updateAllModrinthMods(server) {
@@ -3260,7 +3449,8 @@ router.get('/servers/:id/mods/backups', asyncRoute(async (req, res) => {
 }))
 
 router.post('/servers/:id/mods/check-updates', asyncRoute(async (req, res) => {
-  res.json({ mods: await listModsWithUpdates(getServer(req)) })
+  const checkedAt = new Date().toISOString()
+  res.json({ checkedAt, mods: await listModsWithUpdates(getServer(req), checkedAt) })
 }))
 
 router.get('/servers/:id/mods/search', asyncRoute(async (req, res) => {

@@ -455,11 +455,11 @@
             <form class="flex flex-col gap-2 sm:flex-row sm:items-end" @submit.prevent="addWhitelist">
               <label class="min-w-0">
                 <span class="text-xs font-medium uppercase tracking-wide text-slate-500">Whitelist New Player</span>
-              <input
-                v-model="newPlayerName"
+                <input
+                  v-model="newPlayerName"
                   class="mt-2 h-10 w-full rounded-md border border-white/10 bg-black/30 px-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-emerald-400/50 sm:w-64"
                   placeholder="Minecraft username"
-              >
+                >
               </label>
               <button
                 type="button"
