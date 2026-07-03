@@ -416,14 +416,24 @@
                 placeholder="Player name"
               >
             </div>
-            <button
-              class="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-emerald-400/25 bg-emerald-400/10 px-3 text-sm text-emerald-100 hover:bg-emerald-400/15 disabled:cursor-not-allowed disabled:opacity-40"
-              :disabled="!newPlayerName.trim() || actionBusy(namedActionKey('whitelist', newPlayerName, 'add'))"
-              @click="addWhitelist"
-            >
-              <UserPlus class="h-4 w-4" />
-              Whitelist
-            </button>
+            <div class="flex flex-wrap gap-2">
+              <button
+                class="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-white/10 bg-white/[0.04] px-3 text-sm text-slate-100 hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-40"
+                :disabled="!filteredPlayers.length || exportingAccess"
+                @click="exportAccess"
+              >
+                <Download class="h-4 w-4" :class="{ 'animate-pulse': exportingAccess }" />
+                Export
+              </button>
+              <button
+                class="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-emerald-400/25 bg-emerald-400/10 px-3 text-sm text-emerald-100 hover:bg-emerald-400/15 disabled:cursor-not-allowed disabled:opacity-40"
+                :disabled="!newPlayerName.trim() || actionBusy(namedActionKey('whitelist', newPlayerName, 'add'))"
+                @click="addWhitelist"
+              >
+                <UserPlus class="h-4 w-4" />
+                Whitelist
+              </button>
+            </div>
           </div>
 
           <div class="flex flex-wrap gap-2 rounded-md border border-white/10 bg-[#0f151d] p-3">
@@ -1454,6 +1464,7 @@ const loadingExplorerLogs = ref(false)
 const exportingLogs = ref(false)
 const playerSearch = ref('')
 const playerFilter = ref('all')
+const exportingAccess = ref(false)
 const modSearch = ref('')
 const installedModFilter = ref('all')
 const installedModSearch = ref('')
@@ -2168,6 +2179,68 @@ const exportCommandHistory = () => {
     })
   } finally {
     exportingCommandHistory.value = false
+  }
+}
+
+const exportAccess = () => {
+  exportingAccess.value = true
+  try {
+    const exportedAt = new Date().toISOString()
+    const players = detail.value?.players || []
+    const whitelist = detail.value?.whitelist || []
+    const ops = detail.value?.ops || []
+    const bannedPlayers = detail.value?.bannedPlayers || []
+    const bannedIps = detail.value?.bannedIps || []
+    const payload = {
+      serverId: serverId.value,
+      server: detail.value?.label || serverId.value,
+      exportedAt,
+      filters: {
+        player: playerFilter.value,
+        search: playerSearch.value.trim(),
+      },
+      totals: {
+        visiblePlayers: filteredPlayers.value.length,
+        players: players.length,
+        online: players.filter((player) => player.online).length,
+        operators: players.filter((player) => player.op).length,
+        whitelisted: players.filter((player) => player.whitelisted).length,
+        bannedPlayers: bannedPlayersList.value.length,
+        bannedIps: bannedIpsList.value.length,
+      },
+      players: filteredPlayers.value.map((player) => ({
+        name: player.name,
+        uuid: player.uuid,
+        online: player.online,
+        permission: player.permission,
+        operator: player.op,
+        opLevel: player.opLevel,
+        bypassesPlayerLimit: player.bypassesPlayerLimit,
+        whitelisted: player.whitelisted,
+        banned: player.banned,
+        lastSeen: player.lastSeen,
+      })),
+      whitelist,
+      operators: ops,
+      bannedPlayers: bannedPlayers.map((entry) => ({
+        ...entry,
+        name: displayBanName(entry),
+      })),
+      bannedIps: bannedIps.map((entry) => ({
+        ...entry,
+        ip: displayBanIp(entry),
+      })),
+    }
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' })
+    const stamp = exportedAt.replace(/[:.]/g, '-')
+    triggerDownload(blob, `minecraft-${serverId.value}-access-${stamp}.json`)
+    toast({
+      title: 'Access export ready',
+      description: `${filteredPlayers.value.length} visible players exported`,
+      variant: 'success',
+    })
+  } finally {
+    exportingAccess.value = false
   }
 }
 
