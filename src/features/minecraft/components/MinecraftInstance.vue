@@ -1194,11 +1194,28 @@
                   <DatabaseBackup class="h-4 w-4" />
                   Snapshot active world
                 </button>
-                <button class="settings-btn danger" :disabled="actionBusy(lifecycleActionKey('restart'))" @click="runLifecycle('restart')">
+                <button
+                  v-if="canWake(detail)"
+                  class="settings-btn primary"
+                  :disabled="actionBusy(lifecycleActionKey('wake'))"
+                  @click="runLifecycle('wake')"
+                >
+                  <Play class="h-4 w-4" :class="{ 'animate-pulse': actionBusy(lifecycleActionKey('wake')) }" />
+                  Wake server
+                </button>
+                <button
+                  class="settings-btn danger"
+                  :disabled="!canRestart(detail) || actionBusy(lifecycleActionKey('restart'))"
+                  @click="runLifecycle('restart')"
+                >
                   <RotateCw class="h-4 w-4" />
                   Restart server
                 </button>
-                <button class="settings-btn danger" :disabled="actionBusy(lifecycleActionKey('sleep'))" @click="runLifecycle('sleep')">
+                <button
+                  class="settings-btn danger"
+                  :disabled="!canSleep(detail) || actionBusy(lifecycleActionKey('sleep'))"
+                  @click="runLifecycle('sleep')"
+                >
                   <Square class="h-4 w-4" />
                   Sleep server
                 </button>
