@@ -1068,7 +1068,13 @@
                 <h2 class="font-semibold text-white">Activity</h2>
                 <p class="mt-1 text-sm text-slate-400">{{ visibleActivityItems.length }} of {{ activityItems.length }} panel actions</p>
               </div>
-              <History class="h-4 w-4 text-slate-400" />
+              <div class="flex items-center gap-2">
+                <button class="settings-btn" :disabled="!visibleActivityItems.length || exportingActivity" @click="exportActivity">
+                  <Download class="h-4 w-4" :class="{ 'animate-pulse': exportingActivity }" />
+                  Export
+                </button>
+                <History class="h-4 w-4 text-slate-400" />
+              </div>
             </div>
 
             <div class="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -1447,6 +1453,7 @@ const backupSearch = ref('')
 const backupFilter = ref('all')
 const activitySearch = ref('')
 const activityFilter = ref('all')
+const exportingActivity = ref(false)
 const diagnosticsSearch = ref('')
 const diagnosticsFilter = ref('all')
 const settingsDraft = ref({})
@@ -2079,6 +2086,39 @@ const triggerDownload = (blob, filename) => {
   link.click()
   link.remove()
   URL.revokeObjectURL(url)
+}
+
+const exportActivity = () => {
+  exportingActivity.value = true
+  try {
+    const exportedAt = new Date().toISOString()
+    const payload = {
+      serverId: serverId.value,
+      server: detail.value?.label || serverId.value,
+      exportedAt,
+      filters: {
+        status: activityFilter.value,
+        search: activitySearch.value.trim(),
+      },
+      totals: {
+        visible: visibleActivityItems.value.length,
+        total: activityItems.value.length,
+        pendingRestart: pendingRestartReasons.value.length,
+      },
+      pendingRestart: pendingRestartReasons.value,
+      activity: visibleActivityItems.value,
+    }
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' })
+    const stamp = exportedAt.replace(/[:.]/g, '-')
+    triggerDownload(blob, `minecraft-${serverId.value}-activity-${stamp}.json`)
+    toast({
+      title: 'Activity export ready',
+      description: `${visibleActivityItems.value.length} entries exported`,
+      variant: 'success',
+    })
+  } finally {
+    exportingActivity.value = false
+  }
 }
 
 const downloadWorld = async (world) => {
