@@ -168,13 +168,24 @@
                   {{ fleetAuditSummary.attention }} attention, {{ fleetAuditSummary.updates }} with updates, {{ fleetAuditSummary.restart }} pending restart
                 </p>
               </div>
-              <button
-                class="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-white/10 bg-white/[0.04] px-3 text-sm text-slate-100 transition hover:border-white/20 hover:bg-white/[0.08]"
-                @click="refresh"
-              >
-                <RefreshCcw class="h-4 w-4" :class="{ 'animate-spin': minecraft.loading }" />
-                Audit
-              </button>
+              <div class="flex flex-wrap gap-2">
+                <button
+                  class="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-white/10 bg-white/[0.04] px-3 text-sm text-slate-100 transition hover:border-white/20 hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-40"
+                  :disabled="!minecraft.servers.length || checkingFleetDiagnostics"
+                  :title="checkingFleetDiagnostics ? `Checking ${fleetDiagnosticsProgress.current || 'servers'}` : 'Run diagnostics for every server'"
+                  @click="checkFleetDiagnostics"
+                >
+                  <RefreshCcw class="h-4 w-4" :class="{ 'animate-spin': checkingFleetDiagnostics }" />
+                  {{ fleetDiagnosticsLabel }}
+                </button>
+                <button
+                  class="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-white/10 bg-white/[0.04] px-3 text-sm text-slate-100 transition hover:border-white/20 hover:bg-white/[0.08]"
+                  @click="refresh"
+                >
+                  <RefreshCcw class="h-4 w-4" :class="{ 'animate-spin': minecraft.loading }" />
+                  Audit
+                </button>
+              </div>
             </div>
 
             <div class="mt-4 overflow-hidden rounded-md border border-white/10">
@@ -515,6 +526,8 @@ const checkingFleetMods = ref(false)
 const fleetModCheckProgress = ref({ done: 0, total: 0, current: '' })
 const backingUpFleet = ref(false)
 const fleetBackupProgress = ref({ done: 0, total: 0, current: '' })
+const checkingFleetDiagnostics = ref(false)
+const fleetDiagnosticsProgress = ref({ done: 0, total: 0, current: '' })
 const activeServerStates = new Set(['alive', 'warming', 'stopping'])
 const selected = computed(() => minecraft.selectedServer)
 const pendingRestartServers = computed(() => minecraft.servers.filter((server) => restartReasonCount(server.id)))
@@ -529,6 +542,11 @@ const fleetBackupLabel = computed(() => {
   if (!backingUpFleet.value) return 'Backup All'
   const { done, total } = fleetBackupProgress.value
   return `Backups ${done}/${total}`
+})
+const fleetDiagnosticsLabel = computed(() => {
+  if (!checkingFleetDiagnostics.value) return 'Diagnostics'
+  const { done, total } = fleetDiagnosticsProgress.value
+  return `Diagnostics ${done}/${total}`
 })
 const serverFilters = computed(() => {
   const servers = minecraft.servers
@@ -736,6 +754,53 @@ const backupFleetWorlds = async () => {
     }
   } finally {
     backingUpFleet.value = false
+  }
+}
+
+const checkFleetDiagnostics = async () => {
+  const targets = [...minecraft.servers]
+  if (!targets.length || checkingFleetDiagnostics.value) return
+
+  checkingFleetDiagnostics.value = true
+  fleetDiagnosticsProgress.value = { done: 0, total: targets.length, current: targets[0]?.label || '' }
+  const failures = []
+
+  try {
+    for (const [index, server] of targets.entries()) {
+      fleetDiagnosticsProgress.value = {
+        done: index,
+        total: targets.length,
+        current: server.label || server.id,
+      }
+
+      try {
+        await minecraft.fetchDiagnostics(server.id)
+      } catch (error) {
+        failures.push(`${server.label || server.id}: ${errorMessage(error)}`)
+      }
+
+      fleetDiagnosticsProgress.value = {
+        done: index + 1,
+        total: targets.length,
+        current: server.label || server.id,
+      }
+    }
+
+    if (failures.length) {
+      toast({
+        title: 'Fleet diagnostics finished with issues',
+        description: failures.slice(0, 2).join(' | '),
+        variant: 'destructive',
+      })
+    } else {
+      toast({
+        title: 'Fleet diagnostics complete',
+        description: `${targets.length} servers checked`,
+        variant: 'success',
+      })
+    }
+  } finally {
+    checkingFleetDiagnostics.value = false
   }
 }
 
