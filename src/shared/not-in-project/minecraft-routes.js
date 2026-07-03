@@ -23,12 +23,18 @@ const MODRINTH_USER_AGENT = 'mxn-au-minecraft-panel/1.0'
 const ACTIVITY_LOG_PATH = process.env.MINECRAFT_ACTIVITY_LOG || path.join(MINECRAFT_ROOT, 'panel-activity.jsonl')
 const ACTIVITY_READ_BYTES = Number(process.env.MINECRAFT_ACTIVITY_READ_BYTES || 1024 * 1024 * 2)
 const MOD_UPLOAD_MAX_BYTES = Number(process.env.MINECRAFT_MOD_UPLOAD_MAX_BYTES || 1024 * 1024 * 128)
+const PACK_UPLOAD_MAX_BYTES = Number(process.env.MINECRAFT_PACK_UPLOAD_MAX_BYTES || 1024 * 1024 * 128)
 const MAINTENANCE_CRON_PATH = process.env.MINECRAFT_MAINTENANCE_CRON || '/etc/cron.d/minecraft'
 const LOCAL_SNAPSHOT_RETENTION = Number(process.env.MINECRAFT_LOCAL_SNAPSHOT_RETENTION || 2)
 const ICON_CACHE_SECONDS = Number(process.env.MINECRAFT_ICON_CACHE_SECONDS || 300)
 const STATUS_STREAM_INTERVAL_MS = Number(process.env.MINECRAFT_STATUS_STREAM_INTERVAL_MS || 5000)
 const MODRINTH_METADATA_CACHE_PATH = process.env.MINECRAFT_MODRINTH_CACHE_PATH || path.join(MINECRAFT_ROOT, 'panel-modrinth-cache.json')
 const LIFECYCLE_READY_WAIT_MS = Number(process.env.MINECRAFT_LIFECYCLE_READY_WAIT_MS || 20000)
+const WAKE_PROBE_ATTEMPTS = Number(process.env.MINECRAFT_WAKE_PROBE_ATTEMPTS || 6)
+const WAKE_PUBLIC_WAIT_MS = Number(process.env.MINECRAFT_WAKE_PUBLIC_WAIT_MS || 15000)
+const WAKE_PROBE_SETTLE_MS = Number(process.env.MINECRAFT_WAKE_PROBE_SETTLE_MS || 3000)
+const WAKE_SOCKET_HOLD_MS = Number(process.env.MINECRAFT_WAKE_SOCKET_HOLD_MS || 1500)
+const WAKE_HANDSHAKE_HOST = process.env.MINECRAFT_WAKE_HANDSHAKE_HOST || '127.0.0.1'
 const modrinthProjectCache = new Map()
 let modrinthMetadataCache = null
 let modrinthMetadataCacheWrite = Promise.resolve()
@@ -73,6 +79,7 @@ const defaultServerRegistry = {
     service: 'minecraft-hc-sleep.service',
     version: '1.21.11',
     gameVersion: process.env.MINECRAFT_GAME_VERSION_HC || '1.21.11',
+    protocol: 774,
     loader: 'fabric',
     root: path.join(MINECRAFT_ROOT, 'servers', 'hc'),
     profile: 'hardcore',
@@ -87,6 +94,7 @@ const defaultServerRegistry = {
     service: 'minecraft-shc-sleep.service',
     version: '1.21.11',
     gameVersion: process.env.MINECRAFT_GAME_VERSION_SHC || '1.21.11',
+    protocol: 774,
     loader: 'fabric',
     root: path.join(MINECRAFT_ROOT, 'servers', 'shc'),
     profile: 'shared-health',
@@ -101,6 +109,7 @@ const defaultServerRegistry = {
     service: 'minecraft-mc-sleep.service',
     version: '26.1.2',
     gameVersion: process.env.MINECRAFT_GAME_VERSION_MC || '26.1.2',
+    protocol: 775,
     loader: 'fabric',
     root: path.join(MINECRAFT_ROOT, 'servers', 'mc'),
     profile: 'survival',
@@ -127,6 +136,7 @@ function normalizeServerConfig(raw, inherited = {}) {
   }
 
   const merged = { ...inherited, ...raw, id }
+  const protocol = Number(merged.protocol ?? merged.minecraftProtocol ?? merged.mshProtocol)
   const root = merged.root || path.join(MINECRAFT_ROOT, 'servers', id)
   const service = String(merged.service || '').trim()
   if (!service) throw new Error(`${id}.service is required`)
@@ -141,6 +151,7 @@ function normalizeServerConfig(raw, inherited = {}) {
     service,
     version: String(merged.version || merged.gameVersion || '').trim(),
     gameVersion: String(process.env[`MINECRAFT_GAME_VERSION_${id.toUpperCase()}`] || merged.gameVersion || merged.version || '').trim(),
+    protocol: Number.isInteger(protocol) && protocol > 0 ? protocol : 0,
     loader: String(merged.loader || 'fabric').toLowerCase(),
     root,
     profile: String(merged.profile || id).trim(),
@@ -258,6 +269,10 @@ const serverPropertyDefinitions = {
   'view-distance': { type: 'number', min: 2, max: 32, default: 10 },
   'simulation-distance': { type: 'number', min: 2, max: 32, default: 10 },
   motd: { type: 'string', maxLength: 120, default: '' },
+  'resource-pack': { type: 'string', maxLength: 2048, default: '' },
+  'resource-pack-sha1': { type: 'string', maxLength: 64, default: '' },
+  'require-resource-pack': { type: 'boolean', default: false },
+  'resource-pack-prompt': { type: 'string', maxLength: 256, default: '' },
 }
 
 function asyncRoute(handler) {
@@ -312,6 +327,23 @@ function requireConfirmation(req, message) {
   error.statusCode = 409
   error.code = 'CONFIRMATION_REQUIRED'
   throw error
+}
+
+function requestFlag(value, defaultValue = true) {
+  if (value === undefined || value === null || value === '') return defaultValue
+  if (value === true || value === false) return value
+  const normalized = String(value).trim().toLowerCase()
+  if (['1', 'true', 'yes', 'on'].includes(normalized)) return true
+  if (['0', 'false', 'no', 'off'].includes(normalized)) return false
+  return defaultValue
+}
+
+function includePlayerStatus(req, defaultValue = true) {
+  return requestFlag(req.query?.includePlayers ?? req.query?.players ?? req.query?.playerStatus, defaultValue)
+}
+
+function includeOnlinePlayers(req, defaultValue = true) {
+  return requestFlag(req.query?.includeOnline ?? req.query?.online ?? req.query?.playerStatus, defaultValue)
 }
 
 function httpError(message, statusCode = 500, code) {
@@ -633,6 +665,17 @@ function buildActivityEntry(req, body, durationMs) {
     }
   }
 
+  if (suffix === '/resource-packs/upload') {
+    const target = cleanActivityValue(body?.file || req.query?.filename || req.get?.('x-minecraft-filename'), 'resource pack')
+    return {
+      ...entry,
+      type: 'worlds',
+      label: 'upload resource pack',
+      summary: `uploaded resource pack ${target}`,
+      target,
+    }
+  }
+
   if (suffix === '/mods/update-all') {
     const count = Array.isArray(body?.updated) ? body.updated.length : 0
     return {
@@ -785,6 +828,31 @@ function buildActivityEntry(req, body, durationMs) {
       type: 'backups',
       label: 'snapshot world',
       summary: 'queued active world snapshot',
+    }
+  }
+
+  const datapackUpload = suffix.match(/^\/worlds\/([^/]+)\/datapacks\/upload$/)
+  if (datapackUpload) {
+    const target = cleanActivityValue(body?.file || req.query?.filename || req.get?.('x-minecraft-filename'), 'datapack')
+    return {
+      ...entry,
+      type: 'worlds',
+      label: 'upload datapack',
+      summary: `uploaded datapack ${target}`,
+      target: `${cleanActivityValue(datapackUpload[1], 'world')} / ${target}`,
+    }
+  }
+
+  const datapackChange = suffix.match(/^\/worlds\/([^/]+)\/datapacks\/([^/]+)$/)
+  if (datapackChange) {
+    const action = req.method === 'DELETE' ? 'delete' : (body?.file?.endsWith?.('.disabled') ? 'disable' : 'enable')
+    const target = cleanActivityValue(body?.file || datapackChange[2], 'datapack')
+    return {
+      ...entry,
+      type: 'worlds',
+      label: `${action} datapack`,
+      summary: `${action} datapack ${target}`,
+      target: `${cleanActivityValue(datapackChange[1], 'world')} / ${target}`,
     }
   }
 
@@ -1217,14 +1285,194 @@ async function isTcpOpen(port, host = '127.0.0.1', timeoutMs = 500) {
   })
 }
 
-async function wakeProbe(server) {
-  await isTcpOpen(server.publicPort, '127.0.0.1', 1200)
+function boundedMs(value, fallback, min = 0, max = WAKE_TIMEOUT_MS) {
+  const ms = Number(value)
+  if (!Number.isFinite(ms)) return fallback
+  return Math.max(min, Math.min(ms, max))
 }
 
-async function waitForPort(port, expectedOpen, timeoutMs = WAKE_TIMEOUT_MS) {
+function wakeAttemptCount() {
+  const attempts = Number(WAKE_PROBE_ATTEMPTS)
+  if (!Number.isFinite(attempts)) return 6
+  return Math.max(1, Math.min(Math.trunc(attempts), 20))
+}
+
+function encodeMinecraftVarInt(value) {
+  let remaining = Number(value)
+  if (!Number.isInteger(remaining) || remaining < 0) {
+    throw httpError('Invalid Minecraft protocol value', 500, 'MINECRAFT_PROTOCOL_INVALID')
+  }
+
+  const bytes = []
+  do {
+    let byte = remaining & 0x7f
+    remaining = Math.floor(remaining / 128)
+    if (remaining > 0) byte |= 0x80
+    bytes.push(byte)
+  } while (remaining > 0)
+
+  return Buffer.from(bytes)
+}
+
+function encodeMinecraftString(value) {
+  const data = Buffer.from(String(value), 'utf8')
+  return Buffer.concat([encodeMinecraftVarInt(data.length), data])
+}
+
+function encodeMinecraftPacket(payload) {
+  return Buffer.concat([encodeMinecraftVarInt(payload.length), payload])
+}
+
+function uuidToBuffer(uuid) {
+  const clean = String(uuid || '').replace(/-/g, '')
+  return /^[0-9a-fA-F]{32}$/.test(clean) ? Buffer.from(clean, 'hex') : Buffer.alloc(16)
+}
+
+function normalizeMinecraftProfileName(value) {
+  const name = String(value || '').trim()
+  return /^[A-Za-z0-9_]{1,16}$/.test(name) ? name : null
+}
+
+async function getWakeProtocol(server) {
+  const envProtocol = Number(process.env[`MINECRAFT_PROTOCOL_${server.id.toUpperCase()}`])
+  if (Number.isInteger(envProtocol) && envProtocol > 0) return envProtocol
+
+  const mshConfig = await readJson(path.join(server.root, 'msh-config.json'), null)
+  const configProtocol = Number(mshConfig?.Server?.Protocol)
+  if (Number.isInteger(configProtocol) && configProtocol > 0) return configProtocol
+
+  if (Number.isInteger(server.protocol) && server.protocol > 0) return server.protocol
+  throw httpError(`Minecraft protocol is not configured for ${server.label}`, 500, 'MINECRAFT_PROTOCOL_MISSING')
+}
+
+async function getWakeProfile(server) {
+  const whitelist = await readJson(path.join(server.root, 'whitelist.json'), [])
+  if (Array.isArray(whitelist)) {
+    const profile = whitelist.find((entry) => normalizeMinecraftProfileName(entry?.name) && uuidToBuffer(entry?.uuid).some((byte) => byte !== 0))
+    if (profile) {
+      return {
+        name: normalizeMinecraftProfileName(profile.name),
+        uuid: uuidToBuffer(profile.uuid),
+        source: 'whitelist',
+      }
+    }
+  }
+
+  const fallbackName = normalizeMinecraftProfileName(
+    process.env[`MINECRAFT_WAKE_NAME_${server.id.toUpperCase()}`]
+    || process.env.MINECRAFT_WAKE_NAME
+    || 'PortalBot'
+  ) || 'PortalBot'
+
+  return {
+    name: fallbackName,
+    uuid: Buffer.alloc(16),
+    source: 'fallback',
+  }
+}
+
+function buildWakeLoginPayload(port, protocol, profile) {
+  const portBuffer = Buffer.alloc(2)
+  portBuffer.writeUInt16BE(port, 0)
+
+  const handshake = encodeMinecraftPacket(Buffer.concat([
+    encodeMinecraftVarInt(0),
+    encodeMinecraftVarInt(protocol),
+    encodeMinecraftString(WAKE_HANDSHAKE_HOST),
+    portBuffer,
+    encodeMinecraftVarInt(2),
+  ]))
+
+  const loginStart = encodeMinecraftPacket(Buffer.concat([
+    encodeMinecraftVarInt(0),
+    encodeMinecraftString(profile.name),
+    profile.uuid,
+  ]))
+
+  return Buffer.concat([handshake, loginStart])
+}
+
+async function sendMinecraftWakeLogin(server) {
+  const [protocol, profile] = await Promise.all([
+    getWakeProtocol(server),
+    getWakeProfile(server),
+  ])
+  const payload = buildWakeLoginPayload(server.publicPort, protocol, profile)
+  const holdMs = boundedMs(WAKE_SOCKET_HOLD_MS, 1500, 0, 10000)
+
+  return new Promise((resolve) => {
+    let settled = false
+    let holdTimer = null
+    const socket = net.createConnection({ host: '127.0.0.1', port: server.publicPort })
+    const finish = (result) => {
+      if (settled) return
+      settled = true
+      if (holdTimer) clearTimeout(holdTimer)
+      socket.removeAllListeners()
+      socket.destroy()
+      resolve(result)
+    }
+
+    socket.setTimeout(Math.max(1000, holdMs + 1000))
+    socket.once('connect', () => {
+      socket.write(payload, () => {
+        if (settled) return
+        holdTimer = setTimeout(() => finish(true), holdMs)
+      })
+    })
+    socket.once('timeout', () => finish(false))
+    socket.once('error', () => finish(false))
+  })
+}
+
+async function waitForBackendSignal(server, timeoutMs) {
+  const startedAt = Date.now()
+  const timeout = boundedMs(timeoutMs, WAKE_PROBE_SETTLE_MS, 0, WAKE_TIMEOUT_MS)
+  let checked = false
+  while (!checked || Date.now() - startedAt < timeout) {
+    checked = true
+    const [backendOpen, rconOpen] = await Promise.all([
+      isTcpOpen(server.backendPort),
+      isTcpOpen(server.rconPort),
+    ])
+    if (backendOpen || rconOpen) return true
+    if (Date.now() - startedAt >= timeout) break
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+  }
+  return false
+}
+
+async function wakeProbe(server) {
+  if (await waitForBackendSignal(server, 0)) {
+    return { wokeServer: false, alreadyRunning: true, attempts: 0 }
+  }
+
+  const publicWaitMs = boundedMs(WAKE_PUBLIC_WAIT_MS, 15000, 1000, WAKE_TIMEOUT_MS)
+  let sawPublicListener = false
+  let sentProbe = false
+
+  for (let attempt = 1; attempt <= wakeAttemptCount(); attempt += 1) {
+    const publicOpen = await waitForPort(server.publicPort, true, publicWaitMs, '127.0.0.1')
+    if (!publicOpen) continue
+
+    sawPublicListener = true
+    sentProbe = await sendMinecraftWakeLogin(server) || sentProbe
+    if (await waitForBackendSignal(server, WAKE_PROBE_SETTLE_MS)) {
+      return { wokeServer: sentProbe, alreadyRunning: false, attempts: attempt }
+    }
+  }
+
+  if (!sawPublicListener) {
+    throw httpError(`Public MSH listener is not available for ${server.label} on port ${server.publicPort}`, 503, 'MSH_LISTENER_UNAVAILABLE')
+  }
+
+  return { wokeServer: sentProbe, alreadyRunning: false, attempts: wakeAttemptCount(), pending: true }
+}
+
+async function waitForPort(port, expectedOpen, timeoutMs = WAKE_TIMEOUT_MS, host = DEFAULT_RCON_HOST) {
   const startedAt = Date.now()
   while (Date.now() - startedAt < timeoutMs) {
-    const open = await isTcpOpen(port, DEFAULT_RCON_HOST, 700)
+    const open = await isTcpOpen(port, host, 700)
     if (open === expectedOpen) return true
     await new Promise((resolve) => setTimeout(resolve, 1000))
   }
@@ -1239,7 +1487,7 @@ function lifecycleWaitMs(value) {
 }
 
 async function sendWakeLifecycleResponse(req, res, server, action) {
-  await wakeProbe(server)
+  const wakeResult = await wakeProbe(server)
   const waitMs = lifecycleWaitMs(req.body?.waitMs)
   const ready = await waitForPort(server.rconPort, true, waitMs)
   const serverPayload = await getServerPayload(server)
@@ -1249,7 +1497,8 @@ async function sendWakeLifecycleResponse(req, res, server, action) {
       ok: true,
       pending: false,
       ready: true,
-      wokeServer: true,
+      wokeServer: wakeResult.wokeServer,
+      wakeAttempts: wakeResult.attempts,
       waitMs,
       server: serverPayload,
     })
@@ -1260,7 +1509,8 @@ async function sendWakeLifecycleResponse(req, res, server, action) {
     ok: true,
     pending: true,
     ready: false,
-    wokeServer: true,
+    wokeServer: wakeResult.wokeServer,
+    wakeAttempts: wakeResult.attempts,
     waitMs,
     message: `${server.label} ${action} was requested and is still warming.`,
     server: {
@@ -1281,13 +1531,13 @@ async function ensureRconAvailable(server, options = {}) {
     throw httpError('RCON is not available. Wake the server first.', 409, 'RCON_UNAVAILABLE')
   }
 
-  await wakeProbe(server)
+  const wakeResult = await wakeProbe(server)
   const ready = await waitForPort(server.rconPort, true, options.timeoutMs || WAKE_TIMEOUT_MS)
   if (!ready) {
     throw httpError(`RCON did not become available for ${server.label} within ${Math.round((options.timeoutMs || WAKE_TIMEOUT_MS) / 1000)} seconds`, 504, 'RCON_WAKE_TIMEOUT')
   }
 
-  return { ready: true, wokeServer: true }
+  return { ready: true, wokeServer: wakeResult.wokeServer }
 }
 
 async function getSystemdState(server) {
@@ -1536,7 +1786,7 @@ async function sendRconCommand(server, command) {
   })
 }
 
-async function getLifecycleStatus(server) {
+async function getLifecycleStatus(server, options = {}) {
   const [systemd, publicOpen, backendOpen, rconOpen, processStats, disk] = await Promise.all([
     getSystemdState(server),
     isTcpOpen(server.publicPort),
@@ -1561,10 +1811,12 @@ async function getLifecycleStatus(server) {
     maxPlayers: Number(properties['max-players'] || 20),
     onlinePlayers: [],
   }
+  let playerStatusFresh = false
 
-  if (rconOpen) {
+  if (rconOpen && options.includePlayers !== false) {
     try {
       playerStatus = parseRconList(await sendRconCommand(server, 'list'))
+      playerStatusFresh = true
     } catch {
       // Keep the file-derived capacity when RCON refuses a status query.
     }
@@ -1587,6 +1839,7 @@ async function getLifecycleStatus(server) {
     maxPlayers: playerStatus.maxPlayers || Number(properties['max-players'] || 20),
     playersOnline: playerStatus.playersOnline,
     onlinePlayers: playerStatus.onlinePlayers,
+    playerStatusFresh,
     cpu: processStats.cpu,
     memory: processStats.memory,
     memoryBytes: processStats.memoryBytes,
@@ -1597,9 +1850,9 @@ async function getLifecycleStatus(server) {
   }
 }
 
-async function getServerPayload(server) {
+async function getServerPayload(server, options = {}) {
   const [status, mods, modBackups, settings, activity, maintenance, icon] = await Promise.all([
-    getLifecycleStatus(server),
+    getLifecycleStatus(server, options),
     listMods(server, { includeHashes: false }),
     listModBackups(server),
     getServerSettings(server),
@@ -1893,9 +2146,9 @@ async function verifySocketAuth(token) {
   return requireOperator(user)
 }
 
-async function getStatusStreamSnapshot(server) {
+async function getStatusStreamSnapshot(server, options = {}) {
   const [status, activity, maintenance] = await Promise.all([
-    getLifecycleStatus(server),
+    getLifecycleStatus(server, options),
     listActivity(server, 40),
     getMaintenanceState(server),
   ])
@@ -1924,7 +2177,7 @@ function startStatusStream(ws, server, options = {}) {
         type: 'status',
         serverId: server.id,
         timestamp: new Date().toISOString(),
-        server: await getStatusStreamSnapshot(server),
+        server: await getStatusStreamSnapshot(server, options),
       })
     } catch (error) {
       sendSocketJson(ws, {
@@ -1967,6 +2220,12 @@ function handleStatusStream(ws, req) {
 
   const requestUrl = new URL(req.url, 'http://localhost')
   const intervalMs = Number(requestUrl.searchParams.get('interval') || STATUS_STREAM_INTERVAL_MS)
+  const includePlayers = requestFlag(
+    requestUrl.searchParams.get('includePlayers')
+    ?? requestUrl.searchParams.get('players')
+    ?? requestUrl.searchParams.get('playerStatus'),
+    true,
+  )
   let authenticated = false
 
   const authTimeout = setTimeout(() => {
@@ -1997,7 +2256,7 @@ function handleStatusStream(ws, req) {
       await verifySocketAuth(data.token)
       authenticated = true
       clearTimeout(authTimeout)
-      startStatusStream(ws, server, { intervalMs })
+      startStatusStream(ws, server, { intervalMs, includePlayers })
     } catch (error) {
       clearTimeout(authTimeout)
       sendSocketJson(ws, {
@@ -2583,10 +2842,10 @@ function looksLikeJar(buffer) {
     && [0x03, 0x05, 0x07].includes(buffer[2])
 }
 
-function readRequestBuffer(req, maxBytes) {
+function readRequestBuffer(req, maxBytes, label = 'Upload') {
   if (Buffer.isBuffer(req.body)) return Promise.resolve(req.body)
   if (req.body !== undefined && req.body !== null) {
-    return Promise.reject(httpError('Mod upload must be sent as raw jar bytes', 415))
+    return Promise.reject(httpError(`${label} must be sent as raw archive bytes`, 415))
   }
 
   return new Promise((resolve, reject) => {
@@ -2604,7 +2863,7 @@ function readRequestBuffer(req, maxBytes) {
     req.on('data', (chunk) => {
       total += chunk.length
       if (total > maxBytes) {
-        finish(httpError(`Mod upload exceeds ${formatBytes(maxBytes)}`, 413, 'MOD_UPLOAD_TOO_LARGE'))
+        finish(httpError(`${label} exceeds ${formatBytes(maxBytes)}`, 413, 'UPLOAD_TOO_LARGE'))
         req.destroy()
         return
       }
@@ -2617,7 +2876,7 @@ function readRequestBuffer(req, maxBytes) {
 
 async function installUploadedMod(server, req) {
   const filename = getUploadFileName(req)
-  const bytes = await readRequestBuffer(req, MOD_UPLOAD_MAX_BYTES)
+  const bytes = await readRequestBuffer(req, MOD_UPLOAD_MAX_BYTES, 'Mod upload')
   if (!bytes.length) throw httpError('Uploaded mod file was empty', 400)
   if (!looksLikeJar(bytes)) throw httpError('Uploaded mod is not a valid jar archive', 400)
 
@@ -3032,7 +3291,7 @@ async function updateAllModrinthMods(server) {
   }
 }
 
-async function getPlayers(server) {
+async function getPlayers(server, options = {}) {
   const [whitelist, ops, bannedPlayers, bannedIps, usercache] = await Promise.all([
     readJson(path.join(server.root, 'whitelist.json'), []),
     readJson(path.join(server.root, 'ops.json'), []),
@@ -3042,9 +3301,11 @@ async function getPlayers(server) {
   ])
 
   let onlinePlayers = []
-  if (await isTcpOpen(server.rconPort)) {
+  let onlineFresh = false
+  if (options.includeOnline !== false && await isTcpOpen(server.rconPort)) {
     try {
       onlinePlayers = parseRconList(await sendRconCommand(server, 'list')).onlinePlayers
+      onlineFresh = true
     } catch {
       onlinePlayers = []
     }
@@ -3085,6 +3346,7 @@ async function getPlayers(server) {
     ops,
     bannedPlayers,
     bannedIps,
+    onlineFresh,
   }
 }
 
@@ -3161,6 +3423,192 @@ async function listWorlds(server) {
         hasDatapacks: await exists(path.join(fullPath, 'datapacks')),
       }
     }))
+}
+
+function safePackFileName(value, allowedExtensions = ['.zip', '.jar']) {
+  const fileName = safeBasename(value)
+  const comparable = fileName.toLowerCase().replace(/\.disabled$/, '')
+  if (
+    fileName.startsWith('.') ||
+    fileName.includes('\0') ||
+    !allowedExtensions.some((extension) => comparable.endsWith(extension))
+  ) {
+    throw httpError(`Invalid pack filename. Expected ${allowedExtensions.join(' or ')}`, 400)
+  }
+  return fileName
+}
+
+function getPackUploadFileName(req, allowedExtensions = ['.zip', '.jar']) {
+  const disposition = req.get('content-disposition') || ''
+  const dispositionMatch = disposition.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i)
+  return safePackFileName(req.query?.filename || req.query?.file || req.get('x-minecraft-filename') || dispositionMatch?.[1] || '', allowedExtensions)
+}
+
+function looksLikeZipArchive(buffer) {
+  return buffer.length >= 4
+    && buffer[0] === 0x50
+    && buffer[1] === 0x4b
+    && [0x03, 0x05, 0x07].includes(buffer[2])
+}
+
+function resolveWorldDatapackPath(server, worldId, fileName = '') {
+  const datapacksPath = path.join(resolveWorldPath(server, worldId), 'datapacks')
+  return fileName
+    ? resolveContainedPath(datapacksPath, safePackFileName(fileName), 'datapack')
+    : datapacksPath
+}
+
+function resolveResourcePackPath(server, fileName = '') {
+  const resourcePacksPath = path.join(server.root, 'resource-packs')
+  return fileName
+    ? resolveContainedPath(resourcePacksPath, safePackFileName(fileName, ['.zip']), 'resource pack')
+    : resourcePacksPath
+}
+
+async function packEntryFromDirent(root, entry) {
+  if (entry.name.startsWith('.') || /\.bak\.\d+$/i.test(entry.name)) return null
+  const fullPath = path.join(root, entry.name)
+  const stat = await fsp.stat(fullPath)
+  const enabled = !entry.name.endsWith('.disabled')
+  const cleanName = enabled ? entry.name : entry.name.slice(0, -'.disabled'.length)
+  return {
+    id: entry.name,
+    file: entry.name,
+    name: cleanName,
+    enabled,
+    kind: entry.isDirectory() ? 'folder' : 'archive',
+    size: entry.isDirectory() ? formatBytes(await getDirectoryBytes(fullPath)) : formatBytes(stat.size),
+    updatedAt: stat.mtime.toISOString(),
+    mtime: stat.mtimeMs,
+  }
+}
+
+async function listWorldDatapacks(server, worldId) {
+  const datapacksPath = resolveWorldDatapackPath(server, worldId)
+  let entries = []
+  try {
+    entries = await fsp.readdir(datapacksPath, { withFileTypes: true })
+  } catch {
+    return []
+  }
+
+  const packs = (await Promise.all(entries.map((entry) => packEntryFromDirent(datapacksPath, entry))))
+    .filter(Boolean)
+    .sort((a, b) => b.mtime - a.mtime)
+  return packs.map(({ mtime, ...pack }) => pack)
+}
+
+async function installUploadedWorldDatapack(server, worldId, req) {
+  const filename = getPackUploadFileName(req)
+  const bytes = await readRequestBuffer(req, PACK_UPLOAD_MAX_BYTES, 'Datapack upload')
+  if (!bytes.length) throw httpError('Uploaded datapack was empty', 400)
+  if (!looksLikeZipArchive(bytes)) throw httpError('Uploaded datapack is not a valid zip archive', 400)
+
+  const datapacksPath = resolveWorldDatapackPath(server, worldId)
+  await fsp.mkdir(datapacksPath, { recursive: true })
+  const tempName = `.upload-${Date.now()}-${crypto.randomBytes(4).toString('hex')}-${filename}`
+  const tempPath = resolveContainedPath(datapacksPath, tempName, 'datapack upload')
+  const targetPath = resolveWorldDatapackPath(server, worldId, filename)
+
+  try {
+    await fsp.writeFile(tempPath, bytes)
+    let backupFile = null
+    if (await exists(targetPath)) {
+      backupFile = `${filename}.bak.${Date.now()}`
+      await fsp.rename(targetPath, resolveContainedPath(datapacksPath, backupFile, 'datapack backup'))
+    }
+    await fsp.rename(tempPath, targetPath)
+    const [pack] = await Promise.all((await fsp.readdir(datapacksPath, { withFileTypes: true }))
+      .filter((entry) => entry.name === filename)
+      .map((entry) => packEntryFromDirent(datapacksPath, entry)))
+    return {
+      file: filename,
+      backupFile,
+      pack,
+      packs: await listWorldDatapacks(server, worldId),
+      restartRequired: true,
+    }
+  } catch (error) {
+    await fsp.rm(tempPath, { force: true }).catch(() => {})
+    throw error
+  }
+}
+
+async function setWorldDatapackEnabled(server, worldId, fileName, enabled) {
+  const currentName = safePackFileName(fileName)
+  const baseName = currentName.replace(/\.disabled$/, '')
+  const sourceName = enabled ? `${baseName}.disabled` : baseName
+  const targetName = enabled ? baseName : `${baseName}.disabled`
+  const sourcePath = resolveWorldDatapackPath(server, worldId, sourceName)
+  const targetPath = resolveWorldDatapackPath(server, worldId, targetName)
+  if (!(await exists(sourcePath))) return { ok: true, file: targetName, packs: await listWorldDatapacks(server, worldId), restartRequired: true }
+  if (await exists(targetPath)) throw httpError('A datapack with that target state already exists', 409)
+  await fsp.rename(sourcePath, targetPath)
+  return { ok: true, file: targetName, packs: await listWorldDatapacks(server, worldId), restartRequired: true }
+}
+
+async function deleteWorldDatapack(server, worldId, fileName) {
+  const packPath = resolveWorldDatapackPath(server, worldId, fileName)
+  if (!(await exists(packPath))) throw httpError('Datapack not found', 404)
+  await fsp.rm(packPath, { recursive: true, force: false })
+  return { ok: true, file: safePackFileName(fileName), packs: await listWorldDatapacks(server, worldId), restartRequired: true }
+}
+
+async function listResourcePacks(server) {
+  const packsPath = resolveResourcePackPath(server)
+  let entries = []
+  try {
+    entries = await fsp.readdir(packsPath, { withFileTypes: true })
+  } catch {
+    return []
+  }
+
+  const packs = (await Promise.all(entries
+    .filter((entry) => entry.isFile())
+    .map(async (entry) => {
+      const pack = await packEntryFromDirent(packsPath, entry)
+      if (!pack) return null
+      const fullPath = path.join(packsPath, entry.name)
+      return {
+        ...pack,
+        sha1: crypto.createHash('sha1').update(await fsp.readFile(fullPath)).digest('hex'),
+      }
+    })))
+    .filter(Boolean)
+    .sort((a, b) => b.mtime - a.mtime)
+  return packs.map(({ mtime, ...pack }) => pack)
+}
+
+async function installUploadedResourcePack(server, req) {
+  const filename = getPackUploadFileName(req, ['.zip'])
+  const bytes = await readRequestBuffer(req, PACK_UPLOAD_MAX_BYTES, 'Resource pack upload')
+  if (!bytes.length) throw httpError('Uploaded resource pack was empty', 400)
+  if (!looksLikeZipArchive(bytes)) throw httpError('Uploaded resource pack is not a valid zip archive', 400)
+
+  const packsPath = resolveResourcePackPath(server)
+  await fsp.mkdir(packsPath, { recursive: true })
+  const tempName = `.upload-${Date.now()}-${crypto.randomBytes(4).toString('hex')}-${filename}`
+  const tempPath = resolveContainedPath(packsPath, tempName, 'resource pack upload')
+  const targetPath = resolveResourcePackPath(server, filename)
+
+  try {
+    await fsp.writeFile(tempPath, bytes)
+    let backupFile = null
+    if (await exists(targetPath)) {
+      backupFile = `${filename}.bak.${Date.now()}`
+      await fsp.rename(targetPath, resolveContainedPath(packsPath, backupFile, 'resource pack backup'))
+    }
+    await fsp.rename(tempPath, targetPath)
+    return {
+      file: filename,
+      backupFile,
+      sha1: crypto.createHash('sha1').update(bytes).digest('hex'),
+      packs: await listResourcePacks(server),
+    }
+  } catch (error) {
+    await fsp.rm(tempPath, { force: true }).catch(() => {})
+    throw error
+  }
 }
 
 function resolveContainedPath(root, name, label) {
@@ -3294,16 +3742,22 @@ router.use((req, res, next) => {
 })
 
 router.get('/servers', asyncRoute(async (req, res) => {
-  const servers = await Promise.all(Object.values(serverRegistry).map(getServerPayload))
+  const servers = await Promise.all(Object.values(serverRegistry).map((server) => getServerPayload(server, {
+    includePlayers: includePlayerStatus(req),
+  })))
   res.json({ servers })
 }))
 
 router.get('/servers/:id', asyncRoute(async (req, res) => {
   const server = getServer(req)
+  const snapshotOptions = {
+    includePlayers: includePlayerStatus(req),
+    includeOnline: includeOnlinePlayers(req),
+  }
   const [payload, worlds, players, backups] = await Promise.all([
-    getServerPayload(server),
+    getServerPayload(server, snapshotOptions),
     listWorlds(server),
-    getPlayers(server),
+    getPlayers(server, snapshotOptions),
     listBackups(server),
   ])
   res.json({
@@ -3340,7 +3794,9 @@ router.get('/servers/:id/icon', asyncRoute(async (req, res) => {
 }))
 
 router.get('/servers/:id/status', asyncRoute(async (req, res) => {
-  res.json({ status: await getLifecycleStatus(getServer(req)) })
+  res.json({ status: await getLifecycleStatus(getServer(req), {
+    includePlayers: includePlayerStatus(req),
+  }) })
 }))
 
 router.get('/servers/:id/properties', asyncRoute(async (req, res) => {
@@ -3570,8 +4026,23 @@ router.post('/servers/:id/mods/:file/update', asyncRoute(async (req, res) => {
   })
 }))
 
+router.get('/servers/:id/resource-packs', asyncRoute(async (req, res) => {
+  res.json({ resourcePacks: await listResourcePacks(getServer(req)) })
+}))
+
+router.post('/servers/:id/resource-packs/upload', asyncRoute(async (req, res) => {
+  const server = getServer(req)
+  requireConfirmation(req, 'Uploading a resource pack requires confirmation')
+  res.json({
+    ok: true,
+    ...(await installUploadedResourcePack(server, req)),
+  })
+}))
+
 router.get('/servers/:id/players', asyncRoute(async (req, res) => {
-  res.json(await getPlayers(getServer(req)))
+  res.json(await getPlayers(getServer(req), {
+    includeOnline: includeOnlinePlayers(req),
+  }))
 }))
 
 router.get('/servers/:id/whitelist', asyncRoute(async (req, res) => {
@@ -3708,6 +4179,43 @@ router.get('/servers/:id/worlds/:worldId/download', asyncRoute(async (req, res) 
   const server = getServer(req)
   const worldId = safeWorldId(req.params.worldId)
   await streamArchive(res, resolveWorldPath(server, worldId), archiveFileName(server, `world-${worldId}`))
+}))
+
+router.get('/servers/:id/worlds/:worldId/datapacks', asyncRoute(async (req, res) => {
+  const server = getServer(req)
+  const worldId = safeWorldId(req.params.worldId)
+  res.json({ worldId, packs: await listWorldDatapacks(server, worldId) })
+}))
+
+router.post('/servers/:id/worlds/:worldId/datapacks/upload', asyncRoute(async (req, res) => {
+  const server = getServer(req)
+  requireConfirmation(req, 'Uploading a datapack requires confirmation')
+  const worldId = safeWorldId(req.params.worldId)
+  res.json({
+    ok: true,
+    worldId,
+    ...(await installUploadedWorldDatapack(server, worldId, req)),
+  })
+}))
+
+router.patch('/servers/:id/worlds/:worldId/datapacks/:file', asyncRoute(async (req, res) => {
+  const server = getServer(req)
+  requireConfirmation(req, 'Changing a datapack requires confirmation')
+  const worldId = safeWorldId(req.params.worldId)
+  res.json({
+    worldId,
+    ...(await setWorldDatapackEnabled(server, worldId, req.params.file, req.body?.enabled === true)),
+  })
+}))
+
+router.delete('/servers/:id/worlds/:worldId/datapacks/:file', asyncRoute(async (req, res) => {
+  const server = getServer(req)
+  requireConfirmation(req, 'Deleting a datapack requires confirmation')
+  const worldId = safeWorldId(req.params.worldId)
+  res.json({
+    worldId,
+    ...(await deleteWorldDatapack(server, worldId, req.params.file)),
+  })
 }))
 
 router.post('/servers/:id/worlds/switch', asyncRoute(async (req, res) => {
