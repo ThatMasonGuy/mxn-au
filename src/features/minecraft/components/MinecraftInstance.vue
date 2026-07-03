@@ -1275,10 +1275,16 @@
                   <h2 class="font-semibold text-white">Integration Checks</h2>
                   <p class="mt-1 text-sm text-slate-400">{{ diagnosticsStatusLabel }} &middot; {{ visibleDiagnosticChecks.length }} of {{ diagnosticChecks.length }}</p>
                 </div>
-                <button class="settings-btn" :disabled="refreshingDiagnostics" @click="refreshDiagnostics">
-                  <RefreshCcw class="h-4 w-4" :class="{ 'animate-spin': refreshingDiagnostics }" />
-                  Check
-                </button>
+                <div class="flex shrink-0 flex-wrap gap-2">
+                  <button class="settings-btn" :disabled="!diagnostics || exportingDiagnostics" @click="exportDiagnostics">
+                    <Download class="h-4 w-4" :class="{ 'animate-pulse': exportingDiagnostics }" />
+                    Export
+                  </button>
+                  <button class="settings-btn" :disabled="refreshingDiagnostics" @click="refreshDiagnostics">
+                    <RefreshCcw class="h-4 w-4" :class="{ 'animate-spin': refreshingDiagnostics }" />
+                    Check
+                  </button>
+                </div>
               </div>
 
               <div class="mt-4 flex flex-wrap gap-2 text-xs">
@@ -1456,6 +1462,7 @@ const activityFilter = ref('all')
 const exportingActivity = ref(false)
 const diagnosticsSearch = ref('')
 const diagnosticsFilter = ref('all')
+const exportingDiagnostics = ref(false)
 const settingsDraft = ref({})
 const savingSettings = ref(false)
 const installingProjectId = ref(null)
@@ -2118,6 +2125,42 @@ const exportActivity = () => {
     })
   } finally {
     exportingActivity.value = false
+  }
+}
+
+const exportDiagnostics = () => {
+  if (!diagnostics.value) return
+  exportingDiagnostics.value = true
+  try {
+    const exportedAt = new Date().toISOString()
+    const payload = {
+      serverId: serverId.value,
+      server: detail.value?.label || serverId.value,
+      exportedAt,
+      filters: {
+        status: diagnosticsFilter.value,
+        search: diagnosticsSearch.value.trim(),
+      },
+      diagnostics: {
+        ...diagnostics.value,
+        checks: visibleDiagnosticChecks.value,
+      },
+      totals: {
+        visible: visibleDiagnosticChecks.value.length,
+        total: diagnosticChecks.value.length,
+        summary: diagnosticsSummary.value,
+      },
+    }
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' })
+    const stamp = exportedAt.replace(/[:.]/g, '-')
+    triggerDownload(blob, `minecraft-${serverId.value}-diagnostics-${stamp}.json`)
+    toast({
+      title: 'Diagnostics export ready',
+      description: `${visibleDiagnosticChecks.value.length} checks exported`,
+      variant: 'success',
+    })
+  } finally {
+    exportingDiagnostics.value = false
   }
 }
 
