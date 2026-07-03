@@ -1147,6 +1147,25 @@
               </div>
             </div>
 
+            <div v-if="settingsChanges.length" class="mt-4 border-y border-amber-400/20 bg-amber-400/[0.06] py-3">
+              <div class="flex items-center justify-between gap-3 px-1">
+                <h3 class="text-sm font-semibold text-amber-50">Pending settings</h3>
+                <span class="text-xs text-amber-100/70">{{ settingsChanges.length }} changed</span>
+              </div>
+              <div class="mt-3 space-y-2 px-1">
+                <div
+                  v-for="change in settingsChanges"
+                  :key="change.key"
+                  class="grid gap-1 text-xs md:grid-cols-[150px_minmax(0,1fr)_24px_minmax(0,1fr)] md:items-center"
+                >
+                  <span class="font-medium text-amber-50">{{ change.label }}</span>
+                  <span class="min-w-0 truncate font-mono text-slate-400">{{ change.current }}</span>
+                  <ArrowRight class="hidden h-3.5 w-3.5 text-amber-200/60 md:block" />
+                  <span class="min-w-0 truncate font-mono text-amber-100">{{ change.draft }}</span>
+                </div>
+              </div>
+            </div>
+
             <div class="mt-5 grid gap-4 md:grid-cols-2">
               <label class="settings-toggle">
                 <input v-model="settingsDraft['white-list']" type="checkbox">
@@ -1437,6 +1456,16 @@ const settingsKeys = [
   'simulation-distance',
   'motd',
 ]
+const settingsLabels = {
+  'white-list': 'Whitelist',
+  'enforce-whitelist': 'Enforce whitelist',
+  pvp: 'PvP',
+  difficulty: 'Difficulty',
+  'max-players': 'Max players',
+  'view-distance': 'View distance',
+  'simulation-distance': 'Simulation distance',
+  motd: 'MOTD',
+}
 
 const confirmationCommands = ['ban', 'ban-ip', 'kick', 'op', 'deop', 'whitelist', 'pardon', 'pardon-ip']
 const destructiveCommands = ['stop', 'save-off']
@@ -1595,10 +1624,18 @@ const visibleBackups = computed(() => {
   const query = backupSearch.value.trim().toLowerCase()
   return sortedBackups.value.filter((backup) => backupMatchesFilter(backup) && backupMatchesSearch(backup, query))
 })
-const settingsChanged = computed(() => {
-  const current = detail.value?.settings || {}
-  return settingsKeys.some((key) => String(settingsDraft.value[key]) !== String(current[key] ?? ''))
-})
+const settingsChanges = computed(() => settingsKeys.map((key) => {
+  const current = settingCurrentValue(key)
+  const draft = settingsDraft.value[key]
+  return {
+    key,
+    label: settingsLabels[key] || key,
+    current: settingDisplayValue(current),
+    draft: settingDisplayValue(draft),
+    changed: String(draft) !== String(current),
+  }
+}).filter((change) => change.changed))
+const settingsChanged = computed(() => settingsChanges.value.length > 0)
 
 const activeLogLines = computed(() => {
   const followLiveLatest = (selectedLogFile.value || 'latest.log') === 'latest.log' && !logSearch.value.trim()
@@ -2059,17 +2096,35 @@ const asBoolean = (value, fallback = false) => {
   return fallback
 }
 
-const resetSettingsDraft = () => {
+const settingCurrentValue = (key) => {
   const settings = detail.value?.settings || {}
+  if (key === 'white-list') return asBoolean(settings['white-list'], true)
+  if (key === 'enforce-whitelist') return asBoolean(settings['enforce-whitelist'], false)
+  if (key === 'pvp') return asBoolean(settings.pvp, true)
+  if (key === 'difficulty') return settings.difficulty || 'normal'
+  if (key === 'max-players') return Number(settings['max-players'] || detail.value?.maxPlayers || 20)
+  if (key === 'view-distance') return Number(settings['view-distance'] || 10)
+  if (key === 'simulation-distance') return Number(settings['simulation-distance'] || 10)
+  if (key === 'motd') return settings.motd || ''
+  return settings[key] ?? ''
+}
+
+const settingDisplayValue = (value) => {
+  if (typeof value === 'boolean') return value ? 'true' : 'false'
+  if (value === undefined || value === null || value === '') return 'Blank'
+  return String(value)
+}
+
+const resetSettingsDraft = () => {
   settingsDraft.value = {
-    'white-list': asBoolean(settings['white-list'], true),
-    'enforce-whitelist': asBoolean(settings['enforce-whitelist'], false),
-    pvp: asBoolean(settings.pvp, true),
-    difficulty: settings.difficulty || 'normal',
-    'max-players': Number(settings['max-players'] || detail.value?.maxPlayers || 20),
-    'view-distance': Number(settings['view-distance'] || 10),
-    'simulation-distance': Number(settings['simulation-distance'] || 10),
-    motd: settings.motd || '',
+    'white-list': settingCurrentValue('white-list'),
+    'enforce-whitelist': settingCurrentValue('enforce-whitelist'),
+    pvp: settingCurrentValue('pvp'),
+    difficulty: settingCurrentValue('difficulty'),
+    'max-players': settingCurrentValue('max-players'),
+    'view-distance': settingCurrentValue('view-distance'),
+    'simulation-distance': settingCurrentValue('simulation-distance'),
+    motd: settingCurrentValue('motd'),
   }
 }
 
