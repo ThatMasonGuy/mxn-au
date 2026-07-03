@@ -1115,6 +1115,43 @@
               </button>
             </div>
 
+            <div class="rounded-md border border-white/10 bg-black/20 p-3">
+              <form class="flex flex-col gap-2 md:flex-row" @submit.prevent="saveLogView">
+                <input
+                  v-model="savedLogViewName"
+                  class="h-9 min-w-0 flex-1 rounded-md border border-white/10 bg-black/30 px-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-sky-400/50"
+                  placeholder="Saved view name"
+                >
+                <button
+                  class="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-emerald-400/25 bg-emerald-400/10 px-3 text-sm text-emerald-100 hover:bg-emerald-400/15 disabled:cursor-not-allowed disabled:opacity-40"
+                  :disabled="!savedLogViewName.trim()"
+                >
+                  <Plus class="h-4 w-4" />
+                  Save View
+                </button>
+              </form>
+
+              <div v-if="savedLogViewItems.length" class="mt-3 flex gap-2 overflow-x-auto">
+                <div
+                  v-for="view in savedLogViewItems"
+                  :key="view.id"
+                  class="flex shrink-0 overflow-hidden rounded-md border border-white/10 bg-white/[0.04]"
+                >
+                  <button class="px-3 py-2 text-left text-xs hover:bg-white/[0.06]" @click="applySavedLogView(view)">
+                    <span class="block font-medium text-slate-100">{{ view.name }}</span>
+                    <span class="mt-1 block font-mono text-slate-500">{{ view.file }} &middot; {{ view.filter }} &middot; {{ view.tail }}</span>
+                  </button>
+                  <button
+                    class="inline-flex w-9 items-center justify-center border-l border-white/10 text-rose-200 hover:bg-rose-400/10"
+                    title="Remove saved log view"
+                    @click="removeSavedLogView(view)"
+                  >
+                    <Trash2 class="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <div class="flex flex-wrap gap-2">
               <button
                 v-for="filter in logFilters"
@@ -1509,23 +1546,24 @@ import { useToast } from '@/shared/components/ui/toast'
 import MetricBar from '@/features/minecraft/components/MetricBar.vue'
 
 const CUSTOM_RCON_COMMANDS_STORAGE_KEY = 'mxn:minecraft:rcon-custom:v1'
+const SAVED_LOG_VIEWS_STORAGE_KEY = 'mxn:minecraft:log-views:v1'
 
 const canUseStorage = () => typeof window !== 'undefined' && Boolean(window.localStorage)
-const loadCustomRconCommands = () => {
+const loadStorageMap = (key) => {
   if (!canUseStorage()) return {}
   try {
-    const parsed = JSON.parse(window.localStorage.getItem(CUSTOM_RCON_COMMANDS_STORAGE_KEY) || '{}')
+    const parsed = JSON.parse(window.localStorage.getItem(key) || '{}')
     return parsed && typeof parsed === 'object' ? parsed : {}
   } catch {
     return {}
   }
 }
-const persistCustomRconCommands = (commands) => {
+const persistStorageMap = (key, value) => {
   if (!canUseStorage()) return
   try {
-    window.localStorage.setItem(CUSTOM_RCON_COMMANDS_STORAGE_KEY, JSON.stringify(commands))
+    window.localStorage.setItem(key, JSON.stringify(value))
   } catch {
-    // Local saved commands are optional; RCON itself remains usable.
+    // Local preferences are optional; live server controls remain usable.
   }
 }
 
@@ -1540,11 +1578,13 @@ const customCommandInput = ref('')
 const commandHistorySearch = ref('')
 const commandHistoryFilter = ref('all')
 const exportingCommandHistory = ref(false)
-const customRconCommands = ref(loadCustomRconCommands())
+const customRconCommands = ref(loadStorageMap(CUSTOM_RCON_COMMANDS_STORAGE_KEY))
 const logSearch = ref('')
 const logFilter = ref('all')
 const logTail = ref(300)
 const selectedLogFile = ref('latest.log')
+const savedLogViewName = ref('')
+const savedLogViews = ref(loadStorageMap(SAVED_LOG_VIEWS_STORAGE_KEY))
 const loadingExplorerLogs = ref(false)
 const exportingLogs = ref(false)
 const playerSearch = ref('')
@@ -1819,6 +1859,7 @@ const filteredLogs = computed(() => {
     logMatchesFilter(line) && (!query || String(line || '').toLowerCase().includes(query))
   ))
 })
+const savedLogViewItems = computed(() => savedLogViews.value[serverId.value] || [])
 
 const filteredPlayers = computed(() => {
   const query = playerSearch.value.trim().toLowerCase()
@@ -1903,7 +1944,7 @@ const updateCustomCommandsForServer = (items) => {
     [serverId.value]: items.slice(0, 24),
   }
   customRconCommands.value = next
-  persistCustomRconCommands(next)
+  persistStorageMap(CUSTOM_RCON_COMMANDS_STORAGE_KEY, next)
 }
 const saveCustomCommand = () => {
   const clean = customCommandInput.value.trim()
@@ -2189,6 +2230,49 @@ const loadLogExplorer = async () => {
   } finally {
     loadingExplorerLogs.value = false
   }
+}
+
+const updateSavedLogViewsForServer = (items) => {
+  const next = {
+    ...savedLogViews.value,
+    [serverId.value]: items.slice(0, 24),
+  }
+  savedLogViews.value = next
+  persistStorageMap(SAVED_LOG_VIEWS_STORAGE_KEY, next)
+}
+
+const saveLogView = () => {
+  const name = savedLogViewName.value.trim()
+  if (!name) return
+  const current = {
+    id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    name,
+    file: selectedLogFile.value || 'latest.log',
+    tail: Number(logTail.value || 300),
+    query: logSearch.value.trim(),
+    filter: logFilter.value,
+    createdAt: new Date().toISOString(),
+  }
+  const existing = savedLogViewItems.value.filter((view) => view.name.toLowerCase() !== name.toLowerCase())
+  updateSavedLogViewsForServer([current, ...existing])
+  savedLogViewName.value = ''
+  toast({
+    title: 'Log view saved',
+    description: `${current.file} (${current.filter})`,
+    variant: 'success',
+  })
+}
+
+const applySavedLogView = async (view) => {
+  selectedLogFile.value = view.file || 'latest.log'
+  logTail.value = Number(view.tail || 300)
+  logSearch.value = view.query || ''
+  logFilter.value = view.filter || 'all'
+  await loadLogExplorer()
+}
+
+const removeSavedLogView = (view) => {
+  updateSavedLogViewsForServer(savedLogViewItems.value.filter((item) => item.id !== view.id))
 }
 
 const selectLogFile = async (file) => {
@@ -2590,6 +2674,13 @@ const exportConfig = () => {
         }, {}),
         draft: { ...settingsDraft.value },
         pendingChanges: settingsChanges.value,
+      },
+      logs: {
+        selectedFile: selectedLogFile.value || 'latest.log',
+        tail: Number(logTail.value || 300),
+        search: logSearch.value.trim(),
+        filter: logFilter.value,
+        savedViews: savedLogViewItems.value,
       },
       access: {
         players: players.map((player) => ({
