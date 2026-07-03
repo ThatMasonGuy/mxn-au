@@ -266,12 +266,21 @@ export const useMinecraftAPI = () => {
     loading.value = true
     error.value = null
     const method = options.method || 'GET'
+    let timeoutId = null
+    let controller = null
 
     try {
+      const timeoutMs = Number(options.timeoutMs || 0)
+      if (timeoutMs > 0 && typeof AbortController !== 'undefined') {
+        controller = new AbortController()
+        timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+      }
+
       const response = await fetchWithAuth(withQuery(path, options.query), {
         method,
         headers: options.headers || {},
         body: options.body === undefined ? undefined : JSON.stringify(options.body),
+        signal: controller?.signal,
       })
 
       const contentType = response.headers.get('content-type') || ''
@@ -287,24 +296,31 @@ export const useMinecraftAPI = () => {
       usingFallback.value = false
       lastFallbackReason.value = ''
       return data
-    } catch (err) {
+    } catch (caught) {
+      const err = caught?.name === 'AbortError'
+        ? new Error(`Minecraft API request timed out after ${Math.round(Number(options.timeoutMs || 0) / 1000)}s`)
+        : caught
       error.value = err.message
 
       const readOnlyMethod = ['GET', 'HEAD'].includes(method)
       const canFallbackForHttp = readOnlyMethod || options.allowHttpFallback === true
       const canFallbackForNetwork = readOnlyMethod || options.allowNetworkFallback === true
-      const statusAllowsFallback = [404, 501, 502, 503].includes(err.status)
+      const fallbackStatuses = Array.isArray(options.fallbackStatuses) ? options.fallbackStatuses : [404, 501, 502, 503]
+      const statusAllowsFallback = fallbackStatuses.includes(err.status)
       if (typeof fallback === 'function' && (
         (!err.status && canFallbackForNetwork) ||
         (err.status && canFallbackForHttp && statusAllowsFallback)
       )) {
-        usingFallback.value = true
-        lastFallbackReason.value = err.message
+        if (options.markFallback !== false) {
+          usingFallback.value = true
+          lastFallbackReason.value = err.message
+        }
         return fallback(err)
       }
 
       throw err
     } finally {
+      if (timeoutId) clearTimeout(timeoutId)
       loading.value = false
     }
   }
@@ -564,11 +580,25 @@ export const useMinecraftAPI = () => {
     () => ({ backups: createFallbackDetail(serverId).backups }),
   )
 
-  const lifecycleAction = (serverId, action, confirmed = false) => request(
-    `/servers/${serverId}/${action}`,
-    { method: 'POST', body: confirmed ? { confirmed: true } : undefined },
-    () => fallbackLifecycle(serverId, action),
-  )
+  const lifecycleAction = (serverId, action, confirmed = false) => {
+    const waitsForWake = ['wake', 'start', 'restart'].includes(action)
+    return request(
+      `/servers/${serverId}/${action}`,
+      {
+        method: 'POST',
+        body: {
+          ...(confirmed ? { confirmed: true } : {}),
+          ...(waitsForWake ? { waitMs: 15000 } : {}),
+        },
+        allowHttpFallback: waitsForWake,
+        allowNetworkFallback: waitsForWake,
+        fallbackStatuses: waitsForWake ? [404, 501, 502, 503, 504] : undefined,
+        markFallback: !waitsForWake,
+        timeoutMs: waitsForWake ? 25000 : 0,
+      },
+      () => fallbackLifecycle(serverId, action),
+    )
+  }
 
   const sendCommand = (serverId, command, confirmed = false) => request(
     `/servers/${serverId}/command`,

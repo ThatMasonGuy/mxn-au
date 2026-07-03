@@ -28,6 +28,7 @@ const LOCAL_SNAPSHOT_RETENTION = Number(process.env.MINECRAFT_LOCAL_SNAPSHOT_RET
 const ICON_CACHE_SECONDS = Number(process.env.MINECRAFT_ICON_CACHE_SECONDS || 300)
 const STATUS_STREAM_INTERVAL_MS = Number(process.env.MINECRAFT_STATUS_STREAM_INTERVAL_MS || 5000)
 const MODRINTH_METADATA_CACHE_PATH = process.env.MINECRAFT_MODRINTH_CACHE_PATH || path.join(MINECRAFT_ROOT, 'panel-modrinth-cache.json')
+const LIFECYCLE_READY_WAIT_MS = Number(process.env.MINECRAFT_LIFECYCLE_READY_WAIT_MS || 20000)
 const modrinthProjectCache = new Map()
 let modrinthMetadataCache = null
 let modrinthMetadataCacheWrite = Promise.resolve()
@@ -1228,6 +1229,47 @@ async function waitForPort(port, expectedOpen, timeoutMs = WAKE_TIMEOUT_MS) {
     await new Promise((resolve) => setTimeout(resolve, 1000))
   }
   return false
+}
+
+function lifecycleWaitMs(value) {
+  const requested = Number(value)
+  const fallback = Number.isFinite(LIFECYCLE_READY_WAIT_MS) ? LIFECYCLE_READY_WAIT_MS : 20000
+  const ms = Number.isFinite(requested) ? requested : fallback
+  return Math.max(0, Math.min(ms, WAKE_TIMEOUT_MS))
+}
+
+async function sendWakeLifecycleResponse(req, res, server, action) {
+  await wakeProbe(server)
+  const waitMs = lifecycleWaitMs(req.body?.waitMs)
+  const ready = await waitForPort(server.rconPort, true, waitMs)
+  const serverPayload = await getServerPayload(server)
+
+  if (ready || serverPayload.state === 'alive') {
+    res.json({
+      ok: true,
+      pending: false,
+      ready: true,
+      wokeServer: true,
+      waitMs,
+      server: serverPayload,
+    })
+    return
+  }
+
+  res.status(202).json({
+    ok: true,
+    pending: true,
+    ready: false,
+    wokeServer: true,
+    waitMs,
+    message: `${server.label} ${action} was requested and is still warming.`,
+    server: {
+      ...serverPayload,
+      state: 'warming',
+      pendingLifecycleAction: action,
+      lifecyclePending: true,
+    },
+  })
 }
 
 async function ensureRconAvailable(server, options = {}) {
@@ -3322,22 +3364,12 @@ router.patch('/servers/:id/properties', asyncRoute(async (req, res) => {
 
 router.post('/servers/:id/wake', asyncRoute(async (req, res) => {
   const server = getServer(req)
-  await wakeProbe(server)
-  const ready = await waitForPort(server.rconPort, true, WAKE_TIMEOUT_MS)
-  if (!ready) {
-    throw httpError(`RCON did not become available for ${server.label} within ${Math.round(WAKE_TIMEOUT_MS / 1000)} seconds`, 504, 'RCON_WAKE_TIMEOUT')
-  }
-  res.json({ ok: true, wokeServer: true, server: await getServerPayload(server) })
+  await sendWakeLifecycleResponse(req, res, server, 'wake')
 }))
 
 router.post('/servers/:id/start', asyncRoute(async (req, res) => {
   const server = getServer(req)
-  await wakeProbe(server)
-  const ready = await waitForPort(server.rconPort, true, WAKE_TIMEOUT_MS)
-  if (!ready) {
-    throw httpError(`RCON did not become available for ${server.label} within ${Math.round(WAKE_TIMEOUT_MS / 1000)} seconds`, 504, 'RCON_WAKE_TIMEOUT')
-  }
-  res.json({ ok: true, wokeServer: true, server: await getServerPayload(server) })
+  await sendWakeLifecycleResponse(req, res, server, 'start')
 }))
 
 router.post('/servers/:id/sleep', asyncRoute(async (req, res) => {
@@ -3368,14 +3400,9 @@ router.post('/servers/:id/restart', asyncRoute(async (req, res) => {
   if (await isTcpOpen(server.rconPort)) {
     await sendRconCommand(server, 'stop')
     const stopped = await waitForPort(server.rconPort, false, 45000)
-    if (!stopped) throw httpError(`RCON did not close for ${server.label} after stop`, 504, 'RCON_STOP_TIMEOUT')
+      if (!stopped) throw httpError(`RCON did not close for ${server.label} after stop`, 504, 'RCON_STOP_TIMEOUT')
   }
-  await wakeProbe(server)
-  const ready = await waitForPort(server.rconPort, true, WAKE_TIMEOUT_MS)
-  if (!ready) {
-    throw httpError(`RCON did not become available for ${server.label} within ${Math.round(WAKE_TIMEOUT_MS / 1000)} seconds`, 504, 'RCON_WAKE_TIMEOUT')
-  }
-  res.json({ ok: true, wokeServer: true, server: await getServerPayload(server) })
+  await sendWakeLifecycleResponse(req, res, server, 'restart')
 }))
 
 router.post('/servers/:id/command', asyncRoute(async (req, res) => {
