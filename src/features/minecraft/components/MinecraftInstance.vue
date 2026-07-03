@@ -242,6 +242,36 @@
             </div>
 
             <div class="rounded-md border border-white/10 bg-[#0f151d] p-4">
+              <h2 class="font-semibold text-white">Maintenance</h2>
+              <dl class="mt-4 space-y-3 text-sm">
+                <div class="flex justify-between gap-4">
+                  <dt class="text-slate-400">Daily restart</dt>
+                  <dd class="font-mono text-slate-100">{{ detail.maintenance?.dailyRestart || 'Unknown' }}</dd>
+                </div>
+                <div class="flex justify-between gap-4">
+                  <dt class="text-slate-400">Snapshots kept</dt>
+                  <dd class="font-mono text-slate-100">{{ detail.maintenance?.localSnapshotRetention || 'Unknown' }}</dd>
+                </div>
+                <div class="flex items-center justify-between gap-4">
+                  <dt class="text-slate-400">Cron</dt>
+                  <dd class="rounded-md px-2 py-1 text-xs" :class="maintenanceCronTone(detail.maintenance)">
+                    {{ maintenanceCronLabel(detail.maintenance) }}
+                  </dd>
+                </div>
+                <div class="flex items-center justify-between gap-4">
+                  <dt class="text-slate-400">Today snapshot</dt>
+                  <dd class="rounded-md px-2 py-1 text-xs" :class="maintenanceSnapshotTone(detail.maintenance)">
+                    {{ maintenanceSnapshotLabel(detail.maintenance) }}
+                  </dd>
+                </div>
+                <div class="flex justify-between gap-4">
+                  <dt class="text-slate-400">Last backup</dt>
+                  <dd class="text-right text-slate-100">{{ formatDate(detail.maintenance?.latestBackup?.createdAt || detail.lastBackupAt) }}</dd>
+                </div>
+              </dl>
+            </div>
+
+            <div class="rounded-md border border-white/10 bg-[#0f151d] p-4">
               <div class="flex items-center justify-between gap-3">
                 <h2 class="font-semibold text-white">Backups</h2>
                 <button
@@ -2548,6 +2578,30 @@ const dependencyTone = (type) => {
   if (type === 'optional') return 'bg-sky-400/10 text-sky-200'
   if (type === 'embedded') return 'bg-emerald-400/10 text-emerald-200'
   return 'bg-white/[0.06] text-slate-300'
+}
+
+const maintenanceCronLabel = (maintenance) => {
+  if (maintenance?.cronMatched) return 'Matched'
+  if (maintenance?.cronPresent === false) return 'Missing'
+  return 'Pending'
+}
+
+const maintenanceCronTone = (maintenance) => {
+  if (maintenance?.cronMatched) return 'bg-emerald-400/10 text-emerald-200'
+  if (maintenance?.cronPresent === false) return 'bg-rose-400/10 text-rose-200'
+  return 'bg-amber-400/10 text-amber-200'
+}
+
+const maintenanceSnapshotLabel = (maintenance) => {
+  if (maintenance?.latestBackupToday) return 'Done'
+  if (maintenance?.latestBackup) return 'Stale'
+  return 'Waiting'
+}
+
+const maintenanceSnapshotTone = (maintenance) => {
+  if (maintenance?.latestBackupToday) return 'bg-emerald-400/10 text-emerald-200'
+  if (maintenance?.latestBackup) return 'bg-amber-400/10 text-amber-200'
+  return 'bg-slate-400/10 text-slate-300'
 }
 
 const logLineGroup = (line) => {
