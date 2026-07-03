@@ -1176,7 +1176,7 @@
               <div class="flex items-start justify-between gap-3">
                 <div>
                   <h2 class="font-semibold text-white">Integration Checks</h2>
-                  <p class="mt-1 text-sm text-slate-400">{{ diagnosticsStatusLabel }}</p>
+                  <p class="mt-1 text-sm text-slate-400">{{ diagnosticsStatusLabel }} &middot; {{ visibleDiagnosticChecks.length }} of {{ diagnosticChecks.length }}</p>
                 </div>
                 <button class="settings-btn" :disabled="refreshingDiagnostics" @click="refreshDiagnostics">
                   <RefreshCcw class="h-4 w-4" :class="{ 'animate-spin': refreshingDiagnostics }" />
@@ -1191,11 +1191,34 @@
                 <span class="rounded-md bg-slate-400/10 px-2 py-1 text-slate-300">{{ diagnosticsSummary.info || 0 }} info</span>
               </div>
 
+              <div class="mt-4 flex flex-col gap-3">
+                <div class="flex flex-wrap gap-2">
+                  <button
+                    v-for="filter in diagnosticsFilters"
+                    :key="filter.id"
+                    class="inline-flex h-8 items-center gap-2 rounded-md px-2.5 text-xs transition"
+                    :class="diagnosticsFilter === filter.id ? 'bg-white text-slate-950' : 'bg-white/[0.04] text-slate-300 hover:bg-white/[0.08] hover:text-white'"
+                    @click="diagnosticsFilter = filter.id"
+                  >
+                    <span>{{ filter.label }}</span>
+                    <span class="rounded bg-black/10 px-1.5 py-0.5 text-[11px]">{{ filter.count }}</span>
+                  </button>
+                </div>
+                <input
+                  v-model="diagnosticsSearch"
+                  class="h-9 w-full rounded-md border border-white/10 bg-black/30 px-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-sky-400/50"
+                  placeholder="Filter checks"
+                >
+              </div>
+
               <div class="mt-4 max-h-[420px] space-y-2 overflow-auto">
                 <div v-if="!diagnosticChecks.length" class="rounded-md border border-white/10 bg-black/20 p-3 text-sm text-slate-500">
                   Checks have not loaded yet.
                 </div>
-                <div v-for="check in diagnosticChecks" :key="check.id" class="rounded-md border border-white/10 bg-black/20 p-3">
+                <div v-else-if="!visibleDiagnosticChecks.length" class="rounded-md border border-white/10 bg-black/20 p-3 text-sm text-slate-500">
+                  No checks match this filter.
+                </div>
+                <div v-for="check in visibleDiagnosticChecks" :key="check.id" class="rounded-md border border-white/10 bg-black/20 p-3">
                   <div class="flex items-start justify-between gap-3">
                     <div class="min-w-0">
                       <div class="font-medium text-white">{{ check.label }}</div>
@@ -1331,6 +1354,8 @@ const backupSearch = ref('')
 const backupFilter = ref('all')
 const activitySearch = ref('')
 const activityFilter = ref('all')
+const diagnosticsSearch = ref('')
+const diagnosticsFilter = ref('all')
 const settingsDraft = ref({})
 const savingSettings = ref(false)
 const installingProjectId = ref(null)
@@ -1368,6 +1393,20 @@ const logFiles = computed(() => detail.value?.logFiles || [])
 const diagnostics = computed(() => detail.value?.diagnostics || minecraft.diagnosticsByServer?.[serverId.value] || null)
 const diagnosticChecks = computed(() => diagnostics.value?.checks || [])
 const diagnosticsSummary = computed(() => diagnostics.value?.summary || { pass: 0, warning: 0, error: 0, info: 0 })
+const diagnosticsFilters = computed(() => {
+  const checks = diagnosticChecks.value
+  return [
+    { id: 'all', label: 'All', count: checks.length },
+    { id: 'error', label: 'Errors', count: checks.filter((check) => check.status === 'error').length },
+    { id: 'warning', label: 'Warnings', count: checks.filter((check) => check.status === 'warning').length },
+    { id: 'pass', label: 'Pass', count: checks.filter((check) => check.status === 'pass').length },
+    { id: 'info', label: 'Info', count: checks.filter((check) => check.status === 'info').length },
+  ]
+})
+const visibleDiagnosticChecks = computed(() => {
+  const query = diagnosticsSearch.value.trim().toLowerCase()
+  return diagnosticChecks.value.filter((check) => diagnosticsMatchesFilter(check) && diagnosticsMatchesSearch(check, query))
+})
 const diagnosticsStatusLabel = computed(() => {
   if (!diagnostics.value) return 'No runtime check yet'
   if (diagnostics.value.status === 'ready') return `Ready at ${formatDate(diagnostics.value.checkedAt)}`
@@ -1707,6 +1746,20 @@ const activityMatchesSearch = (entry, query) => {
     entry?.type,
     entry?.target,
     entry?.actor,
+  ].some((value) => String(value || '').toLowerCase().includes(query))
+}
+const diagnosticsMatchesFilter = (check) => {
+  if (diagnosticsFilter.value === 'all') return true
+  return check.status === diagnosticsFilter.value
+}
+const diagnosticsMatchesSearch = (check, query) => {
+  if (!query) return true
+  return [
+    check?.label,
+    check?.message,
+    check?.path,
+    check?.status,
+    check?.id,
   ].some((value) => String(value || '').toLowerCase().includes(query))
 }
 const comparableWorldTime = (world) => {
