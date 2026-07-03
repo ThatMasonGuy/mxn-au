@@ -140,6 +140,73 @@
             </div>
           </div>
 
+          <div class="rounded-md border border-white/10 bg-[#0f151d] p-4">
+            <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+              <div>
+                <h2 class="font-semibold text-white">Fleet Audit</h2>
+                <p class="mt-1 text-sm text-slate-400">
+                  {{ fleetAuditSummary.attention }} attention, {{ fleetAuditSummary.updates }} with updates, {{ fleetAuditSummary.restart }} pending restart
+                </p>
+              </div>
+              <button
+                class="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-white/10 bg-white/[0.04] px-3 text-sm text-slate-100 transition hover:border-white/20 hover:bg-white/[0.08]"
+                @click="refresh"
+              >
+                <RefreshCcw class="h-4 w-4" :class="{ 'animate-spin': minecraft.loading }" />
+                Audit
+              </button>
+            </div>
+
+            <div class="mt-4 overflow-hidden rounded-md border border-white/10">
+              <div class="hidden grid-cols-[1.2fr_1fr_1fr_1fr_1fr_auto] gap-3 border-b border-white/10 bg-white/[0.03] px-3 py-2 text-xs uppercase tracking-wide text-slate-500 xl:grid">
+                <span>Server</span>
+                <span>Access</span>
+                <span>Gameplay</span>
+                <span>Mods</span>
+                <span>Backup</span>
+                <span class="text-right">Open</span>
+              </div>
+              <div v-for="row in fleetAuditRows" :key="row.id" class="grid gap-3 border-b border-white/10 p-3 last:border-b-0 xl:grid-cols-[1.2fr_1fr_1fr_1fr_1fr_auto] xl:items-center">
+                <div class="min-w-0">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <span class="font-semibold text-white">{{ row.label }}</span>
+                    <span class="rounded-md px-2 py-1 text-xs" :class="row.toneClass">{{ row.status }}</span>
+                  </div>
+                  <div class="mt-1 truncate font-mono text-xs text-slate-500">{{ row.activeWorld }}</div>
+                </div>
+
+                <div class="text-sm">
+                  <div class="text-slate-100">{{ row.accessMode }}</div>
+                  <div class="mt-1 text-xs text-slate-500">{{ row.whitelistLabel }}</div>
+                </div>
+
+                <div class="text-sm">
+                  <div class="text-slate-100">{{ row.difficulty }} · {{ row.maxPlayers }} slots</div>
+                  <div class="mt-1 text-xs text-slate-500">{{ row.pvpLabel }}</div>
+                </div>
+
+                <div class="text-sm">
+                  <div class="text-slate-100">{{ row.modsLabel }}</div>
+                  <div class="mt-1 text-xs" :class="row.updateCount ? 'text-amber-200' : 'text-slate-500'">{{ row.updatesLabel }}</div>
+                </div>
+
+                <div class="text-sm">
+                  <div class="text-slate-100">{{ row.backupLabel }}</div>
+                  <div class="mt-1 text-xs" :class="row.backupOk ? 'text-slate-500' : 'text-amber-200'">{{ row.snapshotLabel }}</div>
+                </div>
+
+                <div class="flex flex-wrap justify-start gap-2 xl:justify-end">
+                  <button class="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-xs text-slate-100 hover:bg-white/[0.08]" @click="openServer(row.id, 'settings')">
+                    Settings
+                  </button>
+                  <button class="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-xs text-slate-100 hover:bg-white/[0.08]" @click="openServer(row.id, row.updateCount ? 'mods' : 'overview')">
+                    {{ row.updateCount ? 'Mods' : 'Open' }}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <article
             v-for="server in visibleServers"
             :key="server.id"
@@ -460,6 +527,56 @@ const filteredActivity = computed(() => {
   return activityItems.value.filter((entry) => activityMatchesFilter(entry) && activityMatchesSearch(entry, query))
 })
 const recentActivity = computed(() => filteredActivity.value.slice(0, 8))
+const fleetAuditRows = computed(() => minecraft.servers.map((server) => {
+  const detail = minecraft.serverDetails?.[server.id] || server
+  const settings = detail.settings || server.settings || {}
+  const maintenance = detail.maintenance || server.maintenance || {}
+  const mods = detail.mods || []
+  const backups = detail.backups || []
+  const updateCount = Number(detail.updateCount ?? server.updateCount ?? mods.filter((mod) => mod.updateAvailable).length)
+  const restartCount = restartReasonCount(server.id)
+  const backupStatus = detail.lastBackupStatus || detail.backup?.status || backups[0]?.status || server.lastBackupStatus || 'unknown'
+  const backupOk = backupStatus === 'success' && maintenance.latestBackupToday !== false
+  const whitelistEnabled = asBoolean(settings['white-list'], detail.accessMode === 'whitelist' || server.accessMode === 'whitelist')
+  const enforceWhitelist = asBoolean(settings['enforce-whitelist'], false)
+  const disabledMods = Number(detail.disabledModCount ?? mods.filter((mod) => mod.enabled === false).length ?? 0)
+
+  const status = auditStatus(server, {
+    backupOk,
+    restartCount,
+    updateCount,
+  })
+
+  return {
+    id: server.id,
+    label: server.label,
+    activeWorld: detail.activeWorld || server.activeWorld || '',
+    status: status.label,
+    toneClass: status.toneClass,
+    attention: status.attention,
+    accessMode: whitelistEnabled ? 'Whitelist' : 'Open access',
+    whitelistLabel: `${enforceWhitelist ? 'Enforced' : 'Not enforced'} · ${(detail.whitelist || []).length} allowed · ${(detail.ops || []).length} OPs`,
+    difficulty: String(settings.difficulty || 'normal'),
+    maxPlayers: Number(settings['max-players'] || detail.maxPlayers || server.maxPlayers || 0),
+    pvpLabel: asBoolean(settings.pvp, true) ? 'PvP enabled' : 'PvP disabled',
+    modsLabel: `${detail.modCount ?? server.modCount ?? mods.length} mods${disabledMods ? ` · ${disabledMods} disabled` : ''}`,
+    updateCount,
+    updatesLabel: updateCount ? `${updateCount} updates available` : 'No known updates',
+    backupLabel: backupLabel(detail),
+    backupOk,
+    snapshotLabel: maintenance.latestBackupToday ? 'Snapshot done today' : maintenance.latestBackupToday === false ? 'Snapshot waiting' : backupStatus,
+  }
+}))
+const fleetAuditSummary = computed(() => fleetAuditRows.value.reduce((summary, row) => {
+  if (row.attention) summary.attention += 1
+  if (row.updateCount) summary.updates += 1
+  if (restartReasonCount(row.id)) summary.restart += 1
+  return summary
+}, {
+  attention: 0,
+  updates: 0,
+  restart: 0,
+}))
 
 const errorMessage = (error) => error?.message || String(error || 'Unexpected Minecraft error')
 
@@ -551,6 +668,7 @@ const exportFleetSnapshot = () => {
       statusStreamCount: statusStreamCount.value,
       statusStreamRecoveringCount: statusStreamRecoveringCount.value,
       servers,
+      audit: fleetAuditRows.value,
       recentActivity: filteredActivity.value.slice(0, 40),
     }
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' })
@@ -606,6 +724,48 @@ const serverInitials = (server) => {
 }
 
 const restartReasonCount = (serverId) => minecraft.restartReasonsForServer(serverId).length
+const asBoolean = (value, fallback = false) => {
+  if (typeof value === 'boolean') return value
+  if (value === 'true') return true
+  if (value === 'false') return false
+  return fallback
+}
+
+const auditStatus = (server, facts = {}) => {
+  if (server.state === 'degraded') {
+    return {
+      label: 'Degraded',
+      toneClass: 'bg-rose-400/10 text-rose-200',
+      attention: true,
+    }
+  }
+  if (facts.restartCount) {
+    return {
+      label: 'Restart',
+      toneClass: 'bg-amber-400/10 text-amber-200',
+      attention: true,
+    }
+  }
+  if (!facts.backupOk) {
+    return {
+      label: 'Backup',
+      toneClass: 'bg-amber-400/10 text-amber-200',
+      attention: true,
+    }
+  }
+  if (facts.updateCount) {
+    return {
+      label: 'Updates',
+      toneClass: 'bg-violet-400/10 text-violet-200',
+      attention: true,
+    }
+  }
+  return {
+    label: 'Ready',
+    toneClass: 'bg-emerald-400/10 text-emerald-200',
+    attention: false,
+  }
+}
 
 const actionKey = (...parts) => parts.map((part) => String(part ?? '').trim()).filter(Boolean).join(':')
 const lifecycleActionKey = (server, action) => actionKey(server?.id, 'lifecycle', action)
