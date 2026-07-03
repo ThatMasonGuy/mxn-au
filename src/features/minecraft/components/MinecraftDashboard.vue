@@ -29,6 +29,16 @@
 
             <button
               class="inline-flex h-10 items-center gap-2 rounded-md border border-white/10 bg-white/[0.04] px-3 text-sm text-slate-100 transition hover:border-white/20 hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-40"
+              :disabled="!minecraft.servers.length || checkingFleetMods"
+              :title="checkingFleetMods ? `Checking ${fleetModCheckProgress.current || 'servers'}` : 'Check all servers for Modrinth updates'"
+              @click="checkFleetModUpdates"
+            >
+              <PackageCheck class="h-4 w-4" :class="{ 'animate-pulse': checkingFleetMods }" />
+              {{ fleetModCheckLabel }}
+            </button>
+
+            <button
+              class="inline-flex h-10 items-center gap-2 rounded-md border border-white/10 bg-white/[0.04] px-3 text-sm text-slate-100 transition hover:border-white/20 hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-40"
               :disabled="!minecraft.servers.length || exportingSnapshot"
               title="Export fleet snapshot"
               @click="exportFleetSnapshot"
@@ -491,11 +501,18 @@ const serverFilter = ref('all')
 const activitySearch = ref('')
 const activityFilter = ref('all')
 const exportingSnapshot = ref(false)
+const checkingFleetMods = ref(false)
+const fleetModCheckProgress = ref({ done: 0, total: 0, current: '' })
 const activeServerStates = new Set(['alive', 'warming', 'stopping'])
 const selected = computed(() => minecraft.selectedServer)
 const pendingRestartServers = computed(() => minecraft.servers.filter((server) => restartReasonCount(server.id)))
 const statusStreamCount = computed(() => minecraft.statusStreamingIds?.size || 0)
 const statusStreamRecoveringCount = computed(() => minecraft.statusStreamRetryingIds?.size || 0)
+const fleetModCheckLabel = computed(() => {
+  if (!checkingFleetMods.value) return 'Check Mods'
+  const { done, total } = fleetModCheckProgress.value
+  return `Mods ${done}/${total}`
+})
 const serverFilters = computed(() => {
   const servers = minecraft.servers
   return [
@@ -606,6 +623,53 @@ const refresh = async () => {
     () => minecraft.refreshAll(),
     { error: 'Refresh failed' },
   )
+}
+
+const checkFleetModUpdates = async () => {
+  const targets = [...minecraft.servers]
+  if (!targets.length || checkingFleetMods.value) return
+
+  checkingFleetMods.value = true
+  fleetModCheckProgress.value = { done: 0, total: targets.length, current: targets[0]?.label || '' }
+  const failures = []
+
+  try {
+    for (const [index, server] of targets.entries()) {
+      fleetModCheckProgress.value = {
+        done: index,
+        total: targets.length,
+        current: server.label || server.id,
+      }
+
+      try {
+        await minecraft.checkModUpdates(server.id)
+      } catch (error) {
+        failures.push(`${server.label || server.id}: ${errorMessage(error)}`)
+      }
+
+      fleetModCheckProgress.value = {
+        done: index + 1,
+        total: targets.length,
+        current: server.label || server.id,
+      }
+    }
+
+    if (failures.length) {
+      toast({
+        title: 'Fleet mod check finished with issues',
+        description: failures.slice(0, 2).join(' | '),
+        variant: 'destructive',
+      })
+    } else {
+      toast({
+        title: 'Fleet mod check complete',
+        description: `${targets.length} servers checked`,
+        variant: 'success',
+      })
+    }
+  } finally {
+    checkingFleetMods.value = false
+  }
 }
 
 const triggerDownload = (blob, filename) => {
