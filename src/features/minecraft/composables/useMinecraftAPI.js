@@ -40,6 +40,18 @@ function withQuery(path, params = {}) {
   return url.toString()
 }
 
+function booleanQuery(value) {
+  if (value === undefined || value === null) return undefined
+  return value ? '1' : '0'
+}
+
+function snapshotQuery(options = {}) {
+  return {
+    includePlayers: booleanQuery(options.includePlayers),
+    includeOnline: booleanQuery(options.includeOnline),
+  }
+}
+
 function parseDownloadFilename(disposition) {
   const match = String(disposition || '').match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i)
   return match ? decodeURIComponent(match[1]) : ''
@@ -325,9 +337,17 @@ export const useMinecraftAPI = () => {
     }
   }
 
-  const getServers = () => request('/servers', {}, () => ({ servers: createFallbackServers() }))
+  const getServers = (options = {}) => request(
+    '/servers',
+    { query: snapshotQuery(options) },
+    () => ({ servers: createFallbackServers() }),
+  )
 
-  const getServer = (serverId) => request(`/servers/${serverId}`, {}, () => ({ server: createFallbackDetail(serverId) }))
+  const getServer = (serverId, options = {}) => request(
+    `/servers/${serverId}`,
+    { query: snapshotQuery(options) },
+    () => ({ server: createFallbackDetail(serverId) }),
+  )
 
   const getServerIcon = async (serverId, variant = 'default') => {
     try {
@@ -361,9 +381,9 @@ export const useMinecraftAPI = () => {
     }
   }
 
-  const getStatus = (serverId) => request(
+  const getStatus = (serverId, options = {}) => request(
     `/servers/${serverId}/status`,
-    {},
+    { query: snapshotQuery(options) },
     () => ({ status: createFallbackDetail(serverId) }),
   )
 
@@ -516,9 +536,9 @@ export const useMinecraftAPI = () => {
     () => ({ backups: createFallbackDetail(serverId).modBackups || [] }),
   )
 
-  const getPlayers = (serverId) => request(
+  const getPlayers = (serverId, options = {}) => request(
     `/servers/${serverId}/players`,
-    {},
+    { query: snapshotQuery(options) },
     () => {
       const detail = createFallbackDetail(serverId)
       return {
@@ -831,6 +851,7 @@ export const useMinecraftAPI = () => {
   const streamStatus = (serverId, onStatus, options = {}) => {
     return openAuthenticatedSocket(withQuery(`/servers/${serverId}/status/stream`, {
       interval: options.interval || options.intervalMs || 5000,
+      includePlayers: booleanQuery(options.includePlayers ?? false),
     }).replace(/^http/, 'ws'), {
       onEvent: (event) => onStatus({ serverId, ...event }),
       invalidMessage: (err) => `Invalid status stream message: ${err.message}`,

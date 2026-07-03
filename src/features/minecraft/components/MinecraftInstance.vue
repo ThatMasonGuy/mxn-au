@@ -2040,7 +2040,7 @@ const errorMessage = (error) => error?.message || String(error || 'Unexpected Mi
 const actionLabel = (action) => `${action.slice(0, 1).toUpperCase()}${action.slice(1)}`
 const lifecycleSuccessTitle = (result, action) => {
   const state = result?.server?.state
-  const ready = result?.ready === true || state === 'alive'
+  const ready = result?.ready === true || result?.pending === false || state === 'alive' || result?.server?.ports?.rcon === true
   if (['wake', 'start', 'restart'].includes(action) && !ready) return `${actionLabel(action)} requested`
   if (action === 'wake') return 'Server woke'
   if (action === 'start') return 'Server started'
@@ -2477,10 +2477,10 @@ const runWithToast = async (action, options = {}) => {
   }
 }
 
-const refresh = async () => {
+const refresh = async (options = {}) => {
   minecraft.setSelectedServer(serverId.value)
   await runWithToast(
-    () => minecraft.fetchServer(serverId.value),
+    () => minecraft.fetchServer(serverId.value, options),
     { error: 'Server refresh failed' },
   )
 }
@@ -3811,7 +3811,7 @@ watch(serverId, async (newServerId, oldServerId) => {
   resetSettingsDraft()
   await refresh()
   minecraft.startLogStream(newServerId)
-  if (!minecraft.fallbackMode) minecraft.startStatusStream(newServerId, { interval: 5000 })
+  if (!minecraft.fallbackMode) minecraft.startStatusStream(newServerId, { interval: 5000, includePlayers: false })
 })
 
 watch(
@@ -3891,8 +3891,8 @@ onMounted(async () => {
   await refresh()
   resetSettingsDraft()
   minecraft.startLogStream(serverId.value)
-  if (!minecraft.fallbackMode) minecraft.startStatusStream(serverId.value, { interval: 5000 })
-  pollHandle = window.setInterval(refresh, 12000)
+  if (!minecraft.fallbackMode) minecraft.startStatusStream(serverId.value, { interval: 5000, includePlayers: false })
+  pollHandle = window.setInterval(() => refresh({ quiet: true }), 12000)
   await scrollLogViewsToBottom()
 })
 

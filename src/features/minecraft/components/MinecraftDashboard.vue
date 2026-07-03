@@ -649,7 +649,7 @@ const runWithToast = async (action, options = {}) => {
 
 const lifecycleSuccessTitle = (result, action) => {
   const state = result?.server?.state
-  const ready = result?.ready === true || state === 'alive'
+  const ready = result?.ready === true || result?.pending === false || state === 'alive' || result?.server?.ports?.rcon === true
   if (['wake', 'start', 'restart'].includes(action) && !ready) return `${actionLabel(action)} requested`
   if (action === 'wake') return 'Server woke'
   if (action === 'start') return 'Server started'
@@ -1062,7 +1062,7 @@ const canStop = (server) => ['alive', 'warming', 'degraded'].includes(server?.st
 
 const startStatusStreams = () => {
   if (minecraft.fallbackMode) return
-  minecraft.servers.forEach((server) => minecraft.startStatusStream(server.id, { interval: 5000 }))
+  minecraft.servers.forEach((server) => minecraft.startStatusStream(server.id, { interval: 5000, includePlayers: false }))
 }
 
 const stateMeta = (state) => {

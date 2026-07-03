@@ -49,6 +49,21 @@ function logLine(entry) {
   return `[${timestamp}] [${level}]: ${message}`
 }
 
+function preservePlayerOnlineState(players = [], previousPlayers = []) {
+  const previousOnline = new Map(previousPlayers.map((player) => [
+    String(player?.name || '').toLowerCase(),
+    player?.online === true,
+  ]))
+  return players.map((player) => {
+    const key = String(player?.name || '').toLowerCase()
+    if (!previousOnline.has(key)) return player
+    return {
+      ...player,
+      online: previousOnline.get(key),
+    }
+  })
+}
+
 function modIdentityKeys(mod) {
   return [
     mod?.file,
@@ -830,12 +845,12 @@ export const useMinecraftStore = defineStore('minecraft', () => {
     queueServerSnapshotPersist()
   }
 
-  async function fetchServers() {
+  async function fetchServers(options = {}) {
     loading.value = true
     error.value = null
 
     try {
-      const payload = await api.getServers()
+      const payload = await api.getServers(options)
       const list = unwrap(payload, 'servers').map((server) => {
         if (Array.isArray(server.activity)) mergeActivityEntries(server.id, server.activity)
         return normalizeServer({
@@ -865,12 +880,16 @@ export const useMinecraftStore = defineStore('minecraft', () => {
     }
   }
 
-  async function fetchServer(serverId) {
+  async function fetchServer(serverId, options = {}) {
     if (!serverId) return
     refreshingIds.value = new Set([...refreshingIds.value, serverId])
     error.value = null
 
     try {
+      const quiet = options.quiet === true
+      const includePlayers = options.includePlayers ?? !quiet
+      const includeOnline = options.includeOnline ?? !quiet
+      const snapshotOptions = { includePlayers, includeOnline }
       const previous = serverDetails.value[serverId] || createFallbackDetail(serverId)
       const [
         serverResult,
@@ -888,8 +907,8 @@ export const useMinecraftStore = defineStore('minecraft', () => {
         worldsResult,
         backupsResult,
       ] = await Promise.allSettled([
-        api.getServer(serverId),
-        api.getStatus(serverId),
+        api.getServer(serverId, snapshotOptions),
+        api.getStatus(serverId, snapshotOptions),
         api.getProperties(serverId),
         api.getLogs(serverId, 80),
         api.getLogFiles(serverId),
@@ -899,7 +918,7 @@ export const useMinecraftStore = defineStore('minecraft', () => {
         api.getCommands(serverId),
         api.getMods(serverId),
         api.getModBackups(serverId),
-        api.getPlayers(serverId),
+        api.getPlayers(serverId, snapshotOptions),
         api.getWorlds(serverId),
         api.getBackups(serverId),
       ])
@@ -953,6 +972,11 @@ export const useMinecraftStore = defineStore('minecraft', () => {
 
       const server = asDetail(serverPayload, serverId)
       const status = statusPayload?.status || statusPayload || {}
+      const statusForMerge = { ...status }
+      if (status.playerStatusFresh === false && lifecycleReady(status)) {
+        statusForMerge.playersOnline = previous.playersOnline
+        statusForMerge.onlinePlayers = previous.onlinePlayers || []
+      }
       const settings = propertiesPayload?.settings || propertiesPayload || {}
       const mods = unwrap(modsPayload, 'mods')
       const logs = unwrap(logsPayload, 'logs')
@@ -964,6 +988,9 @@ export const useMinecraftStore = defineStore('minecraft', () => {
       const modBackups = unwrap(modBackupsPayload, 'backups')
       const worlds = unwrap(worldsPayload, 'worlds')
       const backups = unwrap(backupsPayload, 'backups')
+      const players = playersPayload?.onlineFresh === false
+        ? preservePlayerOnlineState(playersPayload?.players || [], previous?.players || [])
+        : playersPayload?.players
       const mergedMods = hydrateModrinthMods(serverId, mods, previous?.mods || [])
       mergeActivityEntries(serverId, activity)
       if (diagnostics) {
@@ -975,7 +1002,7 @@ export const useMinecraftStore = defineStore('minecraft', () => {
 
       mergeDetail(serverId, {
         ...server,
-        ...status,
+        ...statusForMerge,
         settings,
         diagnostics,
         maintenance: maintenance || server.maintenance,
@@ -994,7 +1021,7 @@ export const useMinecraftStore = defineStore('minecraft', () => {
         worlds: worlds.length ? worlds : undefined,
         backups: backups.length ? backups : undefined,
         updateCount: (mergedMods.length ? mergedMods : previous?.mods || []).filter((mod) => mod.updateAvailable).length,
-        players: playersPayload?.players,
+        players,
         whitelist: playersPayload?.whitelist,
         ops: playersPayload?.ops,
         bannedPlayers: playersPayload?.bannedPlayers,
@@ -1246,12 +1273,17 @@ export const useMinecraftStore = defineStore('minecraft', () => {
     }
 
     const previous = serverDetails.value[serverId] || createFallbackDetail(serverId)
+    const nextIncoming = { ...incoming }
+    if (incoming.playerStatusFresh === false && lifecycleReady(incoming)) {
+      nextIncoming.playersOnline = previous.playersOnline
+      nextIncoming.onlinePlayers = previous.onlinePlayers || []
+    }
     const mods = Array.isArray(incoming.mods)
       ? mergeModUpdateMetadata(incoming.mods, previous?.mods || [])
       : previous.mods
     mergeDetail(serverId, {
       ...previous,
-      ...incoming,
+      ...nextIncoming,
       mods,
       statusUpdatedAt: timestamp,
       activity: activityForServer(serverId),
@@ -2082,7 +2114,7 @@ export const useMinecraftStore = defineStore('minecraft', () => {
   function startPolling(intervalMs = 15000) {
     stopPolling()
     pollHandle.value = window.setInterval(() => {
-      servers.value.forEach((server) => fetchServer(server.id))
+      servers.value.forEach((server) => fetchServer(server.id, { quiet: true }))
     }, intervalMs)
   }
 
