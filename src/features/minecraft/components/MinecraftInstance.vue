@@ -565,17 +565,24 @@
             </div>
           </div>
 
-          <div class="flex flex-wrap gap-2 rounded-md border border-white/10 bg-[#0f151d] p-3">
-            <button
-              v-for="filter in installedModFilters"
-              :key="filter.id"
-              class="inline-flex h-9 items-center gap-2 rounded-md px-3 text-sm transition"
-              :class="installedModFilter === filter.id ? 'bg-white text-slate-950' : 'bg-white/[0.04] text-slate-300 hover:bg-white/[0.08] hover:text-white'"
-              @click="installedModFilter = filter.id"
+          <div class="flex flex-col gap-3 rounded-md border border-white/10 bg-[#0f151d] p-3 md:flex-row md:items-center md:justify-between">
+            <div class="flex flex-wrap gap-2">
+              <button
+                v-for="filter in installedModFilters"
+                :key="filter.id"
+                class="inline-flex h-9 items-center gap-2 rounded-md px-3 text-sm transition"
+                :class="installedModFilter === filter.id ? 'bg-white text-slate-950' : 'bg-white/[0.04] text-slate-300 hover:bg-white/[0.08] hover:text-white'"
+                @click="installedModFilter = filter.id"
+              >
+                <span>{{ filter.label }}</span>
+                <span class="rounded bg-black/10 px-1.5 py-0.5 text-xs">{{ filter.count }}</span>
+              </button>
+            </div>
+            <input
+              v-model="installedModSearch"
+              class="h-9 w-full rounded-md border border-white/10 bg-black/30 px-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-sky-400/50 md:w-64"
+              placeholder="Filter installed mods"
             >
-              <span>{{ filter.label }}</span>
-              <span class="rounded bg-black/10 px-1.5 py-0.5 text-xs">{{ filter.count }}</span>
-            </button>
           </div>
 
           <div v-if="modUpdateSummary" class="rounded-md border border-white/10 bg-[#0f151d] p-4">
@@ -1167,6 +1174,7 @@ const exportingLogs = ref(false)
 const playerSearch = ref('')
 const modSearch = ref('')
 const installedModFilter = ref('all')
+const installedModSearch = ref('')
 const newPlayerName = ref('')
 const newBlacklistName = ref('')
 const newBlacklistIp = ref('')
@@ -1230,11 +1238,14 @@ const installedModFilters = computed(() => {
 })
 const visibleMods = computed(() => {
   const mods = [...(detail.value?.mods || [])]
+  const query = installedModSearch.value.trim().toLowerCase()
   const filtered = mods.filter((mod) => {
-    if (installedModFilter.value === 'updates') return mod.updateAvailable
-    if (installedModFilter.value === 'enabled') return mod.enabled
-    if (installedModFilter.value === 'disabled') return !mod.enabled
-    return true
+    const matchesFilter =
+      installedModFilter.value === 'updates' ? mod.updateAvailable
+        : installedModFilter.value === 'enabled' ? mod.enabled
+          : installedModFilter.value === 'disabled' ? !mod.enabled
+            : true
+    return matchesFilter && installedModMatchesQuery(mod, query)
   })
 
   return filtered.sort((a, b) => {
@@ -1332,6 +1343,17 @@ const commandTone = (risk = 'safe') => {
   return 'border-white/10 bg-white/[0.04] text-slate-200'
 }
 const modDisplayName = (mod) => String(mod?.name || mod?.id || mod?.file || '')
+const installedModMatchesQuery = (mod, query) => {
+  if (!query) return true
+  return [
+    mod?.name,
+    mod?.id,
+    mod?.file,
+    mod?.version,
+    mod?.latestVersion,
+    mod?.modrinthSlug,
+  ].some((value) => String(value || '').toLowerCase().includes(query))
+}
 
 const comparableWorldName = (world) => String(world?.name || world?.id || world?.path || '')
 const comparableWorldTime = (world) => {
