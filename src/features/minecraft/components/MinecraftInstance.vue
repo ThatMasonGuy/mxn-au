@@ -621,18 +621,45 @@
             </div>
           </div>
 
-          <div v-if="modBackups.length" class="rounded-md border border-white/10 bg-[#0f151d] p-4">
+          <div class="rounded-md border border-white/10 bg-[#0f151d] p-4">
             <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
               <div>
                 <h3 class="font-semibold text-white">Mod Backups</h3>
-                <p class="mt-1 text-sm text-slate-400">{{ modBackups.length }} rollback files from previous updates</p>
+                <p class="mt-1 text-sm text-slate-400">{{ visibleModBackups.length }} of {{ modBackups.length }} rollback files</p>
               </div>
             </div>
+
+            <div class="mt-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div class="flex flex-wrap gap-2">
+                <button
+                  v-for="filter in modBackupFilters"
+                  :key="filter.id"
+                  class="inline-flex h-9 items-center gap-2 rounded-md px-3 text-sm transition"
+                  :class="modBackupFilter === filter.id ? 'bg-white text-slate-950' : 'bg-white/[0.04] text-slate-300 hover:bg-white/[0.08] hover:text-white'"
+                  @click="modBackupFilter = filter.id"
+                >
+                  <span>{{ filter.label }}</span>
+                  <span class="rounded bg-black/10 px-1.5 py-0.5 text-xs">{{ filter.count }}</span>
+                </button>
+              </div>
+              <input
+                v-model="modBackupSearch"
+                class="h-9 w-full rounded-md border border-white/10 bg-black/30 px-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-sky-400/50 md:w-64"
+                placeholder="Filter backups"
+              >
+            </div>
+
             <div class="mt-3 grid gap-2 lg:grid-cols-2">
-              <div v-for="backup in modBackups" :key="backup.id || backup.file" class="rounded-md border border-white/10 bg-black/20 p-3">
+              <div v-if="!modBackups.length" class="rounded-md border border-white/10 bg-black/20 p-3 text-sm text-slate-500 lg:col-span-2">
+                No mod rollback files found.
+              </div>
+              <div v-else-if="!visibleModBackups.length" class="rounded-md border border-white/10 bg-black/20 p-3 text-sm text-slate-500 lg:col-span-2">
+                No mod backups match this filter.
+              </div>
+              <div v-for="backup in visibleModBackups" :key="backup.id || backup.file" class="rounded-md border border-white/10 bg-black/20 p-3">
                 <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                   <div class="min-w-0">
-                    <div class="truncate font-mono text-xs text-slate-100">{{ backup.originalFile }}</div>
+                    <div class="truncate font-mono text-xs text-slate-100">{{ backup.originalFile || backup.file || backup.id }}</div>
                     <div class="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500">
                       <span>{{ backup.size }}</span>
                       <span>{{ formatDate(backup.createdAt) }}</span>
@@ -1291,6 +1318,8 @@ const playerFilter = ref('all')
 const modSearch = ref('')
 const installedModFilter = ref('all')
 const installedModSearch = ref('')
+const modBackupSearch = ref('')
+const modBackupFilter = ref('all')
 const newPlayerName = ref('')
 const newBlacklistName = ref('')
 const newBlacklistIp = ref('')
@@ -1379,6 +1408,23 @@ const visibleMods = computed(() => {
 const modSearchResults = computed(() => minecraft.modSearchResults?.[serverId.value] || [])
 const modUpdateSummary = computed(() => minecraft.modUpdateSummaries?.[serverId.value] || null)
 const modBackups = computed(() => detail.value?.modBackups || [])
+const sortedModBackups = computed(() => [...modBackups.value].sort((a, b) => {
+  const diff = comparableModBackupTime(b) - comparableModBackupTime(a)
+  if (diff) return diff
+  return comparableModBackupName(a).localeCompare(comparableModBackupName(b), undefined, { numeric: true, sensitivity: 'base' })
+}))
+const modBackupFilters = computed(() => {
+  const backups = modBackups.value
+  return [
+    { id: 'all', label: 'All', count: backups.length },
+    { id: 'enabled', label: 'Enabled files', count: backups.filter((backup) => !comparableModBackupName(backup).includes('.disabled')).length },
+    { id: 'disabled', label: 'Disabled files', count: backups.filter((backup) => comparableModBackupName(backup).includes('.disabled')).length },
+  ]
+})
+const visibleModBackups = computed(() => {
+  const query = modBackupSearch.value.trim().toLowerCase()
+  return sortedModBackups.value.filter((backup) => modBackupMatchesFilter(backup) && modBackupMatchesSearch(backup, query))
+})
 const activityItems = computed(() => minecraft.activityForServer(serverId.value))
 const activityFilters = computed(() => {
   const items = activityItems.value
@@ -1568,6 +1614,35 @@ const installedModMatchesQuery = (mod, query) => {
     mod?.version,
     mod?.latestVersion,
     mod?.modrinthSlug,
+  ].some((value) => String(value || '').toLowerCase().includes(query))
+}
+const comparableModBackupName = (backup) => String(backup?.originalFile || backup?.file || backup?.id || '')
+const comparableModBackupTime = (backup) => {
+  const candidates = [
+    backup?.createdAt,
+    backup?.updatedAt,
+    backup?.mtime,
+    backup?.timestamp,
+  ]
+  for (const value of candidates) {
+    const time = new Date(value).getTime()
+    if (Number.isFinite(time)) return time
+  }
+  return 0
+}
+const modBackupMatchesFilter = (backup) => {
+  const name = comparableModBackupName(backup)
+  if (modBackupFilter.value === 'enabled') return !name.includes('.disabled')
+  if (modBackupFilter.value === 'disabled') return name.includes('.disabled')
+  return true
+}
+const modBackupMatchesSearch = (backup, query) => {
+  if (!query) return true
+  return [
+    backup?.originalFile,
+    backup?.file,
+    backup?.id,
+    backup?.size,
   ].some((value) => String(value || '').toLowerCase().includes(query))
 }
 
