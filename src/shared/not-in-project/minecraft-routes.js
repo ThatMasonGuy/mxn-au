@@ -1263,6 +1263,10 @@ async function getSystemdState(server) {
   }
 }
 
+function isSleepManagedServer(server) {
+  return String(server?.service || '').includes('-sleep.service') || server?.sleepManaged === true
+}
+
 async function getPidForPort(port) {
   try {
     const { stdout } = await execFileAsync('ss', ['-ltnp'], { timeout: 5000 })
@@ -1495,9 +1499,11 @@ async function getLifecycleStatus(server) {
     getDiskPercent(server.root),
   ])
 
+  const sleepManaged = isSleepManagedServer(server)
   let state = 'offline'
   if (backendOpen && rconOpen) state = 'alive'
   else if (backendOpen && !rconOpen) state = 'warming'
+  else if (sleepManaged && !backendOpen && !rconOpen) state = 'hibernating'
   else if (systemd.active && publicOpen && !backendOpen) state = 'hibernating'
   else if (systemd.active && !publicOpen) state = 'degraded'
   else if (!systemd.active && (backendOpen || rconOpen)) state = 'degraded'
@@ -1523,6 +1529,7 @@ async function getLifecycleStatus(server) {
     state,
     stateSince: new Date().toISOString(),
     listenerActive: systemd.active,
+    sleepManaged,
     systemd,
     ports: {
       public: publicOpen,

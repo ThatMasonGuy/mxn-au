@@ -112,6 +112,16 @@ function entryIp(entry) {
   return entry?.ip || entry?.target || ''
 }
 
+function isSleepManagedServer(server) {
+  return String(server?.service || '').includes('-sleep.service') || server?.sleepManaged === true
+}
+
+function normalizeLifecycleState(server, fallback = 'hibernating') {
+  const state = server?.state || server?.lifecycleState || server?.status || fallback
+  if (state === 'offline' && isSleepManagedServer(server)) return 'hibernating'
+  return state
+}
+
 function normalizeServer(raw) {
   const registry = getRegistryServer(raw?.id) || {}
   const merged = {
@@ -120,7 +130,7 @@ function normalizeServer(raw) {
   }
 
   const vitals = merged.vitals || {}
-  const state = merged.state || merged.lifecycleState || merged.status || 'hibernating'
+  const state = normalizeLifecycleState(merged)
   const playersOnline = merged.playersOnline ?? merged.playerCount ?? vitals.playersOnline ?? 0
   const maxPlayers = merged.maxPlayers ?? vitals.maxPlayers ?? registry.maxPlayers ?? 20
 
