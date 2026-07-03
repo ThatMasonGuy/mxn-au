@@ -11,6 +11,7 @@ const STATUS_STREAM_MAX_RETRIES = 6
 const STATUS_STREAM_RETRY_BASE_MS = 1500
 const STATUS_STREAM_RETRY_MAX_MS = 30000
 const MODRINTH_METADATA_STORAGE_KEY = 'mxn:minecraft:modrinth-metadata:v1'
+const PENDING_LIFECYCLE_HOLD_MS = 1000 * 90
 
 function unwrap(payload, key) {
   if (Array.isArray(payload)) return payload
@@ -380,6 +381,8 @@ export const useMinecraftStore = defineStore('minecraft', () => {
   const statusStreamTokens = new Map()
   const statusStreamRetryTimers = new Map()
   const statusStreamRetryCounts = new Map()
+  const pendingLifecycle = ref({})
+  const pendingLifecycleTimers = new Map()
 
   const fallbackMode = computed(() => api.usingFallback.value)
   const fallbackReason = computed(() => api.lastFallbackReason.value)
@@ -409,7 +412,71 @@ export const useMinecraftStore = defineStore('minecraft', () => {
     return reasons
   }
 
-  function operationalState(serverId) {
+  function clearPendingLifecycle(serverId) {
+    if (!pendingLifecycle.value[serverId]) return
+    const next = { ...pendingLifecycle.value }
+    delete next[serverId]
+    pendingLifecycle.value = next
+
+    const timer = pendingLifecycleTimers.get(serverId)
+    if (timer) window.clearTimeout(timer)
+    pendingLifecycleTimers.delete(serverId)
+  }
+
+  function pendingLifecycleForServer(serverId) {
+    const entry = pendingLifecycle.value[serverId]
+    if (!entry) return null
+    if (Number(entry.expiresAt || 0) <= Date.now()) {
+      clearPendingLifecycle(serverId)
+      return null
+    }
+    return entry
+  }
+
+  function setPendingLifecycle(serverId, action, state) {
+    if (!serverId || !state) return
+    const now = Date.now()
+    const entry = {
+      action,
+      state,
+      stateSince: new Date(now).toISOString(),
+      expiresAt: now + PENDING_LIFECYCLE_HOLD_MS,
+    }
+
+    pendingLifecycle.value = {
+      ...pendingLifecycle.value,
+      [serverId]: entry,
+    }
+
+    const existingTimer = pendingLifecycleTimers.get(serverId)
+    if (existingTimer) window.clearTimeout(existingTimer)
+    pendingLifecycleTimers.set(serverId, window.setTimeout(() => {
+      clearPendingLifecycle(serverId)
+      syncOperationalState(serverId)
+    }, PENDING_LIFECYCLE_HOLD_MS))
+  }
+
+  function lifecycleReady(detail) {
+    return detail?.state === 'alive' || detail?.ports?.rcon === true
+  }
+
+  function pendingLifecycleOverlay(serverId, incoming = {}) {
+    const pending = pendingLifecycleForServer(serverId)
+    if (!pending) return {}
+    if (lifecycleReady(incoming)) {
+      clearPendingLifecycle(serverId)
+      return {}
+    }
+
+    return {
+      state: pending.state,
+      stateSince: pending.stateSince,
+      lifecyclePending: true,
+      pendingLifecycleAction: pending.action,
+    }
+  }
+
+  function operationalState(serverId, incoming = {}) {
     const activity = activityForServer(serverId)
     const restartReasons = restartReasonsForServer(serverId)
     return {
@@ -417,6 +484,7 @@ export const useMinecraftStore = defineStore('minecraft', () => {
       lastActivityAt: activity[0]?.timestamp || null,
       restartRequired: restartReasons.length > 0,
       restartReasons,
+      ...pendingLifecycleOverlay(serverId, incoming),
     }
   }
 
@@ -450,8 +518,8 @@ export const useMinecraftStore = defineStore('minecraft', () => {
   })
 
   function syncOperationalState(serverId) {
-    const state = operationalState(serverId)
     const currentDetail = serverDetails.value[serverId]
+    const state = operationalState(serverId, currentDetail)
     if (currentDetail) {
       serverDetails.value = {
         ...serverDetails.value,
@@ -663,7 +731,7 @@ export const useMinecraftStore = defineStore('minecraft', () => {
     if (Array.isArray(server?.activity)) mergeActivityEntries(server.id, server.activity)
     const normalized = normalizeServer({
       ...server,
-      ...operationalState(server.id),
+      ...operationalState(server.id, server),
     })
     const index = servers.value.findIndex((item) => item.id === normalized.id)
     if (index === -1) {
@@ -678,7 +746,7 @@ export const useMinecraftStore = defineStore('minecraft', () => {
     if (Array.isArray(detail?.activity)) mergeActivityEntries(serverId, detail.activity)
     const normalized = withDerivedModCounts(normalizeDetail(serverId, {
       ...detail,
-      ...operationalState(serverId),
+      ...operationalState(serverId, detail),
     }))
     persistModrinthMods(serverId, normalized.mods)
     serverDetails.value = {
@@ -698,14 +766,14 @@ export const useMinecraftStore = defineStore('minecraft', () => {
         if (Array.isArray(server.activity)) mergeActivityEntries(server.id, server.activity)
         return normalizeServer({
           ...server,
-          ...operationalState(server.id),
+          ...operationalState(server.id, server),
         })
       })
       servers.value = list.length
         ? list
         : createFallbackServers().map((server) => normalizeServer({
             ...server,
-            ...operationalState(server.id),
+            ...operationalState(server.id, server),
           }))
       servers.value.forEach((server) => {
         if (!serverDetails.value[server.id]) {
@@ -1190,6 +1258,7 @@ export const useMinecraftStore = defineStore('minecraft', () => {
 
   async function lifecycleAction(serverId, action, confirmed = false) {
     const previous = serverDetails.value[serverId] || createFallbackDetail(serverId)
+    const holdPendingState = ['wake', 'start', 'restart'].includes(action)
     const optimisticState = {
       wake: 'warming',
       start: 'warming',
@@ -1199,6 +1268,7 @@ export const useMinecraftStore = defineStore('minecraft', () => {
     }[action]
 
     if (optimisticState) {
+      if (holdPendingState) setPendingLifecycle(serverId, action, optimisticState)
       mergeDetail(serverId, {
         ...previous,
         state: optimisticState,
@@ -1206,17 +1276,29 @@ export const useMinecraftStore = defineStore('minecraft', () => {
       })
     }
 
-    const payload = await api.lifecycleAction(serverId, action, confirmed)
-    mergeDetail(serverId, asDetail(payload, serverId))
-    recordResultActivity(serverId, payload, {
-      type: 'lifecycle',
-      label: `${action} server`,
-      summary: `${action} ${previous.label || serverId}`,
-      target: previous.label || serverId,
-      clearsRestart: ['wake', 'start', 'restart'].includes(action),
-    })
-    appendLog(serverId, `[${new Date().toISOString()}] [panel/INFO]: lifecycle action ${action}`)
-    return payload
+    try {
+      const payload = await api.lifecycleAction(serverId, action, confirmed)
+      const incomingDetail = asDetail(payload, serverId)
+      if (holdPendingState && (payload?.ready === true || payload?.pending === false || lifecycleReady(incomingDetail))) {
+        clearPendingLifecycle(serverId)
+      } else if (holdPendingState && payload?.pending === true) {
+        setPendingLifecycle(serverId, action, incomingDetail?.state || optimisticState)
+      }
+
+      mergeDetail(serverId, incomingDetail)
+      recordResultActivity(serverId, payload, {
+        type: 'lifecycle',
+        label: `${action} server`,
+        summary: `${action} ${previous.label || serverId}`,
+        target: previous.label || serverId,
+        clearsRestart: ['wake', 'start', 'restart'].includes(action),
+      })
+      appendLog(serverId, `[${new Date().toISOString()}] [panel/INFO]: lifecycle action ${action}`)
+      return payload
+    } catch (err) {
+      if (holdPendingState) clearPendingLifecycle(serverId)
+      throw err
+    }
   }
 
   async function sendCommand(serverId, command, confirmed = false) {
