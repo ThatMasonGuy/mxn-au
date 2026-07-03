@@ -39,6 +39,16 @@
 
             <button
               class="inline-flex h-10 items-center gap-2 rounded-md border border-white/10 bg-white/[0.04] px-3 text-sm text-slate-100 transition hover:border-white/20 hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-40"
+              :disabled="!minecraft.servers.length || backingUpFleet"
+              :title="backingUpFleet ? `Snapshotting ${fleetBackupProgress.current || 'servers'}` : 'Queue snapshots for all active worlds'"
+              @click="backupFleetWorlds"
+            >
+              <Download class="h-4 w-4" :class="{ 'animate-pulse': backingUpFleet }" />
+              {{ fleetBackupLabel }}
+            </button>
+
+            <button
+              class="inline-flex h-10 items-center gap-2 rounded-md border border-white/10 bg-white/[0.04] px-3 text-sm text-slate-100 transition hover:border-white/20 hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-40"
               :disabled="!minecraft.servers.length || exportingSnapshot"
               title="Export fleet snapshot"
               @click="exportFleetSnapshot"
@@ -503,6 +513,8 @@ const activityFilter = ref('all')
 const exportingSnapshot = ref(false)
 const checkingFleetMods = ref(false)
 const fleetModCheckProgress = ref({ done: 0, total: 0, current: '' })
+const backingUpFleet = ref(false)
+const fleetBackupProgress = ref({ done: 0, total: 0, current: '' })
 const activeServerStates = new Set(['alive', 'warming', 'stopping'])
 const selected = computed(() => minecraft.selectedServer)
 const pendingRestartServers = computed(() => minecraft.servers.filter((server) => restartReasonCount(server.id)))
@@ -512,6 +524,11 @@ const fleetModCheckLabel = computed(() => {
   if (!checkingFleetMods.value) return 'Check Mods'
   const { done, total } = fleetModCheckProgress.value
   return `Mods ${done}/${total}`
+})
+const fleetBackupLabel = computed(() => {
+  if (!backingUpFleet.value) return 'Backup All'
+  const { done, total } = fleetBackupProgress.value
+  return `Backups ${done}/${total}`
 })
 const serverFilters = computed(() => {
   const servers = minecraft.servers
@@ -669,6 +686,56 @@ const checkFleetModUpdates = async () => {
     }
   } finally {
     checkingFleetMods.value = false
+  }
+}
+
+const backupFleetWorlds = async () => {
+  const targets = [...minecraft.servers]
+  if (!targets.length || backingUpFleet.value) return
+
+  const ok = window.confirm(`Queue active-world snapshots for ${targets.length} Minecraft servers?`)
+  if (!ok) return
+
+  backingUpFleet.value = true
+  fleetBackupProgress.value = { done: 0, total: targets.length, current: targets[0]?.label || '' }
+  const failures = []
+
+  try {
+    for (const [index, server] of targets.entries()) {
+      fleetBackupProgress.value = {
+        done: index,
+        total: targets.length,
+        current: server.label || server.id,
+      }
+
+      try {
+        await minecraft.backupWorld(server.id)
+      } catch (error) {
+        failures.push(`${server.label || server.id}: ${errorMessage(error)}`)
+      }
+
+      fleetBackupProgress.value = {
+        done: index + 1,
+        total: targets.length,
+        current: server.label || server.id,
+      }
+    }
+
+    if (failures.length) {
+      toast({
+        title: 'Fleet backup finished with issues',
+        description: failures.slice(0, 2).join(' | '),
+        variant: 'destructive',
+      })
+    } else {
+      toast({
+        title: 'Fleet backup queued',
+        description: `${targets.length} active-world snapshots requested`,
+        variant: 'success',
+      })
+    }
+  } finally {
+    backingUpFleet.value = false
   }
 }
 
