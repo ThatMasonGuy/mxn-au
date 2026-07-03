@@ -954,16 +954,39 @@
             <div class="flex items-center justify-between gap-3">
               <div>
                 <h2 class="font-semibold text-white">Activity</h2>
-                <p class="mt-1 text-sm text-slate-400">{{ activityItems.length }} recent panel actions</p>
+                <p class="mt-1 text-sm text-slate-400">{{ visibleActivityItems.length }} of {{ activityItems.length }} panel actions</p>
               </div>
               <History class="h-4 w-4 text-slate-400" />
+            </div>
+
+            <div class="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div class="flex flex-wrap gap-2">
+                <button
+                  v-for="filter in activityFilters"
+                  :key="filter.id"
+                  class="inline-flex h-9 items-center gap-2 rounded-md px-3 text-sm transition"
+                  :class="activityFilter === filter.id ? 'bg-white text-slate-950' : 'bg-white/[0.04] text-slate-300 hover:bg-white/[0.08] hover:text-white'"
+                  @click="activityFilter = filter.id"
+                >
+                  <span>{{ filter.label }}</span>
+                  <span class="rounded bg-black/10 px-1.5 py-0.5 text-xs">{{ filter.count }}</span>
+                </button>
+              </div>
+              <input
+                v-model="activitySearch"
+                class="h-9 w-full rounded-md border border-white/10 bg-black/30 px-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-sky-400/50 md:w-64"
+                placeholder="Search activity"
+              >
             </div>
 
             <div class="mt-4 space-y-2">
               <div v-if="!activityItems.length" class="rounded-md border border-white/10 bg-black/20 p-3 text-sm text-slate-500">
                 No panel activity recorded yet.
               </div>
-              <div v-for="entry in activityItems" :key="entry.id" class="rounded-md border border-white/10 bg-black/20 p-3">
+              <div v-else-if="!visibleActivityItems.length" class="rounded-md border border-white/10 bg-black/20 p-3 text-sm text-slate-500">
+                No activity matches this filter.
+              </div>
+              <div v-for="entry in visibleActivityItems" :key="entry.id" class="rounded-md border border-white/10 bg-black/20 p-3">
                 <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                   <div class="min-w-0">
                     <div class="flex flex-wrap items-center gap-2">
@@ -1246,6 +1269,8 @@ const worldSearch = ref('')
 const worldFilter = ref('all')
 const backupSearch = ref('')
 const backupFilter = ref('all')
+const activitySearch = ref('')
+const activityFilter = ref('all')
 const settingsDraft = ref({})
 const savingSettings = ref(false)
 const installingProjectId = ref(null)
@@ -1324,6 +1349,22 @@ const modSearchResults = computed(() => minecraft.modSearchResults?.[serverId.va
 const modUpdateSummary = computed(() => minecraft.modUpdateSummaries?.[serverId.value] || null)
 const modBackups = computed(() => detail.value?.modBackups || [])
 const activityItems = computed(() => minecraft.activityForServer(serverId.value))
+const activityFilters = computed(() => {
+  const items = activityItems.value
+  return [
+    { id: 'all', label: 'All', count: items.length },
+    { id: 'attention', label: 'Attention', count: items.filter((entry) => ['error', 'warning', 'failed'].includes(entry.status)).length },
+    { id: 'restart', label: 'Restart', count: items.filter((entry) => entry.restartRequired).length },
+    { id: 'lifecycle', label: 'Lifecycle', count: items.filter((entry) => entry.type === 'lifecycle').length },
+    { id: 'mods', label: 'Mods', count: items.filter((entry) => entry.type === 'mods').length },
+    { id: 'players', label: 'Players', count: items.filter((entry) => entry.type === 'players').length },
+    { id: 'worlds', label: 'Worlds', count: items.filter((entry) => ['worlds', 'backups'].includes(entry.type)).length },
+  ]
+})
+const visibleActivityItems = computed(() => {
+  const query = activitySearch.value.trim().toLowerCase()
+  return activityItems.value.filter((entry) => activityMatchesFilter(entry) && activityMatchesSearch(entry, query))
+})
 const pendingRestartReasons = computed(() => minecraft.restartReasonsForServer(serverId.value))
 const restartRequired = computed(() => pendingRestartReasons.value.length > 0)
 const bannedPlayersList = computed(() => (detail.value?.bannedPlayers || []).filter((entry) => displayBanName(entry)))
@@ -1528,6 +1569,24 @@ const backupMatchesSearch = (backup, query) => {
     backup?.status,
     backup?.size,
     backup?.path,
+  ].some((value) => String(value || '').toLowerCase().includes(query))
+}
+const activityMatchesFilter = (entry) => {
+  if (activityFilter.value === 'attention') return ['error', 'warning', 'failed'].includes(entry.status)
+  if (activityFilter.value === 'restart') return entry.restartRequired
+  if (activityFilter.value === 'worlds') return ['worlds', 'backups'].includes(entry.type)
+  if (activityFilter.value === 'all') return true
+  return entry.type === activityFilter.value
+}
+const activityMatchesSearch = (entry, query) => {
+  if (!query) return true
+  return [
+    entry?.label,
+    entry?.summary,
+    entry?.status,
+    entry?.type,
+    entry?.target,
+    entry?.actor,
   ].some((value) => String(value || '').toLowerCase().includes(query))
 }
 const comparableWorldTime = (world) => {
