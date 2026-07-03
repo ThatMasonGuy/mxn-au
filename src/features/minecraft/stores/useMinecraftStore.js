@@ -92,6 +92,18 @@ function mergeModUpdateMetadata(incomingMods = [], previousMods = []) {
   })
 }
 
+function withDerivedModCounts(detail) {
+  const mods = Array.isArray(detail?.mods) ? detail.mods : []
+  if (!mods.length) return detail
+
+  return {
+    ...detail,
+    modCount: mods.filter((mod) => mod.enabled).length,
+    disabledModCount: mods.filter((mod) => !mod.enabled).length,
+    updateCount: mods.filter((mod) => mod.updateAvailable).length,
+  }
+}
+
 function entryName(entry) {
   return entry?.name || entry?.playerName || entry?.target || ''
 }
@@ -485,10 +497,10 @@ export const useMinecraftStore = defineStore('minecraft', () => {
 
   function mergeDetail(serverId, detail) {
     if (Array.isArray(detail?.activity)) mergeActivityEntries(serverId, detail.activity)
-    const normalized = normalizeDetail(serverId, {
+    const normalized = withDerivedModCounts(normalizeDetail(serverId, {
       ...detail,
       ...operationalState(serverId),
-    })
+    }))
     serverDetails.value = {
       ...serverDetails.value,
       [serverId]: normalized,
@@ -806,9 +818,13 @@ export const useMinecraftStore = defineStore('minecraft', () => {
     }
 
     const previous = serverDetails.value[serverId] || createFallbackDetail(serverId)
+    const mods = Array.isArray(incoming.mods)
+      ? mergeModUpdateMetadata(incoming.mods, previous?.mods || [])
+      : previous.mods
     mergeDetail(serverId, {
       ...previous,
       ...incoming,
+      mods,
       statusUpdatedAt: timestamp,
       activity: activityForServer(serverId),
     })
