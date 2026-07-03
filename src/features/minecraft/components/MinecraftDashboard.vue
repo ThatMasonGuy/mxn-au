@@ -25,6 +25,16 @@
             </span>
 
             <button
+              class="inline-flex h-10 items-center gap-2 rounded-md border border-white/10 bg-white/[0.04] px-3 text-sm text-slate-100 transition hover:border-white/20 hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-40"
+              :disabled="!minecraft.servers.length || exportingSnapshot"
+              title="Export fleet snapshot"
+              @click="exportFleetSnapshot"
+            >
+              <Download class="h-4 w-4" :class="{ 'animate-pulse': exportingSnapshot }" />
+              Snapshot
+            </button>
+
+            <button
               class="inline-flex h-10 items-center gap-2 rounded-md border border-white/10 bg-white/[0.04] px-3 text-sm text-slate-100 transition hover:border-white/20 hover:bg-white/[0.08]"
               title="Refresh servers"
               @click="refresh"
@@ -375,6 +385,7 @@ import {
   AlertTriangle,
   ArrowRight,
   Cable,
+  Download,
   Globe2,
   History,
   Moon,
@@ -400,6 +411,7 @@ const serverSearch = ref('')
 const serverFilter = ref('all')
 const activitySearch = ref('')
 const activityFilter = ref('all')
+const exportingSnapshot = ref(false)
 const activeServerStates = new Set(['alive', 'warming', 'stopping'])
 const selected = computed(() => minecraft.selectedServer)
 const pendingRestartServers = computed(() => minecraft.servers.filter((server) => restartReasonCount(server.id)))
@@ -464,6 +476,80 @@ const refresh = async () => {
     () => minecraft.refreshAll(),
     { error: 'Refresh failed' },
   )
+}
+
+const triggerDownload = (blob, filename) => {
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
+}
+
+const exportFleetSnapshot = () => {
+  exportingSnapshot.value = true
+  try {
+    const exportedAt = new Date().toISOString()
+    const servers = minecraft.servers.map((server) => ({
+      id: server.id,
+      label: server.label,
+      state: server.state,
+      host: server.host,
+      service: server.service,
+      activeWorld: server.activeWorld,
+      playersOnline: server.playersOnline,
+      maxPlayers: server.maxPlayers,
+      modCount: server.modCount,
+      updateCount: server.updateCount,
+      restartRequired: restartReasonCount(server.id) > 0,
+      restartReasons: minecraft.restartReasonsForServer(server.id),
+      lastBackupAt: server.lastBackupAt,
+      lastBackupStatus: server.lastBackupStatus,
+      maintenance: server.maintenance,
+      ports: {
+        public: server.publicPort,
+        backend: server.backendPort,
+        rcon: server.rconPort,
+      },
+      vitals: {
+        cpu: server.cpu,
+        memory: server.memory,
+        disk: server.disk,
+        uptimeSeconds: server.uptimeSeconds,
+      },
+    }))
+    const payload = {
+      exportedAt,
+      endpoint: minecraft.apiEndpoint,
+      fallbackMode: minecraft.fallbackMode,
+      fallbackReason: minecraft.fallbackReason,
+      totals: minecraft.totals,
+      filters: {
+        server: serverFilter.value,
+        search: serverSearch.value.trim(),
+        activity: activityFilter.value,
+        activitySearch: activitySearch.value.trim(),
+      },
+      selectedServerId: selected.value?.id || '',
+      visibleServerIds: visibleServers.value.map((server) => server.id),
+      statusStreamCount: statusStreamCount.value,
+      servers,
+      recentActivity: filteredActivity.value.slice(0, 40),
+    }
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' })
+    const stamp = exportedAt.replace(/[:.]/g, '-')
+    triggerDownload(blob, `minecraft-fleet-snapshot-${stamp}.json`)
+    toast({
+      title: 'Fleet snapshot ready',
+      description: `${servers.length} servers exported`,
+      variant: 'success',
+    })
+  } finally {
+    exportingSnapshot.value = false
+  }
 }
 
 const selectServer = async (serverId) => {
