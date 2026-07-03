@@ -1304,6 +1304,18 @@ const tabs = [
   { id: 'settings', label: 'Settings', icon: Settings },
 ]
 
+const tabIds = new Set(tabs.map((tab) => tab.id))
+const normalizedTab = (tab) => {
+  const id = Array.isArray(tab) ? tab[0] : tab
+  return tabIds.has(String(id || '')) ? String(id) : 'overview'
+}
+const queryWithTab = (tab) => {
+  const query = { ...route.query }
+  if (tab === 'overview') delete query.tab
+  else query.tab = tab
+  return query
+}
+
 const errorMessage = (error) => error?.message || String(error || 'Unexpected Minecraft error')
 const actionLabel = (action) => `${action.slice(0, 1).toUpperCase()}${action.slice(1)}`
 const actionKey = (...parts) => parts.map((part) => String(part ?? '').trim()).filter(Boolean).join(':')
@@ -2208,9 +2220,30 @@ watch(
 )
 
 watch(
+  () => route.query.tab,
+  (tab) => {
+    const next = normalizedTab(tab)
+    if (activeTab.value !== next) activeTab.value = next
+  },
+  { immediate: true },
+)
+
+watch(
   () => activeTab.value,
-  () => {
+  (tab) => {
+    const next = normalizedTab(tab)
+    if (next !== tab) {
+      activeTab.value = next
+      return
+    }
+
     scrollLogViewsToBottom()
+    const currentTab = Array.isArray(route.query.tab) ? route.query.tab[0] : route.query.tab
+    const currentValue = currentTab ? String(currentTab) : ''
+    const nextValue = next === 'overview' ? '' : next
+    if (currentValue !== nextValue) {
+      router.replace({ query: queryWithTab(next) }).catch(() => {})
+    }
   },
 )
 
