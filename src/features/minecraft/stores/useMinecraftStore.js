@@ -566,6 +566,7 @@ export const useMinecraftStore = defineStore('minecraft', () => {
         logFilesPayload,
         activityPayload,
         diagnosticsPayload,
+        maintenancePayload,
         commandsPayload,
         modsPayload,
         modBackupsPayload,
@@ -580,6 +581,7 @@ export const useMinecraftStore = defineStore('minecraft', () => {
         api.getLogFiles(serverId),
         api.getActivity(serverId),
         api.getDiagnostics(serverId),
+        api.getMaintenance(serverId),
         api.getCommands(serverId),
         api.getMods(serverId),
         api.getModBackups(serverId),
@@ -596,6 +598,7 @@ export const useMinecraftStore = defineStore('minecraft', () => {
       const logFiles = unwrap(logFilesPayload, 'files')
       const activity = unwrap(activityPayload, 'activity')
       const diagnostics = diagnosticsPayload?.diagnostics || diagnosticsPayload || null
+      const maintenance = maintenancePayload?.maintenance || maintenancePayload || null
       const allowedCommands = unwrap(commandsPayload, 'commands')
       const modBackups = unwrap(modBackupsPayload, 'backups')
       const worlds = unwrap(worldsPayload, 'worlds')
@@ -615,6 +618,7 @@ export const useMinecraftStore = defineStore('minecraft', () => {
         ...status,
         settings,
         diagnostics,
+        maintenance: maintenance || server.maintenance,
         mods: mergedMods.length ? mergedMods : undefined,
         modBackups,
         logs: logs.length ? logs : undefined,
