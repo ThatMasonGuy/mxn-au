@@ -1139,6 +1139,106 @@ export const useMinecraftStore = defineStore('minecraft', () => {
     return result
   }
 
+  function mergeWorldDatapacks(serverId, worldId, packs = []) {
+    const detail = serverDetails.value[serverId] || createFallbackDetail(serverId)
+    const worldDatapacks = {
+      ...(detail.worldDatapacks || {}),
+      [worldId]: packs,
+    }
+    const worlds = (detail.worlds || []).map((world) => (
+      world.id === worldId || world.name === worldId
+        ? { ...world, hasDatapacks: packs.length > 0 }
+        : world
+    ))
+
+    mergeDetail(serverId, {
+      ...detail,
+      worldDatapacks,
+      worlds,
+    })
+  }
+
+  async function fetchWorldDatapacks(serverId, worldId) {
+    if (!serverId || !worldId) return []
+    const payload = await api.getWorldDatapacks(serverId, worldId)
+    const packs = unwrap(payload, 'packs')
+    mergeWorldDatapacks(serverId, payload?.worldId || worldId, packs)
+    return packs
+  }
+
+  async function uploadWorldDatapack(serverId, worldId, file, confirmed = false) {
+    const result = await api.uploadWorldDatapack(serverId, worldId, file, confirmed)
+    const packs = unwrap(result, 'packs')
+    mergeWorldDatapacks(serverId, result.worldId || worldId, packs)
+    appendLog(serverId, `[${new Date().toISOString()}] [panel/INFO]: datapack uploaded ${result.file || file.name}`)
+    recordResultActivity(serverId, result, {
+      type: 'worlds',
+      label: 'upload datapack',
+      summary: `uploaded datapack ${result.file || file.name}`,
+      target: `${worldId}/${result.file || file.name}`,
+      restartRequired: result.restartRequired === true,
+    })
+    return result
+  }
+
+  async function setWorldDatapackEnabled(serverId, worldId, pack, enabled, confirmed = false) {
+    const result = await api.setWorldDatapackEnabled(serverId, worldId, pack.file || pack.id || pack.name, enabled, confirmed)
+    const packs = unwrap(result, 'packs')
+    mergeWorldDatapacks(serverId, result.worldId || worldId, packs)
+    recordResultActivity(serverId, result, {
+      type: 'worlds',
+      label: `${enabled ? 'enable' : 'disable'} datapack`,
+      summary: `${enabled ? 'enabled' : 'disabled'} datapack ${pack.name || pack.file}`,
+      target: `${worldId}/${pack.name || pack.file}`,
+      restartRequired: result.restartRequired === true,
+    })
+    return result
+  }
+
+  async function deleteWorldDatapack(serverId, worldId, pack, confirmed = false) {
+    const result = await api.deleteWorldDatapack(serverId, worldId, pack.file || pack.id || pack.name, confirmed)
+    const packs = unwrap(result, 'packs')
+    mergeWorldDatapacks(serverId, result.worldId || worldId, packs)
+    recordResultActivity(serverId, result, {
+      type: 'worlds',
+      label: 'delete datapack',
+      summary: `deleted datapack ${pack.name || pack.file}`,
+      target: `${worldId}/${pack.name || pack.file}`,
+      restartRequired: result.restartRequired === true,
+    })
+    return result
+  }
+
+  async function fetchResourcePacks(serverId) {
+    const payload = await api.getResourcePacks(serverId)
+    const resourcePacks = unwrap(payload, 'resourcePacks')
+    const detail = serverDetails.value[serverId] || createFallbackDetail(serverId)
+    mergeDetail(serverId, {
+      ...detail,
+      resourcePacks,
+    })
+    return resourcePacks
+  }
+
+  async function uploadResourcePack(serverId, file, confirmed = false) {
+    const result = await api.uploadResourcePack(serverId, file, confirmed)
+    const uploadedPacks = unwrap(result, 'packs')
+    const resourcePacks = uploadedPacks.length ? uploadedPacks : unwrap(result, 'resourcePacks')
+    const detail = serverDetails.value[serverId] || createFallbackDetail(serverId)
+    mergeDetail(serverId, {
+      ...detail,
+      resourcePacks,
+    })
+    appendLog(serverId, `[${new Date().toISOString()}] [panel/INFO]: resource pack uploaded ${result.file || file.name}`)
+    recordResultActivity(serverId, result, {
+      type: 'worlds',
+      label: 'upload resource pack',
+      summary: `uploaded resource pack ${result.file || file.name}`,
+      target: result.file || file.name,
+    })
+    return result
+  }
+
   function setStreaming(serverId, streaming) {
     const next = new Set(streamingIds.value)
     if (streaming) next.add(serverId)
@@ -2164,6 +2264,12 @@ export const useMinecraftStore = defineStore('minecraft', () => {
     exportLogs,
     downloadWorldArchive,
     downloadBackupArchive,
+    fetchWorldDatapacks,
+    uploadWorldDatapack,
+    setWorldDatapackEnabled,
+    deleteWorldDatapack,
+    fetchResourcePacks,
+    uploadResourcePack,
     lifecycleAction,
     sendCommand,
     runPlayerAction,

@@ -1121,6 +1121,124 @@
             </div>
 
             <div class="rounded-md border border-white/10 bg-[#0f151d] p-4">
+              <div class="flex items-center justify-between gap-3">
+                <h2 class="font-semibold text-white">World Packs</h2>
+                <button class="settings-btn" :disabled="loadingWorldDatapacks || !selectedPackWorldId" @click="loadWorldDatapacks">
+                  <RefreshCcw class="h-4 w-4" :class="{ 'animate-spin': loadingWorldDatapacks }" />
+                  Refresh
+                </button>
+              </div>
+
+              <div class="mt-4 space-y-3">
+                <select v-model="selectedPackWorldId" class="setting-input">
+                  <option v-for="world in packWorldOptions" :key="world.id" :value="world.id">
+                    {{ world.name }}
+                  </option>
+                </select>
+
+                <input
+                  ref="datapackUploadInput"
+                  type="file"
+                  accept=".zip,.jar"
+                  class="hidden"
+                  @change="uploadSelectedDatapack"
+                >
+                <button class="settings-btn primary w-full" :disabled="!selectedPackWorldId || uploadingDatapack" @click="selectDatapackUpload">
+                  <UploadCloud class="h-4 w-4" :class="{ 'animate-pulse': uploadingDatapack }" />
+                  Upload Datapack
+                </button>
+
+                <div class="space-y-2">
+                  <div v-if="!selectedWorldDatapacks.length" class="rounded-md border border-white/10 bg-black/20 p-3 text-sm text-slate-500">
+                    No datapacks found.
+                  </div>
+                  <div v-for="pack in selectedWorldDatapacks" :key="pack.id || pack.file" class="rounded-md border border-white/10 bg-black/20 p-3">
+                    <div class="flex items-start justify-between gap-3">
+                      <div class="min-w-0">
+                        <div class="truncate text-sm font-medium text-white">{{ pack.name || pack.file }}</div>
+                        <div class="mt-1 flex flex-wrap gap-2 text-xs text-slate-500">
+                          <span>{{ pack.kind }}</span>
+                          <span>{{ pack.size }}</span>
+                          <span>{{ formatDate(pack.updatedAt) }}</span>
+                        </div>
+                      </div>
+                      <span class="rounded-md px-2 py-1 text-xs" :class="pack.enabled ? 'bg-emerald-400/10 text-emerald-200' : 'bg-slate-400/10 text-slate-300'">
+                        {{ pack.enabled ? 'Enabled' : 'Disabled' }}
+                      </span>
+                    </div>
+                    <div class="mt-3 flex gap-2">
+                      <button class="settings-btn flex-1" :disabled="actionBusy(namedActionKey('datapack', pack.file || pack.name, pack.enabled ? 'disable' : 'enable'))" @click="toggleWorldDatapack(pack)">
+                        {{ pack.enabled ? 'Disable' : 'Enable' }}
+                      </button>
+                      <button class="settings-btn danger" :disabled="actionBusy(namedActionKey('datapack', pack.file || pack.name, 'delete'))" @click="deleteWorldDatapack(pack)">
+                        <Trash2 class="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="rounded-md border border-white/10 bg-[#0f151d] p-4">
+              <div class="flex items-center justify-between gap-3">
+                <h2 class="font-semibold text-white">Resource Pack</h2>
+                <button class="settings-btn" :disabled="loadingResourcePacks" @click="loadResourcePacks">
+                  <RefreshCcw class="h-4 w-4" :class="{ 'animate-spin': loadingResourcePacks }" />
+                  Refresh
+                </button>
+              </div>
+
+              <div class="mt-4 space-y-3">
+                <input
+                  ref="resourcePackUploadInput"
+                  type="file"
+                  accept=".zip"
+                  class="hidden"
+                  @change="uploadSelectedResourcePack"
+                >
+                <button class="settings-btn primary w-full" :disabled="uploadingResourcePack" @click="selectResourcePackUpload">
+                  <UploadCloud class="h-4 w-4" :class="{ 'animate-pulse': uploadingResourcePack }" />
+                  Upload Resource Pack
+                </button>
+
+                <div v-if="resourcePacks.length" class="space-y-2">
+                  <div v-for="pack in resourcePacks" :key="pack.id || pack.file" class="rounded-md border border-white/10 bg-black/20 p-3">
+                    <div class="truncate text-sm font-medium text-white">{{ pack.name || pack.file }}</div>
+                    <div class="mt-1 flex flex-wrap gap-2 text-xs text-slate-500">
+                      <span>{{ pack.size }}</span>
+                      <span>{{ formatDate(pack.updatedAt) }}</span>
+                    </div>
+                    <div v-if="pack.sha1" class="mt-2 truncate font-mono text-xs text-slate-500">{{ pack.sha1 }}</div>
+                  </div>
+                </div>
+
+                <label class="grid gap-2">
+                  <span class="text-sm text-slate-400">Resource pack URL</span>
+                  <input v-model="settingsDraft['resource-pack']" class="setting-input" placeholder="https://.../pack.zip">
+                </label>
+                <label class="grid gap-2">
+                  <span class="text-sm text-slate-400">Resource pack SHA1</span>
+                  <input v-model="settingsDraft['resource-pack-sha1']" class="setting-input font-mono" placeholder="sha1">
+                </label>
+                <label class="settings-toggle">
+                  <input v-model="settingsDraft['require-resource-pack']" type="checkbox">
+                  <span>
+                    <span class="block font-medium text-white">Require resource pack</span>
+                    <span class="text-xs text-slate-500">require-resource-pack</span>
+                  </span>
+                </label>
+                <label class="grid gap-2">
+                  <span class="text-sm text-slate-400">Prompt</span>
+                  <input v-model="settingsDraft['resource-pack-prompt']" class="setting-input" placeholder="Resource pack prompt">
+                </label>
+                <button class="settings-btn primary w-full" :disabled="!settingsChanged || savingSettings" @click="saveSettings">
+                  <Save class="h-4 w-4" :class="{ 'animate-pulse': savingSettings }" />
+                  Save Resource Pack
+                </button>
+              </div>
+            </div>
+
+            <div class="rounded-md border border-white/10 bg-[#0f151d] p-4">
               <h2 class="font-semibold text-white">Backups</h2>
               <div class="mt-4 space-y-3">
                 <div class="flex flex-wrap gap-2">
@@ -1739,6 +1857,13 @@ const uploadingMod = ref(false)
 const downloadingArchiveId = ref(null)
 const actionLocks = ref(new Set())
 const modUploadInput = ref(null)
+const datapackUploadInput = ref(null)
+const resourcePackUploadInput = ref(null)
+const selectedPackWorldId = ref('')
+const loadingWorldDatapacks = ref(false)
+const loadingResourcePacks = ref(false)
+const uploadingDatapack = ref(false)
+const uploadingResourcePack = ref(false)
 const refreshingDiagnostics = ref(false)
 const overviewLogsRef = ref(null)
 const consoleRef = ref(null)
@@ -1754,6 +1879,10 @@ const settingsKeys = [
   'view-distance',
   'simulation-distance',
   'motd',
+  'resource-pack',
+  'resource-pack-sha1',
+  'require-resource-pack',
+  'resource-pack-prompt',
 ]
 const settingsLabels = {
   'white-list': 'Whitelist',
@@ -1764,6 +1893,10 @@ const settingsLabels = {
   'view-distance': 'View distance',
   'simulation-distance': 'Simulation distance',
   motd: 'MOTD',
+  'resource-pack': 'Resource pack URL',
+  'resource-pack-sha1': 'Resource pack SHA1',
+  'require-resource-pack': 'Require resource pack',
+  'resource-pack-prompt': 'Resource pack prompt',
 }
 
 const confirmationCommands = ['ban', 'ban-ip', 'kick', 'op', 'deop', 'whitelist', 'pardon', 'pardon-ip']
@@ -1941,6 +2074,11 @@ const visibleWorlds = computed(() => {
   const query = worldSearch.value.trim().toLowerCase()
   return sortedWorlds.value.filter((world) => worldMatchesFilter(world) && worldMatchesSearch(world, query))
 })
+const activeWorldItem = computed(() => sortedWorlds.value.find((world) => world.active) || sortedWorlds.value[0] || null)
+const packWorldOptions = computed(() => sortedWorlds.value)
+const selectedPackWorld = computed(() => packWorldOptions.value.find((world) => world.id === selectedPackWorldId.value) || activeWorldItem.value)
+const selectedWorldDatapacks = computed(() => detail.value?.worldDatapacks?.[selectedPackWorldId.value] || [])
+const resourcePacks = computed(() => detail.value?.resourcePacks || [])
 const sortedBackups = computed(() => [...(detail.value?.backups || [])].sort((a, b) => {
   const diff = comparableBackupTime(b) - comparableBackupTime(a)
   if (diff) return diff
@@ -3091,6 +3229,144 @@ const downloadBackup = async (backup) => {
   }
 }
 
+const ensurePackWorldSelection = () => {
+  if (packWorldOptions.value.some((world) => world.id === selectedPackWorldId.value)) return
+  selectedPackWorldId.value = activeWorldItem.value?.id || packWorldOptions.value[0]?.id || ''
+}
+
+const loadWorldDatapacks = async () => {
+  ensurePackWorldSelection()
+  if (!selectedPackWorldId.value) return []
+  loadingWorldDatapacks.value = true
+  try {
+    return await runWithToast(
+      () => minecraft.fetchWorldDatapacks(serverId.value, selectedPackWorldId.value),
+      { error: 'Datapacks refresh failed' },
+    ) || []
+  } finally {
+    loadingWorldDatapacks.value = false
+  }
+}
+
+const loadResourcePacks = async () => {
+  loadingResourcePacks.value = true
+  try {
+    return await runWithToast(
+      () => minecraft.fetchResourcePacks(serverId.value),
+      { error: 'Resource packs refresh failed' },
+    ) || []
+  } finally {
+    loadingResourcePacks.value = false
+  }
+}
+
+const selectDatapackUpload = () => {
+  datapackUploadInput.value?.click()
+}
+
+const selectResourcePackUpload = () => {
+  resourcePackUploadInput.value?.click()
+}
+
+const uploadSelectedDatapack = async (event) => {
+  const file = event.target.files?.[0]
+  event.target.value = ''
+  ensurePackWorldSelection()
+  if (!file || !selectedPackWorldId.value) return
+
+  const lowerName = file.name.toLowerCase()
+  if (!lowerName.endsWith('.zip') && !lowerName.endsWith('.jar')) {
+    toast({
+      title: 'Upload blocked',
+      description: 'Select a .zip or .jar datapack.',
+      variant: 'destructive',
+    })
+    return
+  }
+
+  const ok = window.confirm(`Upload ${file.name} to ${selectedPackWorld.value?.name || selectedPackWorldId.value}?`)
+  if (!ok) return
+
+  uploadingDatapack.value = true
+  try {
+    await runWithToast(
+      () => minecraft.uploadWorldDatapack(serverId.value, selectedPackWorldId.value, file, true),
+      {
+        success: 'Datapack uploaded',
+        description: file.name,
+        error: 'Datapack upload failed',
+      },
+    )
+  } finally {
+    uploadingDatapack.value = false
+  }
+}
+
+const toggleWorldDatapack = async (pack) => {
+  if (!selectedPackWorldId.value) return
+  const enabled = pack.enabled !== true
+  await withActionLock(namedActionKey('datapack', pack.file || pack.name, enabled ? 'enable' : 'disable'), () => runWithToast(
+    () => minecraft.setWorldDatapackEnabled(serverId.value, selectedPackWorldId.value, pack, enabled, true),
+    {
+      success: enabled ? 'Datapack enabled' : 'Datapack disabled',
+      description: pack.name || pack.file,
+      error: 'Datapack update failed',
+    },
+  ))
+}
+
+const deleteWorldDatapack = async (pack) => {
+  if (!selectedPackWorldId.value) return
+  const ok = window.confirm(`Delete datapack ${pack.name || pack.file}?`)
+  if (!ok) return
+  await withActionLock(namedActionKey('datapack', pack.file || pack.name, 'delete'), () => runWithToast(
+    () => minecraft.deleteWorldDatapack(serverId.value, selectedPackWorldId.value, pack, true),
+    {
+      success: 'Datapack deleted',
+      description: pack.name || pack.file,
+      error: 'Datapack delete failed',
+    },
+  ))
+}
+
+const uploadSelectedResourcePack = async (event) => {
+  const file = event.target.files?.[0]
+  event.target.value = ''
+  if (!file) return
+
+  if (!file.name.toLowerCase().endsWith('.zip')) {
+    toast({
+      title: 'Upload blocked',
+      description: 'Select a .zip resource pack.',
+      variant: 'destructive',
+    })
+    return
+  }
+
+  const ok = window.confirm(`Upload resource pack ${file.name}?`)
+  if (!ok) return
+
+  uploadingResourcePack.value = true
+  try {
+    const result = await runWithToast(
+      () => minecraft.uploadResourcePack(serverId.value, file, true),
+      {
+        success: 'Resource pack uploaded',
+        description: file.name,
+        error: 'Resource pack upload failed',
+      },
+    )
+    if (result?.sha1) {
+      settingsDraft.value = {
+        ...settingsDraft.value,
+        'resource-pack-sha1': result.sha1,
+      }
+    }
+  } finally {
+    uploadingResourcePack.value = false
+  }
+}
+
 const asBoolean = (value, fallback = false) => {
   if (typeof value === 'boolean') return value
   if (typeof value === 'string') {
@@ -3110,6 +3386,7 @@ const settingCurrentValue = (key) => {
   if (key === 'view-distance') return Number(settings['view-distance'] || 10)
   if (key === 'simulation-distance') return Number(settings['simulation-distance'] || 10)
   if (key === 'motd') return settings.motd || ''
+  if (key === 'require-resource-pack') return asBoolean(settings['require-resource-pack'], false)
   return settings[key] ?? ''
 }
 
@@ -3120,16 +3397,7 @@ const settingDisplayValue = (value) => {
 }
 
 const resetSettingsDraft = () => {
-  settingsDraft.value = {
-    'white-list': settingCurrentValue('white-list'),
-    'enforce-whitelist': settingCurrentValue('enforce-whitelist'),
-    pvp: settingCurrentValue('pvp'),
-    difficulty: settingCurrentValue('difficulty'),
-    'max-players': settingCurrentValue('max-players'),
-    'view-distance': settingCurrentValue('view-distance'),
-    'simulation-distance': settingCurrentValue('simulation-distance'),
-    motd: settingCurrentValue('motd'),
-  }
+  settingsDraft.value = Object.fromEntries(settingsKeys.map((key) => [key, settingCurrentValue(key)]))
 }
 
 const saveSettings = async () => {
@@ -3808,11 +4076,43 @@ watch(serverId, async (newServerId, oldServerId) => {
   }
   selectedLogFile.value = 'latest.log'
   logSearch.value = ''
+  selectedPackWorldId.value = ''
   resetSettingsDraft()
   await refresh()
   minecraft.startLogStream(newServerId)
   if (!minecraft.fallbackMode) minecraft.startStatusStream(newServerId, { interval: 5000, includePlayers: false })
+  if (activeTab.value === 'worlds') {
+    ensurePackWorldSelection()
+    loadWorldDatapacks()
+    loadResourcePacks()
+  }
 })
+
+watch(
+  packWorldOptions,
+  () => {
+    ensurePackWorldSelection()
+  },
+  { immediate: true },
+)
+
+watch(
+  selectedPackWorldId,
+  (worldId) => {
+    if (activeTab.value === 'worlds' && worldId) loadWorldDatapacks()
+  },
+)
+
+watch(
+  () => activeTab.value,
+  (tab) => {
+    if (tab !== 'worlds') return
+    ensurePackWorldSelection()
+    loadWorldDatapacks()
+    loadResourcePacks()
+  },
+  { immediate: true },
+)
 
 watch(
   () => detail.value?.settings,

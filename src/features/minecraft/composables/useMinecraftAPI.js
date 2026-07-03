@@ -594,6 +594,18 @@ export const useMinecraftAPI = () => {
     () => ({ worlds: createFallbackDetail(serverId).worlds }),
   )
 
+  const getWorldDatapacks = (serverId, worldId) => request(
+    `/servers/${serverId}/worlds/${encodeURIComponent(worldId)}/datapacks`,
+    {},
+    () => ({ worldId, packs: [] }),
+  )
+
+  const getResourcePacks = (serverId) => request(
+    `/servers/${serverId}/resource-packs`,
+    {},
+    () => ({ resourcePacks: [] }),
+  )
+
   const getBackups = (serverId) => request(
     `/servers/${serverId}/backups`,
     {},
@@ -732,18 +744,18 @@ export const useMinecraftAPI = () => {
     }),
   )
 
-  const uploadMod = async (serverId, file, confirmed = false) => {
+  const uploadRawFile = async (path, file, confirmed = false, contentType = 'application/octet-stream') => {
     loading.value = true
     error.value = null
 
     try {
-      const response = await fetchWithAuth(withQuery(`/servers/${serverId}/mods/upload`, {
+      const response = await fetchWithAuth(withQuery(path, {
         filename: file.name,
         confirmed: confirmed ? 'true' : '',
       }), {
         method: 'POST',
         headers: {
-          'Content-Type': file.type || 'application/java-archive',
+          'Content-Type': file.type || contentType,
           'X-Minecraft-Filename': encodeURIComponent(file.name),
           'X-Minecraft-Confirmed': confirmed ? 'true' : 'false',
         },
@@ -770,6 +782,39 @@ export const useMinecraftAPI = () => {
       loading.value = false
     }
   }
+
+  const uploadMod = (serverId, file, confirmed = false) => uploadRawFile(
+    `/servers/${serverId}/mods/upload`,
+    file,
+    confirmed,
+    'application/java-archive',
+  )
+
+  const uploadWorldDatapack = (serverId, worldId, file, confirmed = false) => uploadRawFile(
+    `/servers/${serverId}/worlds/${encodeURIComponent(worldId)}/datapacks/upload`,
+    file,
+    confirmed,
+    'application/zip',
+  )
+
+  const uploadResourcePack = (serverId, file, confirmed = false) => uploadRawFile(
+    `/servers/${serverId}/resource-packs/upload`,
+    file,
+    confirmed,
+    'application/zip',
+  )
+
+  const setWorldDatapackEnabled = (serverId, worldId, file, enabled, confirmed = false) => request(
+    `/servers/${serverId}/worlds/${encodeURIComponent(worldId)}/datapacks/${encodeURIComponent(file)}`,
+    { method: 'PATCH', body: { enabled, confirmed } },
+    () => ({ ok: true, file: enabled ? String(file).replace(/\.disabled$/, '') : `${String(file).replace(/\.disabled$/, '')}.disabled`, packs: [], restartRequired: true }),
+  )
+
+  const deleteWorldDatapack = (serverId, worldId, file, confirmed = false) => request(
+    `/servers/${serverId}/worlds/${encodeURIComponent(worldId)}/datapacks/${encodeURIComponent(file)}`,
+    { method: 'DELETE', body: { confirmed } },
+    () => ({ ok: true, file, packs: [], restartRequired: true }),
+  )
 
   const updateMod = (serverId, file, confirmed = false) => request(
     `/servers/${serverId}/mods/${encodeURIComponent(file)}/update`,
@@ -881,11 +926,13 @@ export const useMinecraftAPI = () => {
     getMaintenance,
     getMods,
     getModBackups,
+    getResourcePacks,
     getPlayers,
     getWhitelist,
     getOps,
     getBans,
     getWorlds,
+    getWorldDatapacks,
     getBackups,
     lifecycleAction,
     sendCommand,
@@ -901,6 +948,10 @@ export const useMinecraftAPI = () => {
     searchMods,
     installMod,
     uploadMod,
+    uploadWorldDatapack,
+    uploadResourcePack,
+    setWorldDatapackEnabled,
+    deleteWorldDatapack,
     updateMod,
     updateAllMods,
     restoreModBackup,
