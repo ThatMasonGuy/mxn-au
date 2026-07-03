@@ -1089,6 +1089,10 @@
                   <Download class="h-4 w-4" :class="{ 'animate-pulse': exportingActivity }" />
                   Export
                 </button>
+                <button class="settings-btn danger" :disabled="!activityItems.length" @click="clearServerActivity">
+                  <Trash2 class="h-4 w-4" />
+                  Clear
+                </button>
                 <History class="h-4 w-4 text-slate-400" />
               </div>
             </div>
@@ -2149,6 +2153,19 @@ const exportActivity = () => {
   } finally {
     exportingActivity.value = false
   }
+}
+
+const clearServerActivity = () => {
+  if (!activityItems.value.length) return
+  const label = detail.value?.label || serverId.value
+  const ok = window.confirm(`Clear ${activityItems.value.length} activity entries for ${label}? This only clears panel history in this browser.`)
+  if (!ok) return
+  const cleared = minecraft.clearActivity(serverId.value)
+  toast({
+    title: 'Activity cleared',
+    description: `${cleared} entries removed`,
+    variant: 'success',
+  })
 }
 
 const exportCommandHistory = () => {

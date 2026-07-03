@@ -416,6 +416,31 @@ export const useMinecraftStore = defineStore('minecraft', () => {
     return mergeActivityEntries(serverId, [entry])[0] || null
   }
 
+  function clearActivity(serverId = '') {
+    const targetId = String(serverId || '')
+    if (targetId) {
+      const removed = operationTrail.value[targetId]?.length || 0
+      if (!removed) return 0
+      const nextTrail = { ...operationTrail.value }
+      delete nextTrail[targetId]
+      operationTrail.value = nextTrail
+      persistActivity(operationTrail.value)
+      syncOperationalState(targetId)
+      return removed
+    }
+
+    const removed = Object.values(operationTrail.value).reduce((total, entries) => total + (entries?.length || 0), 0)
+    if (!removed) return 0
+    operationTrail.value = {}
+    persistActivity(operationTrail.value)
+    const knownIds = new Set([
+      ...servers.value.map((server) => server.id),
+      ...Object.keys(serverDetails.value),
+    ])
+    knownIds.forEach((id) => syncOperationalState(id))
+    return removed
+  }
+
   function recordResultActivity(serverId, result, fallback = {}) {
     return recordActivity(serverId, result?.activityEntry || {
       ...fallback,
@@ -1782,6 +1807,7 @@ export const useMinecraftStore = defineStore('minecraft', () => {
     activityFeed,
     activityForServer,
     restartReasonsForServer,
+    clearActivity,
     serverIconUrl,
     fetchServerIcon,
     setSelectedServer,

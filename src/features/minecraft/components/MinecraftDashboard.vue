@@ -314,6 +314,14 @@
             <h2 class="font-semibold text-white">Recent Activity</h2>
             <div class="flex items-center gap-2">
               <span class="text-xs text-slate-500">{{ filteredActivity.length }}/{{ activityItems.length }}</span>
+              <button
+                class="inline-flex h-8 items-center justify-center gap-1.5 rounded-md border border-rose-400/25 bg-rose-400/10 px-2.5 text-xs text-rose-100 hover:bg-rose-400/15 disabled:cursor-not-allowed disabled:opacity-40"
+                :disabled="!activityItems.length"
+                @click="clearFleetActivity"
+              >
+                <Trash2 class="h-3.5 w-3.5" />
+                Clear
+              </button>
               <History class="h-4 w-4 text-slate-400" />
             </div>
           </div>
@@ -400,6 +408,7 @@ import {
   Server,
   ShieldCheck,
   Square,
+  Trash2,
   Users,
 } from 'lucide-vue-next'
 import { useMinecraftStore } from '@/features/minecraft/stores/useMinecraftStore'
@@ -555,6 +564,18 @@ const exportFleetSnapshot = () => {
   } finally {
     exportingSnapshot.value = false
   }
+}
+
+const clearFleetActivity = () => {
+  if (!activityItems.value.length) return
+  const ok = window.confirm(`Clear ${activityItems.value.length} Minecraft activity entries? This only clears panel history in this browser.`)
+  if (!ok) return
+  const cleared = minecraft.clearActivity()
+  toast({
+    title: 'Activity cleared',
+    description: `${cleared} entries removed`,
+    variant: 'success',
+  })
 }
 
 const selectServer = async (serverId) => {
