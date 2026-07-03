@@ -299,11 +299,36 @@
         <section class="rounded-md border border-white/10 bg-[#0f151d] p-4">
           <div class="flex items-center justify-between gap-3">
             <h2 class="font-semibold text-white">Recent Activity</h2>
-            <History class="h-4 w-4 text-slate-400" />
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-slate-500">{{ filteredActivity.length }}/{{ activityItems.length }}</span>
+              <History class="h-4 w-4 text-slate-400" />
+            </div>
+          </div>
+          <div class="mt-3 flex flex-wrap gap-2">
+            <button
+              v-for="filter in activityFilters"
+              :key="filter.id"
+              class="rounded-md px-2.5 py-1.5 text-xs transition"
+              :class="activityFilter === filter.id ? 'bg-white text-slate-950' : 'bg-white/[0.04] text-slate-300 hover:bg-white/[0.08] hover:text-white'"
+              @click="activityFilter = filter.id"
+            >
+              {{ filter.label }} {{ filter.count }}
+            </button>
+          </div>
+          <div class="relative mt-3">
+            <Search class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+            <input
+              v-model="activitySearch"
+              class="h-9 w-full rounded-md border border-white/10 bg-black/30 pl-9 pr-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-sky-400/50"
+              placeholder="Search activity"
+            >
           </div>
           <div class="mt-4 space-y-2">
-            <div v-if="!recentActivity.length" class="rounded-md border border-white/10 bg-black/20 p-3 text-sm text-slate-500">
+            <div v-if="!activityItems.length" class="rounded-md border border-white/10 bg-black/20 p-3 text-sm text-slate-500">
               No panel activity yet.
+            </div>
+            <div v-else-if="!recentActivity.length" class="rounded-md border border-white/10 bg-black/20 p-3 text-sm text-slate-500">
+              No matching activity.
             </div>
             <div v-for="entry in recentActivity" :key="entry.id" class="rounded-md border border-white/10 bg-black/20 p-3">
               <div class="flex items-start justify-between gap-3">
@@ -373,10 +398,11 @@ const { toast } = useToast()
 const actionLocks = ref(new Set())
 const serverSearch = ref('')
 const serverFilter = ref('all')
+const activitySearch = ref('')
+const activityFilter = ref('all')
 const activeServerStates = new Set(['alive', 'warming', 'stopping'])
 const selected = computed(() => minecraft.selectedServer)
 const pendingRestartServers = computed(() => minecraft.servers.filter((server) => restartReasonCount(server.id)))
-const recentActivity = computed(() => minecraft.activityFeed.slice(0, 6))
 const statusStreamCount = computed(() => minecraft.statusStreamingIds?.size || 0)
 const serverFilters = computed(() => {
   const servers = minecraft.servers
@@ -392,6 +418,23 @@ const visibleServers = computed(() => {
   const query = serverSearch.value.trim().toLowerCase()
   return minecraft.servers.filter((server) => serverMatchesFilter(server) && serverMatchesSearch(server, query))
 })
+const activityItems = computed(() => minecraft.activityFeed)
+const activityFilters = computed(() => {
+  const items = activityItems.value
+  return [
+    { id: 'all', label: 'All', count: items.length },
+    { id: 'attention', label: 'Attention', count: items.filter((entry) => ['error', 'warning', 'failed'].includes(entry.status)).length },
+    { id: 'restart', label: 'Restart', count: items.filter((entry) => entry.restartRequired).length },
+    { id: 'lifecycle', label: 'Lifecycle', count: items.filter((entry) => entry.type === 'lifecycle').length },
+    { id: 'mods', label: 'Mods', count: items.filter((entry) => entry.type === 'mods').length },
+    { id: 'players', label: 'Players', count: items.filter((entry) => entry.type === 'players').length },
+  ]
+})
+const filteredActivity = computed(() => {
+  const query = activitySearch.value.trim().toLowerCase()
+  return activityItems.value.filter((entry) => activityMatchesFilter(entry) && activityMatchesSearch(entry, query))
+})
+const recentActivity = computed(() => filteredActivity.value.slice(0, 8))
 
 const errorMessage = (error) => error?.message || String(error || 'Unexpected Minecraft error')
 
@@ -471,6 +514,26 @@ const withActionLock = async (key, action) => {
 
 const activityServerLabel = (entry) => {
   return minecraft.servers.find((server) => server.id === entry.serverId)?.label || entry.serverId
+}
+
+const activityMatchesFilter = (entry) => {
+  if (activityFilter.value === 'attention') return ['error', 'warning', 'failed'].includes(entry.status)
+  if (activityFilter.value === 'restart') return entry.restartRequired
+  if (activityFilter.value === 'all') return true
+  return entry.type === activityFilter.value
+}
+
+const activityMatchesSearch = (entry, query) => {
+  if (!query) return true
+  return [
+    entry?.label,
+    entry?.summary,
+    entry?.status,
+    entry?.type,
+    entry?.target,
+    entry?.actor,
+    activityServerLabel(entry),
+  ].some((value) => String(value || '').toLowerCase().includes(query))
 }
 
 const serverMatchesFilter = (server) => {
