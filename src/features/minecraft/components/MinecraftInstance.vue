@@ -880,11 +880,21 @@
                   <span class="rounded bg-black/10 px-1.5 py-0.5 text-xs">{{ filter.count }}</span>
                 </button>
               </div>
-              <input
-                v-model="worldSearch"
-                class="h-9 w-full rounded-md border border-white/10 bg-black/30 px-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-sky-400/50 md:w-64"
-                placeholder="Filter worlds"
-              >
+              <div class="flex w-full flex-col gap-2 sm:flex-row md:w-auto">
+                <button
+                  class="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-white/10 bg-white/[0.04] px-3 text-sm text-slate-100 hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-40"
+                  :disabled="(!visibleWorlds.length && !visibleBackups.length) || exportingWorlds"
+                  @click="exportWorlds"
+                >
+                  <Download class="h-4 w-4" :class="{ 'animate-pulse': exportingWorlds }" />
+                  Export
+                </button>
+                <input
+                  v-model="worldSearch"
+                  class="h-9 w-full rounded-md border border-white/10 bg-black/30 px-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-sky-400/50 md:w-64"
+                  placeholder="Filter worlds"
+                >
+              </div>
             </div>
 
             <div v-if="!visibleWorlds.length" class="rounded-md border border-white/10 bg-[#0f151d] p-4 text-sm text-slate-500">
@@ -1499,6 +1509,7 @@ const diagnosticsFilter = ref('all')
 const exportingDiagnostics = ref(false)
 const exportingConfig = ref(false)
 const exportingMods = ref(false)
+const exportingWorlds = ref(false)
 const settingsDraft = ref({})
 const savingSettings = ref(false)
 const installingProjectId = ref(null)
@@ -2252,6 +2263,65 @@ const exportMods = () => {
     })
   } finally {
     exportingMods.value = false
+  }
+}
+
+const exportWorlds = () => {
+  exportingWorlds.value = true
+  try {
+    const exportedAt = new Date().toISOString()
+    const payload = {
+      serverId: serverId.value,
+      server: detail.value?.label || serverId.value,
+      exportedAt,
+      activeWorld: detail.value?.activeWorld || '',
+      lastBackupAt: detail.value?.lastBackupAt || detail.value?.backup?.lastSuccessAt || '',
+      lastBackupStatus: detail.value?.lastBackupStatus || detail.value?.backup?.status || 'unknown',
+      maintenance: detail.value?.maintenance || null,
+      filters: {
+        world: worldFilter.value,
+        worldSearch: worldSearch.value.trim(),
+        backup: backupFilter.value,
+        backupSearch: backupSearch.value.trim(),
+      },
+      totals: {
+        visibleWorlds: visibleWorlds.value.length,
+        worlds: (detail.value?.worlds || []).length,
+        activeWorlds: (detail.value?.worlds || []).filter((world) => world.active).length,
+        datapackWorlds: (detail.value?.worlds || []).filter((world) => world.hasDatapacks).length,
+        visibleBackups: visibleBackups.value.length,
+        backups: (detail.value?.backups || []).length,
+        successfulBackups: (detail.value?.backups || []).filter((backup) => backup.status === 'success').length,
+      },
+      worlds: visibleWorlds.value.map((world) => ({
+        id: world.id,
+        name: world.name,
+        path: world.path,
+        active: world.active,
+        size: world.size,
+        updatedAt: world.updatedAt || world.lastPlayed || world.mtime || world.modifiedAt,
+        createdAt: world.createdAt,
+        hasDatapacks: world.hasDatapacks,
+      })),
+      backups: visibleBackups.value.map((backup) => ({
+        id: backup.id,
+        label: backup.label,
+        status: backup.status,
+        size: backup.size,
+        path: backup.path,
+        createdAt: backup.createdAt || backup.updatedAt || backup.mtime || backup.timestamp,
+      })),
+    }
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' })
+    const stamp = exportedAt.replace(/[:.]/g, '-')
+    triggerDownload(blob, `minecraft-${serverId.value}-worlds-${stamp}.json`)
+    toast({
+      title: 'World manifest ready',
+      description: `${visibleWorlds.value.length} worlds and ${visibleBackups.value.length} backups exported`,
+      variant: 'success',
+    })
+  } finally {
+    exportingWorlds.value = false
   }
 }
 
