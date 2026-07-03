@@ -355,7 +355,13 @@
             <div class="rounded-md border border-white/10 bg-[#0f151d] p-4">
               <div class="flex items-center justify-between gap-3">
                 <h2 class="font-semibold text-white">History</h2>
-                <span class="text-xs text-slate-500">{{ visibleCommandHistory.length }}/{{ commandHistoryItems.length }}</span>
+                <div class="flex items-center gap-2">
+                  <button class="settings-btn" :disabled="!visibleCommandHistory.length || exportingCommandHistory" @click="exportCommandHistory">
+                    <Download class="h-4 w-4" :class="{ 'animate-pulse': exportingCommandHistory }" />
+                    Export
+                  </button>
+                  <span class="text-xs text-slate-500">{{ visibleCommandHistory.length }}/{{ commandHistoryItems.length }}</span>
+                </div>
               </div>
               <div class="mt-3 flex flex-wrap gap-2">
                 <button
@@ -1439,6 +1445,7 @@ const activeTab = ref('overview')
 const command = ref('')
 const commandHistorySearch = ref('')
 const commandHistoryFilter = ref('all')
+const exportingCommandHistory = ref(false)
 const logSearch = ref('')
 const logFilter = ref('all')
 const logTail = ref(300)
@@ -2130,6 +2137,37 @@ const exportActivity = () => {
     })
   } finally {
     exportingActivity.value = false
+  }
+}
+
+const exportCommandHistory = () => {
+  exportingCommandHistory.value = true
+  try {
+    const exportedAt = new Date().toISOString()
+    const payload = {
+      serverId: serverId.value,
+      server: detail.value?.label || serverId.value,
+      exportedAt,
+      filters: {
+        risk: commandHistoryFilter.value,
+        search: commandHistorySearch.value.trim(),
+      },
+      totals: {
+        visible: visibleCommandHistory.value.length,
+        total: commandHistoryItems.value.length,
+      },
+      history: visibleCommandHistory.value,
+    }
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' })
+    const stamp = exportedAt.replace(/[:.]/g, '-')
+    triggerDownload(blob, `minecraft-${serverId.value}-rcon-history-${stamp}.json`)
+    toast({
+      title: 'RCON history export ready',
+      description: `${visibleCommandHistory.value.length} commands exported`,
+      variant: 'success',
+    })
+  } finally {
+    exportingCommandHistory.value = false
   }
 }
 
