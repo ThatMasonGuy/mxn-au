@@ -603,7 +603,40 @@
             </div>
           </div>
 
-          <div class="grid gap-4 xl:grid-cols-2">
+          <div class="grid gap-4 xl:grid-cols-3">
+            <div class="rounded-md border border-white/10 bg-[#0f151d] p-4">
+              <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <h2 class="font-semibold text-white">Whitelist Roster</h2>
+                  <p class="mt-1 text-sm text-slate-400">{{ whitelistEntries.length }} allowed players</p>
+                </div>
+              </div>
+
+              <div class="mt-4 space-y-2">
+                <div v-if="!whitelistEntries.length" class="rounded-md border border-white/10 bg-black/20 p-3 text-sm text-slate-500">
+                  No whitelisted players.
+                </div>
+                <div v-for="entry in whitelistEntries" :key="displayWhitelistKey(entry)" class="flex flex-col gap-3 rounded-md border border-white/10 bg-black/20 p-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div class="min-w-0">
+                    <div class="flex flex-wrap items-center gap-2">
+                      <span class="font-medium text-white">{{ displayWhitelistName(entry) }}</span>
+                      <span v-if="whitelistPlayer(entry)?.online" class="rounded-md bg-emerald-400/10 px-2 py-1 text-xs text-emerald-200">Online</span>
+                      <span v-if="whitelistPlayer(entry)?.op" class="rounded-md bg-amber-400/10 px-2 py-1 text-xs text-amber-200">OP</span>
+                    </div>
+                    <div class="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500">
+                      <span v-if="displayWhitelistUuid(entry)" class="font-mono">{{ displayWhitelistUuid(entry) }}</span>
+                      <span v-if="whitelistPlayer(entry)?.lastSeen">{{ whitelistPlayer(entry).lastSeen }}</span>
+                      <span v-if="!whitelistPlayer(entry)">Whitelist entry</span>
+                    </div>
+                  </div>
+                  <button class="player-btn" :disabled="actionBusy(namedActionKey('whitelist', displayWhitelistName(entry), 'remove'))" @click="removeWhitelistEntry(entry)">
+                    <ShieldCheck class="h-3.5 w-3.5" />
+                    Remove
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <div class="rounded-md border border-white/10 bg-[#0f151d] p-4">
               <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div>
@@ -1863,6 +1896,7 @@ const visibleActivityItems = computed(() => {
 })
 const pendingRestartReasons = computed(() => minecraft.restartReasonsForServer(serverId.value))
 const restartRequired = computed(() => pendingRestartReasons.value.length > 0)
+const whitelistEntries = computed(() => (detail.value?.whitelist || []).filter((entry) => displayWhitelistName(entry)))
 const bannedPlayersList = computed(() => (detail.value?.bannedPlayers || []).filter((entry) => displayBanName(entry)))
 const bannedIpsList = computed(() => (detail.value?.bannedIps || []).filter((entry) => displayBanIp(entry)))
 const sortedWorlds = computed(() => [...(detail.value?.worlds || [])].sort((a, b) => {
@@ -3169,6 +3203,23 @@ const addWhitelist = async () => {
   newPlayerName.value = ''
 }
 
+const removeWhitelistEntry = async (entry) => {
+  const name = displayWhitelistName(entry)
+  if (!name) return
+  await withActionLock(namedActionKey('whitelist', name, 'remove'), async () => {
+    const ok = window.confirm(`Remove ${name} from whitelist?`)
+    if (!ok) return null
+    return runWithToast(
+      () => minecraft.updateWhitelist(serverId.value, name, 'remove', true),
+      {
+        success: 'Whitelist remove',
+        description: name,
+        error: 'Whitelist update failed',
+      },
+    )
+  })
+}
+
 const addPlayerBlacklist = async () => {
   const name = newBlacklistName.value.trim()
   if (!name) return
@@ -3540,6 +3591,17 @@ const formatDuration = (seconds) => {
 
 const formatNumber = (value) => Number(value || 0).toLocaleString()
 
+const displayWhitelistName = (entry) => entry?.name || entry?.playerName || entry?.target || (typeof entry === 'string' ? entry : '')
+const displayWhitelistUuid = (entry) => entry?.uuid || entry?.id || ''
+const displayWhitelistKey = (entry) => `${displayWhitelistName(entry)}-${displayWhitelistUuid(entry)}`
+const whitelistPlayer = (entry) => {
+  const name = displayWhitelistName(entry).toLowerCase()
+  const uuid = String(displayWhitelistUuid(entry) || '').toLowerCase()
+  return (detail.value?.players || []).find((player) => (
+    (name && player.name?.toLowerCase() === name) ||
+    (uuid && player.uuid?.toLowerCase() === uuid)
+  ))
+}
 const displayBanName = (entry) => entry?.name || entry?.playerName || entry?.target || ''
 const displayBanIp = (entry) => entry?.ip || entry?.target || ''
 
