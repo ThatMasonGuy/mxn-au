@@ -1,4 +1,6 @@
 import { ref, computed } from 'vue'
+import { onAuthStateChanged } from 'firebase/auth'
+import { auth } from '@/firebase'
 import { useMainStore } from '@/shared/stores/useMainStore'
 import {
   createFallbackDetail,
@@ -13,6 +15,20 @@ const baseUrl = (explicitApiUrl || derivedApiUrl || '').replace(/\/$/, '')
 const API_ROOT = baseUrl.endsWith('/api/minecraft') ? baseUrl : `${baseUrl}/api/minecraft`
 
 const destructivePlayerActions = new Set(['ban', 'pardon', 'kick', 'op', 'deop'])
+let authReadyPromise = null
+
+function waitForAuthUser() {
+  if (auth.currentUser) return Promise.resolve(auth.currentUser)
+  if (!authReadyPromise) {
+    authReadyPromise = new Promise((resolve) => {
+      const unsubscribe = onAuthStateChanged(auth, (user) => {
+        unsubscribe()
+        resolve(user || null)
+      })
+    })
+  }
+  return authReadyPromise
+}
 
 function withQuery(path, params = {}) {
   const url = new URL(`${API_ROOT}${path}`, window.location.origin)
@@ -134,20 +150,116 @@ export const useMinecraftAPI = () => {
 
   const endpoint = computed(() => API_ROOT)
 
-  const authHeaders = () => {
+  const getFreshToken = async (forceRefresh = false) => {
+    const user = auth.currentUser || await waitForAuthUser()
+    if (!user) return mainStore.token || ''
+    try {
+      const token = await user.getIdToken(forceRefresh)
+      if (token && token !== mainStore.token) {
+        mainStore.token = token
+      }
+      return token || mainStore.token || ''
+    } catch {
+      return mainStore.token || ''
+    }
+  }
+
+  const authHeaders = async (options = {}) => {
     const headers = { 'Content-Type': 'application/json' }
-    if (mainStore.token) {
-      headers.Authorization = `Bearer ${mainStore.token}`
+    const token = await getFreshToken(options.forceRefresh)
+    if (token) {
+      headers.Authorization = `Bearer ${token}`
     }
     return headers
   }
 
-  const authOnlyHeaders = () => {
+  const authOnlyHeaders = async (options = {}) => {
     const headers = {}
-    if (mainStore.token) {
-      headers.Authorization = `Bearer ${mainStore.token}`
+    const token = await getFreshToken(options.forceRefresh)
+    if (token) {
+      headers.Authorization = `Bearer ${token}`
     }
     return headers
+  }
+
+  const fetchWithAuth = async (url, init = {}, options = {}) => {
+    const headerFactory = options.authOnly ? authOnlyHeaders : authHeaders
+    const send = async (forceRefresh = false) => fetch(url, {
+      ...init,
+      headers: {
+        ...(await headerFactory({ forceRefresh })),
+        ...(init.headers || {}),
+      },
+    })
+
+    let response = await send(false)
+    if (response.status === 401 && options.retryAuth !== false && auth.currentUser) {
+      response = await send(true)
+    }
+    return response
+  }
+
+  const openAuthenticatedSocket = (url, handlers = {}) => {
+    let ws = null
+    let stopped = false
+    const emit = (event) => handlers.onEvent?.(event)
+
+    getFreshToken(false)
+      .then((token) => {
+        if (stopped) return
+        if (!token) {
+          emit({
+            type: 'warning',
+            message: handlers.authPendingMessage || 'Waiting for auth before opening stream',
+          })
+          emit({ type: 'closed' })
+          stopped = true
+          return
+        }
+
+        ws = new WebSocket(url)
+
+        ws.onopen = () => {
+          if (stopped) {
+            ws.close()
+            return
+          }
+          ws.send(JSON.stringify({ token }))
+        }
+
+        ws.onmessage = (event) => {
+          try {
+            emit(JSON.parse(event.data))
+          } catch (err) {
+            emit({
+              type: 'warning',
+              message: handlers.invalidMessage?.(err) || `Invalid stream message: ${err.message}`,
+            })
+          }
+        }
+
+        ws.onclose = () => {
+          if (stopped) return
+          stopped = true
+          emit({ type: 'closed' })
+        }
+
+        ws.onerror = () => {
+          emit({ type: 'error', message: handlers.errorMessage || 'Minecraft stream socket error' })
+        }
+      })
+      .catch((err) => {
+        if (stopped) return
+        stopped = true
+        emit({ type: 'error', message: err.message || handlers.errorMessage || 'Minecraft stream authentication failed' })
+      })
+
+    return () => {
+      stopped = true
+      if (!ws) return
+      if (ws.readyState === WebSocket.CONNECTING) return
+      ws.close()
+    }
   }
 
   const request = async (path, options = {}, fallback) => {
@@ -156,12 +268,9 @@ export const useMinecraftAPI = () => {
     const method = options.method || 'GET'
 
     try {
-      const response = await fetch(withQuery(path, options.query), {
+      const response = await fetchWithAuth(withQuery(path, options.query), {
         method,
-        headers: {
-          ...authHeaders(),
-          ...(options.headers || {}),
-        },
+        headers: options.headers || {},
         body: options.body === undefined ? undefined : JSON.stringify(options.body),
       })
 
@@ -206,10 +315,9 @@ export const useMinecraftAPI = () => {
 
   const getServerIcon = async (serverId, variant = 'default') => {
     try {
-      const response = await fetch(withQuery(`/servers/${serverId}/icon`, { variant }), {
+      const response = await fetchWithAuth(withQuery(`/servers/${serverId}/icon`, { variant }), {
         method: 'GET',
-        headers: authOnlyHeaders(),
-      })
+      }, { authOnly: true })
 
       if (response.status === 404) {
         return { available: false, status: response.status }
@@ -281,13 +389,12 @@ export const useMinecraftAPI = () => {
     error.value = null
 
     try {
-      const response = await fetch(withQuery(`/servers/${serverId}/logs/export`, {
+      const response = await fetchWithAuth(withQuery(`/servers/${serverId}/logs/export`, {
         file: options.file || 'latest.log',
         tail: options.tail || options.lines || 200,
         query: options.query || '',
       }), {
         method: 'GET',
-        headers: authHeaders(),
       })
       const text = await response.text()
 
@@ -323,10 +430,9 @@ export const useMinecraftAPI = () => {
     error.value = null
 
     try {
-      const response = await fetch(withQuery(path), {
+      const response = await fetchWithAuth(withQuery(path), {
         method: 'GET',
-        headers: authOnlyHeaders(),
-      })
+      }, { authOnly: true })
 
       if (!response.ok) {
         const message = await response.text()
@@ -581,19 +687,18 @@ export const useMinecraftAPI = () => {
     error.value = null
 
     try {
-      const response = await fetch(withQuery(`/servers/${serverId}/mods/upload`, {
+      const response = await fetchWithAuth(withQuery(`/servers/${serverId}/mods/upload`, {
         filename: file.name,
         confirmed: confirmed ? 'true' : '',
       }), {
         method: 'POST',
         headers: {
-          ...authOnlyHeaders(),
           'Content-Type': file.type || 'application/java-archive',
           'X-Minecraft-Filename': encodeURIComponent(file.name),
           'X-Minecraft-Confirmed': confirmed ? 'true' : 'false',
         },
         body: file,
-      })
+      }, { authOnly: true })
 
       const contentType = response.headers.get('content-type') || ''
       const data = contentType.includes('application/json') ? await response.json() : await response.text()
@@ -685,69 +790,23 @@ export const useMinecraftAPI = () => {
 
   const streamLogs = (serverId, onLog) => {
     const wsRoot = API_ROOT.replace(/^http/, 'ws')
-    const ws = new WebSocket(`${wsRoot}/servers/${serverId}/logs/stream`)
-    let closed = false
-
-    ws.onopen = () => {
-      ws.send(JSON.stringify({ token: mainStore.token }))
-    }
-
-    ws.onmessage = (event) => {
-      try {
-        onLog(JSON.parse(event.data))
-      } catch (err) {
-        onLog({ type: 'warning', serverId, message: `Invalid log stream message: ${err.message}` })
-      }
-    }
-
-    ws.onclose = () => {
-      if (closed) return
-      closed = true
-      onLog({ type: 'closed', serverId })
-    }
-
-    ws.onerror = () => {
-      onLog({ type: 'error', serverId, message: 'Log stream socket error' })
-    }
-
-    return () => {
-      closed = true
-      ws.close()
-    }
+    return openAuthenticatedSocket(`${wsRoot}/servers/${serverId}/logs/stream`, {
+      onEvent: (event) => onLog({ serverId, ...event }),
+      invalidMessage: (err) => `Invalid log stream message: ${err.message}`,
+      errorMessage: 'Log stream socket error',
+      authPendingMessage: 'Waiting for auth before opening log stream',
+    })
   }
 
   const streamStatus = (serverId, onStatus, options = {}) => {
-    const ws = new WebSocket(withQuery(`/servers/${serverId}/status/stream`, {
+    return openAuthenticatedSocket(withQuery(`/servers/${serverId}/status/stream`, {
       interval: options.interval || options.intervalMs || 5000,
-    }).replace(/^http/, 'ws'))
-    let closed = false
-
-    ws.onopen = () => {
-      ws.send(JSON.stringify({ token: mainStore.token }))
-    }
-
-    ws.onmessage = (event) => {
-      try {
-        onStatus(JSON.parse(event.data))
-      } catch (err) {
-        onStatus({ type: 'warning', serverId, message: `Invalid status stream message: ${err.message}` })
-      }
-    }
-
-    ws.onclose = () => {
-      if (closed) return
-      closed = true
-      onStatus({ type: 'closed', serverId })
-    }
-
-    ws.onerror = () => {
-      onStatus({ type: 'error', serverId, message: 'Status stream socket error' })
-    }
-
-    return () => {
-      closed = true
-      ws.close()
-    }
+    }).replace(/^http/, 'ws'), {
+      onEvent: (event) => onStatus({ serverId, ...event }),
+      invalidMessage: (err) => `Invalid status stream message: ${err.message}`,
+      errorMessage: 'Status stream socket error',
+      authPendingMessage: 'Waiting for auth before opening status stream',
+    })
   }
 
   return {
