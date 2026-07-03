@@ -904,12 +904,20 @@
           </div>
 
           <div v-if="modSearchResults.length" class="grid gap-3 lg:grid-cols-2">
-            <article v-for="project in modSearchResults" :key="project.projectId || project.slug" class="rounded-md border border-violet-400/15 bg-violet-400/[0.06] p-4">
+            <article v-for="project in rankedModSearchResults" :key="project.projectId || project.slug" class="rounded-md border border-violet-400/15 bg-violet-400/[0.06] p-4">
               <div class="flex gap-3">
                 <img v-if="project.iconUrl" :src="project.iconUrl" :alt="project.title" class="h-12 w-12 rounded-md object-cover">
                 <div class="min-w-0 flex-1">
                   <div class="flex flex-wrap items-center gap-2">
                     <h3 class="truncate font-semibold text-white">{{ project.title }}</h3>
+                    <span
+                      v-if="modSearchMatchLabel(project)"
+                      class="rounded-md px-2 py-1 text-xs"
+                      :class="modSearchMatchTone(project)"
+                    >
+                      {{ modSearchMatchLabel(project) }}
+                    </span>
+                    <span v-if="project.installedMatch" class="rounded-md bg-sky-400/10 px-2 py-1 text-xs text-sky-200">Installed</span>
                     <span class="rounded-md bg-white/[0.06] px-2 py-1 text-xs text-slate-300">{{ project.serverSide }}</span>
                     <span
                       v-if="project.compatibility"
@@ -929,9 +937,9 @@
               </div>
 
               <div class="mt-3 flex justify-end">
-                <button class="mod-btn" :disabled="installingProjectId === (project.projectId || project.slug) || actionBusy(namedActionKey('mod-project', project.projectId || project.slug, 'install'))" @click="installModProject(project)">
+                <button class="mod-btn" :disabled="project.installedMatch || installingProjectId === (project.projectId || project.slug) || actionBusy(namedActionKey('mod-project', project.projectId || project.slug, 'install'))" @click="installModProject(project)">
                   <Download class="h-3.5 w-3.5" />
-                  Install
+                  {{ project.installedMatch ? 'Installed' : 'Install' }}
                 </button>
               </div>
             </article>
@@ -1841,6 +1849,22 @@ const visibleMods = computed(() => {
   })
 })
 const modSearchResults = computed(() => minecraft.modSearchResults?.[serverId.value] || [])
+const rankedModSearchResults = computed(() => {
+  const query = modSearch.value.trim()
+  return modSearchResults.value
+    .map((project, index) => ({
+      ...project,
+      installedMatch: installedModForProject(project),
+      searchScore: modSearchScore(project, query),
+      searchIndex: index,
+    }))
+    .sort((a, b) => {
+      if (b.searchScore !== a.searchScore) return b.searchScore - a.searchScore
+      const downloadsDiff = Number(b.downloads || 0) - Number(a.downloads || 0)
+      if (downloadsDiff) return downloadsDiff
+      return a.searchIndex - b.searchIndex
+    })
+})
 const modUpdateSummary = computed(() => minecraft.modUpdateSummaries?.[serverId.value] || null)
 const modCheckSummary = computed(() => {
   const mods = detail.value?.mods || []
@@ -2162,6 +2186,95 @@ const modDisplayName = (mod) => String(mod?.modrinthTitle || mod?.name || mod?.i
 const modProjectTitle = (mod) => mod?.modrinthTitle || mod?.name || mod?.id || mod?.file || 'Unknown mod'
 const modIconUrl = (mod) => mod?.modrinthIconUrl || mod?.iconUrl || ''
 const modSummary = (mod) => mod?.modrinthSummary || mod?.modrinthDescription || mod?.description || ''
+const normalizeModSearchText = (value) => String(value || '')
+  .toLowerCase()
+  .replace(/\.jar$/i, '')
+  .replace(/[-_.+:[\](){}]/g, ' ')
+  .replace(/\b(fabric|forge|quilt|neoforge|mc|minecraft|mod|server)\b/g, ' ')
+  .replace(/\b\d+(?:\.\d+){1,3}\b/g, ' ')
+  .replace(/\s+/g, ' ')
+  .trim()
+const modSearchTokens = (value) => normalizeModSearchText(value)
+  .split(' ')
+  .filter((token) => token.length >= 2)
+const projectSearchText = (project) => [
+  project?.title,
+  project?.slug,
+  project?.projectId,
+  project?.description,
+  project?.latestVersion,
+  project?.serverSide,
+  project?.compatibility,
+  ...(Array.isArray(project?.categories) ? project.categories : []),
+].join(' ')
+const modProjectIdentityValues = (project) => [
+  project?.projectId,
+  project?.slug,
+  project?.title,
+  project?.href?.split('/').filter(Boolean).pop(),
+].map(normalizeModSearchText).filter(Boolean)
+const installedModIdentityValues = (mod) => [
+  mod?.modrinthProjectId,
+  mod?.projectId,
+  mod?.modrinthSlug,
+  mod?.modrinthTitle,
+  mod?.name,
+  mod?.id,
+  mod?.file,
+].map(normalizeModSearchText).filter(Boolean)
+const installedModForProject = (project) => {
+  const projectValues = modProjectIdentityValues(project)
+  if (!projectValues.length) return null
+  return (detail.value?.mods || []).find((mod) => {
+    const installedValues = installedModIdentityValues(mod)
+    return projectValues.some((projectValue) => installedValues.includes(projectValue))
+  }) || null
+}
+const modSearchScore = (project, query) => {
+  const normalizedQuery = normalizeModSearchText(query)
+  const projectTitle = normalizeModSearchText(project?.title)
+  const projectSlug = normalizeModSearchText(project?.slug)
+  const projectId = normalizeModSearchText(project?.projectId)
+  const haystack = normalizeModSearchText(projectSearchText(project))
+  const tokens = modSearchTokens(query)
+  let score = 0
+
+  if (normalizedQuery) {
+    if ([projectTitle, projectSlug, projectId].includes(normalizedQuery)) score += 120
+    if (projectTitle.startsWith(normalizedQuery) || projectSlug.startsWith(normalizedQuery)) score += 80
+    if (projectTitle.includes(normalizedQuery) || projectSlug.includes(normalizedQuery)) score += 50
+    tokens.forEach((token) => {
+      if (projectTitle.split(' ').includes(token) || projectSlug.split(' ').includes(token)) score += 18
+      else if (haystack.includes(token)) score += 6
+    })
+  }
+
+  if (project?.compatibility === 'server-compatible') score += 12
+  else if (project?.compatibility === 'loader-match') score += 8
+  else if (project?.compatibility) score -= 10
+  if (project?.serverSide === 'required' || project?.serverSide === 'optional') score += 8
+  if (installedModForProject(project)) score += 30
+  score += Math.min(Math.log10(Number(project?.downloads || 0) + 1), 7)
+  return score
+}
+const modSearchMatchLabel = (project) => {
+  if (project.installedMatch) return ''
+  const query = normalizeModSearchText(modSearch.value)
+  if (!query) return ''
+  const exact = modProjectIdentityValues(project).includes(query)
+  if (exact) return 'Exact'
+  const title = normalizeModSearchText(project?.title)
+  const slug = normalizeModSearchText(project?.slug)
+  if (title.startsWith(query) || slug.startsWith(query)) return 'Strong'
+  if (project.searchScore >= 40) return 'Likely'
+  return ''
+}
+const modSearchMatchTone = (project) => {
+  if (project.installedMatch) return 'bg-sky-400/10 text-sky-200'
+  if (modSearchMatchLabel(project) === 'Exact') return 'bg-emerald-400/10 text-emerald-200'
+  if (modSearchMatchLabel(project) === 'Strong') return 'bg-cyan-400/10 text-cyan-200'
+  return 'bg-violet-400/10 text-violet-200'
+}
 const playerMatchesFilter = (player) => {
   if (playerFilter.value === 'online') return player.online
   if (playerFilter.value === 'ops') return player.op
