@@ -38,6 +38,8 @@ router.beforeEach(async (to, from, next) => {
 })
 
 router.afterEach((to, from) => {
+    updateMetaTagsEnhanced(to)
+
     // Hide the loading screen
     stopLoading()
     

@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "node scripts/generate-seo-artifacts.js --sitemap && vite build && node scripts/generate-seo-artifacts.js --routes",
     "preview": "vite preview",
+    "seo": "node scripts/generate-seo-artifacts.js --sitemap",
     "copy-files": "node scripts/copy-files.js"
   },
   "dependencies": {

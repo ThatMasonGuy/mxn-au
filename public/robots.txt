@@ -9,14 +9,15 @@ Allow: /casino
 Allow: /translate
 Allow: /topheroes
 Allow: /everhomes
-Allow: /minecraft
 Allow: /dnd
+Allow: /destiny/usage
 Allow: /devtools$
 Allow: /professional$
 
 # Block all authentication-required sections
 Disallow: /personal
-Disallow: /destiny
+Disallow: /destiny$
+Disallow: /minecraft
 Disallow: /cod/admin
 
 # Block all admin areas
@@ -30,6 +31,9 @@ Disallow: /topheroes/tools/rankings/builder
 Disallow: /topheroes/tools/rankings/weights
 Disallow: /topheroes/tools/rankings/migrate
 Disallow: /translate/rebuild
+Disallow: /translate/bot/login
+Disallow: /translate/bot/dashboard
+Disallow: /translate/bot/config
 
 # Block professional authenticated areas
 Disallow: /professional/home
