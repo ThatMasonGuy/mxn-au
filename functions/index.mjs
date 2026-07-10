@@ -45,6 +45,11 @@ export { createAutoTranslatePair } from './api/createAutoTranslatePair.mjs';
 
 // Everhomes Functions
 export { generateInspectionReport } from './everhomes/generateInspectionReport.mjs';
+export {
+    syncEverhomesDraft,
+    getEverhomesDraft,
+    recordEverhomesUploadFailure,
+} from './everhomes/inspectionDrafts.mjs';
 export { resendReport } from './everhomes/resendReport.mjs';
 export { regenerateReport } from './everhomes/regenerateReport.mjs';
 

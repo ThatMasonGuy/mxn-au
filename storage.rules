@@ -3,30 +3,47 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
 
+    function isImageWithinLimit() {
+      return request.resource.size < 15 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    // Report staff deliberately remain unauthenticated. A 256-bit resume key
+    // acts as a narrowly-scoped capability instead: its value must match the
+    // server-created draft before any image can be written or deleted.
+    function hasDraftWriteKey(collection, reportId) {
+      return request.resource.metadata.everhomesDraftKey != null
+        && firestore.get(/databases/(default)/documents/$(collection)/$(reportId))
+          .data.draftAccessKey == request.resource.metadata.everhomesDraftKey;
+    }
+
+    function hasStoredDraftWriteKey(collection, reportId) {
+      return resource.metadata.everhomesDraftKey != null
+        && firestore.get(/databases/(default)/documents/$(collection)/$(reportId))
+          .data.draftAccessKey == resource.metadata.everhomesDraftKey;
+    }
+
     // ============================
     // Inspection Files (photos, marketing, signatures)
     // ============================
     match /inspections/{inspectionId}/{subfolder}/{filename} {
+      allow create, update: if isImageWithinLimit()
+        && hasDraftWriteKey('inspections', inspectionId);
 
-      // Upload only: image files under 15MB
-      allow write: if request.resource.size < 15 * 1024 * 1024
-                   && request.resource.contentType.matches('image/.*');
-
-      // Anyone can read and delete
-      allow read, delete: if true;
+      // Download URLs are needed by the unauthenticated report generator.
+      allow read: if true;
+      allow delete: if hasStoredDraftWriteKey('inspections', inspectionId);
     }
 
     // ============================
     // Handover Files (photos, marketing, signatures)
     // ============================
     match /handovers/{inspectionId}/{subfolder}/{filename} {
+      allow create, update: if isImageWithinLimit()
+        && hasDraftWriteKey('handovers', inspectionId);
 
-      // Upload only: image files under 15MB
-      allow write: if request.resource.size < 15 * 1024 * 1024
-                   && request.resource.contentType.matches('image/.*');
-
-      // Anyone can read and delete
-      allow read, delete: if true;
+      allow read: if true;
+      allow delete: if hasStoredDraftWriteKey('handovers', inspectionId);
     }
 
     // ============================

@@ -83,10 +83,19 @@
             <!-- Failed -->
             <div
               v-else-if="photo.uploadStatus === 'failed'"
-              class="absolute inset-0 bg-rose-900/80 flex flex-col items-center justify-center gap-1 p-1"
+              class="absolute inset-0 bg-rose-900/85 flex flex-col items-center justify-center gap-1 p-1 text-center"
             >
               <AlertTriangle class="w-4 h-4 text-rose-300" />
-              <span class="text-[9px] font-bold text-rose-200">Failed</span>
+              <span class="text-[9px] font-bold text-rose-200">{{ photo.errorCode || 'Upload failed' }}</span>
+              <span class="max-w-full truncate text-[8px] text-rose-100" :title="photo.errorMessage">
+                {{ photo.errorMessage || photo.retryNote || 'The image could not be uploaded.' }}
+              </span>
+              <button
+                v-if="photo.retryable"
+                type="button"
+                @click.stop="reportState.retryMarketingPhoto(slot.key, mpIdx)"
+                class="mt-0.5 rounded bg-white/15 px-1.5 py-0.5 text-[8px] font-black text-white hover:bg-white/25"
+              >Retry (2 min)</button>
             </div>
             <!-- Remove -->
             <button

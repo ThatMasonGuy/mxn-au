@@ -280,6 +280,7 @@ import {
   doc, setDoc, getDoc, onSnapshot, serverTimestamp,
 } from 'firebase/firestore'
 import { firestore } from '@/firebase'
+import { getReportDraft } from '@/features/everhomes/utils/reportDraftApi'
 
 const FUNCTIONS_URL    = import.meta.env.VITE_FUNCTIONS_URL ?? ''
 const SUBMIT_TIMEOUT_MS = 120_000
@@ -421,8 +422,133 @@ function clearTimeouts() {
   submitTimeoutId = null
 }
 
+function draftSession() {
+  return {
+    reportType: props.schema.reportType,
+    draftId: props.reportState.setup.reportId,
+    draftAccessKey: props.reportState.setup.draftAccessKey,
+  }
+}
+
+function applyDraftStatus(result) {
+  if (result.status === 'complete') {
+    clearTimeouts()
+    state.loading = false
+    state.done = true
+    state.pdfUrl = result.pdfUrl ?? null
+    emit('submitted')
+    return 'complete'
+  }
+  if (result.status === 'failed') {
+    clearTimeouts()
+    state.loading = false
+    state.error = result.error ?? 'Report generation failed. Your saved draft remains available to repair and resubmit.'
+    return 'failed'
+  }
+  if (result.status === 'processing') {
+    state.loading = true
+    state.statusMessage = 'Report is still being generated. Please wait…'
+    startTimeout()
+    return 'processing'
+  }
+  return result.status ?? 'draft'
+}
+
+async function checkDraftStatus() {
+  state.statusMessage = 'Checking report status…'
+  state.canFlush = false
+  try {
+    const result = await getReportDraft({ ...draftSession(), includeDraft: false })
+    const status = applyDraftStatus(result)
+    if (status === 'draft') {
+      state.loading = false
+      state.error = 'The report has not started generating. Your draft is saved; please submit it again.'
+    }
+    return status
+  } catch (error) {
+    state.statusMessage = 'Unable to check report status. Please check your internet connection.'
+    state.canFlush = true
+    return null
+  }
+}
+
+async function uploadStaffSignature(payload) {
+  const signatureData = payload.signatures?.staff?.signature
+  if (!signatureData) return
+
+  const { uploadBytes, getDownloadURL, ref: storageRef } = await import('firebase/storage')
+  const { storage } = await import('@/firebase')
+  const signatureBlob = await (await fetch(signatureData)).blob()
+  const signatureFile = new File([signatureBlob], 'staff_signature.png', { type: 'image/png' })
+  const signaturePath = `${props.schema.reportType}s/${payload.inspectionId}/signatures/staff_signature.png`
+  const signatureRef = storageRef(storage, signaturePath)
+  await uploadBytes(signatureRef, signatureFile, {
+    contentType: 'image/png',
+    customMetadata: { everhomesDraftKey: payload.draftAccessKey },
+  })
+  payload.signatures.staff.signatureUrl = await getDownloadURL(signatureRef)
+  payload.signatures.staff.signatureStoragePath = signaturePath
+}
+
+async function submitViaDraftService() {
+  if (props.reportState.hasAnyUploading || !canSubmit.value) return
+  if (!navigator.onLine) {
+    state.error = 'You appear to be offline. Your draft is kept on this device and will be backed up when you reconnect.'
+    return
+  }
+
+  state.loading = true
+  state.error = null
+  state.canFlush = false
+  state.statusMessage = 'Saving a final backup…'
+
+  try {
+    await props.reportState.flushDraftSync()
+  } catch (error) {
+    state.loading = false
+    state.error = `The final draft backup failed: ${error.message ?? 'unknown error'}. Nothing has been submitted.`
+    return
+  }
+
+  const payload = props.reportState.buildSubmitPayload(cropSignatureData(staffSigPad))
+  try {
+    state.statusMessage = 'Uploading signature…'
+    await uploadStaffSignature(payload)
+  } catch (error) {
+    state.loading = false
+    state.error = `The signature could not be uploaded: ${error.message ?? 'unknown error'}. Your report remains saved and can be retried.`
+    return
+  }
+
+  state.statusMessage = 'Generating report…'
+  startTimeout()
+  try {
+    const controller = new AbortController()
+    const requestTimeout = setTimeout(() => controller.abort(), SUBMIT_TIMEOUT_MS)
+    const response = await fetch(`${FUNCTIONS_URL}/generateInspectionReport`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
+      body: JSON.stringify(payload),
+    })
+    clearTimeout(requestTimeout)
+    const body = await response.json().catch(() => ({}))
+    if (!response.ok) throw new Error(body.details ?? body.error ?? `HTTP ${response.status}`)
+    applyDraftStatus({ status: 'complete', pdfUrl: body.pdfUrl })
+  } catch (error) {
+    // A timeout is ambiguous: use the same capability-scoped draft to learn
+    // whether the server is still working rather than replacing its identity.
+    state.statusMessage = error.name === 'AbortError'
+      ? 'The request is taking a while. Checking whether the report is still generating…'
+      : 'Checking whether the report reached the server…'
+    const status = await checkDraftStatus()
+    if (!status) state.canFlush = true
+  }
+}
+
 // ─── Submit ───────────────────────────────────────────────────────────────────
 async function confirmSubmit() {
+  return submitViaDraftService()
   if (props.reportState.hasAnyUploading || !canSubmit.value) return
 
   if (!navigator.onLine) {
@@ -557,6 +683,7 @@ async function confirmSubmit() {
 
 // ─── Flush and check ──────────────────────────────────────────────────────────
 async function flushAndCheck() {
+  return checkDraftStatus()
   state.statusMessage = 'Checking report status…'
   state.canFlush      = false
 

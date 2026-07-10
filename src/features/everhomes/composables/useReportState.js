@@ -29,10 +29,18 @@ import {
 } from 'firebase/storage'
 import { storage } from '@/firebase'
 import { useEverhomesReportStore } from '../stores/useEverhomesReportStore'
+import {
+    forgetReportUploadFile,
+    recoverReportUploadFile,
+    rememberReportUploadFile,
+} from '../utils/reportUploadCache'
+import {
+    getReportDraft,
+    recordReportUploadFailure,
+    syncReportDraft,
+} from '../utils/reportDraftApi'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-
-const FUNCTIONS_URL = import.meta.env.VITE_FUNCTIONS_URL ?? ''
 
 // Status values that count as "checked" for progress purposes
 const CHECKED_STATUSES = new Set(['ok', 'attention', 'issue', 'na'])
@@ -46,6 +54,7 @@ const RETRYABLE_STORAGE_CODES = new Set([
     'storage/unknown',
     'storage/quota-exceeded',
     'storage/canceled',
+    'storage/timeout',
 ])
 
 // ─── Composable ───────────────────────────────────────────────────────────────
@@ -86,9 +95,29 @@ export function useReportState(schema) {
         message: '',
         logs: '',
     })
+    const draftSync = reactive({
+        status: 'idle', // idle | syncing | saved | offline | error | restoring
+        lastSyncedAt: null,
+        lastError: '',
+        revision: 0,
+        restoreError: '',
+    })
 
-    function handleOnline()  { isOnline.value = true }
-    function handleOffline() { isOnline.value = false }
+    const DRAFT_SYNC_DEBOUNCE_MS = 1_500
+    const retryFiles = new Map()
+    let draftSyncTimer = null
+    let draftSyncPromise = null
+    let draftSyncQueued = false
+    let restoringDraft = false
+
+    function handleOnline()  {
+        isOnline.value = true
+        if (store.hasChecklistStarted) scheduleDraftSync({ immediate: true })
+    }
+    function handleOffline() {
+        isOnline.value = false
+        if (store.hasChecklistStarted) draftSync.status = 'offline'
+    }
 
     function openFatalError(payload = {}) {
         fatalError.open = true
@@ -104,14 +133,223 @@ export function useReportState(schema) {
         fatalError.logs = ''
     }
 
+    function newDraftAccessKey() {
+        return `${crypto.randomUUID().replaceAll('-', '')}${crypto.randomUUID().replaceAll('-', '')}`
+    }
+
+    function syncablePhoto(photo = {}) {
+        return {
+            id: photo.id ?? null,
+            url: photo.url ?? null,
+            thumbUrl: photo.url ?? photo.thumbUrl ?? null,
+            storagePath: photo.storagePath ?? '',
+            intendedStoragePath: photo.intendedStoragePath ?? photo.storagePath ?? '',
+            caption: photo.caption ?? '',
+            errorCode: photo.errorCode ?? null,
+            errorMessage: photo.errorMessage ?? '',
+            retryable: photo.retryable !== false,
+            retryNote: photo.retryNote ?? '',
+            attempts: photo.attempts ?? 0,
+            uploadStatus: photo.uploadStatus === 'done' ? 'done' : 'failed',
+        }
+    }
+
+    function buildDraftSnapshot() {
+        const checklistData = Object.fromEntries(
+            Object.entries(store.checklistData).map(([sectionId, section]) => [
+                sectionId,
+                {
+                    status: section.status ?? 'unchecked',
+                    notes: section.notes ?? '',
+                    items: { ...(section.items ?? {}) },
+                    inputs: { ...(section.inputs ?? {}) },
+                    photos: (section.photos ?? []).map(syncablePhoto),
+                },
+            ])
+        )
+
+        return {
+            version: 1,
+            reportType,
+            cacheVersion,
+            setup: {
+                propertyAddress: store.setup.propertyAddress ?? '',
+                inspectionDate: store.setup.inspectionDate ?? '',
+                inspectorName: store.setup.inspectorName ?? '',
+                inspectorEmail: store.setup.inspectorEmail ?? '',
+                pickerValue: store.setup.pickerValue ?? null,
+                selectedOptional: [...(store.setup.selectedOptional ?? [])],
+                showMarketing: store.setup.showMarketing === true,
+                rooms: (store.setup.rooms ?? []).map((room) => ({ ...room })),
+                bathrooms: store.setup.bathrooms ?? 1,
+            },
+            checklistSections: store.checklistSections.map((section) => ({ ...section })),
+            checklistData,
+            marketingPhotos: Object.fromEntries(
+                Object.entries(store.marketingPhotos).map(([slot, photos]) => [
+                    slot,
+                    (photos ?? []).map(syncablePhoto),
+                ])
+            ),
+        }
+    }
+
+    function ensureDraftIdentity() {
+        if (!store.setup.reportId) store.setup.reportId = crypto.randomUUID()
+        if (!store.setup.draftAccessKey) store.setup.draftAccessKey = newDraftAccessKey()
+    }
+
+    function draftRequestPayload() {
+        ensureDraftIdentity()
+        return {
+            reportType,
+            draftId: store.setup.reportId,
+            draftAccessKey: store.setup.draftAccessKey,
+        }
+    }
+
+    async function synchroniseDraft() {
+        if (!store.hasChecklistStarted) return null
+        if (!isOnline.value) {
+            draftSync.status = 'offline'
+            return null
+        }
+        if (draftSyncPromise) {
+            draftSyncQueued = true
+            return draftSyncPromise
+        }
+
+        draftSync.status = 'syncing'
+        draftSync.lastError = ''
+        const payload = {
+            ...draftRequestPayload(),
+            draft: buildDraftSnapshot(),
+        }
+
+        draftSyncPromise = syncReportDraft(payload)
+            .then((result) => {
+                draftSync.status = 'saved'
+                draftSync.lastSyncedAt = new Date().toISOString()
+                draftSync.revision = result.draftRevision ?? draftSync.revision
+                return result
+            })
+            .catch((error) => {
+                draftSync.status = navigator.onLine ? 'error' : 'offline'
+                draftSync.lastError = error.message ?? 'Unable to back up this draft.'
+                throw error
+            })
+            .finally(() => {
+                draftSyncPromise = null
+                if (draftSyncQueued) {
+                    draftSyncQueued = false
+                    scheduleDraftSync({ immediate: true })
+                }
+            })
+
+        return draftSyncPromise
+    }
+
+    function scheduleDraftSync({ immediate = false } = {}) {
+        if (restoringDraft || !store.hasChecklistStarted) return
+        clearTimeout(draftSyncTimer)
+        if (immediate) {
+            synchroniseDraft().catch(() => {})
+            return
+        }
+        draftSyncTimer = setTimeout(() => synchroniseDraft().catch(() => {}), DRAFT_SYNC_DEBOUNCE_MS)
+    }
+
+    async function flushDraftSync() {
+        clearTimeout(draftSyncTimer)
+        return synchroniseDraft()
+    }
+
+    const resumeLink = computed(() => {
+        if (!store.setup.reportId || !store.setup.draftAccessKey || typeof window === 'undefined') return ''
+        const root = `${window.location.origin}${window.location.pathname}${window.location.search}`
+        return `${root}#everhomes-draft=${reportType}.${store.setup.reportId}.${store.setup.draftAccessKey}`
+    })
+
+    async function copyResumeLink() {
+        if (!resumeLink.value) return false
+        try {
+            await navigator.clipboard.writeText(resumeLink.value)
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    function restoreObject(target, value = {}) {
+        Object.keys(target).forEach((key) => delete target[key])
+        Object.assign(target, value)
+    }
+
+    async function restoreDraftFromLocation() {
+        const hash = window.location.hash
+        const prefix = '#everhomes-draft='
+        if (!hash.startsWith(prefix)) return false
+
+        const [hashType, draftId, draftAccessKey] = hash.slice(prefix.length).split('.')
+        if (hashType !== reportType || !draftId || !draftAccessKey) {
+            draftSync.restoreError = 'This resume link is invalid for this report type.'
+            return false
+        }
+
+        restoringDraft = true
+        draftSync.status = 'restoring'
+        draftSync.restoreError = ''
+        try {
+            const result = await getReportDraft({
+                reportType,
+                draftId,
+                draftAccessKey,
+                includeDraft: true,
+            })
+            if (!result.draft) throw new Error('The saved draft did not contain recoverable report data.')
+
+            store.resetAll()
+            Object.assign(store.setup, result.draft.setup ?? {}, { reportId: draftId, draftAccessKey })
+            store.checklistSections = result.draft.checklistSections ?? []
+            restoreObject(store.checklistData, result.draft.checklistData ?? {})
+            restoreObject(store.marketingPhotos, result.draft.marketingPhotos ?? {})
+            draftSync.status = 'saved'
+            draftSync.revision = result.draftRevision ?? 0
+            draftSync.lastSyncedAt = result.draftUpdatedAt ?? null
+            window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`)
+            return true
+        } catch (error) {
+            draftSync.status = 'error'
+            draftSync.restoreError = error.message ?? 'Could not restore that draft.'
+            return false
+        } finally {
+            restoringDraft = false
+        }
+    }
+
     onMounted(() => {
         window.addEventListener('online',  handleOnline)
         window.addEventListener('offline', handleOffline)
+        restoreDraftFromLocation().then((restored) => {
+            if (!restored && store.hasChecklistStarted) scheduleDraftSync({ immediate: true })
+        })
     })
     onUnmounted(() => {
         window.removeEventListener('online',  handleOnline)
         window.removeEventListener('offline', handleOffline)
+        clearTimeout(draftSyncTimer)
     })
+
+    watch(
+        [
+            () => store.setup,
+            () => store.checklistSections,
+            () => store.checklistData,
+            () => store.marketingPhotos,
+        ],
+        () => scheduleDraftSync(),
+        { deep: true }
+    )
 
     // ── Setup validation ──────────────────────────────────────────────────────
     const setupErrors = reactive({
@@ -362,10 +600,9 @@ export function useReportState(schema) {
     function startChecklist() {
         if (!validateSetup()) return false
 
-        // Seed reportId if not already set
-        if (!store.setup.reportId) {
-            store.setup.reportId = crypto.randomUUID()
-        }
+        // A report gets a stable server-side identity as soon as it starts.
+        // The opaque key is a login-free capability used to recover its draft.
+        ensureDraftIdentity()
 
         // Apply schema defaults if this is a completely fresh start (no sections yet).
         // On a resume, the store already has the user's choices — don't overwrite them.
@@ -402,6 +639,7 @@ export function useReportState(schema) {
             : buildDynamicSections()
 
         store.checklistSections = sections
+        scheduleDraftSync({ immediate: true })
         return true
     }
 
@@ -615,8 +853,10 @@ export function useReportState(schema) {
     })
 
     // ── Photo upload ──────────────────────────────────────────────────────────
-    const MAX_UPLOAD_ATTEMPTS  = 3
-    const UPLOAD_TIMEOUT_MS    = 30_000
+    const MAX_UPLOAD_ATTEMPTS = 3
+    const INITIAL_UPLOAD_TIMEOUT_MS = 30_000
+    const MANUAL_RETRY_TIMEOUT_MS = 120_000
+    const MAX_IMAGE_BYTES = 15 * 1024 * 1024
 
     function classifyUploadError(err, context = {}) {
         const code = err?.code ?? 'unknown'
@@ -635,6 +875,9 @@ export function useReportState(schema) {
             fileName: context.fileName ?? '',
             fileType: context.fileType ?? '',
             fileSize: context.fileSize ?? 0,
+            attempts: context.attempts ?? 0,
+            timeoutMs: context.timeoutMs ?? 0,
+            online: navigator.onLine,
         }
 
         info.logText = [
@@ -649,33 +892,79 @@ export function useReportState(schema) {
             `fileName: ${info.fileName}`,
             `fileType: ${info.fileType}`,
             `fileSize: ${info.fileSize}`,
+            `attempts: ${info.attempts}`,
+            `timeoutMs: ${info.timeoutMs}`,
+            `online: ${String(info.online)}`,
         ].join('\n')
 
         return info
     }
 
-    async function uploadPhotoToStorage(file, pathPrefix, context = {}) {
+    function preflightImage(file) {
+        if (!(file instanceof Blob)) {
+            throw { code: 'storage/invalid-file', message: 'The selected file is no longer available in this browser.', retryable: false }
+        }
+        if (!file.type?.startsWith('image/')) {
+            throw { code: 'storage/invalid-file-type', message: 'Only image files can be attached to a report.', retryable: false }
+        }
+        if (file.size >= MAX_IMAGE_BYTES) {
+            throw { code: 'storage/file-too-large', message: 'This image is larger than the 15 MB upload limit.', retryable: false }
+        }
+    }
+
+    function createStoragePath(pathPrefix, photoId, file) {
         const reportId = store.setup.reportId
         if (!reportId) throw new Error('No report ID — start the report first')
+        const extension = file?.name?.split('.').pop()?.replace(/[^a-z0-9]/gi, '') || 'jpg'
+        return `${reportType}s/${reportId}/${pathPrefix}_${photoId}.${extension}`
+    }
 
-        const ext  = file.name.split('.').pop() || 'jpg'
-        const path = `${reportType}s/${reportId}/${pathPrefix}_${Date.now()}.${ext}`
-        const ref  = storageRef(storage, path)
+    function uploadWithDeadline(ref, file, metadata, timeoutMs) {
+        return new Promise((resolve, reject) => {
+            const task = uploadBytesResumable(ref, file, metadata)
+            let settled = false
+            let unsubscribe = null
+            const finish = (callback, value) => {
+                if (settled) return
+                settled = true
+                clearTimeout(timeout)
+                unsubscribe?.()
+                callback(value)
+            }
+            const timeout = setTimeout(() => {
+                const timeoutError = Object.assign(new Error(`Upload timed out after ${Math.round(timeoutMs / 1000)} seconds.`), {
+                    code: 'storage/timeout',
+                })
+                task.cancel()
+                finish(reject, timeoutError)
+            }, timeoutMs)
+            unsubscribe = task.on(
+                'state_changed',
+                undefined,
+                (error) => finish(reject, error),
+                () => finish(resolve)
+            )
+        })
+    }
+
+    async function uploadPhotoToStorage(file, photo, pathPrefix, context = {}, { timeoutMs = INITIAL_UPLOAD_TIMEOUT_MS } = {}) {
+        preflightImage(file)
+        ensureDraftIdentity()
+        const path = photo.intendedStoragePath || createStoragePath(pathPrefix, photo.id, file)
+        photo.intendedStoragePath = path
+        const ref = storageRef(storage, path)
+        const metadata = {
+            contentType: file.type || 'image/jpeg',
+            customMetadata: { everhomesDraftKey: store.setup.draftAccessKey },
+        }
 
         let lastError
         for (let attempt = 1; attempt <= MAX_UPLOAD_ATTEMPTS; attempt++) {
+            photo.attempts = attempt
             try {
-                await Promise.race([
-                    new Promise((resolve, reject) => {
-                        const task = uploadBytesResumable(ref, file)
-                        task.on('state_changed', null, reject, resolve)
-                    }),
-                    new Promise((_, reject) =>
-                        setTimeout(() => reject(new Error('Upload timeout')), UPLOAD_TIMEOUT_MS)
-                    ),
-                ])
+                await uploadWithDeadline(ref, file, metadata, timeoutMs)
                 const url = await getDownloadURL(ref)
-                return { url, storagePath: path }
+                return { url, storagePath: path, attempts: attempt }
             } catch (err) {
                 lastError = classifyUploadError(err, {
                     ...context,
@@ -684,13 +973,83 @@ export function useReportState(schema) {
                     fileName: file?.name ?? '',
                     fileType: file?.type ?? '',
                     fileSize: file?.size ?? 0,
+                    attempts: attempt,
+                    timeoutMs,
                 })
                 if (attempt < MAX_UPLOAD_ATTEMPTS) {
-                    await new Promise((r) => setTimeout(r, 1000 * attempt))
+                    await new Promise((resolve) => setTimeout(resolve, 1_000 * attempt))
                 }
             }
         }
         throw lastError
+    }
+
+    async function recordUploadFailure(error, context = {}) {
+        if (!store.setup.reportId || !store.setup.draftAccessKey) return
+        // Store only terminal failures, so the admin view has useful evidence
+        // without receiving a noisy event for every transient retry.
+        await recordReportUploadFailure({
+            ...draftRequestPayload(),
+            failure: {
+                ...error,
+                sectionId: context.sectionId ?? '',
+                slotKey: context.slotKey ?? '',
+                occurredAtClient: error.timestamp ?? new Date().toISOString(),
+            },
+        }).catch(() => {})
+    }
+
+    async function uploadExistingPhoto(photo, file, pathPrefix, context, { manualRetry = false } = {}) {
+        photo.uploadStatus = 'uploading'
+        photo.errorCode = null
+        photo.errorMessage = ''
+        photo.retryNote = ''
+        store.trackUploadStart()
+        try {
+            // Create/refresh the server draft before attempting the capability-
+            // scoped upload. The report survives even if the browser then drops.
+            await flushDraftSync()
+            const uploaded = await uploadPhotoToStorage(
+                file,
+                photo,
+                pathPrefix,
+                context,
+                { timeoutMs: manualRetry ? MANUAL_RETRY_TIMEOUT_MS : INITIAL_UPLOAD_TIMEOUT_MS }
+            )
+            photo.url = uploaded.url
+            photo.thumbUrl = uploaded.url
+            photo.storagePath = uploaded.storagePath
+            photo.errorCode = null
+            photo.errorMessage = ''
+            photo.retryable = true
+            photo.uploadStatus = 'done'
+            await forgetReportUploadFile(photo.id).catch(() => {})
+            retryFiles.delete(photo.id)
+            scheduleDraftSync({ immediate: true })
+            return true
+        } catch (rawError) {
+            const error = rawError?.logText
+                ? rawError
+                : classifyUploadError(rawError, {
+                    ...context,
+                    path: photo.intendedStoragePath ?? '',
+                    fileName: file?.name ?? '',
+                    fileType: file?.type ?? '',
+                    fileSize: file?.size ?? 0,
+                    attempts: photo.attempts ?? 0,
+                    timeoutMs: manualRetry ? MANUAL_RETRY_TIMEOUT_MS : INITIAL_UPLOAD_TIMEOUT_MS,
+                })
+            photo.errorCode = error.code ?? 'unknown'
+            photo.errorMessage = error.message ?? 'Upload failed'
+            photo.retryable = error.retryable !== false
+            photo.uploadStatus = 'failed'
+            await recordUploadFailure(error, context)
+            scheduleDraftSync({ immediate: true })
+            if (import.meta.env.DEV) console.warn('[everhomes] photo upload failed', error)
+            return false
+        } finally {
+            store.trackUploadEnd()
+        }
     }
 
     async function addPhoto(sectionId, file) {
@@ -718,51 +1077,28 @@ export function useReportState(schema) {
 
         const previewUrl = URL.createObjectURL(file)
         const photo = reactive({
+            id:           crypto.randomUUID(),
             previewUrl,
             thumbUrl:     previewUrl,
             url:          null,
             storagePath:  null,
+            intendedStoragePath: '',
             caption:      '',
             errorCode:    null,
             errorMessage: '',
             retryable:    true,
+            retryNote:    '',
+            attempts:     0,
             uploadStatus: 'uploading',
         })
 
         entry.photos.push(photo)
-        store.trackUploadStart()
+        retryFiles.set(photo.id, file)
+        await rememberReportUploadFile(photo.id, file).catch(() => {})
 
-        // Return the reactive photo entry immediately so the caller (PhotoPanel)
-        // can set the caption before the upload completes.
-        uploadPhotoToStorage(file, `photos/${sectionId}`, { sectionId })
-            .then(({ url, storagePath }) => {
-                photo.url          = url
-                photo.thumbUrl     = url
-                photo.storagePath  = storagePath
-                photo.errorCode    = null
-                photo.errorMessage = ''
-                photo.retryable    = true
-                photo.uploadStatus = 'done'
-            })
-            .catch((errInfo) => {
-                photo.errorCode    = errInfo?.code ?? 'unknown'
-                photo.errorMessage = errInfo?.message ?? 'Upload failed'
-                photo.retryable    = errInfo?.retryable !== false
-                photo.uploadStatus = 'failed'
-                if (import.meta.env.DEV) {
-                    console.warn('[everhomes] section photo upload failed', errInfo)
-                }
-                if (photo.retryable === false) {
-                    openFatalError({
-                        title: 'Upload Error',
-                        message: 'Oops, something went wrong while uploading this photo.',
-                        logs: errInfo?.logText ?? '',
-                    })
-                }
-            })
-            .finally(() => {
-                store.trackUploadEnd()
-            })
+        // Return the entry immediately so captions remain editable while the
+        // photo backs up and transfers in the background.
+        uploadExistingPhoto(photo, file, `photos/${sectionId}`, { sectionId })
 
         return photo
     }
@@ -771,35 +1107,30 @@ export function useReportState(schema) {
         const photo = store.checklistData[sectionId]?.photos?.[photoIdx]
         if (!photo || photo.uploadStatus !== 'failed') return
 
-        photo.uploadStatus = 'uploading'
-        photo.errorCode = null
-        photo.errorMessage = ''
-        store.trackUploadStart()
-
-        try {
-            // If we have a storagePath the upload may have completed server-side —
-            // try to get the download URL before re-uploading.
-            if (photo.storagePath) {
-                try {
-                    const ref = storageRef(storage, photo.storagePath)
-                    const url = await getDownloadURL(ref)
-                    photo.url          = url
-                    photo.thumbUrl     = url
-                    photo.uploadStatus = 'done'
-                    return
-                } catch {
-                    // Not there — fall through to re-upload
-                }
+        if (photo.storagePath) {
+            try {
+                const url = await getDownloadURL(storageRef(storage, photo.storagePath))
+                photo.url = url
+                photo.thumbUrl = url
+                photo.uploadStatus = 'done'
+                scheduleDraftSync({ immediate: true })
+                return
+            } catch {
+                // The prior transfer did not reach Storage; retry the original.
             }
-            // Need the original File to re-upload, which we don't have after a
-            // page crash. The user will need to re-add the photo manually.
-            // Surface a clear error status rather than hanging.
-            photo.uploadStatus = 'failed'
-            photo.retryNote    = 'Please remove and re-add this photo.'
-            photo.retryable    = false
-        } finally {
-            store.trackUploadEnd()
         }
+
+        const file = retryFiles.get(photo.id) ?? await recoverReportUploadFile(photo.id).catch(() => null)
+        if (!file) {
+            photo.errorCode = 'storage/retry-file-unavailable'
+            photo.errorMessage = 'The original image is no longer available on this device.'
+            photo.retryNote = 'Choose the photo again to retry it.'
+            photo.retryable = false
+            scheduleDraftSync({ immediate: true })
+            return
+        }
+        retryFiles.set(photo.id, file)
+        await uploadExistingPhoto(photo, file, `photos/${sectionId}`, { sectionId }, { manualRetry: true })
     }
 
     function removePhoto(sectionId, photoIdx) {
@@ -809,6 +1140,8 @@ export function useReportState(schema) {
         if (photo?.previewUrl?.startsWith('blob:')) {
             URL.revokeObjectURL(photo.previewUrl)
         }
+        retryFiles.delete(photo?.id)
+        forgetReportUploadFile(photo?.id).catch(() => {})
         photos.splice(photoIdx, 1)
     }
 
@@ -820,50 +1153,56 @@ export function useReportState(schema) {
 
         const previewUrl = URL.createObjectURL(file)
         const photo = reactive({
+            id:           crypto.randomUUID(),
             previewUrl,
             thumbUrl:     previewUrl,
             url:          null,
             storagePath:  null,
+            intendedStoragePath: '',
             errorCode:    null,
             errorMessage: '',
             retryable:    true,
+            retryNote:    '',
+            attempts:     0,
             uploadStatus: 'uploading',
         })
 
         store.marketingPhotos[slotKey].push(photo)
-        store.trackUploadStart()
-
-        uploadPhotoToStorage(file, `marketing/${slotKey}`, { slotKey })
-            .then(({ url, storagePath }) => {
-                photo.url          = url
-                photo.thumbUrl     = url
-                photo.storagePath  = storagePath
-                photo.errorCode    = null
-                photo.errorMessage = ''
-                photo.retryable    = true
-                photo.uploadStatus = 'done'
-            })
-            .catch((errInfo) => {
-                photo.errorCode    = errInfo?.code ?? 'unknown'
-                photo.errorMessage = errInfo?.message ?? 'Upload failed'
-                photo.retryable    = errInfo?.retryable !== false
-                photo.uploadStatus = 'failed'
-                if (import.meta.env.DEV) {
-                    console.warn('[everhomes] marketing photo upload failed', errInfo)
-                }
-                if (photo.retryable === false) {
-                    openFatalError({
-                        title: 'Upload Error',
-                        message: 'Oops, something went wrong while uploading this photo.',
-                        logs: errInfo?.logText ?? '',
-                    })
-                }
-            })
-            .finally(() => {
-                store.trackUploadEnd()
-            })
+        retryFiles.set(photo.id, file)
+        await rememberReportUploadFile(photo.id, file).catch(() => {})
+        uploadExistingPhoto(photo, file, `marketing/${slotKey}`, { slotKey })
 
         return photo
+    }
+
+    async function retryMarketingPhoto(slotKey, photoIdx) {
+        const photo = store.marketingPhotos[slotKey]?.[photoIdx]
+        if (!photo || photo.uploadStatus !== 'failed') return
+
+        if (photo.storagePath) {
+            try {
+                const url = await getDownloadURL(storageRef(storage, photo.storagePath))
+                photo.url = url
+                photo.thumbUrl = url
+                photo.uploadStatus = 'done'
+                scheduleDraftSync({ immediate: true })
+                return
+            } catch {
+                // Retry the retained original below.
+            }
+        }
+
+        const file = retryFiles.get(photo.id) ?? await recoverReportUploadFile(photo.id).catch(() => null)
+        if (!file) {
+            photo.errorCode = 'storage/retry-file-unavailable'
+            photo.errorMessage = 'The original image is no longer available on this device.'
+            photo.retryNote = 'Choose the photo again to retry it.'
+            photo.retryable = false
+            scheduleDraftSync({ immediate: true })
+            return
+        }
+        retryFiles.set(photo.id, file)
+        await uploadExistingPhoto(photo, file, `marketing/${slotKey}`, { slotKey }, { manualRetry: true })
     }
 
     function removeMarketingPhoto(slotKey, photoIdx) {
@@ -873,6 +1212,8 @@ export function useReportState(schema) {
         if (photo?.previewUrl?.startsWith('blob:')) {
             URL.revokeObjectURL(photo.previewUrl)
         }
+        retryFiles.delete(photo?.id)
+        forgetReportUploadFile(photo?.id).catch(() => {})
         photos.splice(photoIdx, 1)
     }
 
@@ -911,6 +1252,7 @@ export function useReportState(schema) {
             reportType,
             reportSubtype:   store.setup.pickerValue,
             inspectionId:    store.setup.reportId,
+            draftAccessKey:  store.setup.draftAccessKey,
             propertyAddress: store.setup.propertyAddress,
             inspectionDate:  store.setup.inspectionDate,
             inspectorName:   store.setup.inspectorName,
@@ -994,6 +1336,11 @@ export function useReportState(schema) {
         fatalError,
         openFatalError,
         closeFatalError,
+        draftSync,
+        resumeLink,
+        copyResumeLink,
+        flushDraftSync,
+        restoreDraftFromLocation,
 
         // Setup
         setupErrors,
@@ -1046,6 +1393,7 @@ export function useReportState(schema) {
         retryPhoto,
         removePhoto,
         addMarketingPhoto,
+        retryMarketingPhoto,
         removeMarketingPhoto,
 
         // Helpers
