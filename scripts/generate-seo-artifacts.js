@@ -4,6 +4,8 @@ import { fileURLToPath } from 'node:url'
 import {
   SITE_NAME,
   SITE_URL,
+  getSeoContextForPath,
+  getSeoNavigationSections,
   getSeoForPath,
   isNoIndexPath,
   publicSeoRoutes,
@@ -69,12 +71,73 @@ function replaceTag(html, pattern, replacement) {
   return html.replace(pattern, replacement)
 }
 
-function renderRouteHtml(baseHtml, routePath) {
-  const seo = getSeoForPath(routePath)
-  const robots = isNoIndexPath(routePath) ? 'noindex, nofollow' : 'index, follow'
-  const structuredData = {
+function routeHref(routePath) {
+  return routePath === '/' ? '/' : routePath
+}
+
+function renderLinkSection(section) {
+  const links = section.links
+    .map(
+      (link) =>
+        `<li style="margin:0.35rem 0"><a href="${escapeAttr(routeHref(link.path))}">${escapeHtml(link.title)}</a></li>`,
+    )
+    .join('')
+
+  return `
+    <section aria-labelledby="seo-links-${escapeAttr(section.title.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-'))}">
+      <h2 id="seo-links-${escapeAttr(section.title.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-'))}" style="font-size:1.15rem;margin:0 0 0.65rem">${escapeHtml(section.title)}</h2>
+      <ul style="columns:clamp(1, 30vw, 3);margin:0;padding-left:1.2rem">${links}</ul>
+    </section>`
+}
+
+function renderSeoFallback(routePath) {
+  const context = getSeoContextForPath(routePath)
+  const sections = getSeoNavigationSections(routePath)
+  const isHome = context.path === '/'
+  const heading = isHome ? 'Browse MXN.au tools, games, and practical utilities' : `About ${context.title}`
+  const purpose = isHome
+    ? 'MXN.au is a collection of browser-based tools, calculators, games, guides, and practical utilities built by Mason.'
+    : context.purpose
+
+  return `<div id="app">
+  <main data-seo-fallback="true" style="box-sizing:border-box;max-width:76rem;margin:0 auto;padding:3rem 1.5rem;font-family:system-ui,sans-serif;line-height:1.6">
+    <header style="max-width:48rem">
+      <p style="font-size:0.8rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase">MXN.au</p>
+      <h1 style="line-height:1.15;margin:0.25rem 0 1rem">${escapeHtml(context.title)}</h1>
+      <p style="font-size:1.1rem">${escapeHtml(context.description)}</p>
+    </header>
+    <section style="max-width:48rem;margin-top:2rem" aria-labelledby="seo-purpose">
+      <h2 id="seo-purpose" style="font-size:1.15rem;margin:0 0 0.65rem">${escapeHtml(heading)}</h2>
+      <p>${escapeHtml(purpose)}</p>
+    </section>
+    <nav style="margin-top:2.5rem" aria-label="${isHome ? 'Browse MXN.au' : `Related ${context.title} pages`}">
+      ${sections.map(renderLinkSection).join('\n')}
+    </nav>
+  </main>
+</div>`
+}
+
+function structuredDataFor(routePath, seo) {
+  const context = getSeoContextForPath(routePath)
+
+  if (routePath === '/') {
+    return {
+      '@context': 'https://schema.org',
+      '@type': 'WebSite',
+      name: seo.title,
+      url: seo.canonicalUrl,
+      description: seo.description,
+      publisher: {
+        '@type': 'Person',
+        name: 'Mason',
+        url: `${SITE_URL}/`,
+      },
+    }
+  }
+
+  const pageData = {
     '@context': 'https://schema.org',
-    '@type': routePath === '/' ? 'WebSite' : 'WebPage',
+    '@type': context.schemaType,
     name: seo.title,
     url: seo.canonicalUrl,
     description: seo.description,
@@ -89,6 +152,21 @@ function renderRouteHtml(baseHtml, routePath) {
       url: `${SITE_URL}/`,
     },
   }
+
+  if (context.schemaType === 'WebApplication') {
+    pageData.applicationCategory = context.applicationCategory
+    pageData.operatingSystem = 'Web'
+    pageData.isAccessibleForFree = true
+    pageData.featureList = context.featureList
+  }
+
+  return pageData
+}
+
+function renderRouteHtml(baseHtml, routePath) {
+  const seo = getSeoForPath(routePath)
+  const robots = isNoIndexPath(routePath) ? 'noindex, nofollow' : 'index, follow'
+  const structuredData = structuredDataFor(routePath, seo)
 
   let html = baseHtml
 
@@ -129,6 +207,7 @@ function renderRouteHtml(baseHtml, routePath) {
     /<script\s+type="application\/ld\+json">[\s\S]*?<\/script>/i,
     `<script type="application/ld+json">\n${jsonForHtml(structuredData)}\n  </script>`,
   )
+  html = replaceTag(html, /<div\s+id="app"\s*><\/div>/i, renderSeoFallback(routePath))
 
   return html
 }

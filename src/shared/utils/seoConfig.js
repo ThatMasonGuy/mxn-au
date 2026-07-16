@@ -348,6 +348,154 @@ export const publicSeoRoutes = [
 
 const routeMap = new Map(publicSeoRoutes.map((route) => [route.path, route]))
 
+const seoNavigationGroups = [
+  { key: 'play', title: 'Games and play' },
+  { key: 'topheroes', title: 'TopHeroes tools and guides' },
+  { key: 'everhomes', title: 'Everhomes tools' },
+  { key: 'communication', title: 'Translation, bots and journaling' },
+  { key: 'work', title: 'Work and practical utilities' },
+]
+
+const collectionPagePaths = new Set([
+  '/casino',
+  '/everhomes',
+  '/topheroes',
+  '/topheroes/tools',
+  '/topheroes/events',
+  '/topheroes/queues',
+  '/topheroes/velaris',
+  '/topheroes/velaris/events',
+  '/prints',
+  '/discord',
+])
+
+function getSeoGroupKey(path) {
+  const normalizedPath = normalizeSeoPath(path)
+
+  if (normalizedPath.startsWith('/topheroes')) return 'topheroes'
+  if (normalizedPath.startsWith('/everhomes')) return 'everhomes'
+  if (
+    normalizedPath.startsWith('/translate') ||
+    normalizedPath === '/discord' ||
+    normalizedPath.startsWith('/ai-journal')
+  ) {
+    return 'communication'
+  }
+  if (
+    normalizedPath.startsWith('/casino') ||
+    normalizedPath === '/daily' ||
+    normalizedPath === '/dnd' ||
+    normalizedPath === '/dnd2' ||
+    normalizedPath.startsWith('/destiny')
+  ) {
+    return 'play'
+  }
+
+  return 'work'
+}
+
+function pageKindFor(seo) {
+  const title = seo.title.toLowerCase()
+
+  if (collectionPagePaths.has(seo.path)) return 'collection'
+  if (title.includes('calculator') || title.includes('funding details') || title.includes('trait trader')) {
+    return 'calculator'
+  }
+  if (title.includes('blackjack') || title.includes('roulette') || title.includes('daily games')) {
+    return 'game'
+  }
+  if (title.includes('guide') || title.includes('terms') || title.includes('privacy')) {
+    return 'reference'
+  }
+
+  return 'tool'
+}
+
+function purposeFor(kind) {
+  switch (kind) {
+    case 'calculator':
+      return 'Enter the values that apply to your situation, compare the resulting totals, and use the outcome alongside your own judgement.'
+    case 'game':
+      return 'Use the browser app above to play directly, with the rules and interaction kept in the tool rather than behind a separate download.'
+    case 'reference':
+      return 'Use this page as a practical reference, then move through the related MXN tools and pages when you need the next step.'
+    case 'collection':
+      return 'Browse the related pages below to choose the tool, guide, or interactive experience that fits the task you want to complete.'
+    default:
+      return 'Open the tool above to work through the relevant task in your browser, then continue with the related MXN utilities below.'
+  }
+}
+
+function featureListFor(kind) {
+  switch (kind) {
+    case 'calculator':
+      return ['Interactive browser calculator', 'Scenario-based inputs', 'Immediate results']
+    case 'game':
+      return ['Browser-based play', 'Interactive controls', 'No download required']
+    default:
+      return ['Browser-based tool', 'Interactive workflow', 'Related MXN utilities']
+  }
+}
+
+function toSeoLink(route) {
+  const seo = getSeoForPath(route.path)
+  return {
+    path: route.path,
+    title: seo.title,
+    description: seo.description,
+  }
+}
+
+export function getRelatedSeoRoutes(path, limit = 6) {
+  const normalizedPath = normalizeSeoPath(path)
+  const groupKey = getSeoGroupKey(normalizedPath)
+
+  return publicSeoRoutes
+    .filter((route) => route.path !== '/' && route.path !== normalizedPath)
+    .filter((route) => getSeoGroupKey(route.path) === groupKey)
+    .slice(0, limit)
+    .map(toSeoLink)
+}
+
+export function getSeoNavigationSections(path) {
+  const normalizedPath = normalizeSeoPath(path)
+
+  if (normalizedPath === '/') {
+    return seoNavigationGroups
+      .map((group) => ({
+        title: group.title,
+        links: publicSeoRoutes
+          .filter((route) => route.path !== '/' && getSeoGroupKey(route.path) === group.key)
+          .map(toSeoLink),
+      }))
+      .filter((section) => section.links.length > 0)
+  }
+
+  const group = seoNavigationGroups.find((candidate) => candidate.key === getSeoGroupKey(normalizedPath))
+  return group
+    ? [{ title: group.title, links: getRelatedSeoRoutes(normalizedPath) }]
+    : []
+}
+
+export function getSeoContextForPath(path = '/', routeMeta = {}) {
+  const seo = getSeoForPath(path, routeMeta)
+
+  if (!routeMap.has(seo.path)) return null
+
+  const kind = pageKindFor(seo)
+  const isApplication = kind === 'calculator' || kind === 'game' || kind === 'tool'
+
+  return {
+    ...seo,
+    kind,
+    purpose: purposeFor(kind),
+    related: getRelatedSeoRoutes(seo.path),
+    schemaType: isApplication ? 'WebApplication' : 'WebPage',
+    applicationCategory: kind === 'game' ? 'GameApplication' : 'UtilityApplication',
+    featureList: featureListFor(kind),
+  }
+}
+
 export const noIndexPathPrefixes = [
   '/personal',
   '/minecraft',
