@@ -26,8 +26,6 @@
         </router-view>
       </div>
 
-      <SeoContextPanel />
-
       <!-- Footers (TopHeroes only when overlay is required) -->
       <TopHeroesFooter v-if="showTopHeroesOverlay && layout === 'default'" :author="pageAuthor" />
       <TopHeroesAdminFooter v-else-if="showTopHeroesOverlay && layout === 'admin'" :author="pageAuthor" />
@@ -43,7 +41,6 @@ import { ref, computed, watchEffect, defineAsyncComponent } from 'vue'
 import { useRoute } from 'vue-router'
 import { useLoadingScreen } from '@/shared/composables/useLoadingScreen'
 import LoadingScreen from '@/shared/components/common/LoadingScreen.vue'
-import SeoContextPanel from '@/shared/components/common/SeoContextPanel.vue'
 
 const { isLoading, loadingMessage } = useLoadingScreen()
 
