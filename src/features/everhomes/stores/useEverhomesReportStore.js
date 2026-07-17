@@ -34,23 +34,37 @@ import { ref, reactive, computed } from 'vue'
 
 function serialisePhoto(p) {
     return {
+        id:           p.id ?? null,
         url:          p.url ?? null,
         thumbUrl:     p.thumbUrl ?? p.url ?? null,
         storagePath:  p.storagePath ?? '',
+        intendedStoragePath: p.intendedStoragePath ?? p.storagePath ?? '',
         caption:      p.caption ?? '',
+        errorCode:    p.errorCode ?? null,
+        errorMessage: p.errorMessage ?? '',
+        retryable:    p.retryable !== false,
+        retryNote:    p.retryNote ?? '',
+        attempts:     p.attempts ?? 0,
         // Interrupted uploads are marked so the UI can offer a retry button.
-        uploadStatus: p.uploadStatus === 'done' ? 'done' : 'interrupted',
+        uploadStatus: p.uploadStatus === 'done' ? 'done' : 'failed',
     }
 }
 
 function rehydratePhoto(p) {
     return {
+        id:           p.id ?? null,
         // Blob previewUrls do not survive sessions — restore from the permanent URL.
         previewUrl:   p.url ?? null,
         thumbUrl:     p.thumbUrl ?? p.url ?? null,
         url:          p.url ?? null,
         storagePath:  p.storagePath ?? '',
+        intendedStoragePath: p.intendedStoragePath ?? p.storagePath ?? '',
         caption:      p.caption ?? '',
+        errorCode:    p.errorCode ?? null,
+        errorMessage: p.errorMessage ?? '',
+        retryable:    p.retryable !== false,
+        retryNote:    p.retryNote ?? '',
+        attempts:     p.attempts ?? 0,
         // Surface interrupted uploads as failed so the retry button appears.
         uploadStatus: p.uploadStatus === 'done' ? 'done' : 'failed',
     }
@@ -62,7 +76,7 @@ function serialisePhotos(photos = []) {
 
 function rehydratePhotos(photos = []) {
     // Only rehydrate photos that have something recoverable — a URL or a storagePath.
-    return (photos ?? []).filter((p) => p.url || p.storagePath).map(rehydratePhoto)
+    return (photos ?? []).filter((p) => p.id || p.url || p.storagePath).map(rehydratePhoto)
 }
 
 function serialiseChecklistData(data = {}) {
@@ -113,7 +127,8 @@ export const useEverhomesReportStore = defineStore(
             inspectionDate:   '',
             inspectorName:    '',
             inspectorEmail:   '',
-            reportId:         null,   // Firestore document ID, assigned on first cloud function call
+            reportId:         null,   // Server-backed draft/document ID
+            draftAccessKey:   null,   // Opaque capability for the login-free draft session
             pickerValue:      null,   // Selected sdaCategory key or reportSubtype key
             selectedOptional: [],     // string[] of toggled optional section keys (toggle mode)
             showMarketing:    false,  // Whether marketing photo section is enabled
@@ -181,6 +196,7 @@ export const useEverhomesReportStore = defineStore(
             setup.inspectorName    = ''
             setup.inspectorEmail   = ''
             setup.reportId         = null
+            setup.draftAccessKey   = null
             setup.pickerValue      = null
             setup.selectedOptional = []
             setup.showMarketing    = false

@@ -19,6 +19,13 @@ service cloud.firestore {
         && roles.hasAny(['admin', 'topheroesAdmin']);
     }
 
+    function _isEverhomesAdmin() {
+      let roles = _userRoles();
+      return request.auth != null
+        && roles != null
+        && roles.hasAny(['admin', 'siteAdmin']);
+    }
+
     // Reusable: allow updates that ONLY touch a specific whitelist of fields
     function _isOnlyStatsUpdate(allowedKeys) {
       return request.resource.data
@@ -219,27 +226,25 @@ service cloud.firestore {
     //  EverHomes: Inspection Reports
     // ─────────────────────────────────────────────────────────────────────────────
     match /inspections/{inspectionId} {
-      // Client creates the doc and listens to it for status updates.
-      // The Cloud Function (Admin SDK) handles all subsequent writes.
-      allow create: if request.resource.data.keys().hasAll([
-        'propertyAddress', 'inspectionDate', 'inspectorName', 'inspectorEmail', 'status'
-      ]);
-      allow read: if true;
+      // Staff use a high-entropy draft capability through Cloud Functions.
+      // Firestore itself is never anonymously readable or writable.
+      allow read: if _isEverhomesAdmin();
+      allow write: if false;
 
-      // No client updates or deletes — function handles those via Admin SDK
-      allow update, delete: if false;
+      match /uploadFailures/{failureId} {
+        allow read: if _isEverhomesAdmin();
+        allow write: if false;
+      }
     }
 
     match /handovers/{inspectionId} {
-      // Client creates the doc and listens to it for status updates.
-      // The Cloud Function (Admin SDK) handles all subsequent writes.
-      allow create: if request.resource.data.keys().hasAll([
-        'propertyAddress', 'inspectionDate', 'inspectorName', 'inspectorEmail', 'status'
-      ]);
-      allow read: if true;
+      allow read: if _isEverhomesAdmin();
+      allow write: if false;
 
-      // No client updates or deletes — function handles those via Admin SDK
-      allow update, delete: if false;
+      match /uploadFailures/{failureId} {
+        allow read: if _isEverhomesAdmin();
+        allow write: if false;
+      }
     }
 
     match /everhomesSdaPricing/{docId} {

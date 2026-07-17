@@ -192,7 +192,7 @@
                 @click.stop="reportState.retryPhoto(section.id, pIdx)"
                 class="text-[10px] font-black text-white bg-rose-500 rounded-lg px-2 py-1 hover:bg-rose-400 transition-colors"
               >
-                Tap to Retry
+                Retry (2 min)
               </button>
             </div>
             <!-- Remove -->

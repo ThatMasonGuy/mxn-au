@@ -13,6 +13,8 @@
 import { onRequest } from 'firebase-functions/v2/https'
 import { firebaseAdmin, db } from '../config/firebase.mjs'
 import JSZip from 'jszip'
+import { randomUUID } from 'node:crypto'
+import { requireEverhomesAdmin } from './requireEverhomesAdmin.mjs'
 
 export const regenerateReport = onRequest(
   {
@@ -23,9 +25,15 @@ export const regenerateReport = onRequest(
   },
   async (req, res) => {
     res.set('Access-Control-Allow-Methods', 'POST, OPTIONS')
-    res.set('Access-Control-Allow-Headers', 'Content-Type')
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
     if (req.method === 'OPTIONS') return res.status(204).send('')
     if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' })
+
+    try {
+      await requireEverhomesAdmin(req)
+    } catch (error) {
+      return res.status(error.status ?? 500).json({ error: error.message ?? 'Could not verify administrator access' })
+    }
 
     const { collection, docId } = req.body
     if (!collection || !docId) {
@@ -49,6 +57,10 @@ export const regenerateReport = onRequest(
 
     // Deep clone so we can mutate without touching Firestore data
     const payload = JSON.parse(JSON.stringify(data.submissionPayload))
+    // The original submission payload deliberately excludes this bearer
+    // capability. Regeneration runs server-side, so it can safely retrieve it
+    // from the protected report document before calling the same pipeline.
+    payload.draftAccessKey = data.draftAccessKey
 
     // ── 2. Download photos ZIP ────────────────────────────────────────────────
     const bucket = firebaseAdmin.storage().bucket()
@@ -132,9 +144,11 @@ export const regenerateReport = onRequest(
 
     // ── 4. Reset Firestore status so the Firestore listener in the browser
     //       can track progress if the admin has that page open.
+    const regenerationAccessKey = `${randomUUID().replaceAll('-', '')}${randomUUID().replaceAll('-', '')}`
     await docRef.update({
       status: 'pending',
       regenStartedAt: new Date().toISOString(),
+      regenerationAccessKey,
       // Clear stale error so the status badge resets
       error: firebaseAdmin.firestore.FieldValue.delete(),
     }).catch(() => {})
@@ -143,6 +157,7 @@ export const regenerateReport = onRequest(
     const projectId = JSON.parse(process.env.FIREBASE_CONFIG ?? '{}').projectId
       ?? process.env.GCLOUD_PROJECT
     const fnUrl = `https://australia-southeast1-${projectId}.cloudfunctions.net/generateInspectionReport`
+    payload.regenerationAccessKey = regenerationAccessKey
 
     try {
       const resp = await fetch(fnUrl, {

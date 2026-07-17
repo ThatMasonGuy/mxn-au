@@ -5,6 +5,7 @@
 import { onRequest } from 'firebase-functions/v2/https'
 import { defineSecret } from 'firebase-functions/params'
 import { db } from '../config/firebase.mjs'
+import { requireEverhomesAdmin } from './requireEverhomesAdmin.mjs'
 
 const RESEND_API_KEY = defineSecret('RESEND_API_KEY')
 const ADMIN_EMAIL = 'admin@everhomes.com.au'
@@ -20,9 +21,15 @@ export const resendReport = onRequest(
   },
   async (req, res) => {
     res.set('Access-Control-Allow-Methods', 'POST, OPTIONS')
-    res.set('Access-Control-Allow-Headers', 'Content-Type')
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
     if (req.method === 'OPTIONS') return res.status(204).send('')
     if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' })
+
+    try {
+      await requireEverhomesAdmin(req)
+    } catch (error) {
+      return res.status(error.status ?? 500).json({ error: error.message ?? 'Could not verify administrator access' })
+    }
 
     const { collection, docId, extraEmails = [] } = req.body
     if (!collection || !docId) {

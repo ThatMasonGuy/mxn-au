@@ -108,6 +108,8 @@ export const generateInspectionReport = onRequest(
       reportType,
       reportSubtype,
       inspectionId,
+      draftAccessKey,
+      regenerationAccessKey,
       propertyAddress,
       inspectionDate,
       inspectorName,
@@ -128,6 +130,54 @@ export const generateInspectionReport = onRequest(
       (reportSubtype && SUBTYPE_TITLES[reportSubtype]) || schema.docTitle;
 
     const docRef = db.collection(schema.collection).doc(inspectionId);
+
+    // Reports are now created as resumable server-side drafts before the final
+    // submission. The opaque draft key keeps the public report workflow
+    // login-free without reopening anonymous Firestore writes.
+    const draftSnapshot = await docRef.get();
+    if (!draftSnapshot.exists) {
+      return res.status(409).json({ error: "Report draft not found. Re-open your saved report and try again." });
+    }
+    const draftData = draftSnapshot.data();
+    const isDraftSession = Boolean(draftAccessKey)
+      && draftData.draftAccessKey === draftAccessKey;
+    const isServerRegeneration = Boolean(regenerationAccessKey)
+      && draftData.regenerationAccessKey === regenerationAccessKey;
+    // During the hosting migration, a browser that already loaded the old
+    // frontend may create its legacy `pending` document just before rules are
+    // tightened. Let that one existing submission finish; new documents cannot
+    // be created this way once the new Firestore rules are deployed.
+    const isLegacyPendingSubmission = !draftData.draftAccessKey
+      && !draftAccessKey
+      && draftData.status === "pending";
+
+    if (!isDraftSession && !isServerRegeneration && !isLegacyPendingSubmission) {
+      return res.status(403).json({ error: "This device does not have permission to submit that draft." });
+    }
+    if (["processing", "complete"].includes(draftData.status)) {
+      return res.status(409).json({ error: "This report has already been submitted." });
+    }
+
+    // Persist a regeneration-safe submission payload with signature blobs
+    // removed. The rendered signature files are stored separately in Storage.
+    const storedPayload = JSON.parse(JSON.stringify({
+      reportType,
+      reportSubtype,
+      inspectionId,
+      propertyAddress,
+      inspectionDate,
+      inspectorName,
+      inspectorEmail,
+      rooms,
+      signatures,
+      marketingPhotos,
+    }));
+    if (storedPayload.signatures?.staff?.signature) {
+      delete storedPayload.signatures.staff.signature;
+    }
+    storedPayload.signatures?.tenants?.forEach((tenant) => {
+      if (tenant?.signature) delete tenant.signature;
+    });
 
     // ── Deadline guard ────────────────────────────────────────────────
     // GCF hard-kills at 300s. We fire at 270s to cleanly reset Firestore
@@ -155,6 +205,9 @@ export const generateInspectionReport = onRequest(
       await docRef.update({
         status: "processing",
         startedAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
+        submittedAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
+        submissionPayload: storedPayload,
+        regenerationAccessKey: firebaseAdmin.firestore.FieldValue.delete(),
       });
 
       // ── 2. Download all assets in parallel ───────────────────────

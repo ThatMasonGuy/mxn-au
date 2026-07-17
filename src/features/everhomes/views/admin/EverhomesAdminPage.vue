@@ -249,7 +249,7 @@
                                                 </span>
                                                 <span v-if="sub.createdAt" class="inline-flex items-center gap-1.5">
                                                     <Clock class="h-3.5 w-3.5" />
-                                                    Submitted {{ formatRelative(sub.createdAt) }}
+                                                    {{ sub.status === 'draft' ? 'Backup' : 'Submitted' }} {{ formatRelative(sub.draftUpdatedAt || sub.createdAt) }}
                                                 </span>
                                             </div>
                                         </div>
@@ -257,6 +257,16 @@
 
                                     <!-- Actions -->
                                     <div class="flex flex-wrap items-center gap-2 lg:justify-end">
+                                        <button
+                                            v-if="['draft', 'failed'].includes(sub.status) && sub.draftAccessKey"
+                                            type="button"
+                                            @click="copyDraftRecoveryLink(sub)"
+                                            class="inline-flex items-center gap-1.5 rounded-full border border-sky-400/25 bg-sky-400/10 px-3 py-1.5 text-xs font-semibold text-sky-200 transition hover:border-sky-300/50 hover:bg-sky-400/15"
+                                        >
+                                            <Link class="h-3.5 w-3.5" />
+                                            {{ copiedDraftId === sub.id ? 'Link copied' : 'Copy recovery link' }}
+                                        </button>
+
                                         <a
                                             v-if="sub.pdfUrl"
                                             :href="sub.pdfUrl"
@@ -311,6 +321,19 @@
                                 <div v-if="sub.status === 'failed' && sub.error" class="mt-4 flex items-start gap-2 rounded-2xl border border-red-400/20 bg-red-500/10 px-3 py-2.5">
                                     <AlertCircle class="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-300" />
                                     <p class="text-xs leading-5 text-red-200">{{ sub.error }}</p>
+                                </div>
+
+                                <div v-if="sub.latestUploadFailure" class="mt-3 flex items-start gap-2 rounded-2xl border border-amber-400/20 bg-amber-400/10 px-3 py-2.5">
+                                    <AlertTriangle class="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-300" />
+                                    <div class="min-w-0 text-xs leading-5 text-amber-100">
+                                        <p class="font-bold">Latest image failure: {{ sub.latestUploadFailure.code }}</p>
+                                        <p>{{ sub.latestUploadFailure.message }}</p>
+                                        <p class="mt-1 text-[11px] text-amber-200/70">
+                                            {{ sub.latestUploadFailure.fileName || 'unnamed file' }}
+                                            <span v-if="sub.latestUploadFailure.attempts"> · {{ sub.latestUploadFailure.attempts }} attempt{{ sub.latestUploadFailure.attempts === 1 ? '' : 's' }}</span>
+                                            <span v-if="sub.uploadFailureCount"> · {{ sub.uploadFailureCount }} recorded total</span>
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
                         </article>
@@ -731,7 +754,7 @@
 <script setup>
 import { ref, computed, onMounted, defineComponent, h, watch } from 'vue'
 import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore'
-import { firestore } from '@/firebase'
+import { auth, firestore } from '@/firebase'
 import * as XLSX from 'xlsx'
 
 import LayoutComponent from '@/features/everhomes/components/layouts/LayoutComponent.vue'
@@ -744,10 +767,34 @@ import {
     FileText, FolderArchive, SendHorizontal, CheckCheck, AlertCircle,
     ClipboardCheck, ClipboardList, User, Calendar, Clock,
     CheckCircle2, AlertTriangle, FileSpreadsheet, CloudUpload,
-    BarChart3, TrendingUp, XCircle, ChevronDown, RotateCcw,
+    BarChart3, TrendingUp, XCircle, ChevronDown, RotateCcw, Link,
 } from 'lucide-vue-next'
 
 const FUNCTIONS_URL = import.meta.env.VITE_FUNCTIONS_URL ?? ''
+const copiedDraftId = ref(null)
+
+async function adminRequestHeaders() {
+    const token = await auth.currentUser?.getIdToken()
+    if (!token) throw new Error('Your administrator session has expired. Please sign in again.')
+    return {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+    }
+}
+
+async function copyDraftRecoveryLink(submission) {
+    const reportType = submission.reportType ?? (submission.collection === 'handovers' ? 'handover' : 'inspection')
+    const link = `${window.location.origin}/everhomes/report/${reportType}#everhomes-draft=${reportType}.${submission.id}.${submission.draftAccessKey}`
+    try {
+        await navigator.clipboard.writeText(link)
+        copiedDraftId.value = submission.id
+        setTimeout(() => {
+            if (copiedDraftId.value === submission.id) copiedDraftId.value = null
+        }, 2_500)
+    } catch (error) {
+        alert(`Could not copy the recovery link: ${error.message}`)
+    }
+}
 
 // ─── Stores ───────────────────────────────────────────────────────────────────
 const sdaStore  = useSdaPriceStore()
@@ -778,8 +825,8 @@ async function loadSubmissions() {
         const handovers   = handSnap.docs.map(d => ({ id: d.id, collection: 'handovers',   ...d.data() }))
 
         allSubmissions.value = [...inspections, ...handovers].sort((a, b) => {
-            const ta = a.createdAt?.toMillis?.() ?? 0
-            const tb = b.createdAt?.toMillis?.() ?? 0
+            const ta = a.draftUpdatedAt?.toMillis?.() ?? a.createdAt?.toMillis?.() ?? 0
+            const tb = b.draftUpdatedAt?.toMillis?.() ?? b.createdAt?.toMillis?.() ?? 0
             return tb - ta
         })
         visibleSubmissionCount.value = SUBMISSIONS_PAGE_SIZE
@@ -801,6 +848,7 @@ const typeFilters = [
 ]
 
 const statusFilters = [
+    { id: 'draft',      label: 'Drafts',     activeClass: 'bg-sky-500/15 text-sky-300 border-sky-500/30' },
     { id: 'complete',   label: 'Complete',   activeClass: 'bg-teal-500/15 text-teal-300 border-teal-500/30' },
     { id: 'processing', label: 'Processing', activeClass: 'bg-amber-500/15 text-amber-300 border-amber-500/30' },
     { id: 'failed',     label: 'Failed',     activeClass: 'bg-red-500/15 text-red-300 border-red-500/30' },
@@ -836,12 +884,14 @@ const stats = computed(() => {
     const complete   = allSubmissions.value.filter(s => s.status === 'complete').length
     const processing = allSubmissions.value.filter(s => s.status === 'processing' || s.status === 'pending').length
     const failed     = allSubmissions.value.filter(s => s.status === 'failed').length
+    const drafts     = allSubmissions.value.filter(s => s.status === 'draft').length
 
     return [
         { label: 'Total',      value: total,      icon: BarChart3,    color: '#94a3b8', bgColor: 'rgba(148,163,184,0.1)' },
         { label: 'Complete',   value: complete,   icon: CheckCircle2, color: '#14b8a6', bgColor: 'rgba(20,184,166,0.12)' },
         { label: 'Processing', value: processing, icon: TrendingUp,   color: '#f59e0b', bgColor: 'rgba(245,158,11,0.12)' },
         { label: 'Failed',     value: failed,     icon: XCircle,      color: '#f43f5e', bgColor: 'rgba(244,63,94,0.12)' },
+        { label: 'Drafts',     value: drafts,     icon: CloudUpload,  color: '#38bdf8', bgColor: 'rgba(56,189,248,0.12)' },
     ]
 })
 
@@ -854,6 +904,7 @@ const StatusBadge = defineComponent({
                 complete:   { label: 'Complete',   color: '#14b8a6', bg: 'rgba(20,184,166,0.12)',   border: 'rgba(20,184,166,0.25)' },
                 processing: { label: 'Processing', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)',   border: 'rgba(245,158,11,0.25)' },
                 pending:    { label: 'Pending',    color: '#94a3b8', bg: 'rgba(148,163,184,0.10)',  border: 'rgba(148,163,184,0.2)' },
+                draft:      { label: 'Draft',      color: '#38bdf8', bg: 'rgba(56,189,248,0.12)',    border: 'rgba(56,189,248,0.25)' },
                 failed:     { label: 'Failed',     color: '#f43f5e', bg: 'rgba(244,63,94,0.12)',    border: 'rgba(244,63,94,0.25)' },
             }
             const s = map[props.status] ?? map.pending
@@ -905,7 +956,7 @@ async function confirmResend() {
     try {
         const res = await fetch(`${FUNCTIONS_URL}/resendReport`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: await adminRequestHeaders(),
             body: JSON.stringify({ collection: sub.collection, docId: sub.id }),
         })
         if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? `HTTP ${res.status}`)
@@ -936,7 +987,7 @@ async function confirmRegen() {
     try {
         const res = await fetch(`${FUNCTIONS_URL}/regenerateReport`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: await adminRequestHeaders(),
             body: JSON.stringify({ collection: sub.collection, docId: sub.id }),
         })
         if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? `HTTP ${res.status}`)

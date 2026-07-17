@@ -49,6 +49,12 @@
           :reportState="reportState"
           @started="onStarted"
         />
+        <div
+          v-if="reportState.draftSync.restoreError"
+          class="mt-3 rounded-2xl border border-rose-400/25 bg-rose-500/10 px-4 py-3 text-sm text-rose-100"
+        >
+          {{ reportState.draftSync.restoreError }}
+        </div>
       </div>
     </div>
 
@@ -71,6 +77,22 @@
 
       <!-- Active checklist -->
       <template v-else>
+        <div
+          class="mb-4 flex flex-col gap-3 rounded-2xl border px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+          :class="draftBackupClass"
+        >
+          <div class="min-w-0">
+            <p class="text-xs font-black uppercase tracking-wide">Report recovery backup</p>
+            <p class="mt-0.5 text-xs leading-5 opacity-85">{{ draftBackupMessage }}</p>
+          </div>
+          <button
+            type="button"
+            :disabled="!reportState.resumeLink"
+            @click="copyResumeLink"
+            class="shrink-0 rounded-xl border border-current/25 bg-black/10 px-3 py-2 text-xs font-bold transition hover:bg-black/20 disabled:cursor-not-allowed disabled:opacity-40"
+          >{{ resumeCopied ? 'Resume link copied' : 'Copy resume link' }}</button>
+        </div>
+
         <SectionAccordion
           :reportState="reportState"
           :schema="schema"
@@ -142,7 +164,7 @@
 </template>
 
 <script setup>
-import { computed, reactive, nextTick } from 'vue'
+import { computed, reactive, ref, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { ClipboardCheck } from 'lucide-vue-next'
 
@@ -184,6 +206,33 @@ const reportState = useReportState(schema.value)
 // ─── Local UI state ───────────────────────────────────────────────────────────
 const submitModal = reactive({ open: false })
 const clearConfirm = reactive({ open: false })
+const resumeCopied = ref(false)
+
+const draftBackupMessage = computed(() => {
+  const sync = reportState.draftSync
+  if (sync.status === 'saved') {
+    return sync.lastSyncedAt
+      ? `Backed up to the recovery service at ${new Date(sync.lastSyncedAt).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' })}.`
+      : 'Backed up to the recovery service.'
+  }
+  if (sync.status === 'syncing' || sync.status === 'restoring') return 'Saving a recovery copy…'
+  if (sync.status === 'offline') return 'Offline: this report is kept on this device and will back up when you reconnect.'
+  if (sync.status === 'error') return `Backup needs attention: ${sync.lastError || sync.restoreError || 'please check your connection before submitting.'}`
+  return 'Preparing the first recovery backup…'
+})
+
+const draftBackupClass = computed(() => {
+  const status = reportState.draftSync.status
+  if (status === 'saved') return 'border-emerald-400/25 bg-emerald-500/10 text-emerald-100'
+  if (status === 'error') return 'border-rose-400/25 bg-rose-500/10 text-rose-100'
+  if (status === 'offline') return 'border-amber-400/25 bg-amber-500/10 text-amber-100'
+  return 'border-sky-400/25 bg-sky-500/10 text-sky-100'
+})
+
+async function copyResumeLink() {
+  resumeCopied.value = await reportState.copyResumeLink()
+  if (resumeCopied.value) setTimeout(() => { resumeCopied.value = false }, 2_500)
+}
 
 // ─── Marketing panel visibility ───────────────────────────────────────────────
 // Shown when the schema has marketing slots AND either:
