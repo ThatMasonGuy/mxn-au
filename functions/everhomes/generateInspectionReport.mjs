@@ -89,7 +89,7 @@ export const generateInspectionReport = onRequest(
   {
     region: "australia-southeast1",
     timeoutSeconds: 300,
-    memory: "2GiB",
+    memory: "4GiB",
     cors: true,
     secrets: [RESEND_API_KEY],
   },
@@ -214,7 +214,9 @@ export const generateInspectionReport = onRequest(
       // Runs up to CONCURRENCY fetches at a time to avoid hammering Storage.
       // zipAssets  — raw originals, no processing, for the download ZIP
       // photoAssets — small compressed versions for PDF embed only
-      const CONCURRENCY = 15;
+      // Originals remain in memory for the ZIP while compressed copies are
+      // retained for the PDF, so limit simultaneous image processing as well.
+      const CONCURRENCY = 6;
 
       async function runConcurrent(tasks) {
         const results = [];
