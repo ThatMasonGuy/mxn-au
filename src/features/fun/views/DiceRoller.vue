@@ -8,33 +8,31 @@
             <span>dice.</span>
           </h1>
           <p class="lede">
-            Pick your poison, surrender to probability, and let a tiny imaginary
-            object make the call.
+            Choose a die, roll it, and leave the outcome to chance.
           </p>
           <CounterStatement
             class="roll-count"
             :count="diceRolled"
             singular="die"
             plural="dice"
-            suffix="rolled by agents of chaos"
+            suffix="rolled so far"
           />
         </div>
 
         <div class="die-stage" aria-hidden="true">
-          <div
-            class="die-shape"
-            :class="[`die-d${selectedSides}`, { rolling: isRolling }]"
-          >
-            <span>{{ displayValue }}</span>
-          </div>
-          <div class="die-shadow"></div>
+          <Dice3D
+            class="three-d-die"
+            :sides="selectedSides"
+            :value="displayValue"
+            :rolling="isRolling"
+          />
         </div>
       </div>
 
       <div class="roll-panel">
         <div class="panel-number" aria-hidden="true">D{{ selectedSides }}</div>
-        <p class="panel-kicker">ROLL THE BONES</p>
-        <h2>Choose your fate.</h2>
+        <p class="panel-kicker">DICE ROLLER</p>
+        <h2>Choose a die.</h2>
 
         <label for="die-sides">Your die</label>
         <div class="select-field">
@@ -61,8 +59,8 @@
         </div>
 
         <div class="result-copy" aria-hidden="true">
-          <p>{{ isRolling ? 'TUMBLING THROUGH THE VOID' : result ? 'FATE LANDED ON' : 'READY WHEN YOU ARE' }}</p>
-          <h3>{{ isRolling ? 'Here we go…' : result || '—' }}</h3>
+          <p>{{ isRolling ? 'ROLL IN PROGRESS' : result ? 'YOU ROLLED' : 'READY TO ROLL' }}</p>
+          <h3>{{ isRolling ? '…' : result || '—' }}</h3>
         </div>
 
         <button
@@ -75,11 +73,6 @@
           <Dices v-if="!isRolling" :size="18" :stroke-width="1.8" />
           <span v-else class="button-loader" aria-hidden="true"></span>
         </button>
-
-        <p class="panel-note">
-          No strategy. No rerolls. Just vibes.
-        </p>
-
         <p class="live-result" aria-live="polite" aria-atomic="true">
           {{ liveMessage }}
         </p>
@@ -92,6 +85,7 @@
 import { computed, ref } from 'vue'
 import { ChevronDown, Dices } from 'lucide-vue-next'
 import CounterStatement from '@/features/fun/components/CounterStatement.vue'
+import Dice3D from '@/features/fun/components/Dice3D.vue'
 import FunShell from '@/features/fun/components/FunShell.vue'
 import {
   incrementDiceCounter,
@@ -100,12 +94,12 @@ import {
 
 const diceOptions = [
   { sides: 4, label: 'Four-sided die' },
-  { sides: 6, label: 'Classic cube' },
+  { sides: 6, label: 'Six-sided die' },
   { sides: 8, label: 'Eight-sided die' },
   { sides: 10, label: 'Ten-sided die' },
   { sides: 12, label: 'Twelve-sided die' },
-  { sides: 20, label: 'The dramatic one' },
-  { sides: 100, label: 'Maximum chaos' },
+  { sides: 20, label: 'Twenty-sided die' },
+  { sides: 100, label: 'Percentile dice' },
 ]
 
 const selectedSides = ref(20)
@@ -220,92 +214,8 @@ function rollDice() {
   perspective: 900px;
 }
 
-.die-shape {
-  position: relative;
-  z-index: 1;
-  display: grid;
-  width: min(34vw, 41vh, 19rem);
-  aspect-ratio: 1;
-  place-items: center;
-  color: #f7efff;
-  background:
-    radial-gradient(circle at 34% 26%, rgba(255, 255, 255, 0.24), transparent 17%),
-    linear-gradient(145deg, #946bd5, #5b358f 58%, #301b51);
-  filter: drop-shadow(0 1.7rem 1.5rem rgba(0, 0, 0, 0.52));
-  transition:
-    clip-path 0.35s ease,
-    border-radius 0.35s ease,
-    filter 0.35s ease;
-}
-
-.die-shape::before,
-.die-shape::after {
-  position: absolute;
-  content: "";
-  pointer-events: none;
-}
-
-.die-shape::before {
-  inset: 0.48rem;
-  border: 1px solid rgba(255, 255, 255, 0.17);
-  clip-path: inherit;
-}
-
-.die-shape::after {
-  inset: 20%;
-  border: 1px solid rgba(255, 255, 255, 0.065);
-  transform: rotate(45deg);
-}
-
-.die-shape span {
-  position: relative;
-  z-index: 1;
-  font-family: "Rubik", ui-sans-serif, system-ui, sans-serif;
-  font-size: clamp(4rem, 10vh, 6.5rem);
-  font-weight: 700;
-  letter-spacing: -0.08em;
-  text-shadow: 0 0.4rem 1.5rem rgba(26, 11, 49, 0.48);
-}
-
-.die-d4 {
-  clip-path: polygon(50% 2%, 98% 92%, 2% 92%);
-}
-
-.die-d4 span {
-  transform: translateY(12%);
-}
-
-.die-d6 {
-  border-radius: 2rem;
-}
-
-.die-d8 {
-  clip-path: polygon(50% 0, 96% 50%, 50% 100%, 4% 50%);
-}
-
-.die-d10 {
-  clip-path: polygon(50% 0, 93% 28%, 82% 82%, 50% 100%, 18% 82%, 7% 28%);
-}
-
-.die-d12,
-.die-d20,
-.die-d100 {
-  clip-path: polygon(50% 0, 86% 14%, 100% 50%, 86% 86%, 50% 100%, 14% 86%, 0 50%, 14% 14%);
-}
-
-.die-shape.rolling {
-  filter: drop-shadow(0 2.5rem 2rem rgba(0, 0, 0, 0.4));
-  animation: tumble 0.65s cubic-bezier(0.36, 0.07, 0.19, 0.97);
-}
-
-.die-shadow {
-  position: absolute;
-  width: min(29vw, 16rem);
-  height: 1.8rem;
-  bottom: 8%;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.68);
-  filter: blur(1rem);
+.three-d-die {
+  width: min(36vw, 43vh, 21rem);
 }
 
 .roll-panel {
@@ -520,13 +430,6 @@ label {
   animation: spin 0.7s linear infinite;
 }
 
-.panel-note {
-  margin: 0.8rem 0 0;
-  color: #5f5968;
-  font-size: 0.64rem;
-  text-align: center;
-}
-
 .live-result {
   position: absolute;
   width: 1px;
@@ -536,14 +439,6 @@ label {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
-}
-
-@keyframes tumble {
-  0% { transform: rotate(0deg) scale(1); }
-  22% { transform: rotate(-15deg) translateY(-1rem) scale(0.92); }
-  47% { transform: rotate(12deg) translateY(-2rem) scale(1.06); }
-  72% { transform: rotate(-8deg) translateY(-0.7rem) scale(0.97); }
-  100% { transform: rotate(0) scale(1); }
 }
 
 @keyframes spin {
@@ -590,12 +485,8 @@ label {
     padding: 0.55rem 0 0.8rem;
   }
 
-  .die-shape {
-    width: min(55vw, 14rem);
-  }
-
-  .die-shadow {
-    bottom: 0;
+  .three-d-die {
+    width: min(60vw, 16rem);
   }
 
   .roll-panel {
@@ -623,12 +514,8 @@ label {
     margin-top: 0.65rem;
   }
 
-  .die-shape {
-    width: min(50vw, 12rem);
-  }
-
-  .die-shape span {
-    font-size: 3.8rem;
+  .three-d-die {
+    width: min(57vw, 14rem);
   }
 
   .die-stage {
@@ -637,10 +524,6 @@ label {
 
   .roll-panel {
     padding: 1.1rem;
-  }
-
-  .panel-note {
-    display: none;
   }
 }
 
