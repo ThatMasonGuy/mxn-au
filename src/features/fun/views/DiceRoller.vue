@@ -35,21 +35,63 @@
         <p class="panel-kicker">DICE ROLLER</p>
         <h2>Choose a die.</h2>
 
-        <label for="die-sides">Your die</label>
-        <div class="select-field">
-          <Dices :size="18" :stroke-width="1.7" aria-hidden="true" />
-          <select
+        <label id="die-sides-label" for="die-sides">Your die</label>
+        <SelectRoot v-model="selectedSidesModel" :disabled="isRolling">
+          <SelectTrigger
             id="die-sides"
-            v-model.number="selectedSides"
-            :disabled="isRolling"
-            @change="resetDie"
+            class="select-trigger"
+            aria-labelledby="die-sides-label"
           >
-            <option v-for="die in diceOptions" :key="die.sides" :value="die.sides">
-              d{{ die.sides }} — {{ die.label }}
-            </option>
-          </select>
-          <ChevronDown :size="17" :stroke-width="1.8" aria-hidden="true" />
-        </div>
+            <span class="select-icon" aria-hidden="true">
+              <Dices :size="18" :stroke-width="1.7" />
+            </span>
+            <SelectValue as-child>
+              <span class="select-current">
+                <strong>d{{ selectedSides }}</strong>
+                <span>{{ selectedDie.label }}</span>
+              </span>
+            </SelectValue>
+            <SelectIcon as-child>
+              <ChevronDown
+                class="select-chevron"
+                :size="17"
+                :stroke-width="1.8"
+                aria-hidden="true"
+              />
+            </SelectIcon>
+          </SelectTrigger>
+
+          <SelectPortal>
+            <SelectContent
+              class="dice-select-content"
+              position="popper"
+              side="bottom"
+              align="start"
+              :side-offset="8"
+              :collision-padding="12"
+            >
+              <SelectViewport class="dice-select-viewport">
+                <SelectItem
+                  v-for="die in diceOptions"
+                  :key="die.sides"
+                  class="dice-select-option"
+                  :value="String(die.sides)"
+                >
+                  <span class="option-die" aria-hidden="true">d{{ die.sides }}</span>
+                  <SelectItemText>
+                    <span class="option-copy">
+                      <strong>{{ die.label }}</strong>
+                      <small>{{ die.sides }} possible outcomes</small>
+                    </span>
+                  </SelectItemText>
+                  <SelectItemIndicator class="option-check">
+                    <Check :size="16" :stroke-width="2.2" aria-hidden="true" />
+                  </SelectItemIndicator>
+                </SelectItem>
+              </SelectViewport>
+            </SelectContent>
+          </SelectPortal>
+        </SelectRoot>
 
         <div class="selection-detail">
           <span class="mini-die">d{{ selectedSides }}</span>
@@ -84,7 +126,19 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import { ChevronDown, Dices } from 'lucide-vue-next'
+import { Check, ChevronDown, Dices } from 'lucide-vue-next'
+import {
+  SelectContent,
+  SelectIcon,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectPortal,
+  SelectRoot,
+  SelectTrigger,
+  SelectValue,
+  SelectViewport,
+} from 'radix-vue'
 import CounterStatement from '@/features/fun/components/CounterStatement.vue'
 import Dice3D from '@/features/fun/components/Dice3D.vue'
 import FunShell from '@/features/fun/components/FunShell.vue'
@@ -112,6 +166,13 @@ const { diceRolled } = useFunCounters(['dice-total'])
 const selectedDie = computed(
   () => diceOptions.find((die) => die.sides === selectedSides.value) || diceOptions[5],
 )
+const selectedSidesModel = computed({
+  get: () => String(selectedSides.value),
+  set: (value) => {
+    selectedSides.value = Number(value)
+    resetDie()
+  },
+})
 
 const liveMessage = computed(() => {
   if (isRolling.value) return `Rolling a d${selectedSides.value}.`
@@ -269,9 +330,9 @@ label {
   text-transform: uppercase;
 }
 
-.select-field {
-  position: relative;
+.select-trigger {
   display: flex;
+  width: 100%;
   min-height: 3.65rem;
   align-items: center;
   gap: 0.75rem;
@@ -281,36 +342,184 @@ label {
   color: #8f75b6;
   background: rgba(4, 4, 7, 0.56);
   box-shadow: inset 0 1px 1rem rgba(0, 0, 0, 0.18);
-  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+  text-align: left;
+  transition:
+    border-color 0.25s ease,
+    box-shadow 0.25s ease,
+    background 0.25s ease;
 }
 
-.select-field:focus-within {
+.select-trigger:hover:not(:disabled) {
+  border-color: rgba(151, 116, 218, 0.48);
+  background: rgba(10, 8, 14, 0.7);
+}
+
+.select-trigger:focus-visible,
+.select-trigger[data-state="open"] {
+  outline: 0;
   border-color: rgba(151, 116, 218, 0.72);
   box-shadow:
     0 0 0 3px rgba(139, 92, 246, 0.1),
     inset 0 1px 1rem rgba(0, 0, 0, 0.18);
 }
 
-.select-field select {
-  width: 100%;
-  border: 0;
-  outline: 0;
-  appearance: none;
+.select-trigger:disabled {
+  cursor: wait;
+  opacity: 0.62;
+}
+
+.select-icon {
+  display: grid;
+  width: 1.9rem;
+  height: 1.9rem;
+  flex: none;
+  place-items: center;
+  border: 1px solid rgba(170, 130, 232, 0.2);
+  border-radius: 0.55rem;
+  background: rgba(121, 78, 182, 0.13);
+}
+
+.select-current {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: baseline;
+  gap: 0.42rem;
   color: #f2ecf9;
-  background: transparent;
-  font: inherit;
-  font-size: 0.9rem;
-  font-weight: 650;
+  font-size: 0.88rem;
 }
 
-.select-field option {
-  color: #18131f;
+.select-current strong {
+  flex: none;
+  font-weight: 800;
 }
 
-.select-field > svg:last-child {
+.select-current span {
+  overflow: hidden;
+  color: #aaa0b5;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.select-chevron {
   flex: none;
   color: #6d6477;
-  pointer-events: none;
+  transition: color 0.2s ease, transform 0.25s ease;
+}
+
+.select-trigger[data-state="open"] .select-chevron {
+  color: #b99ae7;
+  transform: rotate(180deg);
+}
+
+:global(.dice-select-content) {
+  z-index: 100;
+  width: var(--radix-select-trigger-width);
+  max-width: calc(100vw - 1.5rem);
+  max-height: min(25rem, var(--radix-select-content-available-height));
+  overflow: hidden;
+  border: 1px solid rgba(177, 139, 232, 0.24);
+  border-radius: 0.95rem;
+  color: #eee8f5;
+  background:
+    linear-gradient(145deg, rgba(34, 27, 44, 0.98), rgba(14, 12, 19, 0.99));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 1.4rem 3rem rgba(0, 0, 0, 0.48),
+    0 0 0 1px rgba(36, 22, 53, 0.8);
+  backdrop-filter: blur(1.4rem);
+  transform-origin: var(--radix-select-content-transform-origin);
+}
+
+:global(.dice-select-content[data-state="open"]) {
+  animation: select-open 0.18s ease-out;
+}
+
+:global(.dice-select-viewport) {
+  padding: 0.45rem;
+}
+
+:global(.dice-select-option) {
+  position: relative;
+  display: grid;
+  min-height: 3.35rem;
+  cursor: pointer;
+  user-select: none;
+  grid-template-columns: 2.15rem minmax(0, 1fr) 1.25rem;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid transparent;
+  border-radius: 0.7rem;
+  outline: none;
+  transition:
+    border-color 0.16s ease,
+    color 0.16s ease,
+    background 0.16s ease;
+}
+
+:global(.dice-select-option[data-highlighted]) {
+  border-color: rgba(168, 125, 231, 0.18);
+  background: rgba(132, 88, 194, 0.15);
+}
+
+:global(.dice-select-option[data-state="checked"]) {
+  border-color: rgba(174, 131, 235, 0.26);
+  background:
+    linear-gradient(100deg, rgba(114, 72, 174, 0.28), rgba(86, 55, 132, 0.14));
+}
+
+:global(.option-die) {
+  display: grid;
+  width: 2.15rem;
+  height: 2.15rem;
+  place-items: center;
+  clip-path: polygon(50% 0, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
+  color: #f8f3ff;
+  background: linear-gradient(145deg, #8661c5, #4f2f76);
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+:global(.option-copy) {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+:global(.option-copy strong) {
+  overflow: hidden;
+  color: #e8e1ef;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:global(.option-copy small) {
+  margin-top: 0.14rem;
+  color: #81778b;
+  font-size: 0.58rem;
+}
+
+:global(.option-check) {
+  display: grid;
+  color: #c7a7f3;
+  place-items: center;
+}
+
+@keyframes select-open {
+  from {
+    opacity: 0;
+    transform: translateY(-0.35rem) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .selection-detail {

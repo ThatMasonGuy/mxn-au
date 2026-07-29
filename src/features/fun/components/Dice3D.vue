@@ -20,6 +20,7 @@ import {
   LineSegments,
   Matrix4,
   Mesh,
+  MeshBasicMaterial,
   MeshStandardMaterial,
   PerspectiveCamera,
   Quaternion,
@@ -279,7 +280,7 @@ const POLYHEDRA = {
   ]),
 }
 
-function createFaceTexture(label, faceCount) {
+function createFaceTexture() {
   const canvas = document.createElement('canvas')
   canvas.width = 384
   canvas.height = 384
@@ -292,24 +293,30 @@ function createFaceTexture(label, faceCount) {
   context.fillStyle = gradient
   context.fillRect(0, 0, canvas.width, canvas.height)
 
-  context.strokeStyle = 'rgba(255,255,255,0.14)'
-  context.lineWidth = 8
-  context.strokeRect(14, 14, 356, 356)
+  const texture = new CanvasTexture(canvas)
+  texture.colorSpace = SRGBColorSpace
+  texture.anisotropy = Math.min(renderer?.capabilities.getMaxAnisotropy() || 1, 8)
+  return texture
+}
 
+function createLabelTexture(label, faceCount) {
+  const canvas = document.createElement('canvas')
+  canvas.width = 384
+  canvas.height = 384
+  const context = canvas.getContext('2d')
   const text = String(label)
-  const fontSize =
-    text.length >= 3 ? 104 :
-    text.length === 2 ? 132 :
-    faceCount >= 20 ? 152 : 168
+  const baseSize = text.length >= 3 ? 116 : text.length === 2 ? 148 : 190
+  const faceScale = faceCount >= 20 ? 0.68 : faceCount >= 12 ? 0.82 : 0.9
+  const fontSize = Math.round(baseSize * faceScale)
 
   context.fillStyle = '#fbf8ff'
   context.font = `700 ${fontSize}px Rubik, Arial, sans-serif`
   context.textAlign = 'center'
   context.textBaseline = 'middle'
   context.shadowColor = 'rgba(25, 10, 48, 0.55)'
-  context.shadowBlur = 18
-  context.shadowOffsetY = 8
-  context.fillText(text, 192, 198)
+  context.shadowBlur = 14
+  context.shadowOffsetY = 5
+  context.fillText(text, 192, 192)
 
   const texture = new CanvasTexture(canvas)
   texture.colorSpace = SRGBColorSpace
@@ -323,7 +330,7 @@ function buildGeometry(polyhedron) {
   const uvs = []
   let triangleOffset = 0
 
-  polyhedron.faces.forEach((face, faceIndex) => {
+  polyhedron.faces.forEach((face) => {
     const vertexCount = face.indices.length
     const faceUvs = face.indices.map((_, index) => {
       const angle = Math.PI / 2 + (Math.PI * 2 * index) / vertexCount
@@ -340,7 +347,7 @@ function buildGeometry(polyhedron) {
       })
     }
 
-    geometry.addGroup(triangleOffset * 3, triangleCount * 3, faceIndex)
+    geometry.addGroup(triangleOffset * 3, triangleCount * 3, 0)
     triangleOffset += triangleCount
   })
 
@@ -351,18 +358,91 @@ function buildGeometry(polyhedron) {
   return geometry
 }
 
+function faceInsetRadius(polyhedron, face) {
+  return face.indices.reduce((closest, index, position) => {
+    const nextIndex = face.indices[(position + 1) % face.indices.length]
+    const edge = subtract(
+      polyhedron.vertices[nextIndex],
+      polyhedron.vertices[index],
+    )
+    const toCenter = subtract(face.center, polyhedron.vertices[index])
+    const distance = magnitude(cross(edge, toCenter)) / magnitude(edge)
+    return Math.min(closest, distance)
+  }, Number.POSITIVE_INFINITY)
+}
+
+function createFaceLabel(polyhedron, face, label, faceCount) {
+  const normal = normalize(face.normal)
+  const up = normalize(face.up)
+  const right = normalize(cross(up, normal))
+  const insetRadius = faceInsetRadius(polyhedron, face)
+  const sizeScale =
+    faceCount >= 20 ? 1.05 :
+    faceCount >= 12 ? 1.16 :
+    faceCount >= 10 ? 1.24 : 1.34
+  const halfSize = insetRadius * sizeScale * 0.5
+  const offsetCenter = add(face.center, multiply(normal, 0.008))
+  const bottomLeft = subtract(
+    subtract(offsetCenter, multiply(right, halfSize)),
+    multiply(up, halfSize),
+  )
+  const bottomRight = add(
+    subtract(offsetCenter, multiply(up, halfSize)),
+    multiply(right, halfSize),
+  )
+  const topRight = add(
+    add(offsetCenter, multiply(right, halfSize)),
+    multiply(up, halfSize),
+  )
+  const topLeft = add(
+    subtract(offsetCenter, multiply(right, halfSize)),
+    multiply(up, halfSize),
+  )
+  const geometry = new BufferGeometry()
+
+  geometry.setAttribute(
+    'position',
+    new BufferAttribute(
+      new Float32Array([
+        ...bottomLeft, ...bottomRight, ...topRight,
+        ...bottomLeft, ...topRight, ...topLeft,
+      ]),
+      3,
+    ),
+  )
+  geometry.setAttribute(
+    'uv',
+    new BufferAttribute(
+      new Float32Array([
+        0, 0, 1, 0, 1, 1,
+        0, 0, 1, 1, 0, 1,
+      ]),
+      2,
+    ),
+  )
+  geometry.computeVertexNormals()
+
+  const material = new MeshBasicMaterial({
+    map: createLabelTexture(label, faceCount),
+    transparent: true,
+    alphaTest: 0.02,
+    depthWrite: false,
+    toneMapped: false,
+  })
+  const labelMesh = new Mesh(geometry, material)
+  labelMesh.renderOrder = 2
+  return labelMesh
+}
+
 function createNumberedDie(polyhedron, labels) {
   const geometry = buildGeometry(polyhedron)
-  const materials = labels.map((label) => {
-    const texture = createFaceTexture(label, labels.length)
-    return new MeshStandardMaterial({
-      map: texture,
-      color: new Color('#ffffff'),
-      roughness: 0.34,
-      metalness: 0.08,
-    })
+  const material = new MeshStandardMaterial({
+    map: createFaceTexture(),
+    color: new Color('#ffffff'),
+    roughness: 0.34,
+    metalness: 0.08,
   })
-  const mesh = new Mesh(geometry, materials)
+  const mesh = new Mesh(geometry, material)
   const edges = new LineSegments(
     new EdgesGeometry(geometry, 12),
     new LineBasicMaterial({
@@ -373,6 +453,9 @@ function createNumberedDie(polyhedron, labels) {
   )
 
   mesh.add(edges)
+  polyhedron.faces.forEach((face, index) => {
+    mesh.add(createFaceLabel(polyhedron, face, labels[index], labels.length))
+  })
   mesh.userData.faces = polyhedron.faces.map((face, index) => ({
     ...face,
     label: String(labels[index]),
@@ -384,7 +467,8 @@ function createNumberedDie(polyhedron, labels) {
 
 function disposeDie(mesh) {
   mesh.geometry.dispose()
-  mesh.material.forEach((material) => {
+  const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+  materials.forEach((material) => {
     material.map?.dispose()
     material.dispose()
   })
