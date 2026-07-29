@@ -9,11 +9,13 @@
           are not.
         </p>
 
-        <div class="global-count">
-          <Coins :size="18" :stroke-width="1.8" />
-          <strong>{{ formatCount(coinsFlipped) }}</strong>
-          <span>coins flipped by indecisive people</span>
-        </div>
+        <CounterStatement
+          class="global-count"
+          :count="coinsFlipped"
+          singular="coin"
+          plural="coins"
+          suffix="flipped by indecisive people"
+        />
       </div>
 
       <div class="coin-card">
@@ -25,12 +27,12 @@
           >
             <div class="coin-face coin-heads">
               <span class="coin-rim"></span>
-              <span class="coin-letter">M</span>
+              <UserRound :size="82" :stroke-width="1.25" />
               <small>HEADS</small>
             </div>
             <div class="coin-face coin-tails">
               <span class="coin-rim"></span>
-              <Sparkles :size="54" :stroke-width="1.2" />
+              <Rat :size="84" :stroke-width="1.2" />
               <small>TAILS</small>
             </div>
           </div>
@@ -57,7 +59,8 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import { Coins, RefreshCw, Sparkles } from 'lucide-vue-next'
+import { Rat, RefreshCw, UserRound } from 'lucide-vue-next'
+import CounterStatement from '@/features/fun/components/CounterStatement.vue'
 import FunShell from '@/features/fun/components/FunShell.vue'
 import {
   incrementCounter,
@@ -69,17 +72,12 @@ const isFlipping = ref(false)
 const result = ref('')
 const currentSide = ref('Heads')
 const rotation = ref(0)
-const numberFormatter = new Intl.NumberFormat('en-AU')
 
 const liveMessage = computed(() => {
   if (isFlipping.value) return 'The coin is flipping.'
   if (result.value) return `The coin landed on ${result.value}.`
   return ''
 })
-
-function formatCount(value) {
-  return numberFormatter.format(value || 0)
-}
 
 function flipCoin() {
   if (isFlipping.value) return
@@ -149,27 +147,7 @@ function flipCoin() {
 }
 
 .global-count {
-  display: flex;
-  width: fit-content;
-  align-items: center;
-  gap: 0.7rem;
   margin-top: clamp(1.5rem, 4vh, 2.8rem);
-  padding: 0.65rem 0.8rem;
-  border: 1px solid rgba(255, 255, 255, 0.075);
-  border-radius: 0.75rem;
-  color: #9f8d70;
-  background: rgba(255, 255, 255, 0.025);
-}
-
-.global-count strong {
-  color: #f0d49b;
-  font-size: 1.05rem;
-  font-variant-numeric: tabular-nums;
-}
-
-.global-count span {
-  color: #777080;
-  font-size: 0.68rem;
 }
 
 .coin-card {
@@ -241,12 +219,14 @@ function flipCoin() {
   border-radius: 50%;
 }
 
-.coin-letter {
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 5.8rem;
-  font-weight: 700;
-  line-height: 1;
-  text-shadow: 0 2px 0 rgba(255, 239, 174, 0.54);
+.coin-face > svg {
+  position: relative;
+  z-index: 1;
+  filter: drop-shadow(0 2px 0 rgba(255, 239, 174, 0.42));
+}
+
+.coin-tails > svg {
+  transform: scaleX(-1);
 }
 
 .coin-face small {
@@ -400,8 +380,9 @@ button:focus-visible {
     width: min(47vw, 10.5rem);
   }
 
-  .coin-letter {
-    font-size: 4.4rem;
+  .coin-face > svg {
+    width: 4.2rem;
+    height: 4.2rem;
   }
 
   .coin-face small {

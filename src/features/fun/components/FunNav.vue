@@ -5,54 +5,35 @@
       :key="tool.to"
       class="fun-link"
       :to="tool.to"
-      :aria-label="`${tool.label}: ${formatCount(tool.count)} ${tool.countLabel}`"
+      :aria-label="tool.label"
     >
       <component :is="tool.icon" :size="15" :stroke-width="1.9" />
       <span class="tool-label">{{ tool.label }}</span>
-      <span class="tool-count">{{ formatCount(tool.count) }}</span>
     </RouterLink>
   </nav>
 </template>
 
 <script setup>
-import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import { CircleHelp, Coins, Dices } from 'lucide-vue-next'
-import { useFunCounters } from '@/features/fun/composables/useFunCounters'
 
-const { questionsAsked, coinsFlipped, diceRolled } = useFunCounters()
-const numberFormatter = new Intl.NumberFormat('en-AU', {
-  notation: 'compact',
-  maximumFractionDigits: 1,
-})
-
-const tools = computed(() => [
+const tools = [
   {
     to: '/8ball',
     label: '8 Ball',
-    count: questionsAsked.value,
-    countLabel: 'questions asked',
     icon: CircleHelp,
   },
   {
     to: '/coin',
     label: 'Flip a coin',
-    count: coinsFlipped.value,
-    countLabel: 'coins flipped',
     icon: Coins,
   },
   {
     to: '/dice',
     label: 'Roll dice',
-    count: diceRolled.value,
-    countLabel: 'dice rolled',
     icon: Dices,
   },
-])
-
-function formatCount(value) {
-  return numberFormatter.format(value || 0)
-}
+]
 </script>
 
 <style scoped>
@@ -103,18 +84,6 @@ function formatCount(value) {
   outline-offset: 3px;
 }
 
-.tool-count {
-  min-width: 1.45rem;
-  padding: 0.2rem 0.35rem;
-  border-radius: 0.4rem;
-  color: #c9b9e6;
-  background: rgba(255, 255, 255, 0.055);
-  font-size: 0.57rem;
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-  text-align: center;
-}
-
 @media (max-width: 720px) {
   .fun-nav {
     gap: 0.3rem;
@@ -123,7 +92,6 @@ function formatCount(value) {
   .fun-link {
     min-width: 2.35rem;
     justify-content: center;
-    gap: 0.25rem;
     padding: 0.4rem;
   }
 
@@ -137,20 +105,11 @@ function formatCount(value) {
     white-space: nowrap;
     border: 0;
   }
-
-  .tool-count {
-    min-width: 1.15rem;
-    padding-inline: 0.2rem;
-  }
 }
 
 @media (max-width: 390px) {
   .fun-link {
     min-width: 2.15rem;
-  }
-
-  .tool-count {
-    display: none;
   }
 }
 </style>

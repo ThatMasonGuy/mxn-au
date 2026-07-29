@@ -23,6 +23,13 @@
             Bring your biggest dilemma, your smallest suspicion, or the question
             you already know the answer to.
           </p>
+          <CounterStatement
+            class="question-count"
+            :count="questionsAsked"
+            singular="question"
+            plural="questions"
+            suffix="asked by curious people"
+          />
         </div>
 
         <div class="ball-stage">
@@ -124,8 +131,12 @@ import { RouterLink } from 'vue-router'
 import { RotateCcw, Sparkles } from 'lucide-vue-next'
 import { collection, doc, serverTimestamp, writeBatch } from 'firebase/firestore'
 import { firestore } from '@/firebase'
+import CounterStatement from '@/features/fun/components/CounterStatement.vue'
 import FunNav from '@/features/fun/components/FunNav.vue'
-import { stageCounterIncrement } from '@/features/fun/composables/useFunCounters'
+import {
+  stageCounterIncrement,
+  useFunCounters,
+} from '@/features/fun/composables/useFunCounters'
 
 const ANSWERS = [
   { text: 'It is certain', lines: ['It is', 'certain'], type: 'positive' },
@@ -157,6 +168,7 @@ const isThinking = ref(false)
 const isFocused = ref(false)
 const validationMessage = ref('')
 const questionInput = ref(null)
+const { questionsAsked } = useFunCounters(['questions'])
 
 const buttonLabel = computed(() => (answer.value ? 'ASK AGAIN' : 'REVEAL MY ANSWER'))
 const answerLines = computed(() => ANSWERS.find((option) => option.text === answer.value)?.lines || [])
@@ -379,6 +391,10 @@ function resetOracle() {
   color: var(--muted);
   font-size: clamp(0.88rem, 1.2vw, 1rem);
   line-height: 1.5;
+}
+
+.question-count {
+  margin-top: clamp(0.85rem, 2vh, 1.35rem);
 }
 
 .ball-stage {
@@ -834,6 +850,10 @@ kbd {
     line-height: 1.45;
   }
 
+  .question-count {
+    margin: 0.8rem auto 0;
+  }
+
   .ball-stage {
     flex: none;
     padding: 0.55rem 0 0.8rem;
@@ -887,6 +907,10 @@ kbd {
 
   .lede {
     display: none;
+  }
+
+  .question-count {
+    margin-top: 0.65rem;
   }
 
   .magic-ball {
