@@ -29,8 +29,15 @@ const props = defineProps({
   },
 })
 
-const numberFormatter = new Intl.NumberFormat('en-AU')
-const formattedCount = computed(() => numberFormatter.format(props.count || 0))
+const numberFormatter = new Intl.NumberFormat('en-AU', {
+  notation: 'compact',
+  maximumFractionDigits: 1,
+})
+const formattedCount = computed(() =>
+  numberFormatter
+    .format(props.count || 0)
+    .replace(/[KMBT]$/, (suffix) => suffix.toLowerCase()),
+)
 </script>
 
 <style scoped>
