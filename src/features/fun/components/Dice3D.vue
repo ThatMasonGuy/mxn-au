@@ -305,8 +305,8 @@ function createLabelTexture(label, faceCount) {
   canvas.height = 384
   const context = canvas.getContext('2d')
   const text = String(label)
-  const baseSize = text.length >= 3 ? 116 : text.length === 2 ? 148 : 190
-  const faceScale = faceCount >= 20 ? 0.68 : faceCount >= 12 ? 0.82 : 0.9
+  const baseSize = text.length >= 3 ? 130 : text.length === 2 ? 160 : 205
+  const faceScale = faceCount >= 20 ? 0.82 : faceCount >= 12 ? 0.9 : 0.95
   const fontSize = Math.round(baseSize * faceScale)
 
   context.fillStyle = '#fbf8ff'
@@ -377,9 +377,9 @@ function createFaceLabel(polyhedron, face, label, faceCount) {
   const right = normalize(cross(up, normal))
   const insetRadius = faceInsetRadius(polyhedron, face)
   const sizeScale =
-    faceCount >= 20 ? 1.05 :
-    faceCount >= 12 ? 1.16 :
-    faceCount >= 10 ? 1.24 : 1.34
+    faceCount >= 20 ? 1.85 :
+    faceCount >= 12 ? 1.8 :
+    faceCount >= 10 ? 2 : 1.75
   const halfSize = insetRadius * sizeScale * 0.5
   const offsetCenter = add(face.center, multiply(normal, 0.008))
   const bottomLeft = subtract(
