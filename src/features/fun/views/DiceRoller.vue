@@ -25,6 +25,7 @@
             :sides="selectedSides"
             :value="displayValue"
             :rolling="isRolling"
+            @settled="finishRoll"
           />
         </div>
       </div>
@@ -128,26 +129,19 @@ function rollDice() {
 
   const sides = selectedSides.value
   const finalResult = Math.floor(Math.random() * sides) + 1
-  let ticks = 0
 
   result.value = null
+  displayValue.value = finalResult
   isRolling.value = true
-
-  const ticker = window.setInterval(() => {
-    displayValue.value = Math.floor(Math.random() * sides) + 1
-    ticks += 1
-
-    if (ticks < 9) return
-
-    window.clearInterval(ticker)
-    displayValue.value = finalResult
-    result.value = finalResult
-    isRolling.value = false
-  }, 72)
 
   void incrementDiceCounter(sides).catch((error) => {
     console.warn('[DiceRoller] Could not increment counters:', error)
   })
+}
+
+function finishRoll() {
+  result.value = displayValue.value
+  isRolling.value = false
 }
 </script>
 

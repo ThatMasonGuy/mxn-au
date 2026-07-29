@@ -1,12 +1,33 @@
 <template>
   <div class="dice-visual" :class="{ rolling }">
-    <canvas ref="canvas" aria-hidden="true"></canvas>
+    <div ref="mount" class="renderer-mount" aria-hidden="true"></div>
     <div class="ground-shadow" aria-hidden="true"></div>
   </div>
 </template>
 
 <script setup>
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import {
+  AmbientLight,
+  BufferAttribute,
+  BufferGeometry,
+  CanvasTexture,
+  Color,
+  DirectionalLight,
+  EdgesGeometry,
+  Group,
+  LineBasicMaterial,
+  LineSegments,
+  Matrix4,
+  Mesh,
+  MeshStandardMaterial,
+  PerspectiveCamera,
+  Quaternion,
+  Scene,
+  SRGBColorSpace,
+  Vector3,
+  WebGLRenderer,
+} from 'three'
 
 const props = defineProps({
   sides: {
@@ -23,24 +44,31 @@ const props = defineProps({
   },
 })
 
-const canvas = ref(null)
+const emit = defineEmits(['settled'])
+const mount = ref(null)
+
 const PHI = (1 + Math.sqrt(5)) / 2
 const EPSILON = 0.0001
+const SPIN_DURATION = 900
+const LAND_DURATION = 520
+const LAND_NORMALS = [
+  new Vector3(-0.1, 0.15, 0.984).normalize(),
+  new Vector3(0.1, 0.15, 0.984).normalize(),
+]
 
-let context = null
+let renderer = null
+let scene = null
+let camera = null
+let diceGroup = null
 let resizeObserver = null
 let animationFrame = null
-let lastTime = 0
-let width = 0
-let height = 0
-
-const rotations = [
-  { x: -0.42, y: 0.62, z: 0.08, vx: 0, vy: 0, vz: 0 },
-  { x: -0.2, y: -0.48, z: -0.1, vx: 0, vy: 0, vz: 0 },
-]
+let lastTimestamp = 0
+let rollSequence = null
+let dice = []
 
 const add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]]
 const subtract = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
+const multiply = (vector, scalar) => vector.map((value) => value * scalar)
 const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
 const cross = (a, b) => [
   a[1] * b[2] - a[2] * b[1],
@@ -53,9 +81,58 @@ const normalize = (vector) => {
   return vector.map((value) => value / length)
 }
 
+function centerOf(vertices) {
+  return vertices
+    .reduce(add, [0, 0, 0])
+    .map((value) => value / vertices.length)
+}
+
 function normalizeVertices(vertices) {
-  const radius = Math.max(...vertices.map(magnitude))
-  return vertices.map((vertex) => vertex.map((value) => value / radius))
+  const center = centerOf(vertices)
+  const centered = vertices.map((vertex) => subtract(vertex, center))
+  const radius = Math.max(...centered.map(magnitude))
+  return centered.map((vertex) => multiply(vertex, 1 / radius))
+}
+
+function orderFace(vertices, indices, normal) {
+  const center = centerOf(indices.map((index) => vertices[index]))
+  const references = [
+    [0, 1, 0],
+    [1, 0, 0],
+    [0, 0, 1],
+  ]
+  const reference = references
+    .map((candidate) => ({
+      candidate,
+      alignment: Math.abs(dot(candidate, normal)),
+    }))
+    .sort((left, right) => left.alignment - right.alignment)[0].candidate
+  const up = normalize(subtract(reference, multiply(normal, dot(reference, normal))))
+  const right = normalize(cross(up, normal))
+
+  let ordered = [...indices].sort((left, rightIndex) => {
+    const leftVector = subtract(vertices[left], center)
+    const rightVector = subtract(vertices[rightIndex], center)
+    const leftAngle = Math.atan2(dot(leftVector, up), dot(leftVector, right))
+    const rightAngle = Math.atan2(dot(rightVector, up), dot(rightVector, right))
+    return leftAngle - rightAngle
+  })
+
+  const windingNormal = cross(
+    subtract(vertices[ordered[1]], vertices[ordered[0]]),
+    subtract(vertices[ordered[2]], vertices[ordered[0]]),
+  )
+  if (dot(windingNormal, normal) < 0) ordered = ordered.reverse()
+
+  const topIndex = ordered
+    .map((index, position) => ({
+      position,
+      height: dot(subtract(vertices[index], center), up),
+    }))
+    .sort((left, rightValue) => rightValue.height - left.height)[0].position
+
+  ordered = [...ordered.slice(topIndex), ...ordered.slice(0, topIndex)]
+  return { indices: ordered, center, normal, up }
 }
 
 function convexFaces(vertices) {
@@ -64,19 +141,18 @@ function convexFaces(vertices) {
   for (let a = 0; a < vertices.length - 2; a += 1) {
     for (let b = a + 1; b < vertices.length - 1; b += 1) {
       for (let c = b + 1; c < vertices.length; c += 1) {
-        const normal = cross(
+        const planeNormal = cross(
           subtract(vertices[b], vertices[a]),
           subtract(vertices[c], vertices[a]),
         )
-        if (magnitude(normal) < EPSILON) continue
+        if (magnitude(planeNormal) < EPSILON) continue
 
         const distances = vertices.map((vertex) =>
-          dot(normal, subtract(vertex, vertices[a])),
+          dot(planeNormal, subtract(vertex, vertices[a])),
         )
         const isHullPlane =
           distances.every((distance) => distance <= EPSILON) ||
           distances.every((distance) => distance >= -EPSILON)
-
         if (!isHullPlane) continue
 
         const face = distances
@@ -91,79 +167,88 @@ function convexFaces(vertices) {
   }
 
   return [...faceSets.values()].map((indices) => {
-    const center = indices
-      .map((index) => vertices[index])
-      .reduce(add, [0, 0, 0])
-      .map((value) => value / indices.length)
-
+    const center = centerOf(indices.map((index) => vertices[index]))
     let normal = normalize(
       cross(
         subtract(vertices[indices[1]], vertices[indices[0]]),
         subtract(vertices[indices[2]], vertices[indices[0]]),
       ),
     )
-    if (dot(normal, center) < 0) normal = normal.map((value) => -value)
-
-    const axisX = normalize(subtract(vertices[indices[0]], center))
-    const axisY = normalize(cross(normal, axisX))
-    const ordered = [...indices].sort((left, right) => {
-      const leftVector = subtract(vertices[left], center)
-      const rightVector = subtract(vertices[right], center)
-      const leftAngle = Math.atan2(dot(leftVector, axisY), dot(leftVector, axisX))
-      const rightAngle = Math.atan2(dot(rightVector, axisY), dot(rightVector, axisX))
-      return leftAngle - rightAngle
-    })
-
-    return ordered
+    if (dot(normal, center) < 0) normal = multiply(normal, -1)
+    return orderFace(vertices, indices, normal)
   })
 }
 
-function makeGeometry(vertices) {
-  const normalizedVertices = normalizeVertices(vertices)
+function dualOf(vertices, faces) {
+  const center = centerOf(vertices)
+  const dualVertices = faces.map((indices) => {
+    let normal = normalize(
+      cross(
+        subtract(vertices[indices[1]], vertices[indices[0]]),
+        subtract(vertices[indices[2]], vertices[indices[0]]),
+      ),
+    )
+    const faceCenter = centerOf(indices.map((index) => vertices[index]))
+    if (dot(normal, subtract(faceCenter, center)) < 0) normal = multiply(normal, -1)
+    const distance = dot(normal, subtract(vertices[indices[0]], center))
+    return multiply(normal, 1 / distance)
+  })
+
+  return makePolyhedron(dualVertices)
+}
+
+function makePolyhedron(rawVertices) {
+  const vertices = normalizeVertices(rawVertices)
   return {
-    vertices: normalizedVertices,
-    faces: convexFaces(normalizedVertices),
+    vertices,
+    faces: convexFaces(vertices),
   }
 }
 
-function ringVertices(count, radius = 1, z = 0) {
+function ringVertices(count, z, rotation = 0) {
   return Array.from({ length: count }, (_, index) => {
-    const angle = (Math.PI * 2 * index) / count - Math.PI / 2
-    return [Math.cos(angle) * radius, Math.sin(angle) * radius, z]
+    const angle = (Math.PI * 2 * index) / count + rotation
+    return [Math.cos(angle), Math.sin(angle), z]
   })
 }
 
-const geometries = {
-  4: makeGeometry([
+function makeD10() {
+  const top = ringVertices(5, 0.5)
+  const bottom = ringVertices(5, -0.5, Math.PI / 5)
+  const vertices = [...top, ...bottom]
+  const faces = [
+    [0, 1, 2, 3, 4],
+    [9, 8, 7, 6, 5],
+  ]
+
+  for (let index = 0; index < 5; index += 1) {
+    const next = (index + 1) % 5
+    const previous = (index + 4) % 5
+    faces.push([index, 5 + index, 5 + previous])
+    faces.push([5 + index, index, next])
+  }
+
+  return dualOf(vertices, faces)
+}
+
+const POLYHEDRA = {
+  4: makePolyhedron([
     [1, 1, 1],
     [-1, -1, 1],
     [-1, 1, -1],
     [1, -1, -1],
   ]),
-  6: makeGeometry([
-    [-1, -1, -1],
-    [1, -1, -1],
-    [1, 1, -1],
-    [-1, 1, -1],
-    [-1, -1, 1],
-    [1, -1, 1],
-    [1, 1, 1],
-    [-1, 1, 1],
+  6: makePolyhedron([
+    [-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1],
+    [-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1],
   ]),
-  8: makeGeometry([
-    [1, 0, 0],
-    [-1, 0, 0],
-    [0, 1, 0],
-    [0, -1, 0],
-    [0, 0, 1],
-    [0, 0, -1],
+  8: makePolyhedron([
+    [1, 0, 0], [-1, 0, 0],
+    [0, 1, 0], [0, -1, 0],
+    [0, 0, 1], [0, 0, -1],
   ]),
-  10: makeGeometry([
-    [0, 0, 1.35],
-    [0, 0, -1.35],
-    ...ringVertices(5),
-  ]),
-  12: makeGeometry([
+  10: makeD10(),
+  12: makePolyhedron([
     [-1, -1, -1], [-1, -1, 1], [-1, 1, -1], [-1, 1, 1],
     [1, -1, -1], [1, -1, 1], [1, 1, -1], [1, 1, 1],
     [0, -1 / PHI, -PHI], [0, -1 / PHI, PHI],
@@ -173,198 +258,353 @@ const geometries = {
     [-PHI, 0, -1 / PHI], [PHI, 0, -1 / PHI],
     [-PHI, 0, 1 / PHI], [PHI, 0, 1 / PHI],
   ]),
-  20: makeGeometry([
+  20: makePolyhedron([
     [0, -1, -PHI], [0, -1, PHI], [0, 1, -PHI], [0, 1, PHI],
     [-1, -PHI, 0], [-1, PHI, 0], [1, -PHI, 0], [1, PHI, 0],
     [-PHI, 0, -1], [PHI, 0, -1], [-PHI, 0, 1], [PHI, 0, 1],
   ]),
 }
 
-function rotateVertex(vertex, rotation) {
-  let [x, y, z] = vertex
+function createFaceTexture(label, faceCount) {
+  const canvas = document.createElement('canvas')
+  canvas.width = 384
+  canvas.height = 384
+  const context = canvas.getContext('2d')
+  const gradient = context.createRadialGradient(118, 86, 12, 192, 192, 260)
 
-  const cosX = Math.cos(rotation.x)
-  const sinX = Math.sin(rotation.x)
-  ;[y, z] = [y * cosX - z * sinX, y * sinX + z * cosX]
+  gradient.addColorStop(0, '#a987e1')
+  gradient.addColorStop(0.5, '#7650b5')
+  gradient.addColorStop(1, '#43276d')
+  context.fillStyle = gradient
+  context.fillRect(0, 0, canvas.width, canvas.height)
 
-  const cosY = Math.cos(rotation.y)
-  const sinY = Math.sin(rotation.y)
-  ;[x, z] = [x * cosY + z * sinY, -x * sinY + z * cosY]
+  context.strokeStyle = 'rgba(255,255,255,0.14)'
+  context.lineWidth = 8
+  context.strokeRect(14, 14, 356, 356)
 
-  const cosZ = Math.cos(rotation.z)
-  const sinZ = Math.sin(rotation.z)
-  ;[x, y] = [x * cosZ - y * sinZ, x * sinZ + y * cosZ]
+  const text = String(label)
+  const fontSize =
+    text.length >= 3 ? 104 :
+    text.length === 2 ? 132 :
+    faceCount >= 20 ? 152 : 168
 
-  return [x, y, z]
-}
-
-function project(vertex, centerX, centerY, radius) {
-  const camera = 4.2
-  const depthScale = camera / (camera - vertex[2])
-  return [
-    centerX + vertex[0] * radius * depthScale,
-    centerY - vertex[1] * radius * depthScale,
-  ]
-}
-
-function drawDie(geometry, rotation, centerX, centerY, radius, label) {
-  const transformed = geometry.vertices.map((vertex) => rotateVertex(vertex, rotation))
-  const faces = geometry.faces
-    .map((indices) => {
-      const points3d = indices.map((index) => transformed[index])
-      const center = points3d
-        .reduce(add, [0, 0, 0])
-        .map((value) => value / points3d.length)
-      const normal = normalize(
-        cross(
-          subtract(points3d[1], points3d[0]),
-          subtract(points3d[2], points3d[0]),
-        ),
-      )
-      if (dot(normal, center) < 0) {
-        normal[0] *= -1
-        normal[1] *= -1
-        normal[2] *= -1
-      }
-
-      return {
-        center,
-        normal,
-        points: points3d.map((point) => project(point, centerX, centerY, radius)),
-      }
-    })
-    .filter((face) => face.normal[2] > -0.08)
-    .sort((left, right) => left.center[2] - right.center[2])
-
-  const light = normalize([-0.45, 0.75, 1])
-
-  faces.forEach((face) => {
-    const brightness = Math.max(0, dot(face.normal, light))
-    const lightness = 31 + brightness * 30
-
-    context.beginPath()
-    face.points.forEach(([x, y], index) => {
-      if (index === 0) context.moveTo(x, y)
-      else context.lineTo(x, y)
-    })
-    context.closePath()
-    context.fillStyle = `hsl(266 48% ${lightness}%)`
-    context.fill()
-    context.strokeStyle = `rgba(229, 214, 255, ${0.14 + brightness * 0.18})`
-    context.lineWidth = Math.max(1, radius * 0.011)
-    context.stroke()
-  })
-
-  const labelFace = [...faces].sort(
-    (left, right) => right.center[2] - left.center[2],
-  )[0]
-  if (!labelFace) return
-
-  const [labelX, labelY] = project(labelFace.center, centerX, centerY, radius)
-  const averageDistance =
-    labelFace.points.reduce(
-      (total, point) => total + Math.hypot(point[0] - labelX, point[1] - labelY),
-      0,
-    ) / labelFace.points.length
-  const fontSize = Math.max(13, Math.min(radius * 0.34, averageDistance * 0.82))
-
-  context.save()
-  context.translate(labelX, labelY)
-  context.fillStyle = 'rgba(255, 250, 255, 0.96)'
-  context.font = `700 ${fontSize}px Rubik, system-ui, sans-serif`
+  context.fillStyle = '#fbf8ff'
+  context.font = `700 ${fontSize}px Rubik, Arial, sans-serif`
   context.textAlign = 'center'
   context.textBaseline = 'middle'
-  context.shadowColor = 'rgba(26, 11, 49, 0.55)'
-  context.shadowBlur = radius * 0.08
-  context.fillText(String(label), 0, fontSize * 0.03)
-  context.restore()
+  context.shadowColor = 'rgba(25, 10, 48, 0.55)'
+  context.shadowBlur = 18
+  context.shadowOffsetY = 8
+  context.fillText(text, 192, 198)
+
+  const texture = new CanvasTexture(canvas)
+  texture.colorSpace = SRGBColorSpace
+  texture.anisotropy = Math.min(renderer?.capabilities.getMaxAnisotropy() || 1, 8)
+  return texture
 }
 
-function percentileLabels(value) {
-  if (value === 100) return ['00', '0']
-  const padded = String(value).padStart(2, '0')
+function buildGeometry(polyhedron) {
+  const geometry = new BufferGeometry()
+  const positions = []
+  const uvs = []
+  let triangleOffset = 0
+
+  polyhedron.faces.forEach((face, faceIndex) => {
+    const vertexCount = face.indices.length
+    const faceUvs = face.indices.map((_, index) => {
+      const angle = Math.PI / 2 + (Math.PI * 2 * index) / vertexCount
+      return [0.5 + Math.cos(angle) * 0.46, 0.5 + Math.sin(angle) * 0.46]
+    })
+    const triangleCount = vertexCount - 2
+
+    for (let index = 1; index < vertexCount - 1; index += 1) {
+      const triangle = [0, index, index + 1]
+      triangle.forEach((faceVertex) => {
+        const vertex = polyhedron.vertices[face.indices[faceVertex]]
+        positions.push(...vertex)
+        uvs.push(...faceUvs[faceVertex])
+      })
+    }
+
+    geometry.addGroup(triangleOffset * 3, triangleCount * 3, faceIndex)
+    triangleOffset += triangleCount
+  })
+
+  geometry.setAttribute('position', new BufferAttribute(new Float32Array(positions), 3))
+  geometry.setAttribute('uv', new BufferAttribute(new Float32Array(uvs), 2))
+  geometry.computeVertexNormals()
+  geometry.computeBoundingSphere()
+  return geometry
+}
+
+function createNumberedDie(polyhedron, labels) {
+  const geometry = buildGeometry(polyhedron)
+  const materials = labels.map((label) => {
+    const texture = createFaceTexture(label, labels.length)
+    return new MeshStandardMaterial({
+      map: texture,
+      color: new Color('#ffffff'),
+      roughness: 0.34,
+      metalness: 0.08,
+    })
+  })
+  const mesh = new Mesh(geometry, materials)
+  const edges = new LineSegments(
+    new EdgesGeometry(geometry, 12),
+    new LineBasicMaterial({
+      color: '#d9c4f7',
+      transparent: true,
+      opacity: 0.32,
+    }),
+  )
+
+  mesh.add(edges)
+  mesh.userData.faces = polyhedron.faces.map((face, index) => ({
+    ...face,
+    label: String(labels[index]),
+  }))
+  mesh.userData.velocity = new Vector3()
+  mesh.userData.basePosition = new Vector3()
+  return mesh
+}
+
+function disposeDie(mesh) {
+  mesh.geometry.dispose()
+  mesh.material.forEach((material) => {
+    material.map?.dispose()
+    material.dispose()
+  })
+  mesh.children.forEach((child) => {
+    child.geometry?.dispose()
+    child.material?.dispose()
+  })
+}
+
+function singleLabels(sides) {
+  return Array.from({ length: sides }, (_, index) => index + 1)
+}
+
+function rebuildDice() {
+  if (!diceGroup) return
+
+  dice.forEach((mesh) => {
+    diceGroup.remove(mesh)
+    disposeDie(mesh)
+  })
+  dice = []
+  rollSequence = null
+
+  if (props.sides === 100) {
+    const tens = createNumberedDie(
+      POLYHEDRA[10],
+      ['00', '10', '20', '30', '40', '50', '60', '70', '80', '90'],
+    )
+    const ones = createNumberedDie(
+      POLYHEDRA[10],
+      ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'],
+    )
+
+    tens.scale.setScalar(1.02)
+    ones.scale.setScalar(1.02)
+    tens.position.set(-1.02, 0.02, 0)
+    ones.position.set(1.02, -0.04, 0.05)
+    tens.userData.basePosition.copy(tens.position)
+    ones.userData.basePosition.copy(ones.position)
+    dice.push(tens, ones)
+  } else {
+    const mesh = createNumberedDie(POLYHEDRA[props.sides], singleLabels(props.sides))
+    mesh.scale.setScalar(1.48)
+    mesh.userData.basePosition.copy(mesh.position)
+    dice.push(mesh)
+  }
+
+  dice.forEach((mesh) => diceGroup.add(mesh))
+  settleImmediately()
+}
+
+function resultLabels() {
+  if (props.sides !== 100) return [String(props.value)]
+  if (props.value === 100) return ['00', '0']
+
+  const padded = String(props.value).padStart(2, '0')
   return [`${padded[0]}0`, padded[1]]
 }
 
-function draw() {
-  if (!context || width === 0 || height === 0) return
+function targetQuaternion(mesh, dieIndex, label) {
+  const face =
+    mesh.userData.faces.find((candidate) => candidate.label === String(label)) ||
+    mesh.userData.faces[0]
+  const localNormal = new Vector3(...face.normal).normalize()
+  const localUp = new Vector3(...face.up).normalize()
+  const localRight = new Vector3().crossVectors(localUp, localNormal).normalize()
+  const localBasis = new Matrix4().makeBasis(localRight, localUp, localNormal)
 
-  context.clearRect(0, 0, width, height)
+  const targetNormal = LAND_NORMALS[dieIndex] || LAND_NORMALS[0]
+  const targetUp = new Vector3(0, 1, 0)
+    .addScaledVector(targetNormal, -targetNormal.y)
+    .normalize()
+  const targetRight = new Vector3().crossVectors(targetUp, targetNormal).normalize()
+  const targetBasis = new Matrix4().makeBasis(targetRight, targetUp, targetNormal)
+  const rotationMatrix = targetBasis.multiply(localBasis.invert())
 
-  if (props.sides === 100) {
-    const [tens, ones] = percentileLabels(props.value)
-    const radius = Math.min(width * 0.24, height * 0.32)
-    drawDie(geometries[10], rotations[0], width * 0.35, height * 0.49, radius, tens)
-    drawDie(geometries[10], rotations[1], width * 0.66, height * 0.54, radius, ones)
-    return
-  }
-
-  const radius = Math.min(width * 0.34, height * 0.38)
-  drawDie(
-    geometries[props.sides] || geometries[20],
-    rotations[0],
-    width / 2,
-    height * 0.5,
-    radius,
-    props.value,
-  )
+  return new Quaternion().setFromRotationMatrix(rotationMatrix).normalize()
 }
 
-function animate(timestamp) {
-  const delta = Math.min(2, Math.max(0.5, (timestamp - lastTime) / 16.67 || 1))
-  lastTime = timestamp
+function settleImmediately() {
+  if (!dice.length) return
+  const labels = resultLabels()
 
-  rotations.forEach((rotation, index) => {
-    if (props.rolling) {
-      rotation.x += rotation.vx * delta
-      rotation.y += rotation.vy * delta
-      rotation.z += rotation.vz * delta
-    } else {
-      rotation.x += rotation.vx * delta
-      rotation.y += rotation.vy * delta
-      rotation.z += rotation.vz * delta
-      rotation.vx *= 0.9
-      rotation.vy *= 0.9
-      rotation.vz *= 0.9
-
-      if (Math.abs(rotation.vx) < 0.0002) rotation.vx = 0
-      if (Math.abs(rotation.vy) < 0.0002) rotation.vy = 0
-      if (Math.abs(rotation.vz) < 0.0002) rotation.vz = 0
-    }
-
-    if (index === 1 && props.sides !== 100) {
-      rotation.vx = 0
-      rotation.vy = 0
-      rotation.vz = 0
-    }
+  dice.forEach((mesh, index) => {
+    mesh.quaternion.copy(targetQuaternion(mesh, index, labels[index] || labels[0]))
+    mesh.position.copy(mesh.userData.basePosition)
   })
-
-  draw()
-  animationFrame = window.requestAnimationFrame(animate)
 }
 
 function startRoll() {
-  rotations.forEach((rotation, index) => {
+  if (!dice.length) return
+
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  if (reducedMotion) {
+    settleImmediately()
+    window.setTimeout(() => emit('settled'), 30)
+    return
+  }
+
+  dice.forEach((mesh, index) => {
     const direction = index === 0 ? 1 : -1
-    rotation.vx = (0.085 + Math.random() * 0.045) * direction
-    rotation.vy = (0.11 + Math.random() * 0.05) * (Math.random() > 0.5 ? 1 : -1)
-    rotation.vz = (0.045 + Math.random() * 0.035) * direction
+    mesh.userData.velocity.set(
+      (2.9 + Math.random() * 1.3) * direction,
+      (3.7 + Math.random() * 1.5) * (Math.random() > 0.5 ? 1 : -1),
+      (2.2 + Math.random()) * direction,
+    )
   })
+
+  rollSequence = {
+    phase: 'spin',
+    startedAt: performance.now(),
+    landingStartedAt: 0,
+    starts: [],
+    targets: [],
+  }
 }
 
-function resizeCanvas() {
-  if (!canvas.value) return
-
-  const bounds = canvas.value.getBoundingClientRect()
-  const pixelRatio = Math.min(window.devicePixelRatio || 1, 2)
-  width = bounds.width
-  height = bounds.height
-  canvas.value.width = Math.round(width * pixelRatio)
-  canvas.value.height = Math.round(height * pixelRatio)
-  context = canvas.value.getContext('2d')
-  context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0)
-  draw()
+function beginLanding(timestamp) {
+  const labels = resultLabels()
+  rollSequence.phase = 'landing'
+  rollSequence.landingStartedAt = timestamp
+  rollSequence.starts = dice.map((mesh) => mesh.quaternion.clone())
+  rollSequence.targets = dice.map((mesh, index) =>
+    targetQuaternion(mesh, index, labels[index] || labels[0]),
+  )
 }
+
+function easeOutCubic(value) {
+  return 1 - Math.pow(1 - value, 3)
+}
+
+function updateRoll(timestamp, deltaSeconds) {
+  if (!rollSequence) return
+
+  if (rollSequence.phase === 'spin') {
+    const elapsed = timestamp - rollSequence.startedAt
+    dice.forEach((mesh, index) => {
+      const velocity = mesh.userData.velocity
+      mesh.rotateOnWorldAxis(new Vector3(1, 0, 0), velocity.x * deltaSeconds)
+      mesh.rotateOnWorldAxis(new Vector3(0, 1, 0), velocity.y * deltaSeconds)
+      mesh.rotateOnWorldAxis(new Vector3(0, 0, 1), velocity.z * deltaSeconds)
+
+      const progress = Math.min(1, elapsed / SPIN_DURATION)
+      const lift = Math.sin(progress * Math.PI) * (index === 0 ? 0.72 : 0.58)
+      mesh.position.copy(mesh.userData.basePosition)
+      mesh.position.y += lift
+      mesh.position.x += Math.sin(progress * Math.PI * 2 + index) * 0.14
+    })
+
+    if (elapsed >= SPIN_DURATION) beginLanding(timestamp)
+    return
+  }
+
+  const progress = Math.min(
+    1,
+    (timestamp - rollSequence.landingStartedAt) / LAND_DURATION,
+  )
+  const eased = easeOutCubic(progress)
+
+  dice.forEach((mesh, index) => {
+    mesh.quaternion.slerpQuaternions(
+      rollSequence.starts[index],
+      rollSequence.targets[index],
+      eased,
+    )
+    mesh.position.copy(mesh.userData.basePosition)
+    mesh.position.y += Math.abs(Math.sin(progress * Math.PI * 2.4)) * (1 - progress) * 0.2
+  })
+
+  if (progress >= 1) {
+    dice.forEach((mesh, index) => {
+      mesh.quaternion.copy(rollSequence.targets[index])
+      mesh.position.copy(mesh.userData.basePosition)
+    })
+    rollSequence = null
+    emit('settled')
+  }
+}
+
+function resizeRenderer() {
+  if (!renderer || !mount.value) return
+  const bounds = mount.value.getBoundingClientRect()
+  if (!bounds.width || !bounds.height) return
+
+  renderer.setSize(bounds.width, bounds.height, false)
+  camera.aspect = bounds.width / bounds.height
+  camera.updateProjectionMatrix()
+}
+
+function animate(timestamp) {
+  const deltaSeconds = Math.min(
+    0.034,
+    Math.max(0.008, (timestamp - lastTimestamp) / 1000 || 0.016),
+  )
+  lastTimestamp = timestamp
+
+  updateRoll(timestamp, deltaSeconds)
+  renderer.render(scene, camera)
+  animationFrame = window.requestAnimationFrame(animate)
+}
+
+function setupScene() {
+  scene = new Scene()
+  camera = new PerspectiveCamera(32, 1, 0.1, 100)
+  camera.position.set(0, 0, 7)
+
+  renderer = new WebGLRenderer({
+    alpha: true,
+    antialias: true,
+    powerPreference: 'high-performance',
+  })
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
+  renderer.outputColorSpace = SRGBColorSpace
+  renderer.setClearColor(0x000000, 0)
+  mount.value.appendChild(renderer.domElement)
+
+  scene.add(new AmbientLight('#d9c9ef', 1.7))
+
+  const keyLight = new DirectionalLight('#fff4ff', 3.2)
+  keyLight.position.set(-3, 4, 6)
+  scene.add(keyLight)
+
+  const rimLight = new DirectionalLight('#7c4dc0', 2.4)
+  rimLight.position.set(4, -2, 3)
+  scene.add(rimLight)
+
+  diceGroup = new Group()
+  scene.add(diceGroup)
+}
+
+watch(
+  () => props.sides,
+  rebuildDice,
+)
 
 watch(
   () => props.rolling,
@@ -374,27 +614,27 @@ watch(
 )
 
 watch(
-  () => props.sides,
+  () => props.value,
   () => {
-    rotations[0].x = -0.42
-    rotations[0].y = 0.62
-    rotations[0].z = 0.08
-    draw()
+    if (!props.rolling && !rollSequence) settleImmediately()
   },
 )
 
-watch(() => props.value, draw)
-
 onMounted(() => {
-  resizeObserver = new ResizeObserver(resizeCanvas)
-  resizeObserver.observe(canvas.value)
-  resizeCanvas()
+  setupScene()
+  resizeObserver = new ResizeObserver(resizeRenderer)
+  resizeObserver.observe(mount.value)
+  resizeRenderer()
+  rebuildDice()
   animationFrame = window.requestAnimationFrame(animate)
 })
 
 onBeforeUnmount(() => {
   resizeObserver?.disconnect()
   if (animationFrame) window.cancelAnimationFrame(animationFrame)
+  dice.forEach(disposeDie)
+  renderer?.dispose()
+  renderer?.domElement.remove()
 })
 </script>
 
@@ -406,15 +646,17 @@ onBeforeUnmount(() => {
   isolation: isolate;
 }
 
-canvas {
-  position: relative;
+.renderer-mount {
+  position: absolute;
   z-index: 1;
+  inset: 0;
+  filter: drop-shadow(0 1.5rem 1.35rem rgba(0, 0, 0, 0.42));
+}
+
+.renderer-mount :deep(canvas) {
   display: block;
   width: 100%;
   height: 100%;
-  filter: drop-shadow(0 1.6rem 1.4rem rgba(0, 0, 0, 0.44));
-  transform: translateY(0);
-  transition: filter 0.25s ease;
 }
 
 .ground-shadow {
@@ -425,35 +667,23 @@ canvas {
   bottom: 8%;
   left: 21%;
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.74);
+  background: rgba(0, 0, 0, 0.72);
   filter: blur(1rem);
   transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
-.rolling canvas {
-  filter: drop-shadow(0 2.5rem 1.7rem rgba(0, 0, 0, 0.34));
-  animation: die-bounce 0.65s ease-in-out;
-}
-
 .rolling .ground-shadow {
-  opacity: 0.55;
-  transform: scale(0.72);
-  animation: shadow-pulse 0.65s ease-in-out;
-}
-
-@keyframes die-bounce {
-  0%, 100% { transform: translateY(0) scale(1); }
-  38% { transform: translateY(-1.7rem) scale(0.94); }
-  72% { transform: translateY(-0.35rem) scale(1.03); }
+  opacity: 0.48;
+  transform: scale(0.76);
+  animation: shadow-pulse 1.42s ease-in-out;
 }
 
 @keyframes shadow-pulse {
   0%, 100% { opacity: 0.72; transform: scale(1); }
-  45% { opacity: 0.3; transform: scale(0.68); }
+  48% { opacity: 0.28; transform: scale(0.66); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  canvas,
   .ground-shadow {
     animation: none !important;
     transition: none !important;
