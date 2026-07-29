@@ -17,19 +17,18 @@
     </header>
 
     <section class="experience" aria-labelledby="eight-ball-title">
-      <div class="intro">
-        <p class="eyebrow">A tiny window into the unknown</p>
-        <h1 id="eight-ball-title">
-          Ask the
-          <span>8 Ball.</span>
-        </h1>
-        <p class="lede">
-          Bring your biggest dilemma, your smallest suspicion, or the question
-          you already know the answer to.
-        </p>
-      </div>
+      <div class="oracle-showcase">
+        <div class="intro">
+          <h1 id="eight-ball-title">
+            Ask the
+            <span>8 Ball.</span>
+          </h1>
+          <p class="lede">
+            Bring your biggest dilemma, your smallest suspicion, or the question
+            you already know the answer to.
+          </p>
+        </div>
 
-      <div class="oracle-grid">
         <div class="ball-stage">
           <div
             class="magic-ball"
@@ -44,7 +43,7 @@
                     <i></i><i></i><i></i>
                   </span>
                   <p v-else-if="answer" :key="answer" class="answer-text">
-                    {{ answer }}
+                    <span v-for="line in answerLines" :key="line">{{ line }}</span>
                   </p>
                   <span v-else class="eight">8</span>
                 </div>
@@ -56,62 +55,62 @@
             {{ liveMessage }}
           </p>
         </div>
+      </div>
 
-        <div class="question-panel">
-          <div class="panel-number" aria-hidden="true">08</div>
-          <p class="panel-kicker">CONSULT THE ORACLE</p>
-          <h2>What do you need to know?</h2>
+      <div class="question-panel">
+        <div class="panel-number" aria-hidden="true">08</div>
+        <p class="panel-kicker">CONSULT THE ORACLE</p>
+        <h2>What do you need to know?</h2>
 
-          <form @submit.prevent="askTheBall">
-            <label for="eight-ball-question">Your question</label>
-            <div class="question-field" :class="{ focused: isFocused }">
-              <textarea
-                id="eight-ball-question"
-                ref="questionInput"
-                v-model="question"
-                rows="3"
-                maxlength="240"
-                autocomplete="off"
-                placeholder="Will today be my lucky day?"
-                :disabled="isThinking"
-                @focus="isFocused = true"
-                @blur="isFocused = false"
-                @keydown.enter.exact.prevent="askTheBall"
-              ></textarea>
-              <span class="character-count">{{ question.length }}/240</span>
-            </div>
+        <form @submit.prevent="askTheBall">
+          <label for="eight-ball-question">Your question</label>
+          <div class="question-field" :class="{ focused: isFocused }">
+            <textarea
+              id="eight-ball-question"
+              ref="questionInput"
+              v-model="question"
+              rows="3"
+              maxlength="240"
+              autocomplete="off"
+              placeholder="Will today be my lucky day?"
+              :disabled="isThinking"
+              @focus="isFocused = true"
+              @blur="isFocused = false"
+              @keydown.enter.exact.prevent="askTheBall"
+            ></textarea>
+            <span class="character-count">{{ question.length }}/240</span>
+          </div>
 
-            <p v-if="validationMessage" class="validation-message" role="alert">
-              {{ validationMessage }}
-            </p>
-
-            <button
-              class="ask-button"
-              type="submit"
-              :disabled="isThinking || !question.trim()"
-            >
-              <span>{{ isThinking ? 'CONSULTING FATE' : buttonLabel }}</span>
-              <Sparkles v-if="!isThinking" :size="18" :stroke-width="1.8" />
-              <span v-else class="button-loader" aria-hidden="true"></span>
-            </button>
-          </form>
+          <p v-if="validationMessage" class="validation-message" role="alert">
+            {{ validationMessage }}
+          </p>
 
           <button
-            v-if="answer && !isThinking"
-            class="ask-another"
-            type="button"
-            @click="resetOracle"
+            class="ask-button"
+            type="submit"
+            :disabled="isThinking || !question.trim()"
           >
-            Ask another question
-            <RotateCcw :size="15" :stroke-width="1.8" />
+            <span>{{ isThinking ? 'CONSULTING FATE' : buttonLabel }}</span>
+            <Sparkles v-if="!isThinking" :size="18" :stroke-width="1.8" />
+            <span v-else class="button-loader" aria-hidden="true"></span>
           </button>
+        </form>
 
-          <p class="keyboard-hint">
-            Press <kbd>Enter</kbd> to ask
-            <span aria-hidden="true">·</span>
-            <kbd>Shift</kbd> + <kbd>Enter</kbd> for a new line
-          </p>
-        </div>
+        <button
+          v-if="answer && !isThinking"
+          class="ask-another"
+          type="button"
+          @click="resetOracle"
+        >
+          Ask another question
+          <RotateCcw :size="15" :stroke-width="1.8" />
+        </button>
+
+        <p class="keyboard-hint">
+          Press <kbd>Enter</kbd> to ask
+          <span aria-hidden="true">·</span>
+          <kbd>Shift</kbd> + <kbd>Enter</kbd> for a new line
+        </p>
       </div>
     </section>
 
@@ -131,26 +130,26 @@ import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
 import { firestore } from '@/firebase'
 
 const ANSWERS = [
-  { text: 'It is certain', type: 'positive' },
-  { text: 'It is decidedly so', type: 'positive' },
-  { text: 'Without a doubt', type: 'positive' },
-  { text: 'Yes, definitely', type: 'positive' },
-  { text: 'You may rely on it', type: 'positive' },
-  { text: 'As I see it, yes', type: 'positive' },
-  { text: 'Most likely', type: 'positive' },
-  { text: 'Outlook good', type: 'positive' },
-  { text: 'Yes', type: 'positive' },
-  { text: 'Signs point to yes', type: 'positive' },
-  { text: 'Reply hazy, try again', type: 'neutral' },
-  { text: 'Ask again later', type: 'neutral' },
-  { text: 'Better not tell you now', type: 'neutral' },
-  { text: 'Cannot predict now', type: 'neutral' },
-  { text: 'Concentrate and ask again', type: 'neutral' },
-  { text: "Don't count on it", type: 'negative' },
-  { text: 'My reply is no', type: 'negative' },
-  { text: 'My sources say no', type: 'negative' },
-  { text: 'Outlook not so good', type: 'negative' },
-  { text: 'Very doubtful', type: 'negative' },
+  { text: 'It is certain', lines: ['It is', 'certain'], type: 'positive' },
+  { text: 'It is decidedly so', lines: ['It is', 'decidedly', 'so'], type: 'positive' },
+  { text: 'Without a doubt', lines: ['Without', 'a doubt'], type: 'positive' },
+  { text: 'Yes, definitely', lines: ['Yes,', 'definitely'], type: 'positive' },
+  { text: 'You may rely on it', lines: ['You may', 'rely on', 'it'], type: 'positive' },
+  { text: 'As I see it, yes', lines: ['As I see it', 'yes'], type: 'positive' },
+  { text: 'Most likely', lines: ['Most', 'likely'], type: 'positive' },
+  { text: 'Outlook good', lines: ['Outlook', 'good'], type: 'positive' },
+  { text: 'Yes', lines: ['Yes'], type: 'positive' },
+  { text: 'Signs point to yes', lines: ['Signs point', 'to yes'], type: 'positive' },
+  { text: 'Reply hazy, try again', lines: ['Reply hazy', 'try', 'again'], type: 'neutral' },
+  { text: 'Ask again later', lines: ['Ask again', 'later'], type: 'neutral' },
+  { text: 'Better not tell you now', lines: ['Better not', 'tell you', 'now'], type: 'neutral' },
+  { text: 'Cannot predict now', lines: ['Cannot', 'predict', 'now'], type: 'neutral' },
+  { text: 'Concentrate and ask again', lines: ['Concentrate', 'and ask', 'again'], type: 'neutral' },
+  { text: "Don't count on it", lines: ["Don't count", 'on it'], type: 'negative' },
+  { text: 'My reply is no', lines: ['My reply', 'is no'], type: 'negative' },
+  { text: 'My sources say no', lines: ['My sources', 'say no'], type: 'negative' },
+  { text: 'Outlook not so good', lines: ['Outlook', 'not so', 'good'], type: 'negative' },
+  { text: 'Very doubtful', lines: ['Very', 'doubtful'], type: 'negative' },
 ]
 
 const question = ref('')
@@ -162,6 +161,7 @@ const validationMessage = ref('')
 const questionInput = ref(null)
 
 const buttonLabel = computed(() => (answer.value ? 'ASK AGAIN' : 'REVEAL MY ANSWER'))
+const answerLines = computed(() => ANSWERS.find((option) => option.text === answer.value)?.lines || [])
 const liveMessage = computed(() => {
   if (isThinking.value) return 'The Magic 8 Ball is considering your question.'
   if (answer.value) return `The Magic 8 Ball says: ${answer.value}.`
@@ -231,10 +231,13 @@ function resetOracle() {
   --ink: #f7f4ff;
   --muted: #aaa3bd;
   position: relative;
+  display: flex;
+  height: 100dvh;
+  min-height: 38rem;
+  flex-direction: column;
   isolation: isolate;
-  min-height: 100dvh;
   overflow: hidden;
-  padding: clamp(1.25rem, 3vw, 2.5rem) clamp(1.1rem, 4vw, 4.5rem) 1.5rem;
+  padding: clamp(1rem, 2.5vh, 1.5rem) clamp(1.1rem, 4vw, 4.5rem) clamp(0.8rem, 2vh, 1.25rem);
   color: var(--ink);
   background:
     radial-gradient(circle at 28% 42%, rgba(89, 41, 160, 0.22), transparent 32rem),
@@ -342,15 +345,29 @@ function resetOracle() {
 }
 
 .experience {
+  display: grid;
   width: min(100%, 78rem);
-  margin: clamp(3.2rem, 7vh, 6.5rem) auto 0;
+  min-height: 0;
+  flex: 1;
+  grid-template-columns: minmax(0, 1.05fr) minmax(20rem, 0.78fr);
+  gap: clamp(2rem, 6vw, 6rem);
+  align-items: center;
+  margin: clamp(0.75rem, 2vh, 1.5rem) auto 0;
+}
+
+.oracle-showcase {
+  display: flex;
+  width: min(100%, 78rem);
+  min-height: 0;
+  align-self: stretch;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .intro {
   width: min(100%, 46rem);
 }
 
-.eyebrow,
 .panel-kicker {
   color: #8e849f;
   font-size: 0.65rem;
@@ -360,9 +377,9 @@ function resetOracle() {
 }
 
 .intro h1 {
-  margin: 0.55rem 0 0;
+  margin: 0;
   font-family: "Rubik", ui-sans-serif, system-ui, sans-serif;
-  font-size: clamp(3.4rem, 7vw, 6.9rem);
+  font-size: clamp(3.25rem, 8.2vh, 5.6rem);
   font-weight: 700;
   letter-spacing: -0.075em;
   line-height: 0.86;
@@ -377,32 +394,26 @@ function resetOracle() {
 }
 
 .lede {
-  max-width: 37rem;
-  margin: 1.45rem 0 0;
+  max-width: 34rem;
+  margin: clamp(0.65rem, 1.7vh, 1rem) 0 0;
   color: var(--muted);
-  font-size: clamp(0.95rem, 1.35vw, 1.08rem);
-  line-height: 1.7;
-}
-
-.oracle-grid {
-  display: grid;
-  grid-template-columns: minmax(22rem, 1.15fr) minmax(20rem, 0.85fr);
-  gap: clamp(3rem, 8vw, 8rem);
-  align-items: center;
-  margin-top: clamp(1.5rem, 2.5vw, 2.75rem);
+  font-size: clamp(0.88rem, 1.2vw, 1rem);
+  line-height: 1.5;
 }
 
 .ball-stage {
   display: grid;
-  min-height: 29rem;
+  min-height: 0;
+  flex: 1;
   place-items: center;
+  padding: clamp(0.25rem, 1vh, 0.65rem) 0;
   perspective: 1000px;
 }
 
 .magic-ball {
   position: relative;
   display: grid;
-  width: clamp(19rem, 36vw, 27rem);
+  width: min(34vw, 41vh, 22rem);
   aspect-ratio: 1;
   place-items: center;
   border-radius: 50%;
@@ -514,18 +525,28 @@ function resetOracle() {
 .answer-text {
   position: relative;
   z-index: 1;
-  width: 76%;
+  top: -7%;
+  display: flex;
+  width: 84%;
   max-width: 8.5rem;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.02em;
   margin: 0;
   font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(0.68rem, 1.2vw, 0.98rem);
+  font-size: clamp(0.62rem, 1vw, 0.83rem);
   font-weight: 700;
   letter-spacing: 0.055em;
-  line-height: 1.25;
+  line-height: 1.08;
   text-align: center;
   text-shadow: 0 0 0.8rem rgba(224, 210, 255, 0.42);
   text-transform: uppercase;
   animation: answer-arrive 0.75s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.answer-text span {
+  display: block;
+  white-space: nowrap;
 }
 
 .thinking-dots {
@@ -569,7 +590,9 @@ function resetOracle() {
 
 .question-panel {
   position: relative;
-  padding: clamp(1.5rem, 3vw, 2.4rem);
+  width: min(100%, 28rem);
+  justify-self: end;
+  padding: clamp(1.3rem, 3vh, 2.1rem);
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.09);
   border-radius: 1.25rem;
@@ -596,9 +619,9 @@ function resetOracle() {
 .question-panel h2 {
   position: relative;
   max-width: 20rem;
-  margin: 0.55rem 0 2rem;
+  margin: 0.4rem 0 clamp(1rem, 2vh, 1.5rem);
   font-family: "Rubik", ui-sans-serif, system-ui, sans-serif;
-  font-size: clamp(1.75rem, 3vw, 2.45rem);
+  font-size: clamp(1.65rem, 4.4vh, 2.3rem);
   font-weight: 700;
   letter-spacing: -0.04em;
   line-height: 1.05;
@@ -633,7 +656,7 @@ form label {
 textarea {
   display: block;
   width: 100%;
-  min-height: 8.4rem;
+  min-height: clamp(6rem, 15vh, 7.5rem);
   resize: none;
   border: 0;
   outline: 0;
@@ -737,7 +760,7 @@ textarea:disabled {
 }
 
 .keyboard-hint {
-  margin: 1.35rem 0 0;
+  margin: clamp(0.75rem, 1.7vh, 1rem) 0 0;
   color: #5f5968;
   font-size: 0.64rem;
   text-align: center;
@@ -756,7 +779,8 @@ kbd {
   display: flex;
   align-items: center;
   gap: 1rem;
-  margin-top: clamp(2rem, 4vw, 4rem);
+  flex: none;
+  margin-top: clamp(0.35rem, 1vh, 0.65rem);
   color: #4d4854;
   font-size: 0.56rem;
   font-weight: 700;
@@ -798,35 +822,78 @@ kbd {
 }
 
 @media (max-width: 850px) {
+  .eight-ball-page {
+    height: auto;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
   .experience {
-    margin-top: 3.5rem;
+    min-height: auto;
+    flex: none;
+    grid-template-columns: 1fr;
+    gap: 0.85rem;
+    margin-top: 1.5rem;
+  }
+
+  .oracle-showcase {
+    width: 100%;
+    align-items: center;
   }
 
   .intro {
+    width: min(100%, 34rem);
     text-align: center;
   }
 
-  .lede {
-    margin-inline: auto;
+  .intro h1 {
+    font-size: clamp(3rem, 14vw, 4.5rem);
   }
 
-  .oracle-grid {
-    grid-template-columns: 1fr;
-    gap: 1.25rem;
+  .lede {
+    max-width: 27rem;
+    margin-top: 0.7rem;
+    margin-inline: auto;
+    font-size: 0.88rem;
+    line-height: 1.45;
   }
 
   .ball-stage {
-    min-height: auto;
-    padding: 1.5rem 0 2.5rem;
+    flex: none;
+    padding: 0.55rem 0 0.8rem;
   }
 
   .magic-ball {
-    width: min(80vw, 23rem);
+    width: min(64vw, 16rem);
   }
 
   .question-panel {
     width: min(100%, 34rem);
+    justify-self: center;
     margin-inline: auto;
+    padding: 1.2rem;
+  }
+
+  .question-panel h2 {
+    margin-bottom: 1rem;
+    font-size: 1.7rem;
+  }
+
+  textarea {
+    min-height: 5.4rem;
+  }
+
+  .ask-button {
+    min-height: 3rem;
+  }
+
+  .ask-another {
+    margin-top: 0.7rem;
+  }
+
+  .page-footer {
+    display: none;
   }
 }
 
@@ -845,43 +912,37 @@ kbd {
   }
 
   .experience {
-    margin-top: 3rem;
+    margin-top: 1.2rem;
   }
 
   .intro h1 {
-    font-size: clamp(3.2rem, 18vw, 5rem);
+    font-size: clamp(3rem, 16vw, 4.2rem);
   }
 
   .lede {
-    max-width: 22rem;
-    font-size: 0.9rem;
+    display: none;
   }
 
   .magic-ball {
-    width: min(88vw, 20.5rem);
+    width: min(62vw, 15.25rem);
   }
 
   .ball-stage {
-    padding-top: 1.75rem;
+    padding: 0.35rem 0 0.6rem;
   }
 
   .question-panel {
-    padding: 1.35rem;
+    padding: 1.1rem;
   }
 
   .question-panel h2 {
-    margin-bottom: 1.5rem;
+    margin-bottom: 0.9rem;
   }
 
   .keyboard-hint {
     display: none;
   }
 
-  .page-footer {
-    justify-content: center;
-    margin-top: 2.5rem;
-    text-align: center;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
