@@ -57,6 +57,22 @@ export const publicSeoRoutes = [
     priority: '0.6',
   },
   {
+    path: '/coin',
+    title: 'Flip a Coin',
+    description:
+      'Flip a virtual coin for a quick heads-or-tails decision in a playful browser experience.',
+    changefreq: 'monthly',
+    priority: '0.5',
+  },
+  {
+    path: '/dice',
+    title: 'Dice Roller',
+    description:
+      'Roll a d4, d6, d8, d10, d12, d20, or d100 and see how many times each die has been rolled.',
+    changefreq: 'monthly',
+    priority: '0.5',
+  },
+  {
     path: '/qr',
     title: 'QR Generator',
     description:
@@ -413,7 +429,9 @@ function pageKindFor(seo) {
     title.includes('blackjack') ||
     title.includes('roulette') ||
     title.includes('daily games') ||
-    title.includes('8 ball')
+    title.includes('8 ball') ||
+    title.includes('flip a coin') ||
+    title.includes('dice roller')
   ) {
     return 'game'
   }

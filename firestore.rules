@@ -244,6 +244,39 @@ service cloud.firestore {
       allow read, update, delete: if false;
     }
 
+    // Public aggregate counters for the standalone fun tools.
+    // Browsers may only create a counter at one or increment it by exactly one.
+    match /funCounters/{counterId} {
+      function _isAllowedFunCounter() {
+        return counterId in [
+          'questions',
+          'coin-flips',
+          'dice-total',
+          'dice-d4',
+          'dice-d6',
+          'dice-d8',
+          'dice-d10',
+          'dice-d12',
+          'dice-d20',
+          'dice-d100'
+        ];
+      }
+
+      allow read: if _isAllowedFunCounter();
+
+      allow create: if _isAllowedFunCounter()
+                    && request.resource.data.keys().hasOnly(['count'])
+                    && request.resource.data.count is int
+                    && request.resource.data.count == 1;
+
+      allow update: if _isAllowedFunCounter()
+                    && request.resource.data.keys().hasOnly(['count'])
+                    && request.resource.data.count is int
+                    && request.resource.data.count == resource.data.count + 1;
+
+      allow delete: if false;
+    }
+
     // ─────────────────────────────────────────────────────────────────────────────
     //  EverHomes: Inspection Reports
     // ─────────────────────────────────────────────────────────────────────────────

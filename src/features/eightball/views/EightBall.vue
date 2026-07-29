@@ -9,11 +9,7 @@
         <span class="brand-mark">M</span>
         <span>MXN.AU</span>
       </RouterLink>
-      <span class="oracle-status">
-        <span class="status-dot" aria-hidden="true"></span>
-        <span class="desktop-status-copy">THE ORACLE IS LISTENING</span>
-        <span class="mobile-status-copy">LISTENING</span>
-      </span>
+      <FunNav />
     </header>
 
     <section class="experience" aria-labelledby="eight-ball-title">
@@ -126,8 +122,10 @@
 import { computed, nextTick, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { RotateCcw, Sparkles } from 'lucide-vue-next'
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
+import { collection, doc, serverTimestamp, writeBatch } from 'firebase/firestore'
 import { firestore } from '@/firebase'
+import FunNav from '@/features/fun/components/FunNav.vue'
+import { stageCounterIncrement } from '@/features/fun/composables/useFunCounters'
 
 const ANSWERS = [
   { text: 'It is certain', lines: ['It is', 'certain'], type: 'positive' },
@@ -181,13 +179,18 @@ function chooseAnswer() {
 
 async function saveQuestion(submittedQuestion, result) {
   try {
-    await addDoc(collection(firestore, 'eightBallQuestions'), {
+    const batch = writeBatch(firestore)
+    const questionRef = doc(collection(firestore, 'eightBallQuestions'))
+
+    batch.set(questionRef, {
       question: submittedQuestion,
       answer: result.text,
       answerType: result.type,
       createdAt: serverTimestamp(),
       source: 'mxn.au/8ball',
     })
+    stageCounterIncrement(batch, 'questions')
+    await batch.commit()
   } catch (error) {
     console.warn('[EightBall] Could not save question:', error)
   }
@@ -319,29 +322,6 @@ function resetOracle() {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
   font-size: 0.9rem;
   letter-spacing: 0;
-}
-
-.oracle-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.55rem;
-  color: #777184;
-  font-size: 0.6rem;
-  font-weight: 700;
-  letter-spacing: 0.17em;
-}
-
-.mobile-status-copy {
-  display: none;
-}
-
-.status-dot {
-  width: 0.4rem;
-  height: 0.4rem;
-  border-radius: 50%;
-  background: #9f7aea;
-  box-shadow: 0 0 0.8rem rgba(159, 122, 234, 0.75);
-  animation: status-pulse 2.2s ease-in-out infinite;
 }
 
 .experience {
@@ -812,11 +792,6 @@ kbd {
   to { opacity: 1; transform: translateY(-0.15rem); }
 }
 
-@keyframes status-pulse {
-  0%, 100% { opacity: 0.5; transform: scale(0.8); }
-  50% { opacity: 1; transform: scale(1); }
-}
-
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
@@ -900,15 +875,6 @@ kbd {
 @media (max-width: 520px) {
   .eight-ball-page {
     padding-inline: 1rem;
-  }
-
-  .desktop-status-copy {
-    display: none;
-  }
-
-  .mobile-status-copy {
-    display: inline;
-    font-size: 0.58rem;
   }
 
   .experience {
