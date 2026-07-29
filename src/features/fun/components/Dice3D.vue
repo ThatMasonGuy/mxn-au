@@ -94,19 +94,25 @@ function normalizeVertices(vertices) {
   return centered.map((vertex) => multiply(vertex, 1 / radius))
 }
 
-function orderFace(vertices, indices, normal) {
+function orderFace(vertices, indices, normal, preferredUp = null) {
   const center = centerOf(indices.map((index) => vertices[index]))
   const references = [
     [0, 1, 0],
     [1, 0, 0],
     [0, 0, 1],
   ]
-  const reference = references
-    .map((candidate) => ({
-      candidate,
-      alignment: Math.abs(dot(candidate, normal)),
-    }))
-    .sort((left, right) => left.alignment - right.alignment)[0].candidate
+  const preferredProjection = preferredUp
+    ? subtract(preferredUp, multiply(normal, dot(preferredUp, normal)))
+    : null
+  const reference =
+    preferredProjection && magnitude(preferredProjection) > EPSILON
+      ? preferredUp
+      : references
+        .map((candidate) => ({
+          candidate,
+          alignment: Math.abs(dot(candidate, normal)),
+        }))
+        .sort((left, right) => left.alignment - right.alignment)[0].candidate
   const up = normalize(subtract(reference, multiply(normal, dot(reference, normal))))
   const right = normalize(cross(up, normal))
 
@@ -135,7 +141,7 @@ function orderFace(vertices, indices, normal) {
   return { indices: ordered, center, normal, up }
 }
 
-function convexFaces(vertices) {
+function convexFaces(vertices, preferredUp = null) {
   const faceSets = new Map()
 
   for (let a = 0; a < vertices.length - 2; a += 1) {
@@ -175,7 +181,7 @@ function convexFaces(vertices) {
       ),
     )
     if (dot(normal, center) < 0) normal = multiply(normal, -1)
-    return orderFace(vertices, indices, normal)
+    return orderFace(vertices, indices, normal, preferredUp)
   })
 }
 
@@ -197,11 +203,11 @@ function dualOf(vertices, faces) {
   return makePolyhedron(dualVertices)
 }
 
-function makePolyhedron(rawVertices) {
+function makePolyhedron(rawVertices, preferredUp = null) {
   const vertices = normalizeVertices(rawVertices)
   return {
     vertices,
-    faces: convexFaces(vertices),
+    faces: convexFaces(vertices, preferredUp),
   }
 }
 
@@ -228,7 +234,15 @@ function makeD10() {
     faces.push([5 + index, index, next])
   }
 
-  return dualOf(vertices, faces)
+  const trapezohedron = dualOf(vertices, faces)
+
+  // A face-transitive pentagonal trapezohedron is extremely narrow through
+  // its equator. Widening it radially keeps every kite planar while matching
+  // the familiar proportions of a physical d10.
+  return makePolyhedron(
+    trapezohedron.vertices.map(([x, y, z]) => [x * 1.62, y * 1.62, z]),
+    [0, 0, 1],
+  )
 }
 
 const POLYHEDRA = {
@@ -404,10 +418,10 @@ function rebuildDice() {
       ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'],
     )
 
-    tens.scale.setScalar(1.02)
-    ones.scale.setScalar(1.02)
-    tens.position.set(-1.02, 0.02, 0)
-    ones.position.set(1.02, -0.04, 0.05)
+    tens.scale.setScalar(0.96)
+    ones.scale.setScalar(0.96)
+    tens.position.set(-0.94, 0, 0)
+    ones.position.set(0.94, 0, 0)
     tens.userData.basePosition.copy(tens.position)
     ones.userData.basePosition.copy(ones.position)
     dice.push(tens, ones)
