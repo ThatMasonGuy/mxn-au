@@ -26,6 +26,11 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://mxn.au/8ball</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://mxn.au/qr</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>

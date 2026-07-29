@@ -49,6 +49,14 @@ export const publicSeoRoutes = [
     priority: '0.6',
   },
   {
+    path: '/8ball',
+    title: 'Magic 8 Ball',
+    description:
+      'Ask the Magic 8 Ball a question and get a mysterious answer in a playful, cinematic browser experience.',
+    changefreq: 'monthly',
+    priority: '0.6',
+  },
+  {
     path: '/qr',
     title: 'QR Generator',
     description:
@@ -401,7 +409,12 @@ function pageKindFor(seo) {
   if (title.includes('calculator') || title.includes('funding details') || title.includes('trait trader')) {
     return 'calculator'
   }
-  if (title.includes('blackjack') || title.includes('roulette') || title.includes('daily games')) {
+  if (
+    title.includes('blackjack') ||
+    title.includes('roulette') ||
+    title.includes('daily games') ||
+    title.includes('8 ball')
+  ) {
     return 'game'
   }
   if (title.includes('guide') || title.includes('terms') || title.includes('privacy')) {

@@ -222,6 +222,28 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Public submissions from the standalone Magic 8 Ball page.
+    // Questions are write-only from the browser and cannot be changed later.
+    match /eightBallQuestions/{questionId} {
+      allow create: if request.resource.data.keys().hasAll([
+                        'question', 'answer', 'answerType', 'createdAt', 'source'
+                      ])
+                    && request.resource.data.keys().hasOnly([
+                        'question', 'answer', 'answerType', 'createdAt', 'source'
+                      ])
+                    && request.resource.data.question is string
+                    && request.resource.data.question.size() >= 3
+                    && request.resource.data.question.size() <= 240
+                    && request.resource.data.answer is string
+                    && request.resource.data.answer.size() >= 2
+                    && request.resource.data.answer.size() <= 80
+                    && request.resource.data.answerType in ['positive', 'neutral', 'negative']
+                    && request.resource.data.createdAt == request.time
+                    && request.resource.data.source == 'mxn.au/8ball';
+
+      allow read, update, delete: if false;
+    }
+
     // ─────────────────────────────────────────────────────────────────────────────
     //  EverHomes: Inspection Reports
     // ─────────────────────────────────────────────────────────────────────────────
