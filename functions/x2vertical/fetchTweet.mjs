@@ -126,6 +126,15 @@ export function isTwitterInternalUrl(rawUrl) {
     }
 }
 
+export function isTwitterDisplayMediaUrl(displayUrl) {
+    try {
+        const parsed = new URL(`https://${String(displayUrl)}`)
+        return parsed.hostname.toLowerCase() === 'pic.twitter.com'
+    } catch {
+        return false
+    }
+}
+
 function cleanTweetText(text, entities, referencedTweets = []) {
     if (!text || !entities?.urls?.length) return text
     // Build a set of tweet IDs that are explicitly referenced (quoted, replied-to, etc.)
@@ -139,7 +148,7 @@ function cleanTweetText(text, entities, referencedTweets = []) {
         const refMatch = exp.match(/\/status\/(\d+)/)
         const isRefTweet = refMatch && refIds.has(refMatch[1])
         const isMediaLink =
-            disp.startsWith('pic.twitter.com') ||
+            isTwitterDisplayMediaUrl(disp) ||
             isTwitterInternalUrl(exp) ||
             /\/(photo|video)\/\d+/.test(exp) ||
             isRefTweet
