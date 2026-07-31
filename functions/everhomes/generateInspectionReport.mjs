@@ -934,13 +934,91 @@ async function buildPDF({
       });
       y += BAR_H + 10;
 
-      // Groups and their items
-      const ITEM_ROW_H = 12;
-      const GROUP_HEADER_H = 10;
+      // Groups and their items. PDFKit can still wrap text when lineBreak is
+      // false, so every row must be measured before it is drawn.
+      const ITEM_ROW_MIN_H = 16;
+      const ITEM_ROW_PAD_Y = 3;
+      const ITEM_FONT_SIZE = 8.5;
+      const GROUP_HEADER_H = 12;
+      const INPUT_VALUE_W = 230;
+      const INPUT_LABEL_W = CONTENT_W - INPUT_VALUE_W - 24;
+      const STATUS_LABEL_W = CONTENT_W - 100;
+
+      function measureTextHeight(text, font, fontSize, width) {
+        doc.font(font).fontSize(fontSize);
+        return doc.heightOfString(String(text), { width });
+      }
+
+      function getItemLayout(item) {
+        const isInput =
+          item.type === "number" ||
+          item.type === "text" ||
+          item.type === "date" ||
+          item.type === "multiline";
+        const isYesNo = item.type === "yesno";
+        const labelFont = item.sda ? "Helvetica-Bold" : "Helvetica";
+        const displayLabel = item.badges?.length
+          ? `${item.badges.join("/")}: ${item.label}`
+          : item.label;
+        const labelW = isInput ? INPUT_LABEL_W : STATUS_LABEL_W;
+        const labelH = measureTextHeight(
+          displayLabel,
+          labelFont,
+          ITEM_FONT_SIZE,
+          labelW,
+        );
+
+        let displayVal = "";
+        let hasVal = false;
+        let valueH = 0;
+
+        if (isInput) {
+          const inputVal = itemInputs[item.id];
+          hasVal =
+            inputVal !== undefined && inputVal !== null && inputVal !== "";
+          displayVal = hasVal ? String(inputVal) : "—";
+          valueH = measureTextHeight(
+            displayVal,
+            "Helvetica-Bold",
+            8,
+            INPUT_VALUE_W - 8,
+          );
+        }
+
+        const rowH = Math.max(
+          ITEM_ROW_MIN_H,
+          Math.ceil(labelH + ITEM_ROW_PAD_Y * 2),
+          isInput ? Math.ceil(valueH + ITEM_ROW_PAD_Y * 2 + 2) : 0,
+        );
+
+        return {
+          isInput,
+          isYesNo,
+          labelFont,
+          displayLabel,
+          labelW,
+          labelH,
+          displayVal,
+          hasVal,
+          valueH,
+          rowH,
+        };
+      }
+
+      function centeredTextY(rowY, rowH, textH) {
+        return rowY + Math.max(ITEM_ROW_PAD_Y, (rowH - textH) / 2);
+      }
 
       for (const group of groups) {
+        const visibleItems = group.items.filter((item) =>
+          itemIsVisible(item, itemStatuses, itemInputs),
+        );
+        if (!visibleItems.length) continue;
+
+        const firstItemLayout = getItemLayout(visibleItems[0]);
+
         // Group header
-        y = ensureSpace(y, GROUP_HEADER_H + ITEM_ROW_H);
+        y = ensureSpace(y, GROUP_HEADER_H + firstItemLayout.rowH);
         doc
           .font("Helvetica-Bold")
           .fontSize(7)
@@ -963,99 +1041,81 @@ async function buildPDF({
         }
         y += GROUP_HEADER_H;
 
-        for (let i = 0; i < group.items.length; i++) {
-          const item = group.items[i];
+        for (let i = 0; i < visibleItems.length; i++) {
+          const item = visibleItems[i];
+          const layout = i === 0 ? firstItemLayout : getItemLayout(item);
 
-          // ── showIf guard ──────────────────────────────────────────
-          // Skip conditional items whose parent condition isn't met.
-          // Parent value may live in itemInputs (text/number/yesno) or itemStatuses (status).
-          if (item.showIf) {
-            const parentVal =
-              itemInputs[item.showIf.id] ?? itemStatuses[item.showIf.id];
-            if (item.showIf.hasValue === true) {
-              if (parentVal === undefined || parentVal === null || String(parentVal).trim() === "") continue;
-            } else if (item.showIf.hasValue === false) {
-              if (parentVal !== undefined && parentVal !== null && String(parentVal).trim() !== "") continue;
-            } else if (parentVal !== item.showIf.value) {
-              continue;
-            }
-          }
+          y = ensureSpace(y, layout.rowH);
 
-          const isInput = item.type === "number" || item.type === "text" || item.type === "date" || item.type === "multiline";
-          const isYesNo = item.type === "yesno";
-
-          if (isInput) {
+          if (layout.isInput) {
             // ── Input / multiline item ────────────────────────────
-            const inputVal = itemInputs[item.id];
-            const hasVal = inputVal !== undefined && inputVal !== null && inputVal !== "";
-            const displayVal = hasVal ? String(inputVal) : "—";
-            const valColor = hasVal ? "#0F172A" : "#CBD5E1";
+            const valColor = layout.hasVal ? "#0F172A" : "#CBD5E1";
             const isMultiline = item.type === "multiline";
-
-            // For multiline, measure how tall the value text will be
-            const VAL_W = CONTENT_W - 120; // label takes left portion, value takes right
-            let rowH = ITEM_ROW_H;
-            if (isMultiline && hasVal) {
-              doc.font("Helvetica").fontSize(8);
-              const textH = doc.heightOfString(displayVal, { width: VAL_W });
-              rowH = Math.max(ITEM_ROW_H, textH + 8);
-            }
-
-            y = ensureSpace(y, rowH);
 
             // Alternating row tint
             if (i % 2 === 0) {
-              doc.rect(MARGIN, y, CONTENT_W, rowH).fill("#FAFAFA");
+              doc.rect(MARGIN, y, CONTENT_W, layout.rowH).fill("#FAFAFA");
             }
 
             // Small square indicator
             doc
-              .rect(MARGIN + 4, y + 5, 6, 6)
+              .rect(MARGIN + 4, y + layout.rowH / 2 - 3, 6, 6)
               .fillAndStroke("#EFF6FF", "#BFDBFE");
 
-            // Item label (left side, truncated)
+            // Item label (left side, fully visible)
             doc
-              .font("Helvetica")
-              .fontSize(8.5)
+              .font(layout.labelFont)
+              .fontSize(ITEM_FONT_SIZE)
               .fillColor("#334155")
-              .text(item.label, MARGIN + 16, y + 3.5, {
-                width: CONTENT_W - VAL_W - 24,
-                lineBreak: false,
-                ellipsis: true,
-              });
+              .text(
+                layout.displayLabel,
+                MARGIN + 16,
+                centeredTextY(y, layout.rowH, layout.labelH),
+                {
+                  width: layout.labelW,
+                },
+              );
 
-            // Value box (right side, wraps for multiline)
+            // Value box (right side, wraps safely when needed)
             doc
-              .roundedRect(PAGE_W - MARGIN - VAL_W, y + 2, VAL_W, rowH - 4, 2)
+              .roundedRect(
+                PAGE_W - MARGIN - INPUT_VALUE_W,
+                y + 2,
+                INPUT_VALUE_W,
+                layout.rowH - 4,
+                2,
+              )
               .fill("#EFF6FF");
             doc
               .font("Helvetica-Bold")
               .fontSize(8)
               .fillColor(valColor)
-              .text(displayVal, PAGE_W - MARGIN - VAL_W + 4, y + 4, {
-                width: VAL_W - 8,
-                align: isMultiline ? "left" : "center",
-                lineBreak: isMultiline,
-              });
+              .text(
+                layout.displayVal,
+                PAGE_W - MARGIN - INPUT_VALUE_W + 4,
+                isMultiline
+                  ? y + ITEM_ROW_PAD_Y + 1
+                  : centeredTextY(y, layout.rowH, layout.valueH),
+                {
+                  width: INPUT_VALUE_W - 8,
+                  align: isMultiline ? "left" : "center",
+                },
+              );
 
-            y += rowH;
-
-          } else if (isYesNo) {
+          } else if (layout.isYesNo) {
             // ── Yes / No item ─────────────────────────────────────
             const val = itemInputs[item.id];
             const isYes = val === "yes";
             const isNo = val === "no";
             const answered = isYes || isNo;
 
-            y = ensureSpace(y, ITEM_ROW_H);
-
             if (i % 2 === 0) {
-              doc.rect(MARGIN, y, CONTENT_W, ITEM_ROW_H).fill("#FAFAFA");
+              doc.rect(MARGIN, y, CONTENT_W, layout.rowH).fill("#FAFAFA");
             }
 
             // Diamond indicator instead of dot or square
             const dX = MARGIN + 7;
-            const dY = y + 6;
+            const dY = y + layout.rowH / 2;
             doc
               .save()
               .translate(dX, dY)
@@ -1065,64 +1125,73 @@ async function buildPDF({
 
             // Item label
             doc
-              .font("Helvetica")
-              .fontSize(8.5)
+              .font(layout.labelFont)
+              .fontSize(ITEM_FONT_SIZE)
               .fillColor(answered ? "#334155" : "#94A3B8")
-              .text(item.label, MARGIN + 16, y + 3.5, {
-                width: CONTENT_W - 100,
-                lineBreak: false,
-                ellipsis: true,
-              });
+              .text(
+                layout.displayLabel,
+                MARGIN + 16,
+                centeredTextY(y, layout.rowH, layout.labelH),
+                {
+                  width: layout.labelW,
+                },
+              );
 
             // Yes / No pill (right-aligned)
             if (answered) {
               const pillText = isYes ? "YES" : "NO";
               const pillColor = isYes ? "#10B981" : "#F43F5E";
               const pillBg = isYes ? "#D1FAE5" : "#FFE4E6";
-              drawPill(PAGE_W - MARGIN - 36, y + 2, pillText, pillColor, pillBg);
+              drawPill(
+                PAGE_W - MARGIN - 36,
+                y + (layout.rowH - 13) / 2,
+                pillText,
+                pillColor,
+                pillBg,
+              );
             } else {
               doc
                 .font("Helvetica")
                 .fontSize(7.5)
                 .fillColor("#CBD5E1")
-                .text("—", PAGE_W - MARGIN - 36, y + 3.5, {
+                .text("—", PAGE_W - MARGIN - 36, y + (layout.rowH - 7.5) / 2, {
                   width: 34,
                   align: "center",
                   lineBreak: false,
                 });
             }
 
-            y += ITEM_ROW_H;
-
           } else {
             // ── Status item (ok / attention / issue / na / unchecked) ──
-            y = ensureSpace(y, ITEM_ROW_H);
-
             if (i % 2 === 0) {
-              doc.rect(MARGIN, y, CONTENT_W, ITEM_ROW_H).fill("#FAFAFA");
+              doc.rect(MARGIN, y, CONTENT_W, layout.rowH).fill("#FAFAFA");
             }
 
             const status = itemStatuses[item.id] ?? "unchecked";
             const sc = STATUS_META[status]?.hex ?? "#94A3B8";
             const sl = STATUS_META[status]?.label ?? "Not Inspected";
 
-            drawDot(MARGIN + 7, y + 7.5, sc);
+            drawDot(MARGIN + 7, y + layout.rowH / 2, sc);
 
-            const labelColor = status === "unchecked" ? "#94A3B8" : "#334155";
+            const labelColor =
+              status === "unchecked" ? "#94A3B8" : "#334155";
             doc
-              .font(item.sda ? "Helvetica-Bold" : "Helvetica")
-              .fontSize(8.5)
+              .font(layout.labelFont)
+              .fontSize(ITEM_FONT_SIZE)
               .fillColor(labelColor)
-              .text(item.label, MARGIN + 16, y + 3.5, {
-                width: CONTENT_W - 100,
-                lineBreak: false,
-                ellipsis: true,
-              });
+              .text(
+                layout.displayLabel,
+                MARGIN + 16,
+                centeredTextY(y, layout.rowH, layout.labelH),
+                {
+                  width: layout.labelW,
+                },
+              );
 
             const statusBoxW = 80;
             const statusRightPad = 2;
             const statusFontSize = 7.5;
-            const statusTextY = y + (ITEM_ROW_H - statusFontSize) / 2 - 0.5;
+            const statusTextY = y + (layout.rowH - statusFontSize) / 2 - 0.5;
 
             doc
               .font("Helvetica-Bold")
@@ -1134,8 +1203,9 @@ async function buildPDF({
                 lineBreak: false,
               });
 
-            y += ITEM_ROW_H;
           }
+
+          y += layout.rowH;
         }
         y += 12; // gap between groups
       }

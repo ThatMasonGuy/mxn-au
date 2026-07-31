@@ -4,10 +4,11 @@
 // Mirrors the frontend handoverItems.js for the handover/annual review workflow.
 // Imported by the schema registry — do not import directly in the cloud function.
 //
-// Label prefixes indicate applicable SDA design categories:
+// badges: [] indicates which SDA design categories this item applies to.
 //   HPS = High Physical Support  |  FA = Fully Accessible
 //   IL  = Improved Liveability   |  R  = Robust
 //
+// Items with no badges array are applicable to all categories.
 // Items with type: 'number' or type: 'text' are input fields, not status checks.
 // Their values are stored in section.inputs rather than section.items.
 
@@ -17,12 +18,12 @@ export const HANDOVER_ITEMS = {
         {
             group: 'Floors, Walls & Ceilings', items: [
                 { id: 'floorFirmness', label: 'Internal Flooring — Firmness and Evenness' },
-                { id: 'carpetSpec', label: 'FA/HPS: Carpet — Pile <11mm, Backing <4mm, Total ≤15mm' },
+                { id: 'carpetSpec', label: 'Carpet — Pile <11mm, Backing <4mm, Total ≤15mm', badges: ['FA', 'HPS'], sda: true },
                 { id: 'floorTransitions', label: 'Floor Surface Transitions — Max 3mm Vertical or 5mm Bevelled' },
                 { id: 'floorSlipRes', label: 'Slip Resistance of Internal Floor Finishes — P3 or R10' },
-                { id: 'floorContrast', label: 'IL: Colour Contrast Between Floor and Wall Surfaces' },
-                { id: 'wallResilience', label: 'R: Resilience of Wall and Floor Materials' },
-                { id: 'recessedLighting', label: 'R: Recessed Lighting Fixtures' },
+                { id: 'floorContrast', label: 'Colour Contrast Between Floor and Wall Surfaces', badges: ['IL'], sda: true },
+                { id: 'wallResilience', label: 'Resilience of Wall and Floor Materials', badges: ['R'], sda: true },
+                { id: 'recessedLighting', label: 'Recessed Lighting Fixtures', badges: ['R'], sda: true },
             ]
         },
         {
@@ -30,12 +31,12 @@ export const HANDOVER_ITEMS = {
                 { id: 'switchLocation', label: 'Light Switches — Located 900–1000mm Above Floor, Aligned with Door Handle' },
                 { id: 'switchDimmable', label: 'Dimmable Lighting — Living Areas and Bedrooms' },
                 { id: 'gpoType', label: 'GPOs — Rocker / Toggle / Push Pad, Minimum Width 35mm' },
-                { id: 'gpoHeight', label: 'FA/HPS: GPOs Installed 600–1100mm Above Floor' },
-                { id: 'hvacPresent', label: 'FA/HPS: Reverse Cycle Air Conditioning — Living Areas and Bedrooms' },
-                { id: 'hvacZoned', label: 'FA/HPS: Ducted Air Conditioning Zoned into Habitable Rooms' },
-                { id: 'emergPower', label: 'HPS: Emergency Power — Minimum 2 Hour Outage Coverage' },
-                { id: 'emergGpos', label: 'HPS: Emergency Power — 2 Double GPOs in Participant Bedrooms' },
-                { id: 'emergDoors', label: 'HPS: Emergency Power — Covers Automated Entry / Egress Doors' },
+                { id: 'gpoHeight', label: 'GPOs Installed 600–1100mm Above Floor', badges: ['FA', 'HPS'], sda: true },
+                { id: 'hvacPresent', label: 'Reverse Cycle Air Conditioning — Living Areas and Bedrooms', badges: ['FA', 'HPS'], sda: true },
+                { id: 'hvacZoned', label: 'Ducted Air Conditioning Zoned into Habitable Rooms', badges: ['FA', 'HPS'], sda: true },
+                { id: 'emergPower', label: 'Emergency Power — Minimum 2 Hour Outage Coverage', badges: ['HPS'], sda: true },
+                { id: 'emergGpos', label: 'Emergency Power — 2 Double GPOs in Participant Bedrooms', badges: ['HPS'], sda: true },
+                { id: 'emergDoors', label: 'Emergency Power — Covers Automated Entry / Egress Doors', badges: ['HPS'], sda: true },
             ]
         },
         {
@@ -61,16 +62,16 @@ export const HANDOVER_ITEMS = {
                 { id: 'sprinklers', label: 'Fire Sprinklers — Present', type: 'yesno' },
                 { id: 'sprinklerValvePhoto', label: 'Fire Sprinklers — Photo of High Pressure Water Valve / Backflow Prevention Taken', type: 'yesno', showIf: { id: 'sprinklers', value: 'yes' } },
                 { id: 'emergLighting', label: 'Emergency Lighting — NCC Compliant' },
-                { id: 'designDrawings', label: 'R: Design Drawings Provided to Site Manager, Staff and Residents (egress / retreat)' },
-                { id: 'upsBattery', label: 'UPS / Battery Backup — Present & Functional' },
-                { id: 'upsBatteryLocation', label: 'UPS / Battery Backup — Location', type: 'text', showIf: { id: 'upsBattery', value: 'ok' } },
-                { id: 'upsBatteryDate', label: 'UPS / Battery Backup — Last Service Date', type: 'text', showIf: { id: 'upsBattery', value: 'ok' } },
+                { id: 'designDrawings', label: 'Design Drawings Provided to Site Manager, Staff and Residents (egress / retreat)', badges: ['R'], sda: true },
+                { id: 'upsBattery', label: 'UPS / Battery Backup — Present & Functional', type: 'yesno' },
+                { id: 'upsBatteryLocation', label: 'UPS / Battery Backup — Location', type: 'text', showIf: { id: 'upsBattery', value: 'yes' } },
+                { id: 'upsBatteryDate', label: 'UPS / Battery Backup — Last Service Date', type: 'text', showIf: { id: 'upsBattery', value: 'yes' } },
             ]
         },
         {
             group: 'Assistive Technology', sda: true, items: [
-                { id: 'internet', label: 'HPS/FA: High Speed Internet — Stable with Wi-Fi Coverage Throughout' },
-                { id: 'intercom', label: 'HPS: Video / Intercom Communication System' },
+                { id: 'internet', label: 'High Speed Internet — Stable with Wi-Fi Coverage Throughout', badges: ['HPS', 'FA'], sda: true },
+                { id: 'intercom', label: 'Video / Intercom Communication System', badges: ['HPS'], sda: true },
             ]
         },
         {
@@ -111,7 +112,7 @@ export const HANDOVER_ITEMS = {
             group: 'SDA Compliance', items: [
                 { id: 'sdaCount', label: 'Number of SDA Dwellings on Parcel of Land', type: 'number' },
                 { id: 'roomCount', label: 'Number of Participant Bedrooms (Excluding OOA)', type: 'number' },
-                { id: 'vandaalProof', label: 'R: High Impact / Vandal Proof Fittings and Fixtures' },
+                { id: 'vandaalProof', label: 'High Impact / Vandal Proof Fittings and Fixtures', badges: ['R'], sda: true },
                 { id: 'roomSize', label: 'Is the Size or Usability of All Rooms in Dwelling Suitable?', type: 'yesno' },
                 { id: 'sdaSuitability', label: 'Suitability of Dwelling to be Used as SDA' },
             ]
