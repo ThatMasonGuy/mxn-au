@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { isTwitterInternalUrl } from '../functions/x2vertical/fetchTweet.mjs'
+import {
+  isTwitterDisplayMediaUrl,
+  isTwitterInternalUrl,
+} from '../functions/x2vertical/fetchTweet.mjs'
 import { validateTwitterVideoUrl } from '../functions/x2vertical/proxyTweetVideo.mjs'
 
 test('Twitter internal URL detection requires an exact trusted host', () => {
@@ -10,6 +13,12 @@ test('Twitter internal URL detection requires an exact trusted host', () => {
   assert.equal(isTwitterInternalUrl('https://twitter.com.evil.example/i/status/123'), false)
   assert.equal(isTwitterInternalUrl('https://evil.example/?next=https://x.com/i/status/123'), false)
   assert.equal(isTwitterInternalUrl('javascript:https://x.com/i/status/123'), false)
+})
+
+test('Twitter display media detection rejects lookalike hosts', () => {
+  assert.equal(isTwitterDisplayMediaUrl('pic.twitter.com/abc123'), true)
+  assert.equal(isTwitterDisplayMediaUrl('pic.twitter.com.evil.example/abc123'), false)
+  assert.equal(isTwitterDisplayMediaUrl('evil.example/pic.twitter.com/abc123'), false)
 })
 
 test('tweet video proxy accepts only the exact Twitter CDN over HTTPS', () => {
