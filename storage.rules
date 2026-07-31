@@ -5,7 +5,7 @@ service firebase.storage {
 
     function isImageWithinLimit() {
       return request.resource.size < 15 * 1024 * 1024
-        && request.resource.contentType.matches('image/.*');
+        && request.resource.contentType.matches('image/(jpeg|jpg|png|webp|heic|heif|avif)');
     }
 
     // Report staff deliberately remain unauthenticated. A 256-bit resume key
@@ -23,16 +23,25 @@ service firebase.storage {
           .data.draftAccessKey == resource.metadata.everhomesDraftKey;
     }
 
+    function isMutableDraft(collection, reportId) {
+      let status = firestore.get(/databases/(default)/documents/$(collection)/$(reportId)).data.status;
+      return status == 'draft' || status == 'pending' || status == 'failed';
+    }
+
     // ============================
     // Inspection Files (photos, marketing, signatures)
     // ============================
     match /inspections/{inspectionId}/{subfolder}/{filename} {
       allow create, update: if isImageWithinLimit()
-        && hasDraftWriteKey('inspections', inspectionId);
+        && hasDraftWriteKey('inspections', inspectionId)
+        && isMutableDraft('inspections', inspectionId);
 
-      // Download URLs are needed by the unauthenticated report generator.
-      allow read: if true;
-      allow delete: if hasStoredDraftWriteKey('inspections', inspectionId);
+      // Staff can retrieve the download token while a draft is mutable. Report
+      // generation and regeneration read Storage through the Admin SDK.
+      allow read: if hasStoredDraftWriteKey('inspections', inspectionId)
+        && isMutableDraft('inspections', inspectionId);
+      allow delete: if hasStoredDraftWriteKey('inspections', inspectionId)
+        && isMutableDraft('inspections', inspectionId);
     }
 
     // ============================
@@ -40,10 +49,13 @@ service firebase.storage {
     // ============================
     match /handovers/{inspectionId}/{subfolder}/{filename} {
       allow create, update: if isImageWithinLimit()
-        && hasDraftWriteKey('handovers', inspectionId);
+        && hasDraftWriteKey('handovers', inspectionId)
+        && isMutableDraft('handovers', inspectionId);
 
-      allow read: if true;
-      allow delete: if hasStoredDraftWriteKey('handovers', inspectionId);
+      allow read: if hasStoredDraftWriteKey('handovers', inspectionId)
+        && isMutableDraft('handovers', inspectionId);
+      allow delete: if hasStoredDraftWriteKey('handovers', inspectionId)
+        && isMutableDraft('handovers', inspectionId);
     }
 
     // ============================

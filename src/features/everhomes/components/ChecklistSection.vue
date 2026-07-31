@@ -38,12 +38,12 @@
         <div class="flex flex-wrap gap-2">
           <StatusPill
             v-for="opt in STATUS_OPTIONS"
-            :key="opt.value"
-            :status="opt.value"
+            :key="opt"
+            :status="opt"
             variant="pill"
             class="cursor-pointer"
-            :class="sectionData.status === opt.value ? '' : 'opacity-40 hover:opacity-70 transition-opacity'"
-            @click="reportState.setSectionStatus(section.id, opt.value)"
+            :class="sectionData.status === opt ? '' : 'opacity-40 hover:opacity-70 transition-opacity'"
+            @click="reportState.setSectionStatus(section.id, opt)"
           />
         </div>
       </template>
@@ -182,13 +182,13 @@
             >
               <AlertTriangle class="w-4 h-4 text-rose-300" />
               <span class="text-[9px] font-bold text-rose-200 text-center leading-tight">
-                {{ photo.retryNote ?? photo.errorMessage ?? 'Upload failed' }}
+                {{ photo.retryNote || photo.errorMessage || 'Upload failed' }}
               </span>
               <span v-if="photo.errorCode" class="text-[9px] text-rose-100/80 text-center leading-tight">
                 {{ photo.errorCode }}
               </span>
               <button
-                v-if="!photo.retryNote && photo.retryable !== false"
+                v-if="photo.retryable !== false"
                 @click.stop="reportState.retryPhoto(section.id, pIdx)"
                 class="text-[10px] font-black text-white bg-rose-500 rounded-lg px-2 py-1 hover:bg-rose-400 transition-colors"
               >
@@ -248,9 +248,7 @@
       >
         <AlertTriangle class="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
         <p class="text-xs text-amber-300 font-medium leading-tight">
-          Some photos failed to upload. Please email them directly to
-          <span class="font-black">admin@everhomes.com.au</span>
-          with the property address and date.
+          Some photos failed to upload. Retry them or remove them before submitting this report.
         </p>
       </div>
     </div>

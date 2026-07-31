@@ -5,9 +5,8 @@
 // workflow. ReportPage.vue reads this and passes it to useReportState — nothing
 // else in the component tree knows or cares which report type it is.
 //
-// Backend (generateInspectionReport.mjs) is unaffected by changes here.
-// The only shared contract is item `id` values in handoverItems.js — if you
-// rename those, update the backend handoverItems.mjs to match.
+// The backend has a matching schema registry and item catalogue. The parity
+// verification script checks report metadata, filters, and item definitions.
 
 import {
     ClipboardCheck,
@@ -82,6 +81,7 @@ export default {
 
     // ── Display ───────────────────────────────────────────────────────────────
     title: 'Handover / Annual Review',
+    docTitle: 'Handover / Annual Review',
     subtitle: 'SDA Dwelling Suitability Review — select the sections applicable to this property.',
     topBarLabel: 'Handover Review',
 

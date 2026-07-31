@@ -49,7 +49,9 @@ export {
     syncEverhomesDraft,
     getEverhomesDraft,
     recordEverhomesUploadFailure,
+    deleteEverhomesDraft,
 } from './everhomes/inspectionDrafts.mjs';
+export { sweepStaleEverhomesReports } from './everhomes/reportMaintenance.mjs';
 export { resendReport } from './everhomes/resendReport.mjs';
 export { regenerateReport } from './everhomes/regenerateReport.mjs';
 

@@ -4,12 +4,29 @@
 
 import { onRequest } from 'firebase-functions/v2/https'
 import { defineSecret } from 'firebase-functions/params'
-import { db } from '../config/firebase.mjs'
+import { firebaseAdmin, db } from '../config/firebase.mjs'
 import { requireEverhomesAdmin } from './requireEverhomesAdmin.mjs'
+import { normaliseEmailDeliveries } from './emailDelivery.mjs'
 
 const RESEND_API_KEY = defineSecret('RESEND_API_KEY')
 const ADMIN_EMAIL = 'admin@everhomes.com.au'
 const FROM_ADDRESS = 'Everhomes <reports@everhomes.com.au>'
+const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;')
+}
+
+function isEmailAddress(value) {
+  return typeof value === 'string'
+    && value.length <= 320
+    && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+}
 
 export const resendReport = onRequest(
   {
@@ -31,13 +48,20 @@ export const resendReport = onRequest(
       return res.status(error.status ?? 500).json({ error: error.message ?? 'Could not verify administrator access' })
     }
 
-    const { collection, docId, extraEmails = [] } = req.body
+    const { collection, docId, extraEmails = [] } = req.body ?? {}
     if (!collection || !docId) {
       return res.status(400).json({ error: 'Missing collection or docId' })
     }
 
     if (!['inspections', 'handovers'].includes(collection)) {
       return res.status(400).json({ error: 'Invalid collection' })
+    }
+    if (
+      !Array.isArray(extraEmails)
+      || extraEmails.length > 20
+      || extraEmails.some((email) => !isEmailAddress(email))
+    ) {
+      return res.status(400).json({ error: 'Extra recipients must be a list of no more than 20 valid email addresses' })
     }
 
     const docRef = db.collection(collection).doc(docId)
@@ -55,13 +79,45 @@ export const resendReport = onRequest(
     // Compile recipients: original list + any extras specified by admin
     const recipients = Array.from(new Set([
       ADMIN_EMAIL,
-      ...(data.emailsSent ?? []),
-      ...extraEmails,
-    ].filter(Boolean)))
+      ...(isEmailAddress(data.inspectorEmail) ? [data.inspectorEmail] : []),
+      ...(Array.isArray(data.emailsSent) ? data.emailsSent : []).filter(isEmailAddress),
+      ...extraEmails.map((email) => email.trim()),
+    ])).slice(0, 25)
 
-    const typeLabel = collection === 'handovers' ? 'Handover Checklist' : 'Inspection Report'
+    const typeLabel = collection === 'handovers' ? 'Handover / Annual Review' : 'Inspection Report'
     const dateLabel = data.inspectionDate ?? 'Unknown Date'
     const address   = data.propertyAddress ?? 'Unknown Property'
+    const subjectAddress = String(address).replace(/[\r\n]+/g, ' ').slice(0, 500)
+    const storagePrefix = `${collection}/${docId}/`
+    const bucket = firebaseAdmin.storage().bucket()
+
+    async function freshUrl(storagePath, fallbackUrl) {
+      if (!storagePath?.startsWith(storagePrefix)) return fallbackUrl ?? null
+      const [exists] = await bucket.file(storagePath).exists()
+      if (!exists) return fallbackUrl ?? null
+      const [url] = await bucket.file(storagePath).getSignedUrl({
+        action: 'read',
+        expires: Date.now() + 7 * 24 * 60 * 60 * 1000,
+      })
+      return url
+    }
+
+    const pdfUrl = await freshUrl(data.pdfStoragePath, data.pdfUrl)
+    const photosDownloadUrl = await freshUrl(data.photosStoragePath, data.photosDownloadUrl)
+    let attachments = []
+    if (data.pdfStoragePath?.startsWith(storagePrefix)) {
+      const pdfFile = bucket.file(data.pdfStoragePath)
+      const [metadata] = await pdfFile.getMetadata().catch(() => [null])
+      if (metadata && Number(metadata.size) <= MAX_ATTACHMENT_BYTES) {
+        const [pdfBuffer] = await pdfFile.download().catch(() => [null])
+        if (pdfBuffer) {
+          attachments = [{
+            filename: `${typeLabel.replaceAll(' ', '_')}_${docId}.pdf`,
+            content: pdfBuffer,
+          }]
+        }
+      }
+    }
 
     const html = `
       <div style="font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;padding:24px;background:#ffffff;color:#1e293b;">
@@ -70,17 +126,17 @@ export const resendReport = onRequest(
         </div>
         <h2 style="font-size:18px;font-weight:700;margin:0 0 4px 0;">${typeLabel} — Resent</h2>
         <p style="font-size:14px;color:#64748b;margin:0 0 20px 0;">
-          ${address} &middot; ${dateLabel}${data.inspectorName ? ` &middot; ${data.inspectorName}` : ''}
+          ${escapeHtml(address)} &middot; ${escapeHtml(dateLabel)}${data.inspectorName ? ` &middot; ${escapeHtml(data.inspectorName)}` : ''}
         </p>
         <p style="font-size:14px;color:#334155;line-height:1.6;margin:0 0 20px 0;">
-          This report has been re-sent by an Everhomes administrator. The PDF is attached below.
+          This report has been re-sent by an Everhomes administrator.${attachments.length ? ' The PDF is attached and available from the link below.' : ' The PDF is available from the link below.'}
         </p>
-        <a href="${data.pdfUrl}" style="display:inline-block;padding:10px 20px;background:#0d9488;color:#ffffff;font-size:14px;font-weight:600;text-decoration:none;border-radius:8px;margin-bottom:16px;">
+        <a href="${escapeHtml(pdfUrl)}" style="display:inline-block;padding:10px 20px;background:#0d9488;color:#ffffff;font-size:14px;font-weight:600;text-decoration:none;border-radius:8px;margin-bottom:16px;">
           View Report PDF
         </a>
-        ${data.photosDownloadUrl ? `
+        ${photosDownloadUrl ? `
         <br />
-        <a href="${data.photosDownloadUrl}" style="display:inline-block;margin-top:8px;padding:10px 20px;background:#1e293b;color:#ffffff;font-size:14px;font-weight:600;text-decoration:none;border-radius:8px;">
+        <a href="${escapeHtml(photosDownloadUrl)}" style="display:inline-block;margin-top:8px;padding:10px 20px;background:#1e293b;color:#ffffff;font-size:14px;font-weight:600;text-decoration:none;border-radius:8px;">
           Download Photos ZIP
         </a>` : ''}
         <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;" />
@@ -95,28 +151,39 @@ export const resendReport = onRequest(
         resend.emails.send({
           from: FROM_ADDRESS,
           to: email,
-          subject: `[Resent] ${typeLabel} — ${address} — ${dateLabel}`,
+          subject: `[Resent] ${typeLabel} — ${subjectAddress} — ${dateLabel}`,
           html,
+          attachments,
         })
       )
     )
 
-    const failures = results.filter(r => r.status === 'rejected').length
-    if (failures === recipients.length) {
+    const deliveries = normaliseEmailDeliveries(
+      results,
+      recipients.map((email) => ({ email })),
+    )
+    const sent = deliveries.filter((delivery) => delivery.sent)
+    const failed = deliveries.filter((delivery) => !delivery.sent)
+    if (!sent.length) {
       return res.status(500).json({ error: 'All emails failed to send' })
     }
 
     // Log resend in Firestore
     await docRef.update({
-      lastResentAt: new Date().toISOString(),
-      lastResentTo: recipients,
+      lastResentAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
+      lastResentTo: sent.map((delivery) => delivery.email),
+      lastResendFailures: failed.map((delivery) => ({ email: delivery.email, error: delivery.error })),
+      lastResendProviderIds: sent
+        .filter((delivery) => delivery.providerId)
+        .map((delivery) => ({ email: delivery.email, id: delivery.providerId })),
     }).catch(() => {})
 
     return res.status(200).json({
       success: true,
-      sent: recipients.length - failures,
-      failed: failures,
+      sent: sent.length,
+      failed: failed.length,
       recipients,
+      failures: failed.map((delivery) => ({ email: delivery.email, error: delivery.error })),
     })
   }
 )

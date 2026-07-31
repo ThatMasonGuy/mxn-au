@@ -49,3 +49,11 @@ export async function forgetReportUploadFile(photoId) {
   if (!photoId) return
   await run('readwrite', (store) => store.delete(photoId))
 }
+
+export async function forgetReportUploadFiles(photoIds = []) {
+  const ids = [...new Set(photoIds.filter(Boolean))]
+  if (!ids.length) return
+  await run('readwrite', (store) => {
+    ids.forEach((id) => store.delete(id))
+  })
+}

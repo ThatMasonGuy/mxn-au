@@ -26,24 +26,33 @@ import {
     ref as storageRef,
     uploadBytesResumable,
     getDownloadURL,
+    deleteObject,
 } from 'firebase/storage'
 import { storage } from '@/firebase'
 import { useEverhomesReportStore } from '../stores/useEverhomesReportStore'
 import {
     forgetReportUploadFile,
+    forgetReportUploadFiles,
     recoverReportUploadFile,
     rememberReportUploadFile,
 } from '../utils/reportUploadCache'
 import {
     getReportDraft,
+    deleteReportDraft,
     recordReportUploadFailure,
     syncReportDraft,
 } from '../utils/reportDraftApi'
+import {
+    CHECKED_REPORT_STATUSES,
+    deriveSectionStatus,
+    isRequiredAnswerComplete,
+    isStatusSectionComplete,
+} from '../utils/reportStatus'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 // Status values that count as "checked" for progress purposes
-const CHECKED_STATUSES = new Set(['ok', 'attention', 'issue', 'na'])
+const CHECKED_STATUSES = CHECKED_REPORT_STATUSES
 
 // Item types that are inputs — they go into section.inputs, not section.items
 const INPUT_TYPES = new Set(['text', 'number', 'date', 'multiline', 'yesno'])
@@ -56,12 +65,35 @@ const RETRYABLE_STORAGE_CODES = new Set([
     'storage/canceled',
     'storage/timeout',
 ])
+const ALLOWED_REPORT_IMAGE_TYPES = new Set([
+    'image/jpeg',
+    'image/jpg',
+    'image/png',
+    'image/webp',
+    'image/heic',
+    'image/heif',
+    'image/avif',
+])
+const REPORT_IMAGE_TYPES_BY_EXTENSION = Object.freeze({
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    png: 'image/png',
+    webp: 'image/webp',
+    heic: 'image/heic',
+    heif: 'image/heif',
+    avif: 'image/avif',
+})
+
+function localIsoDate() {
+    const now = new Date()
+    return new Date(now.getTime() - now.getTimezoneOffset() * 60_000)
+        .toISOString()
+        .slice(0, 10)
+}
 
 // ─── Composable ───────────────────────────────────────────────────────────────
 
 export function useReportState(schema) {
-    const store = useEverhomesReportStore()
-
     // ── Schema-derived constants ───────────────────────────────────────────────
     const {
         reportType,
@@ -74,6 +106,7 @@ export function useReportState(schema) {
         marketingPhotos: marketingConfig,
         defaults: schemaDefaults,
     } = schema
+    const store = useEverhomesReportStore(reportType)
 
     // Resolve a pool entry by key — used by both modes
     const poolByKey = Object.fromEntries(
@@ -82,7 +115,9 @@ export function useReportState(schema) {
 
     // ── Store identity ─────────────────────────────────────────────────────────
     // Set once on composable init so the plugin builds the right storage key.
-    store.reportType   = reportType
+    if (store.cacheVersion && store.cacheVersion !== cacheVersion) {
+        store.resetAll()
+    }
     store.cacheVersion = cacheVersion
 
     // ── Online/offline tracking (bug 7) ───────────────────────────────────────
@@ -118,6 +153,12 @@ export function useReportState(schema) {
         isOnline.value = false
         if (store.hasChecklistStarted) draftSync.status = 'offline'
     }
+    function handleVisibilityChange() {
+        if (document.visibilityState === 'hidden' && store.hasChecklistStarted && navigator.onLine) {
+            clearTimeout(draftSyncTimer)
+            synchroniseDraft().catch(() => {})
+        }
+    }
 
     function openFatalError(payload = {}) {
         fatalError.open = true
@@ -150,6 +191,8 @@ export function useReportState(schema) {
             retryable: photo.retryable !== false,
             retryNote: photo.retryNote ?? '',
             attempts: photo.attempts ?? 0,
+            fileSize: photo.fileSize ?? 0,
+            localBackupAvailable: photo.localBackupAvailable !== false,
             uploadStatus: photo.uploadStatus === 'done' ? 'done' : 'failed',
         }
     }
@@ -160,6 +203,7 @@ export function useReportState(schema) {
                 sectionId,
                 {
                     status: section.status ?? 'unchecked',
+                    manualStatus: section.manualStatus ?? null,
                     notes: section.notes ?? '',
                     items: { ...(section.items ?? {}) },
                     inputs: { ...(section.inputs ?? {}) },
@@ -330,6 +374,7 @@ export function useReportState(schema) {
     onMounted(() => {
         window.addEventListener('online',  handleOnline)
         window.addEventListener('offline', handleOffline)
+        document.addEventListener('visibilitychange', handleVisibilityChange)
         restoreDraftFromLocation().then((restored) => {
             if (!restored && store.hasChecklistStarted) scheduleDraftSync({ immediate: true })
         })
@@ -337,7 +382,9 @@ export function useReportState(schema) {
     onUnmounted(() => {
         window.removeEventListener('online',  handleOnline)
         window.removeEventListener('offline', handleOffline)
+        document.removeEventListener('visibilitychange', handleVisibilityChange)
         clearTimeout(draftSyncTimer)
+        if (store.hasChecklistStarted && navigator.onLine) synchroniseDraft().catch(() => {})
     })
 
     watch(
@@ -354,19 +401,32 @@ export function useReportState(schema) {
     // ── Setup validation ──────────────────────────────────────────────────────
     const setupErrors = reactive({
         address:      false,
+        date:         false,
         name:         false,
         email:        false,
         pickerValue:  false,
     })
 
+    function isValidIsoDate(value) {
+        const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
+        if (!match) return false
+        const [, year, month, day] = match.map(Number)
+        const parsed = new Date(Date.UTC(year, month - 1, day))
+        return parsed.getUTCFullYear() === year
+            && parsed.getUTCMonth() === month - 1
+            && parsed.getUTCDate() === day
+    }
+
     function validateSetup() {
         setupErrors.address     = !store.setup.propertyAddress.trim()
+        setupErrors.date        = !isValidIsoDate(store.setup.inspectionDate)
         setupErrors.name        = !store.setup.inspectorName.trim()
-        setupErrors.email       = !store.setup.inspectorEmail.trim()
+        setupErrors.email       = !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(store.setup.inspectorEmail.trim())
         // Only validate pickerValue if the schema has a picker
         setupErrors.pickerValue = schema.pickerMode !== null && !store.setup.pickerValue
 
         return !setupErrors.address &&
+               !setupErrors.date    &&
                !setupErrors.name   &&
                !setupErrors.email  &&
                !setupErrors.pickerValue
@@ -598,6 +658,16 @@ export function useReportState(schema) {
     })
 
     function startChecklist() {
+        // Apply setup defaults before validation so the advertised pre-filled
+        // date and Inspection subtype are present on the first Start attempt.
+        if (!store.hasChecklistStarted) {
+            if (schemaDefaults.dateToToday && !store.setup.inspectionDate) {
+                store.setup.inspectionDate = localIsoDate()
+            }
+            if (!store.setup.pickerValue) {
+                store.setup.pickerValue = schemaDefaults.reportSubtype ?? schemaDefaults.sdaCategory ?? null
+            }
+        }
         if (!validateSetup()) return false
 
         // A report gets a stable server-side identity as soon as it starts.
@@ -608,9 +678,9 @@ export function useReportState(schema) {
         // On a resume, the store already has the user's choices — don't overwrite them.
         if (!store.hasChecklistStarted) {
             if (schemaDefaults.dateToToday && !store.setup.inspectionDate) {
-                store.setup.inspectionDate = new Date().toISOString().split('T')[0]
+                store.setup.inspectionDate = localIsoDate()
             }
-            if (schemaDefaults.pickerValue && !store.setup.pickerValue) {
+            if (!store.setup.pickerValue) {
                 store.setup.pickerValue = schemaDefaults.reportSubtype ?? schemaDefaults.sdaCategory ?? null
             }
             if (schemaDefaults.optionalSections?.length && !store.setup.selectedOptional.length) {
@@ -715,7 +785,9 @@ export function useReportState(schema) {
 
     function setSectionStatus(sectionId, status) {
         const entry = store.checklistData[sectionId]
-        if (entry) entry.status = status
+        if (!entry || !CHECKED_STATUSES.has(status)) return
+        entry.manualStatus = status
+        entry.status = status
     }
 
     // ── Section status auto-derivation ────────────────────────────────────────
@@ -733,19 +805,9 @@ export function useReportState(schema) {
         if (!items.length) return
 
         const statuses = items.map((i) => entry.items[i.id] ?? 'unchecked')
-        const checked  = statuses.filter((v) => CHECKED_STATUSES.has(v))
-
-        if (checked.length === 0) {
-            entry.status = 'unchecked'
-            return
-        }
-        if (checked.every((v) => v === 'na')) {
-            // All checked items are N/A — don't auto-override, let officer pick
-            return
-        }
-        if (statuses.includes('issue'))     { entry.status = 'issue';     return }
-        if (statuses.includes('attention')) { entry.status = 'attention'; return }
-        entry.status = 'ok'
+        const derived = deriveSectionStatus(statuses, entry.manualStatus)
+        entry.status = derived.status
+        entry.manualStatus = derived.manualStatus
     }
 
     // ── Progress ──────────────────────────────────────────────────────────────
@@ -761,11 +823,8 @@ export function useReportState(schema) {
 
         const visibleItems = getStatusItems(section.key).filter((i) => isItemVisible(i, sectionId))
         if (!visibleItems.length) return false
-
-        return visibleItems.every((i) => {
-            const val = entry.items[i.id] ?? 'unchecked'
-            return CHECKED_STATUSES.has(val)
-        })
+        const statuses = visibleItems.map((item) => entry.items[item.id] ?? 'unchecked')
+        return isStatusSectionComplete(statuses, entry.manualStatus)
     }
 
     function isSectionAllNA(sectionId) {
@@ -852,11 +911,47 @@ export function useReportState(schema) {
         return marketingUploading
     })
 
+    function allReportPhotos() {
+        return [
+            ...Object.values(store.checklistData).flatMap((section) => section.photos ?? []),
+            ...Object.values(store.marketingPhotos).flatMap((photos) => photos ?? []),
+        ]
+    }
+
+    const failedUploadCount = computed(() =>
+        allReportPhotos().filter((photo) => photo.uploadStatus === 'failed').length
+    )
+    const hasFailedUploads = computed(() => failedUploadCount.value > 0)
+
+    const missingRequiredAnswers = computed(() => {
+        const missing = []
+        for (const section of store.checklistSections) {
+            const entry = store.checklistData[section.id]
+            if (!entry) continue
+            for (const item of getInputItems(section.key)) {
+                if (!isItemVisible(item, section.id)) continue
+                if (item.type !== 'yesno' && item.required !== true) continue
+                const value = entry.inputs?.[item.id]
+                if (!isRequiredAnswerComplete(item, value)) {
+                    missing.push({
+                        sectionId: section.id,
+                        sectionLabel: section.label,
+                        itemId: item.id,
+                        itemLabel: item.label,
+                    })
+                }
+            }
+        }
+        return missing
+    })
+
     // ── Photo upload ──────────────────────────────────────────────────────────
     const MAX_UPLOAD_ATTEMPTS = 3
     const INITIAL_UPLOAD_TIMEOUT_MS = 30_000
     const MANUAL_RETRY_TIMEOUT_MS = 120_000
     const MAX_IMAGE_BYTES = 15 * 1024 * 1024
+    const MAX_REPORT_PHOTOS = 120
+    const MAX_REPORT_IMAGE_BYTES = 300 * 1024 * 1024
 
     function classifyUploadError(err, context = {}) {
         const code = err?.code ?? 'unknown'
@@ -900,22 +995,57 @@ export function useReportState(schema) {
         return info
     }
 
+    function reportImageContentType(file) {
+        const supplied = file?.type?.toLowerCase()
+        if (ALLOWED_REPORT_IMAGE_TYPES.has(supplied)) return supplied
+        const extension = file?.name?.split('.').pop()?.toLowerCase()
+        return REPORT_IMAGE_TYPES_BY_EXTENSION[extension] ?? ''
+    }
+
     function preflightImage(file) {
         if (!(file instanceof Blob)) {
             throw { code: 'storage/invalid-file', message: 'The selected file is no longer available in this browser.', retryable: false }
         }
-        if (!file.type?.startsWith('image/')) {
-            throw { code: 'storage/invalid-file-type', message: 'Only image files can be attached to a report.', retryable: false }
+        if (!reportImageContentType(file)) {
+            throw {
+                code: 'storage/invalid-file-type',
+                message: 'Use a JPEG, PNG, WebP, HEIC, or AVIF image.',
+                retryable: false,
+            }
         }
         if (file.size >= MAX_IMAGE_BYTES) {
             throw { code: 'storage/file-too-large', message: 'This image is larger than the 15 MB upload limit.', retryable: false }
+        }
+        const photos = allReportPhotos()
+        if (photos.length > MAX_REPORT_PHOTOS) {
+            throw {
+                code: 'storage/report-photo-limit',
+                message: `This report is limited to ${MAX_REPORT_PHOTOS} photos. Remove an existing photo before adding another.`,
+                retryable: false,
+            }
+        }
+        const totalBytes = photos.reduce((sum, photo) => sum + (Number(photo.fileSize) || 0), 0)
+        if (totalBytes > MAX_REPORT_IMAGE_BYTES) {
+            throw {
+                code: 'storage/report-size-limit',
+                message: 'This report has reached the 300 MB total image limit. Remove or resize an existing photo.',
+                retryable: false,
+            }
         }
     }
 
     function createStoragePath(pathPrefix, photoId, file) {
         const reportId = store.setup.reportId
         if (!reportId) throw new Error('No report ID — start the report first')
-        const extension = file?.name?.split('.').pop()?.replace(/[^a-z0-9]/gi, '') || 'jpg'
+        const extension = {
+            'image/jpeg': 'jpg',
+            'image/jpg': 'jpg',
+            'image/png': 'png',
+            'image/webp': 'webp',
+            'image/heic': 'heic',
+            'image/heif': 'heif',
+            'image/avif': 'avif',
+        }[reportImageContentType(file)] ?? 'jpg'
         return `${reportType}s/${reportId}/${pathPrefix}_${photoId}.${extension}`
     }
 
@@ -924,6 +1054,7 @@ export function useReportState(schema) {
             const task = uploadBytesResumable(ref, file, metadata)
             let settled = false
             let unsubscribe = null
+            let timeout = null
             const finish = (callback, value) => {
                 if (settled) return
                 settled = true
@@ -931,19 +1062,40 @@ export function useReportState(schema) {
                 unsubscribe?.()
                 callback(value)
             }
-            const timeout = setTimeout(() => {
-                const timeoutError = Object.assign(new Error(`Upload timed out after ${Math.round(timeoutMs / 1000)} seconds.`), {
-                    code: 'storage/timeout',
-                })
-                task.cancel()
-                finish(reject, timeoutError)
-            }, timeoutMs)
+            const armInactivityTimeout = () => {
+                clearTimeout(timeout)
+                timeout = setTimeout(() => {
+                    const timeoutError = Object.assign(new Error(`Upload made no progress for ${Math.round(timeoutMs / 1000)} seconds.`), {
+                        code: 'storage/timeout',
+                    })
+                    finish(reject, timeoutError)
+                    task.cancel()
+                }, timeoutMs)
+            }
             unsubscribe = task.on(
                 'state_changed',
-                undefined,
+                armInactivityTimeout,
                 (error) => finish(reject, error),
                 () => finish(resolve)
             )
+            armInactivityTimeout()
+        })
+    }
+
+    function getDownloadUrlWithDeadline(ref, timeoutMs = 20_000) {
+        return new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => {
+                reject(Object.assign(new Error('Retrieving the saved image timed out.'), {
+                    code: 'storage/timeout',
+                }))
+            }, timeoutMs)
+            getDownloadURL(ref).then((url) => {
+                clearTimeout(timeout)
+                resolve(url)
+            }, (error) => {
+                clearTimeout(timeout)
+                reject(error)
+            })
         })
     }
 
@@ -954,7 +1106,7 @@ export function useReportState(schema) {
         photo.intendedStoragePath = path
         const ref = storageRef(storage, path)
         const metadata = {
-            contentType: file.type || 'image/jpeg',
+            contentType: reportImageContentType(file),
             customMetadata: { everhomesDraftKey: store.setup.draftAccessKey },
         }
 
@@ -963,7 +1115,7 @@ export function useReportState(schema) {
             photo.attempts = attempt
             try {
                 await uploadWithDeadline(ref, file, metadata, timeoutMs)
-                const url = await getDownloadURL(ref)
+                const url = await getDownloadUrlWithDeadline(ref)
                 return { url, storagePath: path, attempts: attempt }
             } catch (err) {
                 lastError = classifyUploadError(err, {
@@ -1042,6 +1194,9 @@ export function useReportState(schema) {
             photo.errorCode = error.code ?? 'unknown'
             photo.errorMessage = error.message ?? 'Upload failed'
             photo.retryable = error.retryable !== false
+            if (photo.localBackupAvailable === false) {
+                photo.retryNote = 'This browser could not retain the original image. Retry before closing this page.'
+            }
             photo.uploadStatus = 'failed'
             await recordUploadFailure(error, context)
             scheduleDraftSync({ immediate: true })
@@ -1052,7 +1207,7 @@ export function useReportState(schema) {
         }
     }
 
-    async function addPhoto(sectionId, file) {
+    async function addPhoto(sectionId, file, caption = '') {
         const entry = store.checklistData[sectionId]
         if (!entry) {
             const missing = {
@@ -1083,22 +1238,26 @@ export function useReportState(schema) {
             url:          null,
             storagePath:  null,
             intendedStoragePath: '',
-            caption:      '',
+            caption,
             errorCode:    null,
             errorMessage: '',
             retryable:    true,
             retryNote:    '',
             attempts:     0,
+            fileSize:     file.size,
+            localBackupAvailable: true,
             uploadStatus: 'uploading',
         })
 
         entry.photos.push(photo)
         retryFiles.set(photo.id, file)
-        await rememberReportUploadFile(photo.id, file).catch(() => {})
+        photo.localBackupAvailable = await rememberReportUploadFile(photo.id, file)
+            .then(() => true)
+            .catch(() => false)
 
-        // Return the entry immediately so captions remain editable while the
-        // photo backs up and transfers in the background.
-        uploadExistingPhoto(photo, file, `photos/${sectionId}`, { sectionId })
+        // Keep each selected batch sequential so mobile browsers do not decode
+        // and upload every full-resolution image at once.
+        await uploadExistingPhoto(photo, file, `photos/${sectionId}`, { sectionId })
 
         return photo
     }
@@ -1107,12 +1266,16 @@ export function useReportState(schema) {
         const photo = store.checklistData[sectionId]?.photos?.[photoIdx]
         if (!photo || photo.uploadStatus !== 'failed') return
 
-        if (photo.storagePath) {
+        const priorStoragePath = photo.storagePath || photo.intendedStoragePath
+        if (priorStoragePath) {
             try {
-                const url = await getDownloadURL(storageRef(storage, photo.storagePath))
+                const url = await getDownloadUrlWithDeadline(storageRef(storage, priorStoragePath))
                 photo.url = url
                 photo.thumbUrl = url
+                photo.storagePath = priorStoragePath
                 photo.uploadStatus = 'done'
+                await forgetReportUploadFile(photo.id).catch(() => {})
+                retryFiles.delete(photo.id)
                 scheduleDraftSync({ immediate: true })
                 return
             } catch {
@@ -1140,6 +1303,10 @@ export function useReportState(schema) {
         if (photo?.previewUrl?.startsWith('blob:')) {
             URL.revokeObjectURL(photo.previewUrl)
         }
+        const storedPath = photo?.storagePath || photo?.intendedStoragePath
+        if (storedPath) {
+            deleteObject(storageRef(storage, storedPath)).catch(() => {})
+        }
         retryFiles.delete(photo?.id)
         forgetReportUploadFile(photo?.id).catch(() => {})
         photos.splice(photoIdx, 1)
@@ -1164,13 +1331,17 @@ export function useReportState(schema) {
             retryable:    true,
             retryNote:    '',
             attempts:     0,
+            fileSize:     file.size,
+            localBackupAvailable: true,
             uploadStatus: 'uploading',
         })
 
         store.marketingPhotos[slotKey].push(photo)
         retryFiles.set(photo.id, file)
-        await rememberReportUploadFile(photo.id, file).catch(() => {})
-        uploadExistingPhoto(photo, file, `marketing/${slotKey}`, { slotKey })
+        photo.localBackupAvailable = await rememberReportUploadFile(photo.id, file)
+            .then(() => true)
+            .catch(() => false)
+        await uploadExistingPhoto(photo, file, `marketing/${slotKey}`, { slotKey })
 
         return photo
     }
@@ -1179,12 +1350,16 @@ export function useReportState(schema) {
         const photo = store.marketingPhotos[slotKey]?.[photoIdx]
         if (!photo || photo.uploadStatus !== 'failed') return
 
-        if (photo.storagePath) {
+        const priorStoragePath = photo.storagePath || photo.intendedStoragePath
+        if (priorStoragePath) {
             try {
-                const url = await getDownloadURL(storageRef(storage, photo.storagePath))
+                const url = await getDownloadUrlWithDeadline(storageRef(storage, priorStoragePath))
                 photo.url = url
                 photo.thumbUrl = url
+                photo.storagePath = priorStoragePath
                 photo.uploadStatus = 'done'
+                await forgetReportUploadFile(photo.id).catch(() => {})
+                retryFiles.delete(photo.id)
                 scheduleDraftSync({ immediate: true })
                 return
             } catch {
@@ -1212,9 +1387,42 @@ export function useReportState(schema) {
         if (photo?.previewUrl?.startsWith('blob:')) {
             URL.revokeObjectURL(photo.previewUrl)
         }
+        const storedPath = photo?.storagePath || photo?.intendedStoragePath
+        if (storedPath) {
+            deleteObject(storageRef(storage, storedPath)).catch(() => {})
+        }
         retryFiles.delete(photo?.id)
         forgetReportUploadFile(photo?.id).catch(() => {})
         photos.splice(photoIdx, 1)
+    }
+
+    async function discardLocalReport() {
+        const photos = allReportPhotos()
+        const photoIds = photos.map((photo) => photo.id).filter(Boolean)
+        photos.forEach((photo) => {
+            if (photo.previewUrl?.startsWith('blob:')) URL.revokeObjectURL(photo.previewUrl)
+        })
+        retryFiles.clear()
+        store.resetAll()
+        await forgetReportUploadFiles(photoIds).catch(() => {})
+    }
+
+    async function clearReport() {
+        if (hasAnyUploading.value) {
+            throw new Error('Wait for active photo uploads to finish before clearing this report.')
+        }
+
+        if (store.setup.reportId && store.setup.draftAccessKey) {
+            if (!navigator.onLine) {
+                throw new Error('Connect to the internet before permanently clearing this backed-up report.')
+            }
+            await deleteReportDraft({
+                reportType,
+                draftId: store.setup.reportId,
+                draftAccessKey: store.setup.draftAccessKey,
+            }, { timeoutMs: 60_000 })
+        }
+        await discardLocalReport()
     }
 
     // ── Submit payload builder ────────────────────────────────────────────────
@@ -1235,7 +1443,12 @@ export function useReportState(schema) {
             inputs:    store.checklistData[section.id]?.inputs  ?? {},
             photos: (store.checklistData[section.id]?.photos ?? [])
                 .filter((p) => p.uploadStatus === 'done' && p.url)
-                .map((p) => ({ url: p.url, caption: p.caption ?? '', storagePath: p.storagePath })),
+                .map((p) => ({
+                    url: p.url,
+                    caption: p.caption ?? '',
+                    storagePath: p.storagePath,
+                    fileSize: p.fileSize ?? 0,
+                })),
         }))
 
         const marketingPayload = {}
@@ -1243,7 +1456,11 @@ export function useReportState(schema) {
             for (const slot of marketingConfig.slots) {
                 const photos = (store.marketingPhotos[slot.key] ?? [])
                     .filter((p) => p.uploadStatus === 'done' && p.url)
-                    .map((p) => ({ url: p.url, storagePath: p.storagePath }))
+                    .map((p) => ({
+                        url: p.url,
+                        storagePath: p.storagePath,
+                        fileSize: p.fileSize ?? 0,
+                    }))
                 if (photos.length) marketingPayload[slot.key] = photos
             }
         }
@@ -1386,6 +1603,9 @@ export function useReportState(schema) {
         submitStats,
         flaggedSections,
         hasAnyUploading,
+        hasFailedUploads,
+        failedUploadCount,
+        missingRequiredAnswers,
         buildSubmitPayload,
 
         // Photos
@@ -1395,6 +1615,8 @@ export function useReportState(schema) {
         addMarketingPhoto,
         retryMarketingPhoto,
         removeMarketingPhoto,
+        discardLocalReport,
+        clearReport,
 
         // Helpers
         statusColour,

@@ -10,6 +10,9 @@ import {
   _common as functionInspectionFallback,
 } from '../functions/everhomes/checklistSchemas/inspectionItems.mjs'
 import { HANDOVER_ITEMS as functionHandoverItems } from '../functions/everhomes/checklistSchemas/handoverItems.mjs'
+import inspectionSchema from '../src/features/everhomes/schemas/inspection.js'
+import handoverSchema from '../src/features/everhomes/schemas/handover.js'
+import { REPORT_SCHEMAS as functionReportSchemas } from '../functions/everhomes/checklistSchemas/index.mjs'
 
 const allowedTypes = new Set(['text', 'number', 'date', 'multiline', 'yesno'])
 
@@ -81,6 +84,28 @@ assert.deepEqual(
   localHandoverItems,
   'Handover browser and Cloud Function checklist schemas are out of sync',
 )
+
+for (const browserSchema of [inspectionSchema, handoverSchema]) {
+  const functionSchema = functionReportSchemas[browserSchema.reportType]
+  assert.ok(functionSchema, `Cloud Function schema missing for ${browserSchema.reportType}`)
+  assert.equal(functionSchema.collection, browserSchema.collection, `${browserSchema.reportType} collection is out of sync`)
+  assert.equal(functionSchema.docTitle, browserSchema.docTitle, `${browserSchema.reportType} PDF title is out of sync`)
+  assert.equal(functionSchema.emailSubjectPrefix, browserSchema.emailSubjectPrefix, `${browserSchema.reportType} email subject is out of sync`)
+  assert.equal(functionSchema.fromName, browserSchema.fromName, `${browserSchema.reportType} sender name is out of sync`)
+  assert.equal(functionSchema.sdaFilter, browserSchema.sdaFilter, `${browserSchema.reportType} SDA filter flag is out of sync`)
+  assert.deepEqual(
+    functionSchema.requiredSections,
+    browserSchema.sections.forced.map((section) => section.itemsKey ?? section.key),
+    `${browserSchema.reportType} required sections are out of sync`,
+  )
+  assert.deepEqual(
+    functionSchema.pickerOptions,
+    browserSchema.sdaFilter
+      ? browserSchema.pickerOptions.map(({ key, includes }) => ({ key, includes }))
+      : [],
+    `${browserSchema.reportType} category visibility contract is out of sync`,
+  )
+}
 
 const inspectionCounts = validateSchema('inspection', localInspectionItems)
 const handoverCounts = validateSchema('handover', localHandoverItems)
