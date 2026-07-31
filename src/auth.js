@@ -10,8 +10,21 @@ import { useMainStore } from '@/shared/stores/useMainStore'
 import { useCreateNewUser } from '@/shared/utils/useCreateNewUser'
 import router from './router'
 
-const emailRegex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/
 const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#%^&/.,><';":])[A-Za-z\d@$!%*?&#%^&/.,><';":]{8,}$/
+
+const isValidEmail = (value) => {
+    if (typeof value !== 'string') return false
+
+    const email = value.trim()
+    if (email.length === 0 || email.length > 254 || /\s/.test(email)) return false
+
+    const atIndex = email.indexOf('@')
+    if (atIndex <= 0 || atIndex !== email.lastIndexOf('@') || atIndex > 64) return false
+
+    const domain = email.slice(atIndex + 1)
+    const dotIndex = domain.lastIndexOf('.')
+    return dotIndex > 0 && dotIndex < domain.length - 2
+}
 
 // --- Login Tracking Helper ---
 const trackLogin = async (uid, type = 'login') => {
@@ -39,8 +52,11 @@ export const signUp = async (userData) => {
     if (!email || !password || !confirmPassword) {
         throw new Error('Please fill in all required fields.')
     }
-    if (!emailRegex.test(email)) {
+    if (!isValidEmail(email)) {
         throw new Error('Invalid email address.')
+    }
+    if (password.length > 128) {
+        throw new Error('Password must be 128 characters or fewer.')
     }
     if (!passwordRegex.test(password)) {
         throw new Error('Password does not meet complexity requirements.')
@@ -198,4 +214,4 @@ const sendAuthToExtension = async () => {
 }
 
 // Export utilities
-export { emailRegex, passwordRegex }
+export { isValidEmail, passwordRegex }

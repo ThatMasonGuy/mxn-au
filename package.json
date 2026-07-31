@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "test": "node --test tests/everhomes-report-flow.test.mjs",
+    "test": "node --test tests/*.test.mjs",
     "dev": "vite",
     "build": "npm run check:everhomes-schemas && node scripts/generate-seo-artifacts.js --sitemap && vite build && node scripts/generate-seo-artifacts.js --routes",
     "check:everhomes-schemas": "node scripts/verify-everhomes-report-schemas.mjs",

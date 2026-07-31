@@ -2,6 +2,24 @@ import { onRequest } from 'firebase-functions/v2/https'
 import { Readable } from 'stream'
 import { db } from '../config/firebase.mjs'
 
+export function validateTwitterVideoUrl(value) {
+    try {
+        const parsed = new URL(String(value))
+        if (
+            parsed.protocol !== 'https:' ||
+            parsed.hostname.toLowerCase() !== 'video.twimg.com' ||
+            parsed.username ||
+            parsed.password ||
+            parsed.port
+        ) {
+            return null
+        }
+        return parsed.href
+    } catch {
+        return null
+    }
+}
+
 // ── Cloud Function ────────────────────────────────────────────────────────────
 
 export const proxyTweetVideo = onRequest(
@@ -38,7 +56,8 @@ export const proxyTweetVideo = onRequest(
         const tweet = doc.data()?.tweet
         const videoUrl = tweet?.media?.[0]?.url
 
-        if (!videoUrl || !videoUrl.startsWith('https://video.twimg.com')) {
+        const validatedVideoUrl = validateTwitterVideoUrl(videoUrl)
+        if (!validatedVideoUrl) {
             return res.status(404).json({ error: 'No proxiable video URL found for this tweet' })
         }
 
@@ -56,7 +75,10 @@ export const proxyTweetVideo = onRequest(
 
         let upstream
         try {
-            upstream = await fetch(videoUrl, { headers: upstreamHeaders })
+            upstream = await fetch(validatedVideoUrl, {
+                headers: upstreamHeaders,
+                redirect: 'error',
+            })
         } catch (err) {
             console.error('Upstream fetch failed:', err.message)
             return res.status(502).json({ error: 'Could not reach Twitter CDN' })
@@ -64,7 +86,7 @@ export const proxyTweetVideo = onRequest(
 
         // 206 Partial Content is expected when a Range header was sent
         if (!upstream.ok && upstream.status !== 206) {
-            console.error(`CDN ${upstream.status} for ${videoUrl}`)
+            console.error(`CDN ${upstream.status} for validated Twitter video URL`)
             return res.status(502).json({ error: `CDN returned ${upstream.status}` })
         }
 
