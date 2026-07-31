@@ -364,7 +364,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { Shield, Scroll, MessageSquare, Package, Dices, Zap, Heart, Sparkles, BookOpen, Users, MapPin, Hash, Palette } from 'lucide-vue-next'
+import { Shield, Scroll, MessageSquare, Package, Dices, Zap, Heart, Sparkles, BookOpen, Users, MapPin, Hash, Palette } from '@lucide/vue'
 
 // ✅ Use shadcn/vue popover wrappers, not raw radix-vue
 //    (You should have these in /components/ui/popover from shadcn/vue preset)

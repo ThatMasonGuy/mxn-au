@@ -68,7 +68,7 @@
 
 <script setup>
 import { ref, watch, nextTick, computed } from 'vue'
-import { Lock, Trophy, UserX, AlertCircle } from 'lucide-vue-next'
+import { Lock, Trophy, UserX, AlertCircle } from '@lucide/vue'
 
 const props = defineProps({
     show: Boolean,

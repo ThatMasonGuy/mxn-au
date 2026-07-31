@@ -50,7 +50,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useTranslateStore } from '@/features/translate/stores/useTranslateBotStore'
-import { Hash, Check, Loader2 } from 'lucide-vue-next'
+import { Hash, Check, Loader2 } from '@lucide/vue'
 
 const props = defineProps({
     modelValue: {

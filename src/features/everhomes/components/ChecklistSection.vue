@@ -303,7 +303,7 @@ import { computed, reactive } from 'vue'
 import {
   CheckCircle, AlertTriangle, XCircle, MinusCircle,
   Plus, Camera, X, Pencil,
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import ChecklistItem from './ChecklistItem.vue'
 import StatusPill    from './StatusPill.vue'
 

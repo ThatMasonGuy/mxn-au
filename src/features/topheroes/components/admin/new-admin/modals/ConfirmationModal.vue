@@ -48,7 +48,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { X, AlertTriangle, Info, CheckCircle, Loader2 } from 'lucide-vue-next'
+import { X, AlertTriangle, Info, CheckCircle, Loader2 } from '@lucide/vue'
 
 const props = defineProps({
     isOpen: {

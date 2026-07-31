@@ -113,7 +113,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
-import { Plus, MoreVertical, GripVertical } from 'lucide-vue-next'
+import { Plus, MoreVertical, GripVertical } from '@lucide/vue'
 import KanbanCard from './Card.vue'
 
 // Props

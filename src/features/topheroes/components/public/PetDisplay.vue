@@ -27,7 +27,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { Dog } from 'lucide-vue-next'
+import { Dog } from '@lucide/vue'
 
 const props = defineProps({
     queue: {

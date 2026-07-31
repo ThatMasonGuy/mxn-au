@@ -8,7 +8,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { Hash } from 'lucide-vue-next'
+import { Hash } from '@lucide/vue'
 
 const props = defineProps({
   count: {

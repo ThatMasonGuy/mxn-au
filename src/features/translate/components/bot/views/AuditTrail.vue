@@ -156,7 +156,7 @@ import {
     Languages,
     Megaphone,
     Ban
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 const props = defineProps({
     serverId: String

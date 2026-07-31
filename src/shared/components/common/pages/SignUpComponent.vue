@@ -309,7 +309,7 @@ import {
     CheckCircle,
     LogOut,
     Loader2
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import countryList from '@/shared/data/countries.json'
 import { signUp, signOut } from '@/auth'
 import { useMainStore } from '@/shared/stores/useMainStore'

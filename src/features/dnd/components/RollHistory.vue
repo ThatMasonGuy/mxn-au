@@ -179,7 +179,7 @@
 
 <script setup>
 import { ref, computed } from 'vue';
-import { Clock, Download, Trash2 } from 'lucide-vue-next';
+import { Clock, Download, Trash2 } from '@lucide/vue';
 
 const props = defineProps({
   logs: Array,

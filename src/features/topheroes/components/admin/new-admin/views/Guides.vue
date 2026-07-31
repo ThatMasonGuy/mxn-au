@@ -331,7 +331,7 @@ import { ref, computed, onMounted } from 'vue'
 import {
     BookOpen, Plus, Search, Download, Edit, Eye, Star, Copy, Trash2,
     List, LayoutGrid, X, Filter
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 // Reactive state
 const loading = ref(false)

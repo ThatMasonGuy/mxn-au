@@ -425,7 +425,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import {
     Calendar, Plus, ChevronLeft, ChevronRight, X, Edit, Trash2,
     Shield, Sword, Trophy, Target, Users, Crown, Zap, List, CalendarDays
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 // Reactive data
 const currentDate = ref(new Date())

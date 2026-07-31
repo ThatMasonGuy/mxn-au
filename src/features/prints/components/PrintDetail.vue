@@ -104,7 +104,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/shared/components/ui/dialog'
-import { Camera, MapPin } from 'lucide-vue-next'
+import { Camera, MapPin } from '@lucide/vue'
 
 const props = defineProps({
     print: {

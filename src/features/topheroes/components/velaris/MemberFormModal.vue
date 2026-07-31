@@ -302,7 +302,7 @@ import {
     UserPlus, Upload, User, Crown, Shield, Star, Users, UserCheck,
     Activity, Pause, LogOut, Ban, Zap, Castle, Hash, Globe, MapPin,
     MessageCircle, Server, FileText, Tags, MessageSquare, Lock, X
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import { useMembers } from '@/features/topheroes/composables/admin/useMembers'
 import BulkMemberImportModal from './BulkMemberImportModal.vue'
 import { useToast } from '@/shared/components/ui/toast';

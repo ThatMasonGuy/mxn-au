@@ -499,7 +499,7 @@ import {
   Square,
   Trash2,
   Users,
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import { useMinecraftStore } from '@/features/minecraft/stores/useMinecraftStore'
 import { useToast } from '@/shared/components/ui/toast'
 import MetricBar from '@/features/minecraft/components/MetricBar.vue'

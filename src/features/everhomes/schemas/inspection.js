@@ -30,7 +30,7 @@ import {
     Archive,
     Building2,
     Home,
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 import { CHECKLIST_ITEMS, _common } from '../data/inspectionItems.js'
 

@@ -244,7 +244,7 @@ import { ref, computed, onMounted, watch, defineAsyncComponent } from 'vue'
 import {
     Calendar, Clock, Users, Filter, Download, Plus, Trash2,
     Sword, Shield, Trophy, Target, Table, LayoutGrid
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import { useEventCollection } from '@/features/topheroes/composables/admin/useEventCollection'
 import EventTable from '@/features/topheroes/components/velaris/EventTable.vue'
 import AddEventModal from '@/features/topheroes/components/velaris/AddEventModal.vue'

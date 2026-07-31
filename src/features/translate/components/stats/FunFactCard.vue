@@ -20,7 +20,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { Globe, Book, Zap, Leaf, Cpu, Award } from 'lucide-vue-next'
+import { Globe, Book, Zap, Leaf, Cpu, Award } from '@lucide/vue'
 
 // Props
 const props = defineProps({

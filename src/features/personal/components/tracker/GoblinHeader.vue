@@ -53,7 +53,7 @@
 </template>
 
 <script setup>
-import { List, BarChart3, Target } from 'lucide-vue-next';
+import { List, BarChart3, Target } from '@lucide/vue';
 
 defineProps({
     currentView: {

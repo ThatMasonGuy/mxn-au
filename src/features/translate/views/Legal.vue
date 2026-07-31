@@ -230,7 +230,7 @@
 
 <script setup>
 import { ref, reactive, onMounted, nextTick, computed, onUnmounted } from 'vue'
-import { ChevronDown, ChevronUp, Share2, Calendar, Check } from 'lucide-vue-next'
+import { ChevronDown, ChevronUp, Share2, Calendar, Check } from '@lucide/vue'
 
 // Content data structure
 const content = reactive({

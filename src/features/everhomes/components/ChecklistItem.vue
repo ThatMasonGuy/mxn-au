@@ -99,7 +99,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { CheckCircle, AlertTriangle, XCircle, MinusCircle } from 'lucide-vue-next'
+import { CheckCircle, AlertTriangle, XCircle, MinusCircle } from '@lucide/vue'
 import SdaChip     from './SdaChip.vue'
 import YesNoToggle from './YesNoToggle.vue'
 

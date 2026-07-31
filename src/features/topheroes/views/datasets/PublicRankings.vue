@@ -473,7 +473,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/compo
 import { 
   Trophy, Calendar, Users, Eye, AlertCircle, RefreshCw,
   List, LayoutGrid, Link, Share2, Info, Calculator, BarChart3, TrendingUp
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import { firestore } from '@/firebase'
 import { doc, getDoc, updateDoc, increment } from 'firebase/firestore'
 import { formatNumber } from '@/features/topheroes/lib/datasetHelpers'

@@ -110,7 +110,7 @@ import {
   Briefcase,
   Menu,
   X
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 const route = useRoute()
 const mainStore = useMainStore()

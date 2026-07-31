@@ -169,7 +169,7 @@ import { firestore } from '@/firebase'
 import { useToast } from '@/shared/components/ui/toast'
 import { getAuth } from 'firebase/auth'
 import { useRouter } from 'vue-router'
-import { Crown, Calendar, CalendarDays, Tag, Plus, X } from 'lucide-vue-next'
+import { Crown, Calendar, CalendarDays, Tag, Plus, X } from '@lucide/vue'
 
 const router = useRouter()
 const emit = defineEmits(['close'])

@@ -125,7 +125,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import { Calendar, Plus, Table, LayoutGrid, Filter } from 'lucide-vue-next'
+import { Calendar, Plus, Table, LayoutGrid, Filter } from '@lucide/vue'
 import { useEventCollection } from '@/features/topheroes/composables/admin/useEventCollection'
 import EventCard from '@/features/topheroes/components/velaris/EventCard.vue'
 import EventTable from '@/features/topheroes/components/velaris/EventTable.vue'

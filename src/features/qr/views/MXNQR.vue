@@ -4,7 +4,7 @@
   DEPENDENCY: Install qr-code-styling before use:
   npm install qr-code-styling
   
-  Assumes: Vue 3, Tailwind CSS, shadcn/vue components, lucide-vue-next, @vueuse/core, vue-sonner
+  Assumes: Vue 3, Tailwind CSS, shadcn/vue components, @lucide/vue, @vueuse/core, vue-sonner
 -->
 
 <template>
@@ -494,7 +494,7 @@
     FileCode,
     Clipboard,
     Eye
-  } from 'lucide-vue-next'
+  } from '@lucide/vue'
   
   // Default settings
   const defaultSettings = {

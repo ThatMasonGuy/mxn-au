@@ -474,7 +474,7 @@
 
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
-import { Users, Shield, Swords, Sword, Library, RotateCcw, Shuffle, Zap, Settings, X, Save, Flame, Leaf, Gem, Dog, Shirt, ChevronDown, ChevronUp } from 'lucide-vue-next'
+import { Users, Shield, Swords, Sword, Library, RotateCcw, Shuffle, Zap, Settings, X, Save, Flame, Leaf, Gem, Dog, Shirt, ChevronDown, ChevronUp } from '@lucide/vue'
 import { Checkbox } from '@/shared/components/ui/checkbox'
 import TeamSlot from './TeamSlot.vue'
 import HeroMiniCard from './HeroMiniCard.vue'

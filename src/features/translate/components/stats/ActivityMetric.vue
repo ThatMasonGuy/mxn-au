@@ -10,7 +10,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { Clock, Users, TrendingUp } from 'lucide-vue-next'
+import { Clock, Users, TrendingUp } from '@lucide/vue'
 
 // Props
 const props = defineProps({

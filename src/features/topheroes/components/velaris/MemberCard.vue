@@ -132,7 +132,7 @@ import { computed, ref } from 'vue'
 import {
     Lock, Zap, Castle, MapPin, Hash, MessageSquare, Edit, Calendar, Trash2, Users,
     Crown, Shield, Star, UserCheck
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import Badge from './Badge.vue'
 import Tag from './Tag.vue'
 

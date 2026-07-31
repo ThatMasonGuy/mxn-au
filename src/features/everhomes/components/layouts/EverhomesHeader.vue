@@ -38,6 +38,6 @@
 </template>
 
 <script setup>
-import { House, Settings } from 'lucide-vue-next'
+import { House, Settings } from '@lucide/vue'
 import { RouterLink } from 'vue-router'
 </script>

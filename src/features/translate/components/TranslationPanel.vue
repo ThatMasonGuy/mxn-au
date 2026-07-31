@@ -456,7 +456,7 @@ import SettingsPopover from '@/features/translate/components/SettingsPopover.vue
 import { useTranslateStore } from '@/features/translate/stores/useTranslateStore'
 import { useToast } from '@/shared/components/ui/toast/use-toast'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select'
-import { ArrowRight, ArrowLeft, X, Copy, ChevronDown, ChevronUp, BadgeCheck, Database, ThumbsDown } from 'lucide-vue-next'
+import { ArrowRight, ArrowLeft, X, Copy, ChevronDown, ChevronUp, BadgeCheck, Database, ThumbsDown } from '@lucide/vue'
 
 const store = useTranslateStore()
 const { toast } = useToast()

@@ -93,7 +93,7 @@ import {
 import {
     Tooltip, TooltipTrigger, TooltipContent
 } from '@/shared/components/ui/tooltip'
-import { Info, ChevronDown, X } from 'lucide-vue-next'
+import { Info, ChevronDown, X } from '@lucide/vue'
 
 const props = defineProps({
     modelValue: [String, Number, Date, Array],

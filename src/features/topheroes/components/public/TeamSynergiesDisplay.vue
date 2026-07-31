@@ -49,7 +49,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { Zap, Shield } from 'lucide-vue-next'
+import { Zap, Shield } from '@lucide/vue'
 
 const props = defineProps({
     queue: {

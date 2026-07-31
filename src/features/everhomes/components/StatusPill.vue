@@ -34,7 +34,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { CheckCircle, AlertTriangle, XCircle, MinusCircle, Circle } from 'lucide-vue-next'
+import { CheckCircle, AlertTriangle, XCircle, MinusCircle, Circle } from '@lucide/vue'
 
 const props = defineProps({
   status: {

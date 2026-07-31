@@ -122,7 +122,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { RefreshCw, AlertTriangle, CheckCircle, Clock, X, Zap } from 'lucide-vue-next'
+import { RefreshCw, AlertTriangle, CheckCircle, Clock, X, Zap } from '@lucide/vue'
 
 const props = defineProps({
     isGeneratingReport: {

@@ -132,7 +132,7 @@
 </template>
 
 <script setup>
-import { Sword, Shield, Trophy, Target, Edit, Trash2 } from 'lucide-vue-next'
+import { Sword, Shield, Trophy, Target, Edit, Trash2 } from '@lucide/vue'
 
 const props = defineProps({
     events: Array

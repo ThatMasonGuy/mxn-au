@@ -129,7 +129,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { ThumbsUp, ThumbsDown, MessageSquare, Eye, User, Server } from 'lucide-vue-next'
+import { ThumbsUp, ThumbsDown, MessageSquare, Eye, User, Server } from '@lucide/vue'
 
 const props = defineProps({
     queue: {

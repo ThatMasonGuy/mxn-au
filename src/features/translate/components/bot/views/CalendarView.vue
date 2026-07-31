@@ -423,7 +423,7 @@ import {
     Save,
     Bot,
     User
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 const props = defineProps({
     serverId: String

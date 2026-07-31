@@ -216,7 +216,7 @@
 
 <script setup>
 import { ref, reactive, watch } from 'vue'
-import { X, Camera, Image as ImageIcon } from 'lucide-vue-next'
+import { X, Camera, Image as ImageIcon } from '@lucide/vue'
 
 // ─── Props & emits ────────────────────────────────────────────────────────────
 const props = defineProps({

@@ -94,7 +94,7 @@
 </template>
 
 <script setup>
-import { Wrench, Puzzle, Box, Server, Languages, User, Crosshair, Grid, Bot } from 'lucide-vue-next'
+import { Wrench, Puzzle, Box, Server, Languages, User, Crosshair, Grid, Bot } from '@lucide/vue'
 import ToolCard from '@/features/topheroes/components/ToolCard.vue'
 
 import TopHeroes_image from '@/assets/images/topHeroes/TopHeroes_2.jpg';

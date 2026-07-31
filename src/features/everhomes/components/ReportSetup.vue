@@ -379,7 +379,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { Check, ShieldCheck } from 'lucide-vue-next'
+import { Check, ShieldCheck } from '@lucide/vue'
 import SdaChip from './SdaChip.vue'
 
 const props = defineProps({

@@ -163,7 +163,7 @@ import {
     ArrowLeft,
     ArrowUpLeft,
     Target
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import { getAuth } from 'firebase/auth'
 import { firestore } from '@/firebase'
 import { doc, deleteDoc } from 'firebase/firestore'

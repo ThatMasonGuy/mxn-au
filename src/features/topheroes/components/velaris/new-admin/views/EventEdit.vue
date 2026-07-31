@@ -350,7 +350,7 @@ import SmartSearch from '@/shared/components/ui/SmartSearch.vue'
 import {
     Upload, Save, Calendar, Users, CheckCircle, Plus, Search, Trash2, RotateCcw, 
     AlertTriangle, X, Check, UserPlus, Download, FileText, ArrowLeft
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 const props = defineProps({
     eventId: {

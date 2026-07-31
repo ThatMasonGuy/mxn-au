@@ -39,7 +39,7 @@
 </template>
 
 <script setup>
-import { Camera, Printer, Package, Check } from 'lucide-vue-next'
+import { Camera, Printer, Package, Check } from '@lucide/vue'
 
 const steps = [
     {

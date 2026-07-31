@@ -44,7 +44,7 @@
 
 <script setup>
 import { ref } from 'vue'
-import { Sparkles } from 'lucide-vue-next'
+import { Sparkles } from '@lucide/vue'
 import SkillCard from '@/features/home/components/skills/SkillCard.vue'
 
 const skills = ref([

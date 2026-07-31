@@ -150,7 +150,7 @@
 <script setup>
 import { computed, reactive } from 'vue'
 import { useTranslateStore } from '@/features/translate/stores/useTranslateStore'
-import { MessageSquare, FileText, Coins, Maximize, ChevronDown, ChevronUp } from 'lucide-vue-next'
+import { MessageSquare, FileText, Coins, Maximize, ChevronDown, ChevronUp } from '@lucide/vue'
 
 const store = useTranslateStore()
 const open = reactive({ translations: false, words: false, cost: false })

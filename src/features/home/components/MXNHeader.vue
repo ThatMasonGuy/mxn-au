@@ -95,10 +95,10 @@ import {
     Terminal, 
     Compass, 
     Sparkles, 
-    Github, 
+    GitFork as Github,
     MessageCircle,
     Menu
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 const isHidden = ref(false)
 let lastScrollY = window.scrollY

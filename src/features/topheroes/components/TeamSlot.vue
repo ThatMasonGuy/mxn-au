@@ -123,7 +123,7 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import { Users, Settings, X, Plus, Zap, Crown, Sword, Shield } from 'lucide-vue-next'
+import { Users, Settings, X, Plus, Zap, Crown, Sword, Shield } from '@lucide/vue'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip'
 
 const props = defineProps({

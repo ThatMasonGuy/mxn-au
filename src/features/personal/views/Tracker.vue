@@ -82,7 +82,7 @@ import GoblinForm from '@/features/personal/components/tracker/GoblinForm.vue';
 import GoblinLogList from '@/features/personal/components/tracker/GoblinLogList.vue';
 import GoblinStats from '@/features/personal/components/tracker/GoblinStats.vue';
 import GoblinGoals from '@/features/personal/components/tracker/GoblinGoals.vue';
-import { Loader2 } from 'lucide-vue-next';
+import { Loader2 } from '@lucide/vue';
 
 const personalStore = usePersonalStore();
 

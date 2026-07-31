@@ -48,7 +48,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { X, Dog } from 'lucide-vue-next'
+import { X, Dog } from '@lucide/vue'
 
 const props = defineProps({
     pet: {

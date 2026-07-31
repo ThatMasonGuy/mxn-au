@@ -117,7 +117,7 @@
 
 <script setup>
 import { ref } from 'vue'
-import { ChevronRight, MessageCircle, ChevronDown, Code2, Zap, Coffee, Database, Layers, Terminal, Sparkles, Rocket } from 'lucide-vue-next'
+import { ChevronRight, MessageCircle, ChevronDown, Code2, Zap, Coffee, Database, Layers, Terminal, Sparkles, Rocket } from '@lucide/vue'
 
 const scrollToSection = (id) => {
     if (!id) return

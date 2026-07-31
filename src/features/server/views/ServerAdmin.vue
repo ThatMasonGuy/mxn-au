@@ -445,7 +445,7 @@ import {
     Activity, Server, Users, Cpu, Database, Terminal,
     Clock, RefreshCw, TrendingUp, Gauge, FileText,
     User, Wifi, Zap, AlertTriangle, AlertCircle
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 // State
 const stats = ref({})

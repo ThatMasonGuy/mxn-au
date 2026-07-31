@@ -263,7 +263,7 @@ export function useTerminal(options = {}) {
     ].join('\n')
 
     const stackText = () => [
-        'Frontend: Vue 3, Vite 7, TailwindCSS, Pinia',
+        'Frontend: Vue 3, Vite 8, TailwindCSS, Pinia',
         'Backend/services: Firebase, serverless functions, WebSocket SSH bridge',
         'Terminal layer: xterm.js in /server, lightweight command shell here on /'
     ].join('\n')

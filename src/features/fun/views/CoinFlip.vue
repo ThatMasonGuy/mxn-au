@@ -59,7 +59,7 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import { Rat, RefreshCw, UserRound } from 'lucide-vue-next'
+import { Rat, RefreshCw, UserRound } from '@lucide/vue'
 import CounterStatement from '@/features/fun/components/CounterStatement.vue'
 import FunShell from '@/features/fun/components/FunShell.vue'
 import {

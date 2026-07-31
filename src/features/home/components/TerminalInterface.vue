@@ -44,7 +44,7 @@
                                 Vue 3
                             </span>
                             <span class="rounded border border-cyan-400/20 bg-cyan-400/10 px-2 py-1 text-cyan-200">
-                                Vite 7
+                                Vite 8
                             </span>
                             <span class="rounded border border-violet-400/20 bg-violet-400/10 px-2 py-1 text-violet-200">
                                 xterm in /server

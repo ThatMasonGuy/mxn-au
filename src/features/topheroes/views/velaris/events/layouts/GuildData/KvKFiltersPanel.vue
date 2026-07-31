@@ -109,7 +109,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { FilterX } from 'lucide-vue-next'
+import { FilterX } from '@lucide/vue'
 
 const props = defineProps({
     activeServerFilters: { type: Array, required: true },

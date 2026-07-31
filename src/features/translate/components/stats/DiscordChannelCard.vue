@@ -28,7 +28,7 @@
 </template>
 
 <script setup>
-import { Hash } from 'lucide-vue-next'
+import { Hash } from '@lucide/vue'
 
 // Props
 defineProps({

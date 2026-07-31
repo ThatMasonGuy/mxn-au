@@ -283,7 +283,7 @@ import {
     CheckCircle,
     Plus,
     Trash2
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 const router = useRouter()
 const route = useRoute()

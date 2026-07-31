@@ -201,7 +201,7 @@ import { Button } from '@/shared/components/ui/button'
 import {
     CheckCircle, XCircle, Clock, Target, Settings,
     Check, X, Trash2, RotateCcw, Crown, Zap
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import { useMembers } from '@/features/topheroes/composables/admin/useMembers'
 import MemberSelector from './MemberSelector.vue'
 

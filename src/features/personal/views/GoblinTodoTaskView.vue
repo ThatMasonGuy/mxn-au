@@ -188,7 +188,7 @@ import {
   ArrowLeft, Ghost, Loader2, Clock, CalendarDays,
   ChevronRight, Link2, Pencil, Plus, Check, RotateCcw,
   Sparkles, Trash2, MinusCircle
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import { useGoblinTodoStore } from '@/features/personal/stores/useGoblinTodoStore'
 import GoblinTodoNav from '@/features/personal/components/todo/GoblinTodoNav.vue'
 import GoblinAddTaskModal from '@/features/personal/components/todo/GoblinAddTaskModal.vue'

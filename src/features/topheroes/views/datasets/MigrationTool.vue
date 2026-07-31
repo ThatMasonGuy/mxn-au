@@ -354,7 +354,7 @@ import { Input } from '@/shared/components/ui/input'
 import { 
   Database, FileJson, Download, Upload, RefreshCw, AlertTriangle,
   Wand2, CheckCircle, XCircle, ExternalLink, Calculator, BarChart3, ArrowRightLeft
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import { firestore } from '@/firebase'
 import { collection, doc, getDocs, getDoc, setDoc, writeBatch, serverTimestamp } from 'firebase/firestore'
 import { useDatasetStore } from '@/features/topheroes/stores/useDatasetStore'

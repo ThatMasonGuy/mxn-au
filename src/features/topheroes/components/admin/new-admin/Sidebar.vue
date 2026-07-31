@@ -85,7 +85,7 @@ import {
     LayoutDashboard, BookOpen, Users, Calendar, BarChart3, Settings,
     ChevronLeft, ChevronRight, X, Plus, Shield, Clock,
     FileText, Zap, TrendingUp, Database
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 const props = defineProps({
     mobileOpen: { type: Boolean, default: false },

@@ -58,7 +58,7 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Button } from '@/shared/components/ui/button'
-import { ShieldX, Info, ArrowLeft, Home } from 'lucide-vue-next'
+import { ShieldX, Info, ArrowLeft, Home } from '@lucide/vue'
 
 const route = useRoute()
 const router = useRouter()

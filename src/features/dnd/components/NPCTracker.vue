@@ -198,7 +198,7 @@
 </template>
 
 <script setup>
-import { UserCircle, Plus, Trash2, X } from 'lucide-vue-next';
+import { UserCircle, Plus, Trash2, X } from '@lucide/vue';
 
 const props = defineProps({
   npcs: Array,

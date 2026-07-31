@@ -423,7 +423,7 @@
 <script setup>
 import { computed } from 'vue';
 import { usePersonalStore } from '@/features/personal/stores/usePersonalStore';
-import { Calendar, TrendingUp, Flame, Target, Droplet, Zap } from 'lucide-vue-next';
+import { Calendar, TrendingUp, Flame, Target, Droplet, Zap } from '@lucide/vue';
 
 defineEmits(['switch-to-goals']);
 

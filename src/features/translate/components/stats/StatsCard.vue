@@ -20,7 +20,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { MessageCircle, FileText, CheckCircle, Zap } from 'lucide-vue-next'
+import { MessageCircle, FileText, CheckCircle, Zap } from '@lucide/vue'
 
 // Props
 const props = defineProps({

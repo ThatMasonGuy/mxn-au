@@ -1076,7 +1076,7 @@ import { Button } from '@/shared/components/ui/button'
 import {
     Users, Check, CheckCircle, XCircle, AlertTriangle, Search, Link, Upload, ChevronDown,
     Clock, Target, Settings, X, Trash2, RotateCcw, Crown, Zap
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import { useMembers } from '@/features/topheroes/composables/admin/useMembers'
 
 const props = defineProps({

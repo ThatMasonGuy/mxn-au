@@ -125,7 +125,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
-import { Trophy, Flag, Share2, Sparkles, CheckCircle2, XCircle, Minus } from 'lucide-vue-next'
+import { Trophy, Flag, Share2, Sparkles, CheckCircle2, XCircle, Minus } from '@lucide/vue'
 import { useFlagIcon } from '@/shared/utils/useFlagIcon'
 
 const props = defineProps({

@@ -146,7 +146,7 @@
 <script setup>
 import { useMainStore } from '@/shared/stores/useMainStore'
 import { useProfessionalStore } from '@/features/professional/stores/useProfessionalStore'
-import { CheckCircle } from 'lucide-vue-next'
+import { CheckCircle } from '@lucide/vue'
 
 const mainStore = useMainStore()
 const professionalStore = useProfessionalStore()

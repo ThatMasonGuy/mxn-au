@@ -8,7 +8,7 @@ import {
   FastForward, Clock, ArrowLeft, LogOut, Info,
   BarChart3, Timer, Download, Upload, Trash2, AlertTriangle,
   Swords, TrendingUp, Activity, Sparkles
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import SkillTree from '@/shared/components/SkillTree.vue'
 
 const {

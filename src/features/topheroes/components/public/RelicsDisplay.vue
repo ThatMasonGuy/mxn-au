@@ -48,7 +48,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { Gem } from 'lucide-vue-next'
+import { Gem } from '@lucide/vue'
 
 const props = defineProps({
     queue: {

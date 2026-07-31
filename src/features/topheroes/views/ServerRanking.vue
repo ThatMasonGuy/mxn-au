@@ -951,7 +951,7 @@ import {
   Shield, Plus, Trash2, Save, Upload, Download, RefreshCw, FileUp, FileDown,
   Database, Users, AlertCircle, CheckCircle, AlertTriangle, Sword, Calendar,
   Trophy, ChevronDown, X, Globe, ChevronRight, Zap, Target, MessageSquare, Copy, Eye, Sparkles, Settings
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 import { useRouter } from 'vue-router'
 import { useGuildDataStore } from '@/features/topheroes/stores/useGuildDataStore'

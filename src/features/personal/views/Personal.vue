@@ -182,7 +182,7 @@ import {
     Flame, Leaf, Globe, ExternalLink, Sprout, CheckCircle2,
     Dumbbell, Droplets, Heart, Scale, Timer, BrainCircuit,
     ActivitySquare, ClipboardList,
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 import GnawCard from '@/features/personal/components/GnawCard.vue'
 

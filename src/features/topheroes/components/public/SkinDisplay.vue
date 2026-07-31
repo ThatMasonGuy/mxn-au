@@ -27,7 +27,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { Shirt } from 'lucide-vue-next'
+import { Shirt } from '@lucide/vue'
 
 const props = defineProps({
     queue: {

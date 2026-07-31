@@ -644,7 +644,7 @@ import {
     Settings, Trophy, Medal, Award, Crown, Calculator, RotateCcw, Database,
     Sword, Target, Zap, Calendar, RefreshCw, AlertCircle, CheckCircle,
     FileDown, Copy, Upload, Users, Globe, Link as LinkIcon, Save, Shield, Sparkles
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 import { useGuildDataStore } from '@/features/topheroes/stores/useGuildDataStore'
 

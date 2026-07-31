@@ -96,7 +96,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import { ChevronDown, Search, CheckCircle } from 'lucide-vue-next'
+import { ChevronDown, Search, CheckCircle } from '@lucide/vue'
 
 const props = defineProps({
     members: { type: Array, default: () => [] },

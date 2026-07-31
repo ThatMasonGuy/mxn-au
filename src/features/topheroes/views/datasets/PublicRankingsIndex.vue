@@ -276,7 +276,7 @@ import {
   ChevronRight,
   Layers,
   X
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 const router = useRouter()
 

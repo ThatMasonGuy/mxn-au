@@ -863,7 +863,7 @@ import {
   RefreshCw, AlertCircle, ArrowLeft, Search, Sword, Globe,
   TrendingUp, TrendingDown, Users, BarChart3, Download, Table,
   ChevronUp, ChevronDown
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import { firestore } from '@/firebase'
 import { doc, getDoc } from 'firebase/firestore'
 

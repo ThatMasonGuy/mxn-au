@@ -363,7 +363,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import {
     Eye, Users, Clock, MousePointer, TrendingUp, TrendingDown, RefreshCw,
     Download, BarChart3, Monitor, Tablet, Smartphone, Globe
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 // Reactive state
 const selectedPeriod = ref('30d')

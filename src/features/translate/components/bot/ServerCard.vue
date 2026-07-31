@@ -158,7 +158,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { Bot, Settings, Plus } from 'lucide-vue-next'
+import { Bot, Settings, Plus } from '@lucide/vue'
 
 const props = defineProps({
     server: {

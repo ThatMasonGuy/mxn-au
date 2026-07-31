@@ -761,7 +761,7 @@ import {
   Calendar,
   Target,
   Database,
-} from "lucide-vue-next";
+} from "@lucide/vue";
 import {
   Select,
   SelectContent,

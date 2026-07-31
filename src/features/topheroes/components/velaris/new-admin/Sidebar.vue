@@ -78,7 +78,7 @@ import {
     Users, ActivitySquare, Shield, Trophy, Settings, FileText,
     LayoutDashboard, ChevronLeft, ChevronRight, X, Plus, Clock,
     Calendar, Swords
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 const props = defineProps({
     mobileOpen: { type: Boolean, default: false },

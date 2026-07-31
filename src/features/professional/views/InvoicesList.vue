@@ -206,7 +206,7 @@ import { useProfessionalStore } from '@/features/professional/stores/useProfessi
 import { useToast } from '@/shared/components/ui/toast'
 import {
   Plus, Search, FileText, Pencil, Trash2
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 const mainStore = useMainStore()
 const professionalStore = useProfessionalStore()

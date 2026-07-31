@@ -124,7 +124,7 @@ import {
     BarChart3,
     Crown,
     Leaf
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import { useThemeStore } from '@/shared/stores/useThemeStore'
 
 const props = defineProps({

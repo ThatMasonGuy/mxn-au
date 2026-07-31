@@ -243,7 +243,7 @@ import {
     AlertCircle,
     RefreshCw,
     ScrollText
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 const router = useRouter()
 const store = useTranslateStore()

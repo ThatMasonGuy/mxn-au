@@ -127,7 +127,7 @@
 
 <script setup>
 import { ref, computed, nextTick } from 'vue'
-import { Edit, Trash2, Calendar, MessageCircle, Paperclip, CheckSquare } from 'lucide-vue-next'
+import { Edit, Trash2, Calendar, MessageCircle, Paperclip, CheckSquare } from '@lucide/vue'
 
 // Props
 const props = defineProps({

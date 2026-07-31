@@ -270,7 +270,7 @@ import {
   Database, Save, Download, FileDown, FileUp, MoreVertical,
   Users, Zap, Sword, Trophy, AlertCircle, AlertTriangle, CheckCircle,
   Calculator, BarChart3, ArrowRightLeft
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import { useDatasetStore } from '@/features/topheroes/stores/useDatasetStore'
 import { formatNumber } from '@/features/topheroes/lib/datasetHelpers'
 import DatasetList from '@/features/topheroes/components/datasets/DatasetList.vue'

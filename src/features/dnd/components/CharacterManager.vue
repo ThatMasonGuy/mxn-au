@@ -154,7 +154,7 @@
 </template>
 
 <script setup>
-import { Users, Plus, Trash2, X } from 'lucide-vue-next';
+import { Users, Plus, Trash2, X } from '@lucide/vue';
 
 const props = defineProps({
   characters: Array,

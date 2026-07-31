@@ -155,7 +155,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ListTodo, Plus, Search, X, Inbox, Loader2, History, Pencil, Trash2 } from 'lucide-vue-next'
+import { ListTodo, Plus, Search, X, Inbox, Loader2, History, Pencil, Trash2 } from '@lucide/vue'
 import { useGoblinTodoStore } from '@/features/personal/stores/useGoblinTodoStore'
 import GoblinTodoNav from '@/features/personal/components/todo/GoblinTodoNav.vue'
 import GoblinTaskQuickView from '@/features/personal/components/todo/GoblinTaskQuickView.vue'

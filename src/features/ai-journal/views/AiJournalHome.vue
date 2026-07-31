@@ -229,7 +229,7 @@ import {
   Sparkles, Zap, Search, BrainCircuit, Database, 
   Clock, Moon, Cpu, Calendar, Image as ImageIcon, Layers,
   ListTodo, EyeOff, Newspaper, UserCircle 
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 </script>
 
 <style scoped>

@@ -17,7 +17,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { X } from 'lucide-vue-next'
+import { X } from '@lucide/vue'
 import { MEMBER_TAGS } from '@/features/topheroes/composables/admin/useMembers'
 
 const props = defineProps({

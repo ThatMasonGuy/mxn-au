@@ -365,7 +365,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { Button } from '@/shared/components/ui/button'
 import { Badge } from '@/shared/components/ui/badge'
-import { Sliders, Zap, Calendar, BarChart3, AlertTriangle, Sword, Globe } from 'lucide-vue-next'
+import { Sliders, Zap, Calendar, BarChart3, AlertTriangle, Sword, Globe } from '@lucide/vue'
 import { useDatasetStore } from '@/features/topheroes/stores/useDatasetStore'
 import { createDefaultWeights, normalizeWeights, getTotalWeight } from '@/features/topheroes/lib/rankingCalculator'
 

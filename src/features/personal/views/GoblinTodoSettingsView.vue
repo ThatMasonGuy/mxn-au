@@ -154,7 +154,7 @@
 
 <script setup>
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
-import { Settings2, Plus, X, CheckCircle } from 'lucide-vue-next'
+import { Settings2, Plus, X, CheckCircle } from '@lucide/vue'
 import { useGoblinTodoStore } from '@/features/personal/stores/useGoblinTodoStore'
 import GoblinTodoNav from '@/features/personal/components/todo/GoblinTodoNav.vue'
 

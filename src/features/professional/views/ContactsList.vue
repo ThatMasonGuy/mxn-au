@@ -199,7 +199,7 @@ import {
   AlertDialogTitle,
 } from '@/shared/components/ui/alert-dialog'
 import { useToast } from '@/shared/components/ui/toast'
-import { Plus, Search, Users, Pencil, Trash2, Loader2 } from 'lucide-vue-next'
+import { Plus, Search, Users, Pencil, Trash2, Loader2 } from '@lucide/vue'
 
 const router = useRouter()
 const mainStore = useMainStore()

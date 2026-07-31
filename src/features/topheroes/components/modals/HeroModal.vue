@@ -134,7 +134,7 @@
 
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
-import { X, Save, Flame, Leaf, Shield } from 'lucide-vue-next'
+import { X, Save, Flame, Leaf, Shield } from '@lucide/vue'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog'
 import { Button } from '@/shared/components/ui/button'
 

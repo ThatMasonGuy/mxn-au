@@ -60,7 +60,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { X, Gem } from 'lucide-vue-next'
+import { X, Gem } from '@lucide/vue'
 
 const props = defineProps({
     slot: {

@@ -162,7 +162,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useMainStore } from '@/shared/stores/useMainStore'
 import { useProfessionalStore } from '@/features/professional/stores/useProfessionalStore'
 import { useToast } from '@/shared/components/ui/toast'
-import { CheckCircle2, Save, Loader2 } from 'lucide-vue-next'
+import { CheckCircle2, Save, Loader2 } from '@lucide/vue'
 
 const mainStore = useMainStore()
 const professionalStore = useProfessionalStore()

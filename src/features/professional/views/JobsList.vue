@@ -109,7 +109,7 @@ import { useMainStore } from '@/shared/stores/useMainStore'
 import { useProfessionalStore } from '@/features/professional/stores/useProfessionalStore'
 import {
   Plus, Search, FolderKanban
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 const mainStore = useMainStore()
 const professionalStore = useProfessionalStore()

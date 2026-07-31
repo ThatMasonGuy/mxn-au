@@ -130,7 +130,7 @@
 
 <script setup>
 import { ref, watch } from 'vue'
-import { X, History, Pencil, Check, RotateCcw } from 'lucide-vue-next'
+import { X, History, Pencil, Check, RotateCcw } from '@lucide/vue'
 import { computed } from 'vue'
 
 const props = defineProps({

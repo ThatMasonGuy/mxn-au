@@ -464,7 +464,7 @@ import {
   Database,
   Calendar,
   Target,
-} from "lucide-vue-next";
+} from "@lucide/vue";
 import FroggyIcon from "@/assets/icons/FroggyIcon.vue";
 import { useTopHeroesAdminStore } from "@/features/topheroes/stores/useTopHeroesAdminStore";
 

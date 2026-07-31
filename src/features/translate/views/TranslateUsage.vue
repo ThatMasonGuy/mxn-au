@@ -251,7 +251,7 @@ import { useTranslateStore } from '@/features/translate/stores/useTranslateStore
 import { useMainStore } from '@/shared/stores/useMainStore'
 import { doc, onSnapshot } from 'firebase/firestore'
 import { firestore } from '@/firebase'
-import { BarChart3, Languages, Zap, Server, Hash, User, Edit, DollarSign, MessageCircle, Type, CheckCircle, Clock, Users, TrendingUp, Globe, Book, Leaf, Cpu, Award } from 'lucide-vue-next'
+import { BarChart3, Languages, Zap, Server, Hash, User, Edit, DollarSign, MessageCircle, Type, CheckCircle, Clock, Users, TrendingUp, Globe, Book, Leaf, Cpu, Award } from '@lucide/vue'
 
 // Import child components
 import StatsCard from '@/features/translate/components/stats/StatsCard.vue'

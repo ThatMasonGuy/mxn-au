@@ -24,7 +24,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { Languages, Megaphone, Settings, Ban } from 'lucide-vue-next'
+import { Languages, Megaphone, Settings, Ban } from '@lucide/vue'
 
 const props = defineProps({
     title: {

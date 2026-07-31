@@ -121,7 +121,7 @@
 </template>
 
 <script setup>
-import { Images, Plus, AlertTriangle, X } from 'lucide-vue-next'
+import { Images, Plus, AlertTriangle, X } from '@lucide/vue'
 
 const props = defineProps({
   schema:      { type: Object, required: true },

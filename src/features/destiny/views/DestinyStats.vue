@@ -754,7 +754,7 @@ import {
     Cpu,
     Clock,
     Calendar
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 const destiny = useDestinyStore()
 const {

@@ -55,7 +55,7 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { Drawer, DrawerTrigger, DrawerContent, DrawerClose, DrawerTitle, DrawerDescription } from '@/shared/components/ui/drawer'
-import { Menu } from 'lucide-vue-next'
+import { Menu } from '@lucide/vue'
 
 const isHidden = ref(false)
 const isScrolled = ref(false)

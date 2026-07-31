@@ -23,7 +23,7 @@ import {
     MoveUp,
     TreePine,
     ShieldAlert,
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 import { HANDOVER_ITEMS } from '../data/handoverItems.js'
 

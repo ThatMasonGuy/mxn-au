@@ -183,7 +183,7 @@ import {
     Info,
     Loader2,
     Megaphone
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 const props = defineProps({
     serverId: String,

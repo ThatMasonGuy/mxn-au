@@ -240,7 +240,7 @@ import { Label } from '@/shared/components/ui/label'
 import {
     Upload, Info, FileDown, Database, FileSpreadsheet, BarChart3,
     FileText, CheckCircle, AlertTriangle, XCircle, Eye, ArrowRight
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import { useMembers } from '@/features/topheroes/composables/admin/useMembers'
 import BulkMemberImportReviewModal from './BulkMemberImportReviewModal.vue'
 

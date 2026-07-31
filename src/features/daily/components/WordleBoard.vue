@@ -78,7 +78,7 @@ import { onMounted, onUnmounted, ref, computed, watch, nextTick } from 'vue';
 import { useWordleStore } from '@/features/daily/stores/useWordleStore';
 import KeyButton from './components/KeyButton.vue';
 import WordleCompletionOverlay from './components/WordleCompletionOverlay.vue';
-import { CornerDownLeft, Delete } from 'lucide-vue-next';
+import { CornerDownLeft, Delete } from '@lucide/vue';
 
 const store = useWordleStore();
 

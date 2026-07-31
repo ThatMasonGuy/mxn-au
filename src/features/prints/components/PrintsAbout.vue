@@ -65,5 +65,5 @@
 </template>
 
 <script setup>
-import { User } from 'lucide-vue-next'
+import { User } from '@lucide/vue'
 </script>

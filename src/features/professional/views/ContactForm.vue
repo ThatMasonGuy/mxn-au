@@ -202,7 +202,7 @@ import {
   SelectValue,
 } from '@/shared/components/ui/select'
 import { useToast } from '@/shared/components/ui/toast'
-import { ArrowLeft, Save, Loader2 } from 'lucide-vue-next'
+import { ArrowLeft, Save, Loader2 } from '@lucide/vue'
 
 const route = useRoute()
 const router = useRouter()

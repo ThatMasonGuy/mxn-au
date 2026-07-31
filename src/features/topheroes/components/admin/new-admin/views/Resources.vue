@@ -348,7 +348,7 @@ import {
     Upload, Download, Search, Edit, Trash2, FolderOpen, FileText,
     Video, Archive, Link, List, LayoutGrid, X, Play,
     ImageIcon as Image
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 // Reactive state
 const loading = ref(false)

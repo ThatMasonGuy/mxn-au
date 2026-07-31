@@ -331,7 +331,7 @@ import {
     MessageSquare, Clock, Globe, Copy, Info, Calendar,
     Sparkles, MousePointer, Zap, MapPin, User, ChevronDown,
     ChevronUp, Search
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import { getTimeZones } from '@vvo/tzdb'
 import {
     getUserTimezone,

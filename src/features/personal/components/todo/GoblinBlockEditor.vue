@@ -292,7 +292,7 @@ import {
   GripVertical, Link2, LinkIcon, Trash2, X, Plus,
   Clipboard as ClipboardIcon, Check as CheckIcon,
   ChevronRight, ChevronDown, Square, CheckSquare, Type
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 const props = defineProps({
   blocks: { type: Array, default: () => [] },

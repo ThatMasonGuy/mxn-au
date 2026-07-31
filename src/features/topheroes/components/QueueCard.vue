@@ -169,7 +169,7 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import { Edit, Trash2, Eye, EyeOff, User, Server, Clock } from 'lucide-vue-next'
+import { Edit, Trash2, Eye, EyeOff, User, Server, Clock } from '@lucide/vue'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip'
 import ConfirmationModal from '@/features/topheroes/components/velaris/new-admin/ConfirmationModal.vue'
 

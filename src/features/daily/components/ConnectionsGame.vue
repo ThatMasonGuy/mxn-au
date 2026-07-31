@@ -115,7 +115,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useConnectionsStore } from '@/features/daily/stores/useConnectionsStore'
 import ConnectionsCompletionOverlay from './components/ConnectionsCompletionOverlay.vue'
-import { CheckCircle2 } from 'lucide-vue-next'
+import { CheckCircle2 } from '@lucide/vue'
 
 const store = useConnectionsStore()
 

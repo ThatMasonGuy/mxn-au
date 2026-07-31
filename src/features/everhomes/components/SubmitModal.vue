@@ -297,7 +297,7 @@ import { ref, reactive, computed, watch, nextTick, onUnmounted } from 'vue'
 import {
   CheckCircle, AlertTriangle, XCircle, RefreshCw,
   FileText, Send, X, ClipboardCheck,
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import SignaturePad from 'signature_pad'
 import { getReportDraft } from '@/features/everhomes/utils/reportDraftApi'
 

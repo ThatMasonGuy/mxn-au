@@ -305,7 +305,7 @@ import { ref, computed, reactive, onMounted, watch } from 'vue'
 import {
     Search, Plus, Library, Users, Flame, Leaf, Shield, Star, RotateCcw,
     Settings, X, Zap, Lightbulb, TrendingUp, Sword, Crown, Gem, Award, Hexagon, List, Database
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 // Store
 import { useTopHeroesHeroStore } from '@/features/topheroes/stores/useTopHeroesHeroStore'

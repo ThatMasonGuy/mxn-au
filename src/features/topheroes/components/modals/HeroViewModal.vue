@@ -161,7 +161,7 @@ import {
     Tag, Flame, Leaf, Shield as ShieldIcon, Crown, Star, Gem, Hexagon,
     Swords, TrendingUp, TrendingDown, Link, Zap, BarChart,
     Heart, Sword, Shield, Plus
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog'
 import { Button } from '@/shared/components/ui/button'
 

@@ -110,7 +110,7 @@ import {
     Wrench, 
     Trophy, 
     Shield 
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import {
     Tooltip,
     TooltipTrigger,

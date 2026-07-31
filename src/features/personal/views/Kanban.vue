@@ -361,13 +361,13 @@ import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useKanbanStore } from '@/features/personal/stores/useKanbanStore'
 import {
-    Trello, Plus, Edit, Trash2, Clock, Calendar,
+    PanelsTopLeft as Trello, Plus, Edit, Trash2, Clock, Calendar,
     Search, Activity, LayoutGrid, ArrowRight,
     Briefcase, Target, Rocket, Book, Heart, Star,
     Zap, Coffee, Music, Camera, Globe, Package,
     ShoppingCart, Users, FileText, Code, Palette,
     Award
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 // Store and routing
 const kanbanStore = useKanbanStore()

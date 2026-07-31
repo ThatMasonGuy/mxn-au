@@ -51,7 +51,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
-import { X, AlertTriangle, AlertCircle, Info, Trash2 } from 'lucide-vue-next'
+import { X, AlertTriangle, AlertCircle, Info, Trash2 } from '@lucide/vue'
 
 const props = defineProps({
     title: {

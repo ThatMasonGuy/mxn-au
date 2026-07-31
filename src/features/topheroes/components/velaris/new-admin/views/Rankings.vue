@@ -376,7 +376,7 @@ import {
     Trophy, Zap, Users, Activity, Filter, Download, TrendingUp, TrendingDown,
     Award, Target, Sword, Shield, Star, RefreshCw, AlertTriangle, Calendar,
     ChevronUp, ChevronDown, ChevronsUpDown, Plus
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import { useRankingsStore } from '@/features/topheroes/stores/useRankingsStore'
 
 const rankingsStore = useRankingsStore()

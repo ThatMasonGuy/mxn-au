@@ -287,7 +287,7 @@ import { Badge } from '@/shared/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog'
 import { 
   Trophy, BarChart3, Share2, Info, Calculator
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import { useDatasetStore } from '@/features/topheroes/stores/useDatasetStore'
 import { getTotalWeight } from '@/features/topheroes/lib/rankingCalculator'
 import { formatNumber } from '@/features/topheroes/lib/datasetHelpers'

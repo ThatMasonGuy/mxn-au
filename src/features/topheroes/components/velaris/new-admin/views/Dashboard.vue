@@ -451,7 +451,7 @@ import {
     Users, Trophy, Activity, Zap, Calendar, Clock, RefreshCw, TrendingUp,
     UserPlus, Plus, Download, BarChart3, ExternalLink, Star,
     Crown, Shield, Sword, Target, UserCheck
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import { useEventCollection } from '@/features/topheroes/composables/admin/useEventCollection'
 import { useMembers } from '@/features/topheroes/composables/admin/useMembers'
 import { useRankingsStore } from '@/features/topheroes/stores/useRankingsStore'

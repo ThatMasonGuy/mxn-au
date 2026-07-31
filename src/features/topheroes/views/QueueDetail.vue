@@ -309,7 +309,7 @@ import { useRoute, useRouter } from 'vue-router'
 import {
     ArrowLeft, ThumbsUp, ThumbsDown, User, Server, Eye, Clock,
     Users, Zap, Share2, XCircle, Sparkles, Gem, Dog, Shirt
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import { useTopHeroesPublicStore } from '@/features/topheroes/stores/useTopHeroesPublicStore'
 import TeamFormationDisplay from '@/features/topheroes/components/public/TeamFormationDisplay.vue'
 import GearSetupDisplay from '@/features/topheroes/components/public/GearSetupDisplay.vue'

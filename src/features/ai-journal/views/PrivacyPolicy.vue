@@ -42,5 +42,5 @@
 </template>
 
 <script setup>
-import { ArrowLeft } from 'lucide-vue-next'
+import { ArrowLeft } from '@lucide/vue'
 </script>

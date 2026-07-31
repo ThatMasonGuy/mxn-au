@@ -38,7 +38,7 @@
 </template>
 
 <script setup>
-import { X } from 'lucide-vue-next'
+import { X } from '@lucide/vue'
 import { useKvKEventDataStore } from '@/features/topheroes/stores/useKvKEventDataStore'
 
 const kvkStore = useKvKEventDataStore()

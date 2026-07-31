@@ -17,7 +17,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { Crown, Shield, Star, Users, User, Activity, Pause, LogOut, Ban } from 'lucide-vue-next'
+import { Crown, Shield, Star, Users, User, Activity, Pause, LogOut, Ban } from '@lucide/vue'
 
 const { label, variant } = defineProps({
     label: String,

@@ -279,7 +279,7 @@
 
 <script setup>
 import { ref, computed, watch, onUnmounted } from 'vue'
-import { CheckCircle2, ClipboardCopy, Download, LoaderCircle, Pause, Play, Volume2, VolumeX, X } from 'lucide-vue-next'
+import { CheckCircle2, ClipboardCopy, Download, LoaderCircle, Pause, Play, Volume2, VolumeX, X } from '@lucide/vue'
 import { useCardExporter } from '../composables/useCardExporter.js'
 
 const props = defineProps({
