@@ -67,7 +67,7 @@
 </template>
 
 <script setup>
-import { Users, Crown, Target } from 'lucide-vue-next'
+import { Users, Crown, Target } from '@lucide/vue'
 
 const props = defineProps({
     event: Object

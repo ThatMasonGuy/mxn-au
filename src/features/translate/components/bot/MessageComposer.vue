@@ -161,7 +161,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
-import { Clock, Users, MapPin, AtSign, X, Globe } from 'lucide-vue-next'
+import { Clock, Users, MapPin, AtSign, X, Globe } from '@lucide/vue'
 
 const props = defineProps({
     modelValue: {

@@ -114,7 +114,7 @@ import { ref, onMounted, watch } from 'vue'
 import * as XLSX from 'xlsx'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/shared/components/ui/dialog'
 import { Button } from '@/shared/components/ui/button'
-import { Upload, FileSpreadsheet, FileText, Info } from 'lucide-vue-next'
+import { Upload, FileSpreadsheet, FileText, Info } from '@lucide/vue'
 import { useMembers } from '@/features/topheroes/composables/admin/useMembers'
 import BulkMemberEventImportReviewModal from './BulkMemberEventImportReviewModal.vue'
 

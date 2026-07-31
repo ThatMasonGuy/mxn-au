@@ -220,7 +220,7 @@ import CasinoHeader from './CasinoHeader.vue'
 import CasinoFooter from './CasinoFooter.vue'
 import BettingTable from './BettingTable.vue'
 import BackgroundParticles from './BackgroundParticles.vue'
-import { ArrowLeft, Play, RotateCcw, Repeat, Sparkles, Loader2 } from 'lucide-vue-next'
+import { ArrowLeft, Play, RotateCcw, Repeat, Sparkles, Loader2 } from '@lucide/vue'
 
 const router = useRouter()
 

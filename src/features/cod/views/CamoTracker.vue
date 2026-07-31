@@ -295,7 +295,7 @@ import {
   Target, Package, Database, Search, ChevronDown, Zap,
   Crosshair, Shield, Skull, Mountain, Plane, Swords, Bomb, 
   Axe, BarChart3
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import { useCamoStore } from './camoStore'
 import { useMainStore } from '@/shared/stores/useMainStore'
 import WeaponCard from './WeaponCard.vue'

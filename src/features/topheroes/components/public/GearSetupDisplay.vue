@@ -68,7 +68,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { Crown, Zap, Sword, Shield } from 'lucide-vue-next'
+import { Crown, Zap, Sword, Shield } from '@lucide/vue'
 
 const props = defineProps({
     queue: {

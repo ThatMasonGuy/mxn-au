@@ -416,7 +416,7 @@ import {
     Calendar, Edit, Trash2, User, Crown, Shield, Star, Users, UserCheck,
     Zap, Castle, Activity, MapPin, MessageCircle, Server, Hash, Clock,
     MessageSquare, Tags, History, ArrowRight, ChevronDown, AlertTriangle, X
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import Badge from './Badge.vue'
 import Tag from './Tag.vue'
 import { useMembers, MEMBER_TAGS } from '@/features/topheroes/composables/admin/useMembers'

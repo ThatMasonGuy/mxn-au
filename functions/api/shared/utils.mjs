@@ -1,22 +1,27 @@
 // shared/utils.mjs
-import admin from 'firebase-admin';
+import {
+  getApp as getAdminApp,
+  getApps,
+  initializeApp,
+} from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
 
 let app = null;
 let db = null;
 
 export function getApp() {
   if (app) return app;
-  if (admin.apps.length === 0) {
-    app = admin.initializeApp();
+  if (getApps().length === 0) {
+    app = initializeApp();
   } else {
-    app = admin.app();
+    app = getAdminApp();
   }
   return app;
 }
 
 export function getDb() {
   if (db) return db;
-  db = admin.firestore(getApp());
+  db = getFirestore(getApp());
   return db;
 }
 

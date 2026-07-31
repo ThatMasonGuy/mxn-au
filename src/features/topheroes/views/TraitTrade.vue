@@ -219,7 +219,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { Search, ChevronRight, Users, Award, Shuffle, AlertCircle, Sparkles } from 'lucide-vue-next'
+import { Search, ChevronRight, Users, Award, Shuffle, AlertCircle, Sparkles } from '@lucide/vue'
 import HeroCard from '@/features/topheroes/components/HeroCard2.vue'
 import heroData from '@/features/topheroes/data/TopHeroes.json'
 

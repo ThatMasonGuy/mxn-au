@@ -104,7 +104,7 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { useTranslateStore } from '@/features/translate/stores/useTranslateBotStore'
-import { AlertTriangle, Flag, Languages, Megaphone } from 'lucide-vue-next'
+import { AlertTriangle, Flag, Languages, Megaphone } from '@lucide/vue'
 
 const props = defineProps({
     serverId: String,

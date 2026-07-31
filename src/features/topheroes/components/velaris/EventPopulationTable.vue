@@ -367,7 +367,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { Check, X, ChevronDown, Search, Trash2, RotateCcw, Plus, RefreshCw } from 'lucide-vue-next'
+import { Check, X, ChevronDown, Search, Trash2, RotateCcw, Plus, RefreshCw } from '@lucide/vue'
 
 const props = defineProps({
     players: Array,

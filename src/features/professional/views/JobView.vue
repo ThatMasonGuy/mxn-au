@@ -222,7 +222,7 @@ import { useProfessionalStore } from '@/features/professional/stores/useProfessi
 import { useToast } from '@/shared/components/ui/toast'
 import {
   ArrowLeft, Pencil, Plus, Trash2, Calendar, Receipt, FileText, Loader2
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 const route = useRoute()
 const router = useRouter()

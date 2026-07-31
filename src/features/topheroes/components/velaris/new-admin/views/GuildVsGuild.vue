@@ -239,7 +239,7 @@ import { ref } from 'vue'
 import {
     Trophy, Users, Zap, Shield, RefreshCw, Sword, Eye, BarChart3, Target,
     MessageSquare, FileText, Plus
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 const activeBattles = ref([
     {

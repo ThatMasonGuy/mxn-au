@@ -111,7 +111,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
-import { Grid3x3, Puzzle, Share2, Sparkles } from 'lucide-vue-next'
+import { Grid3x3, Puzzle, Share2, Sparkles } from '@lucide/vue'
 
 const props = defineProps({
     show: Boolean,

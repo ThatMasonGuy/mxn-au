@@ -239,10 +239,10 @@ import {
     Briefcase,
     ChevronRight,
     Sparkles,
-    Github,
+    GitFork as Github,
     Settings,
     Home
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 const props = defineProps({
     author: {

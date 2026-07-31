@@ -340,7 +340,7 @@ import {
   Box,
   Hammer,
   Sparkles
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 const emit = defineEmits(['complete', 'close'])
 

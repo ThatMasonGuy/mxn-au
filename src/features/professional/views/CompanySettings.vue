@@ -304,7 +304,7 @@ import {
   Loader2,
   CheckCircle,
   AlertCircle
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 const mainStore = useMainStore()
 const professionalStore = useProfessionalStore()

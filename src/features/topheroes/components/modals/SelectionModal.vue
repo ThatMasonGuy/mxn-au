@@ -112,7 +112,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
-import { X, Search, Library, Sword, Shield, Zap } from 'lucide-vue-next'
+import { X, Search, Library, Sword, Shield, Zap } from '@lucide/vue'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog'
 import { Button } from '@/shared/components/ui/button'
 

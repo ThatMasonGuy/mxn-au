@@ -272,7 +272,7 @@ import { getUsageSummary } from '@/features/personal/composables/useUsageDashboa
 import {
   TrendingUp, MessageSquare, DollarSign, Clock,
   Zap, Activity, BarChart3, Eye, EyeOff
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 const mainStore = useMainStore()
 

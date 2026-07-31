@@ -80,7 +80,7 @@
 
 <script setup>
 import { computed, ref, onMounted, watch } from 'vue'
-import { Plus, Eye, Flame, Leaf, Shield, Crown, Star, Gem, Hexagon } from 'lucide-vue-next'
+import { Plus, Eye, Flame, Leaf, Shield, Crown, Star, Gem, Hexagon } from '@lucide/vue'
 
 const props = defineProps({
     hero: { type: Object, required: true },

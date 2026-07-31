@@ -444,7 +444,7 @@ import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
 import { Badge } from '@/shared/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog'
-import { Calendar, Plus, Settings, Trash2, Sword, Globe, Zap, Pencil, X } from 'lucide-vue-next'
+import { Calendar, Plus, Settings, Trash2, Sword, Globe, Zap, Pencil, X } from '@lucide/vue'
 import { useDatasetStore } from '@/features/topheroes/stores/useDatasetStore'
 import { getTemplateList, getEventDayLabels } from '@/features/topheroes/lib/eventTemplates'
 

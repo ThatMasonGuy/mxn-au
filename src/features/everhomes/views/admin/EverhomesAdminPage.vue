@@ -800,7 +800,7 @@ import {
     ClipboardCheck, ClipboardList, User, Calendar, Clock,
     CheckCircle2, AlertTriangle, FileSpreadsheet, CloudUpload,
     BarChart3, TrendingUp, XCircle, ChevronDown, RotateCcw, Link, MailWarning,
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 const FUNCTIONS_URL = import.meta.env.VITE_FUNCTIONS_URL ?? ''
 const copiedDraftId = ref(null)

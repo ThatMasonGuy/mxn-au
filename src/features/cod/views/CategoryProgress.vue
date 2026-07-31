@@ -87,7 +87,7 @@ import { ref, computed } from 'vue'
 import { 
   Target, Skull, Mountain, Plane, Crosshair, ChevronDown, ChevronUp, Package,
   Zap, Hammer, Cpu, Gauge, Shield
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import { useCamoStore } from './camoStore'
 
 const props = defineProps({

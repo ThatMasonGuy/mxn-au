@@ -253,7 +253,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Search, ChevronDown } from 'lucide-vue-next'
+import { Search, ChevronDown } from '@lucide/vue'
 import HeroFilter from '@/features/topheroes/components/public/HeroFilter.vue'
 import PublicQueueCard from '@/features/topheroes/components/public/PublicQueueCard.vue'
 import { useTopHeroesPublicStore } from '@/features/topheroes/stores/useTopHeroesPublicStore'

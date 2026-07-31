@@ -34,11 +34,11 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-import { Terminal } from 'xterm'
-import { FitAddon } from 'xterm-addon-fit'
-import { WebLinksAddon } from 'xterm-addon-web-links'
+import { Terminal } from '@xterm/xterm'
+import { FitAddon } from '@xterm/addon-fit'
+import { WebLinksAddon } from '@xterm/addon-web-links'
 import { toast } from 'vue-sonner'
-import 'xterm/css/xterm.css'
+import '@xterm/xterm/css/xterm.css'
 
 const terminalRef = ref(null)
 const terminal = ref(null)

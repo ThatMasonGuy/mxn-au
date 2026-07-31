@@ -240,7 +240,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { Bot, Languages, Plus, FileText, Clock, Box, Sparkles, AlertCircle, Zap, Shield, Rocket, Users, Settings } from 'lucide-vue-next'
+import { Bot, Languages, Plus, FileText, Clock, Box, Sparkles, AlertCircle, Zap, Shield, Rocket, Users, Settings } from '@lucide/vue'
 
 // Bot Configuration - Update here to add/modify bots
 const activeBots = ref([

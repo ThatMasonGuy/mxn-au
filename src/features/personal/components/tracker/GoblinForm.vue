@@ -397,7 +397,7 @@ import {
     Droplet,
     Edit,
     Save
-} from 'lucide-vue-next';
+} from '@lucide/vue';
 
 const props = defineProps({
     log: Object,

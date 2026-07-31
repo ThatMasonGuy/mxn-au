@@ -168,7 +168,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useTranslateStore } from '@/features/translate/stores/useTranslateStore'
 import { useMainStore } from '@/shared/stores/useMainStore'
-import { ChevronRight, X, Copy, Maximize } from 'lucide-vue-next'
+import { ChevronRight, X, Copy, Maximize } from '@lucide/vue'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select'
 
 const store = useTranslateStore()

@@ -1677,7 +1677,7 @@ import {
   RefreshCw,
   Pencil,
   Images,
-} from "lucide-vue-next";
+} from "@lucide/vue";
 import { HANDOVER_ITEMS, getHandoverGroups } from "@/features/everhomes/data/handoverItems.js";
 import SignaturePad from "signature_pad";
 

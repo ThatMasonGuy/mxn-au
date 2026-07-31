@@ -179,7 +179,7 @@ import { onMounted, onUnmounted, ref, computed, watch, nextTick } from 'vue'
 import { useWordleUnlimitedStore } from '@/features/daily/stores/useWordleUnlimitedStore'
 import KeyButton from './components/KeyButton.vue'
 import WordleUnlimitedCompletionOverlay from './components/WordleCompletionOverlay.vue'
-import { CornerDownLeft, Delete, ArrowRightCircle, Gamepad2, Flame } from 'lucide-vue-next'
+import { CornerDownLeft, Delete, ArrowRightCircle, Gamepad2, Flame } from '@lucide/vue'
 
 const store = useWordleUnlimitedStore()
 

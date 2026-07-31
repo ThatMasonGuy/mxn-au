@@ -1,4 +1,6 @@
-import { db } from '../config/firebase.mjs'
+import { deleteApp } from 'firebase-admin/app'
+import { FieldValue } from 'firebase-admin/firestore'
+import { db, firebaseApp } from '../config/firebase.mjs'
 
 async function fixFirestoreConfig() {
     console.log('🔧 Fixing Firestore Configuration...\n');
@@ -23,7 +25,7 @@ async function fixFirestoreConfig() {
                     name: 'Wordle',
                     description: 'Guess the 5-letter word in 6 tries',
                     maxAttempts: 6,
-                    createdAt: admin.firestore.FieldValue.serverTimestamp()
+                    createdAt: FieldValue.serverTimestamp()
                 });
                 console.log('✅ Created correct "wordle" document');
             }
@@ -39,7 +41,7 @@ async function fixFirestoreConfig() {
                 name: 'Wordle',
                 description: 'Guess the 5-letter word in 6 tries',
                 maxAttempts: 6,
-                createdAt: admin.firestore.FieldValue.serverTimestamp()
+                createdAt: FieldValue.serverTimestamp()
             });
             console.log('✅ Created "wordle" configuration');
         } else {
@@ -58,7 +60,7 @@ async function fixFirestoreConfig() {
                 name: 'Connections',
                 description: 'Find groups of 4 related words',
                 maxAttempts: 4,
-                createdAt: admin.firestore.FieldValue.serverTimestamp()
+                createdAt: FieldValue.serverTimestamp()
             });
             console.log('✅ Created "connections" configuration');
         } else {
@@ -92,8 +94,8 @@ async function fixFirestoreConfig() {
                 gameId: 'wordle',
                 answer: 'CRANE', // A good starting word
                 stats: { totalPlays: 0, totalWins: 0, attemptsHistogram: {} },
-                createdAt: admin.firestore.FieldValue.serverTimestamp(),
-                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                createdAt: FieldValue.serverTimestamp(),
+                updatedAt: FieldValue.serverTimestamp(),
                 isFallback: true
             });
             console.log('✅ Created fallback Wordle puzzle for today');
@@ -137,8 +139,8 @@ async function fixFirestoreConfig() {
                     }
                 ],
                 stats: { totalPlays: 0, totalWins: 0, attemptsHistogram: [0, 0, 0, 0, 0] },
-                createdAt: admin.firestore.FieldValue.serverTimestamp(),
-                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                createdAt: FieldValue.serverTimestamp(),
+                updatedAt: FieldValue.serverTimestamp(),
                 isFallback: true
             });
             console.log('✅ Created fallback Connections puzzle for today');
@@ -156,7 +158,7 @@ async function fixFirestoreConfig() {
         console.error('❌ Error fixing Firestore:', error);
     } finally {
         // Terminate the app
-        await admin.app().delete();
+        await deleteApp(firebaseApp);
     }
 }
 

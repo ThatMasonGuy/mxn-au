@@ -10,7 +10,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { RotateCw } from 'lucide-vue-next'
+import { RotateCw } from '@lucide/vue'
 
 const props = defineProps({
     message: { type: String, default: 'Loading…' },

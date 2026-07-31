@@ -359,7 +359,7 @@ import {
   Loader2,
   Activity,
   Terminal
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 const router = useRouter()
 const mainStore = useMainStore()

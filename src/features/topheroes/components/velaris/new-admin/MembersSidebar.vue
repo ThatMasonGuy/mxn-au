@@ -125,7 +125,7 @@
 </template>
 
 <script setup>
-import { Crown, Shield, Star, Users, UserCheck, AlertTriangle, FileText } from 'lucide-vue-next'
+import { Crown, Shield, Star, Users, UserCheck, AlertTriangle, FileText } from '@lucide/vue'
 import Tag from './Tag.vue'
 
 defineProps({

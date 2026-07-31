@@ -160,7 +160,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { ThumbsUp, ThumbsDown, MessageSquare, Flag, ChevronDown } from 'lucide-vue-next'
+import { ThumbsUp, ThumbsDown, MessageSquare, Flag, ChevronDown } from '@lucide/vue'
 import { useTopHeroesPublicStore } from '@/features/topheroes/stores/useTopHeroesPublicStore'
 
 const props = defineProps({

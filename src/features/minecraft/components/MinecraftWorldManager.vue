@@ -341,7 +341,7 @@ import {
   Trash2,
   AlertTriangle,
   Loader2
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 const props = defineProps({
   instance: {

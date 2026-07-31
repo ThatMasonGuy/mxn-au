@@ -13,7 +13,7 @@
 </template>
 
 <script setup>
-import { CalendarDays, ListTodo, CalendarRange, Settings2 } from 'lucide-vue-next'
+import { CalendarDays, ListTodo, CalendarRange, Settings2 } from '@lucide/vue'
 
 const links = [
     { name: 'personal-todo', label: 'Today', icon: CalendarDays },

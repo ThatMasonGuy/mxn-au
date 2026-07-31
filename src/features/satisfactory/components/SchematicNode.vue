@@ -230,7 +230,7 @@ import { ref, computed, watch } from 'vue';
 import { 
   X, Package, Zap, Activity, Factory, Mountain, Split, Combine, 
   Hammer, Wrench, Cpu, Beaker, Droplet, Box, ArrowDownCircle, ArrowUpCircle
-} from 'lucide-vue-next';
+} from '@lucide/vue';
 
 const props = defineProps({
   node: {

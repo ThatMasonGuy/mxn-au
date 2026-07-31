@@ -48,7 +48,7 @@
 
 <script setup>
 import { ref, computed, watch, nextTick } from 'vue'
-import { X, Plus } from 'lucide-vue-next'
+import { X, Plus } from '@lucide/vue'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },

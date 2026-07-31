@@ -128,7 +128,7 @@
 <script setup>
 import { computed, nextTick, ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import { RotateCcw, Sparkles } from 'lucide-vue-next'
+import { RotateCcw, Sparkles } from '@lucide/vue'
 import { collection, doc, serverTimestamp, writeBatch } from 'firebase/firestore'
 import { firestore } from '@/firebase'
 import CounterStatement from '@/features/fun/components/CounterStatement.vue'

@@ -414,7 +414,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { 
   Users, Plus, Trash2, AlertCircle, AlertTriangle, Eraser, 
   Sword, Globe, Zap, Trophy, X 
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import { useDatasetStore } from '@/features/topheroes/stores/useDatasetStore'
 import { formatNumber, parseNumber } from '@/features/topheroes/lib/datasetHelpers'
 import { getEventDayLabels, createEmptyEventData } from '@/features/topheroes/lib/eventTemplates'

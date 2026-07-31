@@ -435,7 +435,7 @@ import {
     Trophy, Medal, Award, Crown, Calendar, Users, Globe, Share2, Copy,
     FileDown, AlertCircle, RefreshCw, Settings, CheckCircle, Home,
     MessageCircle, Sparkles, Eye, Calculator, Download, Sword, Shield
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 const route = useRoute()
 const router = useRouter()

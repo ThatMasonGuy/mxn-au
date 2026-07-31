@@ -260,7 +260,7 @@ import { Switch } from '@/shared/components/ui/switch'
 import { Button } from '@/shared/components/ui/button'
 import { Label } from '@/shared/components/ui/label'
 import { Separator } from '@/shared/components/ui/separator'
-import { Settings, SlidersVertical, Coffee, KeyRound, ShieldCheck, Sparkles, LogIn, AlertCircle } from 'lucide-vue-next'
+import { Settings, SlidersVertical, Coffee, KeyRound, ShieldCheck, Sparkles, LogIn, AlertCircle } from '@lucide/vue'
 
 const store = useTranslateStore()
 const main = useMainStore()

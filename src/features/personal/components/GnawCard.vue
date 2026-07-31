@@ -95,7 +95,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { ArrowRight } from 'lucide-vue-next'
+import { ArrowRight } from '@lucide/vue'
 
 const props = defineProps({
     icon: { type: [Object, Function], default: null },

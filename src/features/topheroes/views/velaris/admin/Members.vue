@@ -189,7 +189,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { Plus, Users, Search, Filter, ChevronDown, SearchX, RotateCcw } from 'lucide-vue-next'
+import { Plus, Users, Search, Filter, ChevronDown, SearchX, RotateCcw } from '@lucide/vue'
 import MemberCard from '@/features/topheroes/components/velaris/MemberCard.vue'
 import MemberFormModal from '@/features/topheroes/components/velaris/MemberFormModal.vue'
 import PlayerProfileModal from '@/features/topheroes/components/velaris/PlayerProfileModal.vue'

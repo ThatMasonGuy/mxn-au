@@ -1883,7 +1883,7 @@ import {
   RefreshCw,
   Pencil,
   Images,
-} from "lucide-vue-next";
+} from "@lucide/vue";
 import {
   CHECKLIST_ITEMS,
   _common,

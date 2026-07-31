@@ -217,10 +217,10 @@ import {
     Wrench, 
     Briefcase, 
     ChevronRight,
-    Github,
+    GitFork as Github,
     Sparkles,
     Home
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 </script>
 
 <style scoped>

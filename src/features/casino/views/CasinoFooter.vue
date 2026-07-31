@@ -137,7 +137,14 @@
   <script setup>
   import { ref, computed } from 'vue'
   import { useRouter } from 'vue-router'
-  import { Star, AlertTriangle, Twitter, MessageCircle, Instagram, Youtube } from 'lucide-vue-next'
+  import {
+    Star,
+    AlertTriangle,
+    Send as Twitter,
+    MessageCircle,
+    Camera as Instagram,
+    CirclePlay as Youtube,
+  } from '@lucide/vue'
   
   const router = useRouter()
   

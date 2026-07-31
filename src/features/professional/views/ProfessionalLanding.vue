@@ -139,7 +139,7 @@ import {
   Zap, 
   Shield, 
   Cloud 
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 const mainStore = useMainStore()
 const isAuthenticated = computed(() => mainStore.isAuthenticated)

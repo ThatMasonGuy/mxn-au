@@ -44,7 +44,7 @@
 </template>
 
 <script setup>
-import { ArrowDown } from 'lucide-vue-next'
+import { ArrowDown } from '@lucide/vue'
 
 const scrollToCollection = () => {
     const el = document.getElementById('collection')

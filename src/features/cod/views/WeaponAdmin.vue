@@ -381,7 +381,7 @@ import {
   Database, X, List, Plus, Edit, Trash2, Save, Loader, Copy, Search, Clock, 
   AlertTriangle, Target, Layers, Shield, Sparkles, Trophy, 
   Crosshair, Skull, Mountain, Plane
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import { 
   getAllWeaponDefinitions, 
   addWeaponDefinition, 

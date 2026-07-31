@@ -403,7 +403,7 @@ import {
   Crosshair, ChevronDown, ChevronUp, Trash2, Layers, Star, Shield, 
   Sparkles, Trophy, CheckCircle2, Circle, Award, Diamond, Zap, 
   Flame, TrendingUp, Medal, Globe, Target, Skull, Mountain, Plane, Lock
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import { useCamoStore } from './camoStore'
 
 const props = defineProps({

@@ -35,7 +35,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { AlertTriangle, Info, CheckCircle, Loader2 } from 'lucide-vue-next'
+import { AlertTriangle, Info, CheckCircle, Loader2 } from '@lucide/vue'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog'
 import { Button } from '@/shared/components/ui/button'
 

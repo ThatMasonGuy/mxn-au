@@ -167,7 +167,7 @@
 <script setup>
 import { computed, reactive, ref, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
-import { ClipboardCheck } from 'lucide-vue-next'
+import { ClipboardCheck } from '@lucide/vue'
 
 import LayoutComponent     from '@/features/everhomes/components/layouts/LayoutComponent.vue'
 import ReportSetup         from '@/features/everhomes/components/ReportSetup.vue'

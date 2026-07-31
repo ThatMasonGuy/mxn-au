@@ -27,7 +27,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { Languages, Hash, Globe, Users } from 'lucide-vue-next'
+import { Languages, Hash, Globe, Users } from '@lucide/vue'
 
 const props = defineProps({
     title: String,

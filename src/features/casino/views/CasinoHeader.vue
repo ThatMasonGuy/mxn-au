@@ -210,7 +210,7 @@
     Settings, 
     LogOut,
     Plus
-  } from 'lucide-vue-next'
+  } from '@lucide/vue'
   
   const router = useRouter()
   const emit = defineEmits(['login', 'signup'])

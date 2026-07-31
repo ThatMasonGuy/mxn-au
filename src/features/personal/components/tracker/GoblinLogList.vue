@@ -96,7 +96,7 @@
 import { computed } from 'vue';
 import { usePersonalStore } from '@/features/personal/stores/usePersonalStore';
 import GoblinLogItem from './GoblinLogItem.vue';
-import { Pizza, Flame, Sparkles, ChevronDown, Loader2, Check } from 'lucide-vue-next';
+import { Pizza, Flame, Sparkles, ChevronDown, Loader2, Check } from '@lucide/vue';
 
 const props = defineProps({
   logs: {

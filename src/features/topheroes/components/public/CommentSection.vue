@@ -84,7 +84,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { MessageSquare, AlertTriangle } from 'lucide-vue-next'
+import { MessageSquare, AlertTriangle } from '@lucide/vue'
 import { useTopHeroesPublicStore } from '@/features/topheroes/stores/useTopHeroesPublicStore'
 import CommentItem from './CommentItem.vue'
 

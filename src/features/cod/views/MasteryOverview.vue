@@ -221,7 +221,7 @@ import {
   Plane,
   CheckCircle2,
   Circle,
-} from "lucide-vue-next";
+} from "@lucide/vue";
 import { useCamoStore } from "./camoStore";
 
 const camoStore = useCamoStore();

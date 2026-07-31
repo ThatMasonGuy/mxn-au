@@ -92,7 +92,7 @@
 
 <script setup>
 import { computed, ref, onMounted, watch } from 'vue'
-import { Plus, Settings, X, Trash2, Flame, Leaf, Shield, Crown, Star, Gem, Hexagon } from 'lucide-vue-next'
+import { Plus, Settings, X, Trash2, Flame, Leaf, Shield, Crown, Star, Gem, Hexagon } from '@lucide/vue'
 import ConfirmationModal from '@/features/topheroes/components/velaris/new-admin/ConfirmationModal.vue'
 
 const props = defineProps({

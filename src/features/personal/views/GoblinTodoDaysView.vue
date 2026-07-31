@@ -142,7 +142,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { CalendarRange, CalendarDays, CalendarX, ChevronRight, Loader2 } from 'lucide-vue-next'
+import { CalendarRange, CalendarDays, CalendarX, ChevronRight, Loader2 } from '@lucide/vue'
 import { useGoblinTodoStore } from '@/features/personal/stores/useGoblinTodoStore'
 import GoblinTodoNav from '@/features/personal/components/todo/GoblinTodoNav.vue'
 

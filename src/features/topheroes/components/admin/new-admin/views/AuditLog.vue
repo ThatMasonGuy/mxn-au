@@ -279,7 +279,7 @@ import {
     Activity, AlertTriangle, Users, Database, Search, Filter, Calendar, Download,
     ChevronDown, ChevronLeft, ChevronRight, X, Shield, UserPlus, Settings,
     Trash2, Edit, Eye, Lock
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 const searchQuery = ref('')
 const showFilters = ref(false)

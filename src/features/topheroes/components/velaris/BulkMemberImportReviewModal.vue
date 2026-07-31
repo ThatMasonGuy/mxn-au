@@ -267,7 +267,7 @@ import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/shared/
 import { Button } from '@/shared/components/ui/button'
 import {
     CheckCircle, AlertTriangle, XCircle, FileText, Info, Upload, X, Loader2
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import { getAuth } from 'firebase/auth'
 import { useMembers } from '@/features/topheroes/composables/admin/useMembers'
 import { useToast } from '@/shared/components/ui/toast'

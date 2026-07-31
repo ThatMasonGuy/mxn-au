@@ -32,12 +32,12 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
-import { Terminal } from 'xterm'
-import { FitAddon } from 'xterm-addon-fit'
-import { WebLinksAddon } from 'xterm-addon-web-links'
-import { SearchAddon } from 'xterm-addon-search'
-import { Unicode11Addon } from 'xterm-addon-unicode11'
-import { WebglAddon } from 'xterm-addon-webgl'
+import { Terminal } from '@xterm/xterm'
+import { FitAddon } from '@xterm/addon-fit'
+import { WebLinksAddon } from '@xterm/addon-web-links'
+import { SearchAddon } from '@xterm/addon-search'
+import { Unicode11Addon } from '@xterm/addon-unicode11'
+import { WebglAddon } from '@xterm/addon-webgl'
 import { toast } from 'vue-sonner'
 import { getAuth } from 'firebase/auth'
 import {
@@ -45,7 +45,7 @@ import {
 } from '@heroicons/vue/24/outline'
 import FileEditor from '@/features/server/components/FileEditor.vue'
 import { useTerminalPrefs } from '@/features/server/composables/useTerminalPrefs'
-import 'xterm/css/xterm.css'
+import '@xterm/xterm/css/xterm.css'
 
 const props = defineProps({
   serverId: String,

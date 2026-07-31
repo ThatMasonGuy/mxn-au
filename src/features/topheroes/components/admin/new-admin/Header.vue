@@ -189,7 +189,7 @@ import {
   AlertCircle,
   RefreshCw,
   Shield,
-} from "lucide-vue-next";
+} from "@lucide/vue";
 import { useTopHeroesAdminStore } from "@/features/topheroes/stores/useTopHeroesAdminStore";
 
 defineEmits(["toggle-sidebar"]);

@@ -139,7 +139,7 @@ import { useRoute, useRouter } from 'vue-router'
 import {
   ArrowLeft, CalendarX, Calendar, ChevronLeft, ChevronRight,
   CheckSquare, Check, RotateCcw, FileText, History, Loader2
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import { useGoblinTodoStore } from '@/features/personal/stores/useGoblinTodoStore'
 import GoblinBlockEditor from '@/features/personal/components/todo/GoblinBlockEditor.vue'
 import GoblinTodoNav from '@/features/personal/components/todo/GoblinTodoNav.vue'

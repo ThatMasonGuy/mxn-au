@@ -290,7 +290,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import {
     Calendar, Clock, Timer, CalendarDays, Repeat, Plus, Search, List,
     ChevronLeft, ChevronRight, X, Play, Target, Sword, Trophy, Zap
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 // Reactive state
 const activeView = ref('calendar')

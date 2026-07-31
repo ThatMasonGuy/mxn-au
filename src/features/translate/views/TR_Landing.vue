@@ -862,7 +862,7 @@ import {
     User,
     Users,
     Zap
-} from 'lucide-vue-next';
+} from '@lucide/vue';
 import { onMounted, computed } from 'vue';
 import { useTranslateStore } from '@/features/translate/stores/useTranslateStore';
 

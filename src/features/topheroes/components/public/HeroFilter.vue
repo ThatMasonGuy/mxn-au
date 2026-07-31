@@ -75,7 +75,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { Search, Users, Check, Flame, Leaf, Shield } from 'lucide-vue-next'
+import { Search, Users, Check, Flame, Leaf, Shield } from '@lucide/vue'
 
 const props = defineProps({
     heroes: {

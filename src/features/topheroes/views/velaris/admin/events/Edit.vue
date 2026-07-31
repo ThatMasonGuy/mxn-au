@@ -410,7 +410,7 @@ import {
   Search, Filter, Trash2, RotateCcw, AlertTriangle,
   Settings, X, Check, UserPlus, Download, FileText,
   Zap, Target, Crown, Loader
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 const store = useEventPlayerStore();
 const route = useRoute();

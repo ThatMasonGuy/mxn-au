@@ -344,7 +344,7 @@ import {
     AlertTriangle,
     Copy,
     Droplet
-} from 'lucide-vue-next';
+} from '@lucide/vue';
 import { 
     Select, 
     SelectContent, 

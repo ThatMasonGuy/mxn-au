@@ -209,7 +209,7 @@ import { ref, computed } from 'vue'
 import {
     X, Upload, Database, FileJson, AlertTriangle, Zap, CheckCircle2,
     AlertCircle, Loader2, Trash2, FolderPlus
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import { doc, setDoc, collection, getDocs, deleteDoc, writeBatch } from 'firebase/firestore'
 import { firestore } from '@/firebase'
 

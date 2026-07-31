@@ -255,7 +255,7 @@ import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
 import { Badge } from '@/shared/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog'
-import { Database, Plus, RefreshCw, Calendar, History, Sword, Globe, Settings, Trash2, Zap } from 'lucide-vue-next'
+import { Database, Plus, RefreshCw, Calendar, History, Sword, Globe, Settings, Trash2, Zap } from '@lucide/vue'
 import { useDatasetStore } from '@/features/topheroes/stores/useDatasetStore'
 import { createEventConfig, createEventInstance } from '@/features/topheroes/lib/eventTemplates'
 

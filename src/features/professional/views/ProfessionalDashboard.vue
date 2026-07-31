@@ -216,7 +216,7 @@ import {
   UserPlus,
   Package,
   CreditCard
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 const mainStore = useMainStore()
 const professionalStore = useProfessionalStore()

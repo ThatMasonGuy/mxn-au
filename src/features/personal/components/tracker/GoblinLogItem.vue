@@ -140,7 +140,7 @@
 
 <script setup>
 import { ref, computed } from 'vue';
-import { Clock, Eye, EyeOff, Trash2, Flame, Edit } from 'lucide-vue-next';
+import { Clock, Eye, EyeOff, Trash2, Flame, Edit } from '@lucide/vue';
 
 const props = defineProps({
     log: { type: Object, required: true },

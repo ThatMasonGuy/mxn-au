@@ -954,7 +954,7 @@ import {
     Coins, History, User, Play, Plus, Hand, Zap, Split,
     Trophy, X, Minus, TrendingUp, RotateCcw, Settings,
     Lightbulb, Brain, ChevronDown, Target
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 // Game state
 const gameState = ref('betting') // 'betting', 'playing', 'ended'

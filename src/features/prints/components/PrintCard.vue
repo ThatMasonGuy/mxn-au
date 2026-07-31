@@ -46,7 +46,7 @@
 </template>
 
 <script setup>
-import { Camera } from 'lucide-vue-next'
+import { Camera } from '@lucide/vue'
 
 defineProps({
     print: {

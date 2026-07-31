@@ -126,7 +126,7 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import { Check, ChevronDown, Dices } from 'lucide-vue-next'
+import { Check, ChevronDown, Dices } from '@lucide/vue'
 import {
   SelectContent,
   SelectIcon,

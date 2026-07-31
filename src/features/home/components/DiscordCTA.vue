@@ -73,5 +73,5 @@
 </template>
 
 <script setup>
-import { ArrowRight, Github, Mail } from 'lucide-vue-next'
+import { ArrowRight, GitFork as Github, Mail } from '@lucide/vue'
 </script>

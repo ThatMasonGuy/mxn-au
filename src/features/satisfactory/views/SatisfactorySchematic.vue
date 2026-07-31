@@ -327,7 +327,7 @@ import {
   Trash2, Save, Mountain, Factory, Split, ZoomIn, ZoomOut, Maximize, 
   Box, Upload, Camera, ArrowDownCircle, ArrowUpCircle, Hammer, Wrench, 
   Cpu, Beaker, Droplet, Combine
-} from 'lucide-vue-next';
+} from '@lucide/vue';
 import SchematicNode from '@/features/satisfactory/components/SchematicNode.vue';
 import { resourceNodes, productionBuildings, logisticsBuildings } from '@/features/satisfactory/data/satisfactoryBuildings';
 

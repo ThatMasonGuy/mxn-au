@@ -27,7 +27,7 @@
 </template>
 
 <script setup>
-import { Plus } from 'lucide-vue-next'
+import { Plus } from '@lucide/vue'
 
 defineProps({
     icon: {

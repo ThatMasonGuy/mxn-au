@@ -21,7 +21,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { User, Edit, DollarSign } from 'lucide-vue-next'
+import { User, Edit, DollarSign } from '@lucide/vue'
 
 // Props
 const props = defineProps({

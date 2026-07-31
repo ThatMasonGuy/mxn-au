@@ -120,7 +120,7 @@ import {
     User,
     Timer,
     Bell
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 const props = defineProps({
     schedule: {

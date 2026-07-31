@@ -260,7 +260,7 @@
   import { useToast } from '@/shared/components/ui/toast'
   import {
     Plus, CreditCard, Copy, Check, ExternalLink, Trash2, Loader2, AlertCircle, Settings
-  } from 'lucide-vue-next'
+  } from '@lucide/vue'
   
   const mainStore = useMainStore()
   const professionalStore = useProfessionalStore()

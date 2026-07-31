@@ -407,7 +407,7 @@ import { useToast } from '@/shared/components/ui/toast'
 import {
     Calendar, Trophy, Swords, Shield, Crown, TrendingUp, CalendarDays,
     BarChart3, Zap, Castle, Star, MessageSquare, Edit, Activity
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 const { toast } = useToast()
 

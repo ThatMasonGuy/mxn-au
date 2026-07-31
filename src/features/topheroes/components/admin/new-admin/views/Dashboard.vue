@@ -585,7 +585,7 @@ import {
   CheckCircle,
   Activity,
   FileText,
-} from "lucide-vue-next";
+} from "@lucide/vue";
 import { useTopHeroesAdminStore } from "@/features/topheroes/stores/useTopHeroesAdminStore";
 
 // Store

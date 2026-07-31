@@ -4,7 +4,7 @@
 // Handles up to 3 columns wide and unlimited rows
 
 import { computed, ref } from 'vue'
-import { Check, Lock, ChevronLeft, Star } from 'lucide-vue-next'
+import { Check, Lock, ChevronLeft, Star } from '@lucide/vue'
 
 const props = defineProps({
   // Tree data

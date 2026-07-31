@@ -310,12 +310,12 @@ import { ref, onMounted, onUnmounted, watch, nextTick, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useKanbanStore } from '@/features/personal/stores/useKanbanStore'
 import {
-    Plus, Trello, ArrowLeft, Settings, Edit, Trash2, AlertCircle,
+    Plus, PanelsTopLeft as Trello, ArrowLeft, Settings, Edit, Trash2, AlertCircle,
     Briefcase, Target, Rocket, Book, Heart, Star,
     Zap, Coffee, Music, Camera, Globe, Package,
     ShoppingCart, Users, FileText, Code, Palette,
     Award, LayoutGrid
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import KanbanColumn from '@/features/personal/components/kanban/Column.vue'
 import KanbanCardModal from '@/features/personal/components/kanban/CardModal.vue'
 

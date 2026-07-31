@@ -193,7 +193,7 @@ import { Input } from '@/shared/components/ui/input'
 import { useToast } from '@/shared/components/ui/toast'
 import {
   Plus, Search, Package, CreditCard, Pencil, Trash2, Loader2
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 const mainStore = useMainStore()
 const professionalStore = useProfessionalStore()

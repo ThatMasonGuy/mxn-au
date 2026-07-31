@@ -127,7 +127,7 @@
 
 <script setup>
 import { computed, reactive, watch } from 'vue'
-import { Save, RotateCcw, Crown, Zap, Sword, FileText } from 'lucide-vue-next'
+import { Save, RotateCcw, Crown, Zap, Sword, FileText } from '@lucide/vue'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog'
 import { Button } from '@/shared/components/ui/button'

@@ -130,7 +130,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
-import { Trophy, Target, Share2, Sparkles, Square, ArrowRightCircle } from 'lucide-vue-next'
+import { Trophy, Target, Share2, Sparkles, Square, ArrowRightCircle } from '@lucide/vue'
 
 const props = defineProps({
     show: Boolean,

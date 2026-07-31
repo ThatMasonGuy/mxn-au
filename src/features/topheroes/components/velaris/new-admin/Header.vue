@@ -191,7 +191,7 @@ import {
   CheckCircle,
   AlertCircle,
   RefreshCw,
-} from "lucide-vue-next";
+} from "@lucide/vue";
 import { useTopHeroesAdminStore } from "@/features/topheroes/stores/useTopHeroesAdminStore";
 import { useRankingsStore } from "@/features/topheroes/stores/useRankingsStore";
 

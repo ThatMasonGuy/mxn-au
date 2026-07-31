@@ -270,7 +270,7 @@
 <script setup>
 import { ref, computed, reactive, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Search, Plus, Library, Users, Flame, Leaf, Shield, Star, RotateCcw, List, X } from 'lucide-vue-next'
+import { Search, Plus, Library, Users, Flame, Leaf, Shield, Star, RotateCcw, List, X } from '@lucide/vue'
 
 import { useTopHeroesUserStore } from '@/features/topheroes/stores/useTopHeroesUserStore'
 import { useMainStore } from '@/shared/stores/useMainStore'

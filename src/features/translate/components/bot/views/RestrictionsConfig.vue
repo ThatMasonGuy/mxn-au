@@ -89,7 +89,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useTranslateStore } from '@/features/translate/stores/useTranslateBotStore'
-import { Ban, Hash, X, Loader2, AlertTriangle } from 'lucide-vue-next'
+import { Ban, Hash, X, Loader2, AlertTriangle } from '@lucide/vue'
 
 const props = defineProps({
     serverId: String,

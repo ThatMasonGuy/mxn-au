@@ -277,7 +277,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { X, Trash2, Save } from 'lucide-vue-next'
+import { X, Trash2, Save } from '@lucide/vue'
 
 // Props
 const props = defineProps({

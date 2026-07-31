@@ -87,7 +87,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { Plus, ArrowLeft, Check, RotateCcw, History, Pencil, Trash2 } from 'lucide-vue-next'
+import { Plus, ArrowLeft, Check, RotateCcw, History, Pencil, Trash2 } from '@lucide/vue'
 
 const props = defineProps({
   task: { type: Object, required: true },

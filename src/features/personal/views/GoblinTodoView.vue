@@ -196,7 +196,7 @@ import { useRouter } from 'vue-router'
 import {
   CalendarDays, CheckSquare, FileText, Check, ArrowLeft,
   History, ChevronLeft, ChevronRight, Layers, Loader2, Plus, PanelRight
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import { useGoblinTodoStore } from '@/features/personal/stores/useGoblinTodoStore'
 import GoblinBlockEditor from '@/features/personal/components/todo/GoblinBlockEditor.vue'
 import GoblinQueuePanel from '@/features/personal/components/todo/GoblinQueuePanel.vue'

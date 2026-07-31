@@ -206,7 +206,7 @@
 
 <script setup>
 import { ref, computed } from 'vue';
-import { Zap, Clock } from 'lucide-vue-next';
+import { Zap, Clock } from '@lucide/vue';
 
 const props = defineProps({
   characters: Array,

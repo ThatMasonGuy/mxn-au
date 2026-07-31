@@ -519,7 +519,7 @@ import { useGuildDataStore } from '@/features/topheroes/stores/useGuildDataStore
 import {
     BarChart3, Users, Trophy, Shield, Sword, Zap, Globe, TrendingUp, TrendingDown,
     Swords, AlertCircle, RefreshCw, Home, Download, Table2, Star, Target, ArrowUpDown
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import { Button } from '@/shared/components/ui/button'
 import { Badge } from '@/shared/components/ui/badge'
 

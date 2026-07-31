@@ -132,7 +132,7 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue';
-import { FileText, Plus, Trash2, Pin } from 'lucide-vue-next';
+import { FileText, Plus, Trash2, Pin } from '@lucide/vue';
 
 const props = defineProps({
   notes: Array,

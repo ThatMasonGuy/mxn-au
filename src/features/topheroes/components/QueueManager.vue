@@ -146,7 +146,7 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import { List, Plus, RotateCcw, Eye, Users, X, Search } from 'lucide-vue-next'
+import { List, Plus, RotateCcw, Eye, Users, X, Search } from '@lucide/vue'
 import QueueCard from './QueueCard.vue'
 
 const props = defineProps({

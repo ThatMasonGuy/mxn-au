@@ -115,7 +115,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useTranslateStore } from '@/features/translate/stores/useTranslateBotStore'
-import { Bot, Shield, Settings, Lock, AlertCircle, Loader2, ArrowLeft } from 'lucide-vue-next'
+import { Bot, Shield, Settings, Lock, AlertCircle, Loader2, ArrowLeft } from '@lucide/vue'
 
 const router = useRouter()
 const route = useRoute()

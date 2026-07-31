@@ -65,7 +65,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { Plus, Search, Layers, Inbox } from 'lucide-vue-next'
+import { Plus, Search, Layers, Inbox } from '@lucide/vue'
 import GoblinTaskCard from './GoblinTaskCard.vue'
 
 const props = defineProps({

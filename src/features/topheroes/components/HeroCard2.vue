@@ -85,7 +85,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { TrendingUp, AlertCircle, Zap, Sparkles } from 'lucide-vue-next'
+import { TrendingUp, AlertCircle, Zap, Sparkles } from '@lucide/vue'
 
 const props = defineProps({
     hero: {

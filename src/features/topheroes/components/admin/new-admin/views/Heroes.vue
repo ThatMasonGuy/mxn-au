@@ -643,7 +643,7 @@ import { ref, computed, reactive } from 'vue'
 import {
     Search, Plus, Library, Users, Flame, Leaf, Shield, Star, RotateCcw,
     Settings, X, Zap, Lightbulb, TrendingUp, Sword, Crown, Gem, Award, Hexagon
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 // Hero data (would typically come from props or a store)
 const heroData = reactive({

@@ -441,7 +441,7 @@ import { Badge } from '@/shared/components/ui/badge'
 import { 
   BarChart3, Database, RefreshCw, Users, Zap, Target, Trophy, X, Percent,
   Calendar, TrendingUp, ArrowLeftRight, Sword, Globe, Calculator, ArrowRightLeft
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import { useDatasetStore } from '@/features/topheroes/stores/useDatasetStore'
 import { calculateEventResult } from '@/features/topheroes/lib/eventTemplates'
 import { formatNumber } from '@/features/topheroes/lib/datasetHelpers'

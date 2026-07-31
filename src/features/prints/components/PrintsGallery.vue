@@ -43,7 +43,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { Camera } from 'lucide-vue-next'
+import { Camera } from '@lucide/vue'
 import PrintCard from './PrintCard.vue'
 
 const emit = defineEmits(['select'])

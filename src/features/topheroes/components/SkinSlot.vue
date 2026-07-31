@@ -46,7 +46,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { X, Shirt } from 'lucide-vue-next'
+import { X, Shirt } from '@lucide/vue'
 
 const props = defineProps({
     skin: {

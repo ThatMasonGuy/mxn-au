@@ -424,9 +424,9 @@ import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { Button } from '@/shared/components/ui/button'
 import { 
   Share2, X, Copy, Download, RefreshCw,
-  MessageSquare, Twitter, Image as ImageIcon, 
+  MessageSquare, Send as Twitter, Image as ImageIcon,
   FileSpreadsheet, FileJson
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 const props = defineProps({
   isOpen: Boolean,

@@ -192,7 +192,7 @@ import { ref, reactive } from 'vue'
 import {
   AlertTriangle, Trash2, Send, Save, ChevronDown,
   WifiOff, ClipboardCheck,
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import ChecklistSection from './ChecklistSection.vue'
 import PhotoPanel       from './PhotoPanel.vue'
 import StatusPill       from './StatusPill.vue'

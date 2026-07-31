@@ -602,7 +602,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
-import { CircleHelp, CircleUserRound, Ellipsis, Import, LoaderCircle, LogIn, LogOut, Mail, Moon, Palette, Sun, X, Zap } from 'lucide-vue-next'
+import { CircleHelp, CircleUserRound, Ellipsis, Import, LoaderCircle, LogIn, LogOut, Mail, Moon, Palette, Sun, X, Zap } from '@lucide/vue'
 import { signOut } from '@/auth'
 import { useMainStore } from '@/shared/stores/useMainStore'
 import TweetPreviewModal from './TweetPreviewModal.vue'

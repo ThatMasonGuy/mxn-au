@@ -117,7 +117,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
-import { Swords, Settings, Zap, Users, Skull, UserCircle, FileText, Clock } from 'lucide-vue-next';
+import { Swords, Settings, Zap, Users, Skull, UserCircle, FileText, Clock } from '@lucide/vue';
 import QuickRoller from '@/features/dnd/components/QuickRoller.vue';
 import CharacterManager from '@/features/dnd/components/CharacterManager.vue';
 import EnemyBuilder from '@/features/dnd/components/EnemyBuilder.vue';

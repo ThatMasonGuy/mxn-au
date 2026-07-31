@@ -245,7 +245,7 @@
 </template>
 
 <script setup>
-import { Skull, Plus, Trash2, X, ChevronDown } from 'lucide-vue-next';
+import { Skull, Plus, Trash2, X, ChevronDown } from '@lucide/vue';
 
 const props = defineProps({
   encounters: Array,

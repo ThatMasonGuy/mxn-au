@@ -123,7 +123,7 @@ import {
     TrophyIcon,
     StarIcon
 } from '@heroicons/vue/24/outline'
-import { Gem } from 'lucide-vue-next'
+import { Gem } from '@lucide/vue'
 import ToolCard from '@/features/topheroes/components/ToolCard.vue'
 import TopHeroes_1 from '@/assets/images/topHeroes/TopHeroes_1.webp';
 import TopHeroes_2 from '@/assets/images/topHeroes/TopHeroes_2.jpg';

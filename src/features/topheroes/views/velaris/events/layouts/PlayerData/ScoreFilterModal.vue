@@ -130,7 +130,7 @@
 
 <script setup>
 import { computed, reactive, watch, ref } from 'vue'
-import { Filter, ChevronRight, ChevronUp, ChevronDown } from 'lucide-vue-next'
+import { Filter, ChevronRight, ChevronUp, ChevronDown } from '@lucide/vue'
 import {
     Dialog,
     DialogContent,

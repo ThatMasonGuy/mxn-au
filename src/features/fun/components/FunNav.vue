@@ -15,7 +15,7 @@
 
 <script setup>
 import { RouterLink } from 'vue-router'
-import { CircleHelp, Coins, Dices } from 'lucide-vue-next'
+import { CircleHelp, Coins, Dices } from '@lucide/vue'
 
 const tools = [
   {

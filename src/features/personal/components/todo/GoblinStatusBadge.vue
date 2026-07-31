@@ -33,7 +33,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
-import { ChevronDown, Check } from 'lucide-vue-next'
+import { ChevronDown, Check } from '@lucide/vue'
 
 const props = defineProps({
     taskStatus: { type: String, required: true },

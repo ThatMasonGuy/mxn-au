@@ -16,7 +16,7 @@
 
 <script setup>
 import { ref, watch, computed } from 'vue'
-import { Search, X } from 'lucide-vue-next'
+import { Search, X } from '@lucide/vue'
 
 const props = defineProps({
     data: { type: Array, required: true },

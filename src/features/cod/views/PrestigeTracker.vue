@@ -267,7 +267,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { Medal, Crown, TrendingUp, Trophy, Star, Sparkles, BarChart3, Package } from 'lucide-vue-next'
+import { Medal, Crown, TrendingUp, Trophy, Star, Sparkles, BarChart3, Package } from '@lucide/vue'
 import { useCamoStore } from './camoStore'
 
 const camoStore = useCamoStore()

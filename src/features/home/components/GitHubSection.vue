@@ -58,7 +58,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { Github, GitCommit } from 'lucide-vue-next'
+import { GitFork as Github, GitCommit } from '@lucide/vue'
 import GitHubRepoCard from '@/features/home/components/github/GitHubRepoCard.vue'
 import GitHubCommitFeed from '@/features/home/components/github/GitHubCommitFeed.vue'
 import { githubFetch } from '@/shared/utils/githubFetch.js'

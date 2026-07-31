@@ -233,7 +233,7 @@ import {
     Search,
     ArrowRight,
     Sparkles,
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 const searchQuery = ref('')
 

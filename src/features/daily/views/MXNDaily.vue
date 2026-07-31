@@ -440,7 +440,7 @@ import AuthRequiredModal from '@/features/daily/components/components/AuthRequir
 import {
   Trophy, User, Clock, Share2, Trash2, CheckCircle2, Ban, Clock3, Circle, Flame,
   Type, Link as LinkIcon, Flag, HelpCircle, ListOrdered, Brain, Lock, Infinity, Home
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 /* stores */
 const router = useRouter()

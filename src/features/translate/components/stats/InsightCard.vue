@@ -21,7 +21,7 @@
 </template>
 
 <script setup>
-import { Lightbulb } from 'lucide-vue-next'
+import { Lightbulb } from '@lucide/vue'
 
 // Props
 defineProps({

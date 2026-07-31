@@ -196,7 +196,7 @@ import { Input } from '@/shared/components/ui/input'
 import { useToast } from '@/shared/components/ui/toast'
 import {
   ArrowLeft, Save, Loader2, Upload, Trash2, Package, Wrench
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 const route = useRoute()
 const router = useRouter()

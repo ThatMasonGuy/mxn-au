@@ -9,7 +9,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { Sun, Moon } from 'lucide-vue-next'
+import { Sun, Moon } from '@lucide/vue'
 import { useThemeStore } from '@/shared/stores/useThemeStore'
 
 const themeStore = useThemeStore()
