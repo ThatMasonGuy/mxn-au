@@ -2,8 +2,8 @@ import { onRequest } from 'firebase-functions/v2/https'
 import { firebaseAdmin, db } from '../config/firebase.mjs'
 
 const REGION = 'australia-southeast1'
-// A final submission keeps both the recovery snapshot and a regeneration-safe
-// payload in the same Firestore document. Reserve enough headroom for both.
+// Keep browser recovery snapshots well below Firestore's document limit. Final
+// submission atomically replaces this snapshot with a regeneration-safe payload.
 const MAX_DRAFT_BYTES = 450 * 1024
 const MAX_FAILURE_EVENTS = 50
 const REPORT_COLLECTIONS = Object.freeze({
@@ -88,6 +88,8 @@ function draftStatusPayload(data = {}) {
     pdfUrl: data.pdfUrl ?? null,
     photosDownloadUrl: data.photosDownloadUrl ?? null,
     error: data.error ?? null,
+    emailsSent: Array.isArray(data.emailsSent) ? data.emailsSent : [],
+    emailFailures: Array.isArray(data.emailFailures) ? data.emailFailures : [],
     draftRevision: data.draftRevision ?? 0,
     draftUpdatedAt: data.draftUpdatedAt?.toDate?.().toISOString?.() ?? null,
   }
@@ -126,20 +128,34 @@ function sanitiseFailure(input = {}) {
   }
 }
 
-function endpoint(handler) {
+function endpoint(name, handler) {
   return onRequest({ region: REGION, cors: true }, async (req, res) => {
+    const startedAt = Date.now()
     try {
       if (!requirePost(req, res)) return
       await handler(req, res)
+      console.log(JSON.stringify({
+        scope: 'everhomes-draft',
+        endpoint: name,
+        outcome: 'success',
+        durationMs: Date.now() - startedAt,
+      }))
     } catch (error) {
       const status = error instanceof DraftRequestError ? error.status : 500
-      if (status >= 500) console.error('Everhomes draft endpoint failed:', error)
+      console.error(JSON.stringify({
+        scope: 'everhomes-draft',
+        endpoint: name,
+        outcome: 'failure',
+        status,
+        durationMs: Date.now() - startedAt,
+        error: error.message,
+      }))
       res.status(status).json({ error: error.message || 'Unexpected draft service error' })
     }
   })
 }
 
-export const syncEverhomesDraft = endpoint(async (req, res) => {
+export const syncEverhomesDraft = endpoint('sync', async (req, res) => {
   const session = parseSession(req.body)
   const { draft, bytes } = requireDraft(req.body)
   const ref = db.collection(session.collection).doc(session.draftId)
@@ -154,13 +170,23 @@ export const syncEverhomesDraft = endpoint(async (req, res) => {
       if (current.draftAccessKey !== session.draftAccessKey) {
         throw new DraftRequestError(403, 'This draft belongs to a different session')
       }
-      if (['processing', 'complete'].includes(current.status)) {
+      if (['processing', 'regenerating', 'deleting', 'complete'].includes(current.status)) {
         throw new DraftRequestError(409, 'This report has already been submitted')
       }
 
       const draftRevision = (Number(current.draftRevision) || 0) + 1
+      const resetFailedSubmission = current.status === 'failed'
+        ? {
+            submissionPayload: firebaseAdmin.firestore.FieldValue.delete(),
+            error: firebaseAdmin.firestore.FieldValue.delete(),
+            failedAt: firebaseAdmin.firestore.FieldValue.delete(),
+            generationDeadlineWarning: firebaseAdmin.firestore.FieldValue.delete(),
+            generationDeadlineReachedAt: firebaseAdmin.firestore.FieldValue.delete(),
+          }
+        : {}
       transaction.update(ref, {
         ...summary,
+        ...resetFailedSubmission,
         status: 'draft',
         draftSnapshot: draft,
         draftBytes: bytes,
@@ -189,7 +215,7 @@ export const syncEverhomesDraft = endpoint(async (req, res) => {
   res.status(200).json({ ok: true, draftRevision: result })
 })
 
-export const getEverhomesDraft = endpoint(async (req, res) => {
+export const getEverhomesDraft = endpoint('get', async (req, res) => {
   const session = parseSession(req.body)
   const { data } = await findDraft(session)
   const includeDraft = req.body?.includeDraft !== false
@@ -202,36 +228,72 @@ export const getEverhomesDraft = endpoint(async (req, res) => {
   })
 })
 
-export const recordEverhomesUploadFailure = endpoint(async (req, res) => {
+export const recordEverhomesUploadFailure = endpoint('upload-failure', async (req, res) => {
   const session = parseSession(req.body)
   const failure = sanitiseFailure(req.body?.failure)
   const { ref } = await findDraft(session)
 
   const eventRef = ref.collection('uploadFailures').doc()
   const timestamp = firebaseAdmin.firestore.FieldValue.serverTimestamp()
-  await db.runTransaction(async (transaction) => {
-    const current = await transaction.get(ref)
-    if (!current.exists || current.data().draftAccessKey !== session.draftAccessKey) {
-      throw new DraftRequestError(403, 'This upload failure does not belong to the current draft')
-    }
-    if (['processing', 'complete'].includes(current.data().status)) {
-      throw new DraftRequestError(409, 'This report has already been submitted')
-    }
-    transaction.set(eventRef, {
+  const current = await ref.get()
+  if (!current.exists || current.data().draftAccessKey !== session.draftAccessKey) {
+    throw new DraftRequestError(403, 'This upload failure does not belong to the current draft')
+  }
+  if (['processing', 'regenerating', 'deleting', 'complete'].includes(current.data().status)) {
+    throw new DraftRequestError(409, 'This report has already been submitted')
+  }
+
+  const batch = db.batch()
+  batch.set(eventRef, {
       ...failure,
       createdAt: timestamp,
-    })
-    transaction.update(ref, {
+  })
+  batch.update(ref, {
       latestUploadFailure: failure,
       uploadFailureCount: firebaseAdmin.firestore.FieldValue.increment(1),
       updatedAt: timestamp,
-    })
   })
+  await batch.commit()
 
   // Keep event history bounded in production without making the client wait for cleanup.
   ref.collection('uploadFailures').orderBy('createdAt', 'desc').offset(MAX_FAILURE_EVENTS).get()
     .then((snapshot) => Promise.all(snapshot.docs.map((doc) => doc.ref.delete())))
     .catch((error) => console.warn('Could not trim Everhomes upload diagnostics:', error.message))
+
+  res.status(200).json({ ok: true })
+})
+
+export const deleteEverhomesDraft = endpoint('delete', async (req, res) => {
+  const session = parseSession(req.body)
+  const ref = db.collection(session.collection).doc(session.draftId)
+  await db.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(ref)
+    if (!snapshot.exists) throw new DraftRequestError(404, 'Draft not found')
+    const data = snapshot.data()
+    if (data.draftAccessKey !== session.draftAccessKey) {
+      throw new DraftRequestError(403, 'This resume link does not have access to the draft')
+    }
+    if (!['draft', 'failed', 'pending', 'deleting'].includes(data.status)) {
+      throw new DraftRequestError(409, 'A submitted or active report cannot be cleared from the staff form')
+    }
+    transaction.update(ref, {
+      status: 'deleting',
+      updatedAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
+    })
+  })
+
+  const bucket = firebaseAdmin.storage().bucket()
+  try {
+    await bucket.deleteFiles({ prefix: `${session.collection}/${session.draftId}/` })
+    await db.recursiveDelete(ref)
+  } catch (error) {
+    await ref.update({
+      status: 'deleting',
+      clearError: `Clear failed and will need to be retried: ${error.message}`,
+      updatedAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
+    }).catch(() => {})
+    throw error
+  }
 
   res.status(200).json({ ok: true })
 })

@@ -12,16 +12,43 @@
 import { onRequest } from 'firebase-functions/v2/https'
 import { firebaseAdmin, db } from '../config/firebase.mjs'
 import JSZip from 'jszip'
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { requireEverhomesAdmin } from './requireEverhomesAdmin.mjs'
+
+const MAX_REPORT_PHOTOS = 120
+const MAX_ARCHIVE_FILE_BYTES = 320 * 1024 * 1024
+const MAX_EXPANDED_PHOTO_BYTES = 300 * 1024 * 1024
+
+function archiveImageContentType(extension) {
+  return {
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    png: 'image/png',
+    webp: 'image/webp',
+    heic: 'image/heic',
+    heif: 'image/heif',
+    avif: 'image/avif',
+  }[extension] ?? 'application/octet-stream'
+}
+
+function safeArchiveKey(value, fallback) {
+  const raw = String(value ?? fallback)
+  const readable = raw
+    .replace(/[^a-zA-Z0-9_-]/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 60) || fallback
+  const digest = createHash('sha256').update(raw).digest('hex').slice(0, 8)
+  return `${readable}_${digest}`
+}
 
 export const regenerateReport = onRequest(
   {
     region: 'australia-southeast1',
     // This request waits for the generator to finish so an upstream failure can
-    // be surfaced to the admin. It must match the generator's upper bound.
-    timeoutSeconds: 300,
-    memory: '512MiB',
+    // be surfaced to the admin. Its timeout is deliberately longer than the
+    // internal generator request deadline.
+    timeoutSeconds: 540,
+    memory: '2GiB',
     cors: true,
   },
   async (req, res) => {
@@ -66,6 +93,7 @@ export const regenerateReport = onRequest(
     const regenerationRunId = randomUUID()
     const regenerationRoot = `${storagePrefix}regen_photos/${regenerationRunId}`
     const temporaryStoragePaths = []
+    const archiveImageExtensions = ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif', 'avif']
 
     // Only sign objects inside the report's own folder. Even though this is an
     // admin endpoint, that prevents a stored payload from becoming a way to
@@ -113,12 +141,18 @@ export const regenerateReport = onRequest(
       for (let index = 0; index < (room.photos ?? []).length; index++) {
         const photo = room.photos[index]
         const cleanLabel = (room.label ?? '').replace(/[^a-zA-Z0-9]/g, '_')
-        const filename = `${cleanLabel}_${index + 1}.jpg`
+        const filenameRoots = [
+          `${safeArchiveKey(room.id, 'room')}_${index + 1}`,
+          `${cleanLabel}_${index + 1}`,
+        ]
         photoAssets.push({
           asset: photo,
           label: `room photo ${index + 1} in ${room.label ?? room.id ?? 'unknown room'}`,
-          archiveFilenames: [filename],
-          temporaryStoragePath: `${regenerationRoot}/${filename}`,
+          archiveGroup: 'room',
+          archiveFilenames: filenameRoots.flatMap((filenameRoot) =>
+            archiveImageExtensions.map((extension) => `${filenameRoot}.${extension}`),
+          ),
+          temporaryStoragePath: `${regenerationRoot}/${filenameRoots[0]}`,
         })
       }
     }
@@ -126,13 +160,28 @@ export const regenerateReport = onRequest(
       if (!Array.isArray(photos)) continue
       for (let index = 0; index < photos.length; index++) {
         const photo = photos[index]
+        const legacySlotKey = slotKey.replace(/[^a-zA-Z0-9_-]/g, '_')
+        const safeSlotKey = safeArchiveKey(slotKey, 'marketing')
+        const filenameRoots = [
+          `${safeSlotKey}_${index + 1}`,
+          `${legacySlotKey}_${index + 1}`,
+        ]
         photoAssets.push({
           asset: photo,
           label: `marketing photo ${index + 1} in ${slotKey}`,
-          archiveFilenames: ['jpg', 'png', 'webp'].map((ext) => `${slotKey}_${index + 1}.${ext}`),
-          temporaryStoragePath: `${regenerationRoot}/marketing/${slotKey}_${index + 1}`,
+          archiveGroup: 'marketing',
+          archiveFilenames: filenameRoots.flatMap((filenameRoot) =>
+            archiveImageExtensions.map((extension) => `${filenameRoot}.${extension}`),
+          ),
+          temporaryStoragePath: `${regenerationRoot}/marketing/${safeSlotKey}_${index + 1}`,
         })
       }
+    }
+    if (photoAssets.length > MAX_REPORT_PHOTOS) {
+      return res.status(413).json({
+        error: `Regeneration stopped because the saved report contains more than ${MAX_REPORT_PHOTOS} photos.`,
+        details: 'The existing PDF and photo archive were left unchanged.',
+      })
     }
 
     const signatureAssets = []
@@ -196,7 +245,9 @@ export const regenerateReport = onRequest(
       (record) => record.storagePathKey === 'storagePath' && !record.available,
     )
     if (missingPhotos.length) {
-      const zipStoragePath = `${storagePrefix}photos.zip`
+      const zipStoragePath = data.photosStoragePath?.startsWith(storagePrefix)
+        ? data.photosStoragePath
+        : `${storagePrefix}photos.zip`
       const zipFile = bucket.file(zipStoragePath)
       const [zipExists] = await zipFile.exists()
       if (!zipExists) {
@@ -208,8 +259,25 @@ export const regenerateReport = onRequest(
 
       let zip
       try {
+        const [zipMetadata] = await zipFile.getMetadata()
+        if (Number(zipMetadata.size) > MAX_ARCHIVE_FILE_BYTES) {
+          return res.status(409).json({
+            error: 'Regeneration stopped because the original photo archive exceeds the 320 MB compressed safety limit.',
+            details: 'The existing PDF and photo archive were left unchanged.',
+          })
+        }
         const [zipBuffer] = await zipFile.download()
         zip = await JSZip.loadAsync(zipBuffer)
+        const expandedBytes = Object.values(zip.files).reduce(
+          (sum, entry) => sum + (Number(entry?._data?.uncompressedSize) || 0),
+          0,
+        )
+        if (expandedBytes > MAX_EXPANDED_PHOTO_BYTES) {
+          return res.status(409).json({
+            error: 'Regeneration stopped because the expanded photo archive exceeds the 300 MB safety limit.',
+            details: 'The existing PDF and photo archive were left unchanged.',
+          })
+        }
       } catch (error) {
         console.error(`regenerateReport: could not read ${zipStoragePath}:`, error.message)
         return res.status(409).json({
@@ -221,13 +289,19 @@ export const regenerateReport = onRequest(
       const archiveEntries = new Map()
       for (const [archivePath, entry] of Object.entries(zip.files)) {
         if (entry.dir) continue
-        archiveEntries.set(archivePath.split('/').pop(), entry)
+        const filename = archivePath.split('/').pop()
+        const archiveGroup = archivePath.includes('/marketing/') ? 'marketing' : 'room'
+        archiveEntries.set(`${archiveGroup}:${filename}`, entry)
       }
 
       for (const record of missingPhotos) {
-        const filename = record.archiveFilenames.find((name) => archiveEntries.has(name))
+        const filename = record.archiveFilenames.find((name) =>
+          archiveEntries.has(`${record.archiveGroup}:${name}`),
+        )
         record.archiveFilename = filename
-        record.archiveEntry = filename ? archiveEntries.get(filename) : null
+        record.archiveEntry = filename
+          ? archiveEntries.get(`${record.archiveGroup}:${filename}`)
+          : null
       }
       const unrestorablePhotos = missingPhotos.filter((record) => !record.archiveEntry)
       if (unrestorablePhotos.length) {
@@ -238,14 +312,15 @@ export const regenerateReport = onRequest(
       }
 
       try {
+        let restoredImageBytes = 0
         await runConcurrent(missingPhotos.map((record) => async () => {
           const buffer = Buffer.from(await record.archiveEntry.async('arraybuffer'))
+          restoredImageBytes += buffer.length
+          if (restoredImageBytes > MAX_EXPANDED_PHOTO_BYTES) {
+            throw new Error('The expanded photo archive exceeds the 300 MB safety limit.')
+          }
           const extension = record.archiveFilename.split('.').pop().toLowerCase()
-          const contentType = extension === 'png'
-            ? 'image/png'
-            : extension === 'webp'
-              ? 'image/webp'
-              : 'image/jpeg'
+          const contentType = archiveImageContentType(extension)
           const storagePath = `${record.temporaryStoragePath}.${extension}`
           const file = bucket.file(storagePath)
           await file.save(buffer, { resumable: false, metadata: { contentType } })
@@ -274,12 +349,29 @@ export const regenerateReport = onRequest(
     console.log(`regenerateReport: prepared ${readyCount}/${allAssets.length} stored assets for ${collection}/${docId}`)
 
     const regenerationAccessKey = `${randomUUID().replaceAll('-', '')}${randomUUID().replaceAll('-', '')}`
-    await docRef.update({
-      status: 'pending',
-      regenStartedAt: new Date().toISOString(),
-      regenerationAccessKey,
-      error: firebaseAdmin.firestore.FieldValue.delete(),
-    }).catch(() => {})
+    try {
+      await db.runTransaction(async (transaction) => {
+        const currentSnapshot = await transaction.get(docRef)
+        const current = currentSnapshot.data()
+        if (['processing', 'regenerating', 'pending'].includes(current.status)) {
+          const conflict = new Error('This report is already being generated.')
+          conflict.status = 409
+          throw conflict
+        }
+        transaction.update(docRef, {
+          status: 'regenerating',
+          regenStartedAt: new Date().toISOString(),
+          regenerationAccessKey,
+          regenerationError: firebaseAdmin.firestore.FieldValue.delete(),
+          error: firebaseAdmin.firestore.FieldValue.delete(),
+        })
+      })
+    } catch (error) {
+      await Promise.allSettled(
+        temporaryStoragePaths.map((storagePath) => bucket.file(storagePath).delete({ ignoreNotFound: true })),
+      )
+      return res.status(error.status ?? 409).json({ error: error.message })
+    }
 
     const projectId = JSON.parse(process.env.FIREBASE_CONFIG ?? '{}').projectId
       ?? process.env.GCLOUD_PROJECT
@@ -291,6 +383,7 @@ export const regenerateReport = onRequest(
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(360_000),
       })
 
       if (!resp.ok) {
@@ -310,8 +403,9 @@ export const regenerateReport = onRequest(
         temporaryStoragePaths.map((storagePath) => bucket.file(storagePath).delete({ ignoreNotFound: true })),
       )
       await docRef.update({
-        status: 'failed',
-        error: `Regeneration failed: ${err.message}`,
+        status: data.status === 'complete' ? 'complete' : 'failed',
+        regenerationError: `Regeneration failed: ${err.message}`,
+        regenerationAccessKey: firebaseAdmin.firestore.FieldValue.delete(),
       }).catch(() => {})
       return res.status(500).json({
         error: 'Failed to start report generation',

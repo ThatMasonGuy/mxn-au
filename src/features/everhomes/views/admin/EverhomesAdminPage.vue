@@ -133,7 +133,7 @@
                                 Submission queue
                             </p>
                             <h2 class="mt-1 text-xl font-bold text-white">
-                                Recent reports
+                                Report history
                             </h2>
                         </div>
 
@@ -174,6 +174,12 @@
                     <div v-if="loading" class="flex items-center justify-center gap-3 py-24 text-slate-500">
                         <Loader2 class="h-5 w-5 animate-spin text-cyan-300" />
                         <span class="text-sm">Loading submissions…</span>
+                    </div>
+
+                    <div v-else-if="submissionsError" class="rounded-[2rem] border border-red-400/20 bg-red-500/10 px-5 py-8 text-center">
+                        <XCircle class="mx-auto h-6 w-6 text-red-300" />
+                        <p class="mt-3 font-semibold text-red-100">Could not load submissions</p>
+                        <p class="mt-1 text-sm text-red-200/80">{{ submissionsError }}</p>
                     </div>
 
                     <!-- Empty state -->
@@ -323,7 +329,33 @@
                                     <p class="text-xs leading-5 text-red-200">{{ sub.error }}</p>
                                 </div>
 
-                                <div v-if="sub.latestUploadFailure" class="mt-3 flex items-start gap-2 rounded-2xl border border-amber-400/20 bg-amber-400/10 px-3 py-2.5">
+                                <div v-if="sub.clearError" class="mt-3 flex items-start gap-2 rounded-2xl border border-red-400/20 bg-red-500/10 px-3 py-2.5">
+                                    <AlertCircle class="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-300" />
+                                    <p class="text-xs leading-5 text-red-200">{{ sub.clearError }}</p>
+                                </div>
+
+                                <div v-if="sub.regenerationError" class="mt-3 flex items-start gap-2 rounded-2xl border border-amber-400/20 bg-amber-400/10 px-3 py-2.5">
+                                    <AlertTriangle class="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-300" />
+                                    <div class="min-w-0 text-xs leading-5 text-amber-100">
+                                        <p class="font-bold">Regeneration did not complete; the previous report is still active.</p>
+                                        <p>{{ sub.regenerationError }}</p>
+                                    </div>
+                                </div>
+
+                                <div v-if="sub.generationDeadlineWarning" class="mt-3 flex items-start gap-2 rounded-2xl border border-amber-400/20 bg-amber-400/10 px-3 py-2.5">
+                                    <Loader2 class="mt-0.5 h-3.5 w-3.5 shrink-0 animate-spin text-amber-300" />
+                                    <p class="text-xs leading-5 text-amber-100">{{ sub.generationDeadlineWarning }}</p>
+                                </div>
+
+                                <div v-if="sub.emailFailures?.length" class="mt-3 flex items-start gap-2 rounded-2xl border border-amber-400/20 bg-amber-400/10 px-3 py-2.5">
+                                    <MailWarning class="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-300" />
+                                    <div class="min-w-0 text-xs leading-5 text-amber-100">
+                                        <p class="font-bold">Report generated, but some email delivery failed.</p>
+                                        <p>{{ sub.emailFailures.map((failure) => failure.email || failure).join(', ') }}</p>
+                                    </div>
+                                </div>
+
+                                <div v-if="sub.latestUploadFailure && sub.status !== 'complete'" class="mt-3 flex items-start gap-2 rounded-2xl border border-amber-400/20 bg-amber-400/10 px-3 py-2.5">
                                     <AlertTriangle class="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-300" />
                                     <div class="min-w-0 text-xs leading-5 text-amber-100">
                                         <p class="font-bold">Latest image failure: {{ sub.latestUploadFailure.code }}</p>
@@ -753,7 +785,7 @@
 
 <script setup>
 import { ref, computed, onMounted, defineComponent, h, watch } from 'vue'
-import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore'
+import { collection, query, orderBy, limit, startAfter, getDocs } from 'firebase/firestore'
 import { auth, firestore } from '@/firebase'
 import * as XLSX from 'xlsx'
 
@@ -767,7 +799,7 @@ import {
     FileText, FolderArchive, SendHorizontal, CheckCheck, AlertCircle,
     ClipboardCheck, ClipboardList, User, Calendar, Clock,
     CheckCircle2, AlertTriangle, FileSpreadsheet, CloudUpload,
-    BarChart3, TrendingUp, XCircle, ChevronDown, RotateCcw, Link,
+    BarChart3, TrendingUp, XCircle, ChevronDown, RotateCcw, Link, MailWarning,
 } from 'lucide-vue-next'
 
 const FUNCTIONS_URL = import.meta.env.VITE_FUNCTIONS_URL ?? ''
@@ -779,6 +811,21 @@ async function adminRequestHeaders() {
     return {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
+    }
+}
+
+async function fetchWithTimeout(url, options, timeoutMs) {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), timeoutMs)
+    try {
+        return await fetch(url, { ...options, signal: controller.signal })
+    } catch (error) {
+        if (error.name === 'AbortError') {
+            throw new Error(`Request timed out after ${Math.round(timeoutMs / 1000)} seconds`)
+        }
+        throw error
+    } finally {
+        clearTimeout(timeout)
     }
 }
 
@@ -810,19 +857,35 @@ const tabs = [
 // ─── Submissions ──────────────────────────────────────────────────────────────
 const allSubmissions = ref([])
 const loading        = ref(false)
+const submissionsError = ref('')
 const SUBMISSIONS_PAGE_SIZE = 10
 const visibleSubmissionCount = ref(SUBMISSIONS_PAGE_SIZE)
 
 async function loadSubmissions() {
     loading.value = true
+    submissionsError.value = ''
     try {
+        async function loadCollection(collectionName) {
+            const docs = []
+            let cursor = null
+            do {
+                const constraints = [orderBy('createdAt', 'desc'), limit(100)]
+                if (cursor) constraints.push(startAfter(cursor))
+                const snapshot = await getDocs(query(collection(firestore, collectionName), ...constraints))
+                docs.push(...snapshot.docs)
+                cursor = snapshot.docs.at(-1) ?? null
+                if (snapshot.size < 100) break
+            } while (cursor)
+            return docs
+        }
+
         const [inspSnap, handSnap] = await Promise.all([
-            getDocs(query(collection(firestore, 'inspections'), orderBy('createdAt', 'desc'), limit(50))),
-            getDocs(query(collection(firestore, 'handovers'),   orderBy('createdAt', 'desc'), limit(50))),
+            loadCollection('inspections'),
+            loadCollection('handovers'),
         ])
 
-        const inspections = inspSnap.docs.map(d => ({ id: d.id, collection: 'inspections', ...d.data() }))
-        const handovers   = handSnap.docs.map(d => ({ id: d.id, collection: 'handovers',   ...d.data() }))
+        const inspections = inspSnap.map(d => ({ id: d.id, collection: 'inspections', ...d.data() }))
+        const handovers   = handSnap.map(d => ({ id: d.id, collection: 'handovers',   ...d.data() }))
 
         allSubmissions.value = [...inspections, ...handovers].sort((a, b) => {
             const ta = a.draftUpdatedAt?.toMillis?.() ?? a.createdAt?.toMillis?.() ?? 0
@@ -832,6 +895,7 @@ async function loadSubmissions() {
         visibleSubmissionCount.value = SUBMISSIONS_PAGE_SIZE
     } catch (err) {
         console.error('Failed to load submissions:', err)
+        submissionsError.value = err.message ?? 'Unknown Firestore error'
     } finally {
         loading.value = false
     }
@@ -857,7 +921,9 @@ const statusFilters = [
 const filteredSubmissions = computed(() => {
     return allSubmissions.value.filter(s => {
         const matchType   = typeFilter.value === 'all' || s.collection === typeFilter.value
-        const matchStatus = statusFilter.value === 'all' || s.status === statusFilter.value
+        const matchStatus = statusFilter.value === 'all'
+            || s.status === statusFilter.value
+            || (statusFilter.value === 'processing' && ['pending', 'regenerating', 'deleting'].includes(s.status))
         return matchType && matchStatus
     })
 })
@@ -882,7 +948,7 @@ watch([typeFilter, statusFilter], () => {
 const stats = computed(() => {
     const total      = allSubmissions.value.length
     const complete   = allSubmissions.value.filter(s => s.status === 'complete').length
-    const processing = allSubmissions.value.filter(s => s.status === 'processing' || s.status === 'pending').length
+    const processing = allSubmissions.value.filter(s => ['processing', 'pending', 'regenerating', 'deleting'].includes(s.status)).length
     const failed     = allSubmissions.value.filter(s => s.status === 'failed').length
     const drafts     = allSubmissions.value.filter(s => s.status === 'draft').length
 
@@ -903,6 +969,8 @@ const StatusBadge = defineComponent({
             const map = {
                 complete:   { label: 'Complete',   color: '#14b8a6', bg: 'rgba(20,184,166,0.12)',   border: 'rgba(20,184,166,0.25)' },
                 processing: { label: 'Processing', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)',   border: 'rgba(245,158,11,0.25)' },
+                regenerating: { label: 'Regenerating', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.25)' },
+                deleting:   { label: 'Deleting',   color: '#f43f5e', bg: 'rgba(244,63,94,0.12)',    border: 'rgba(244,63,94,0.25)' },
                 pending:    { label: 'Pending',    color: '#94a3b8', bg: 'rgba(148,163,184,0.10)',  border: 'rgba(148,163,184,0.2)' },
                 draft:      { label: 'Draft',      color: '#38bdf8', bg: 'rgba(56,189,248,0.12)',    border: 'rgba(56,189,248,0.25)' },
                 failed:     { label: 'Failed',     color: '#f43f5e', bg: 'rgba(244,63,94,0.12)',    border: 'rgba(244,63,94,0.25)' },
@@ -954,12 +1022,17 @@ async function confirmResend() {
     resendSuccess.value = null
 
     try {
-        const res = await fetch(`${FUNCTIONS_URL}/resendReport`, {
+        const res = await fetchWithTimeout(`${FUNCTIONS_URL}/resendReport`, {
             method: 'POST',
             headers: await adminRequestHeaders(),
             body: JSON.stringify({ collection: sub.collection, docId: sub.id }),
-        })
-        if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? `HTTP ${res.status}`)
+        }, 60_000)
+        const body = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(body.error ?? `HTTP ${res.status}`)
+        if (body.failed) {
+            alert(`Resend partially completed: ${body.sent} email${body.sent === 1 ? '' : 's'} sent; ${body.failed} failed: ${body.failures?.map((failure) => failure.email).join(', ') || 'unknown recipient'}`)
+            return
+        }
         resendSuccess.value = sub.id
         setTimeout(() => { if (resendSuccess.value === sub.id) resendSuccess.value = null }, 4000)
     } catch (err) {
@@ -985,12 +1058,13 @@ async function confirmRegen() {
     regenId.value = sub.id
 
     try {
-        const res = await fetch(`${FUNCTIONS_URL}/regenerateReport`, {
+        const res = await fetchWithTimeout(`${FUNCTIONS_URL}/regenerateReport`, {
             method: 'POST',
             headers: await adminRequestHeaders(),
             body: JSON.stringify({ collection: sub.collection, docId: sub.id }),
-        })
-        if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? `HTTP ${res.status}`)
+        }, 480_000)
+        const body = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(body.details ?? body.error ?? `HTTP ${res.status}`)
         regenSuccess.value = sub.id
         // Reload submissions so the status reflects "pending" / eventual "complete"
         setTimeout(() => loadSubmissions(), 2000)

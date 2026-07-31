@@ -87,8 +87,8 @@
             >
               <AlertTriangle class="w-4 h-4 text-rose-300" />
               <span class="text-[9px] font-bold text-rose-200">{{ photo.errorCode || 'Upload failed' }}</span>
-              <span class="max-w-full truncate text-[8px] text-rose-100" :title="photo.errorMessage">
-                {{ photo.errorMessage || photo.retryNote || 'The image could not be uploaded.' }}
+              <span class="max-w-full truncate text-[8px] text-rose-100" :title="photo.retryNote || photo.errorMessage">
+                {{ photo.retryNote || photo.errorMessage || 'The image could not be uploaded.' }}
               </span>
               <button
                 v-if="photo.retryable"

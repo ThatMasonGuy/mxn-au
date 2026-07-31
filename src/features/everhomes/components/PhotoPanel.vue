@@ -260,6 +260,10 @@ watch(() => props.open, (isOpen) => {
 })
 
 function resetState() {
+  if (singlePreview.value?.startsWith('blob:')) URL.revokeObjectURL(singlePreview.value)
+  queue.forEach((entry) => {
+    if (entry.preview?.startsWith('blob:')) URL.revokeObjectURL(entry.preview)
+  })
   singleFile.value    = null
   singlePreview.value = null
   singleCaption.value = ''
@@ -288,9 +292,7 @@ function onCameraSelect(event) {
   const file = event.target.files?.[0]
   if (!file) return
   singleFile.value = file
-  readAsDataURL(file, (result) => {
-    singlePreview.value = result
-  })
+  singlePreview.value = URL.createObjectURL(file)
 }
 
 // ─── Gallery: single → preview mode, multiple → queue mode ───────────────────
@@ -300,29 +302,22 @@ function onGallerySelect(event) {
 
   if (files.length === 1) {
     singleFile.value = files[0]
-    readAsDataURL(files[0], (result) => {
-      singlePreview.value = result
-    })
+    singlePreview.value = URL.createObjectURL(files[0])
     return
   }
 
   // Multiple — build queue and enter label-stepping mode
-  let loaded = 0
-  const entries = files.map((file) => reactive({ file, preview: null, caption: '' }))
-
-  entries.forEach((entry) => {
-    readAsDataURL(entry.file, (result) => {
-      entry.preview = result
-      loaded++
-      if (loaded === files.length) {
-        queue.splice(0, queue.length, ...entries)
-        queueIndex.value = 0
-      }
-    })
-  })
+  const entries = files.map((file) => reactive({
+    file,
+    preview: URL.createObjectURL(file),
+    caption: '',
+  }))
+  queue.splice(0, queue.length, ...entries)
+  queueIndex.value = 0
 }
 
 function clearSingle() {
+  if (singlePreview.value?.startsWith('blob:')) URL.revokeObjectURL(singlePreview.value)
   singleFile.value    = null
   singlePreview.value = null
   singleCaption.value = ''
@@ -338,8 +333,7 @@ async function confirmSingle() {
   handleClose()
 
   // addPhoto in composable handles the upload + store mutation
-  const photo = await props.reportState.addPhoto(sectionId, file)
-  if (photo && caption) photo.caption = caption
+  await props.reportState.addPhoto(sectionId, file, caption)
 }
 
 // ─── Queue navigation ─────────────────────────────────────────────────────────
@@ -357,15 +351,8 @@ async function confirmQueue() {
 
   // Fire uploads sequentially so we don't hammer the storage API
   for (const item of items) {
-    const photo = await props.reportState.addPhoto(sectionId, item.file)
-    if (photo && item.caption) photo.caption = item.caption
+    await props.reportState.addPhoto(sectionId, item.file, item.caption)
   }
 }
 
-// ─── Utility ──────────────────────────────────────────────────────────────────
-function readAsDataURL(file, callback) {
-  const reader = new FileReader()
-  reader.onload = (e) => callback(e.target.result)
-  reader.readAsDataURL(file)
-}
 </script>

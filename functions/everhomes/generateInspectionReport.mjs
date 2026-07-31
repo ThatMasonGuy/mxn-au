@@ -6,12 +6,48 @@ import { firebaseAdmin, db } from "../config/firebase.mjs";
 import { readFileSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
+import { createHash, randomUUID } from "node:crypto";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const RESEND_API_KEY = defineSecret("RESEND_API_KEY");
 
 const ADMIN_EMAIL = "admin@everhomes.com.au";
+const ASSET_FETCH_TIMEOUT_MS = 30_000;
+const MAX_REPORT_PHOTOS = 120;
+const MAX_REPORT_IMAGE_BYTES = 300 * 1024 * 1024;
+
+async function fetchAsset(url) {
+  return fetch(url, { signal: AbortSignal.timeout(ASSET_FETCH_TIMEOUT_MS) });
+}
+
+function originalImageExtension(asset = {}) {
+  const extension = asset.storagePath?.split(".").pop()?.toLowerCase();
+  if (extension === "jpeg") return "jpg";
+  return ["jpg", "png", "webp", "heic", "heif", "avif"].includes(extension)
+    ? extension
+    : "jpg";
+}
+
+function safeArchiveKey(value, fallback) {
+  const raw = String(value ?? fallback);
+  const readable = raw
+    .replace(/[^a-zA-Z0-9_-]/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 60) || fallback;
+  const digest = createHash("sha256").update(raw).digest("hex").slice(0, 8);
+  return `${readable}_${digest}`;
+}
+
+function isValidIsoDate(value) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return false;
+  const [, year, month, day] = match.map(Number);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  return parsed.getUTCFullYear() === year
+    && parsed.getUTCMonth() === month - 1
+    && parsed.getUTCDate() === day;
+}
 
 const STATUS_META = {
   ok: { hex: "#10B981", label: "OK" },
@@ -26,6 +62,15 @@ const STATUS_META = {
 // To add a new report type, create a new items file and register it in index.mjs.
 // Zero changes needed here.
 import { getSchema } from "./checklistSchemas/index.mjs";
+import { normaliseEmailDeliveries } from "./emailDelivery.mjs";
+import {
+  collectMissingRequiredAnswers,
+  computeItemStats,
+  getActiveStatusItems,
+  getRoomGroups,
+  getRoomType,
+  itemIsVisible,
+} from "./reportLogic.mjs";
 
 // Maps inspection reportSubtype → human-readable title for the PDF cover page
 const SUBTYPE_TITLES = {
@@ -34,56 +79,6 @@ const SUBTYPE_TITLES = {
   exit: "Exit Report",
   event: "Event Response",
 };
-
-// Returns true if an item's showIf condition is satisfied (or it has none).
-function itemIsVisible(item, itemStatuses, itemInputs) {
-  if (!item.showIf) return true;
-  const parentVal = (itemInputs ?? {})[item.showIf.id] ?? (itemStatuses ?? {})[item.showIf.id];
-  if (item.showIf.hasValue === true) {
-    return parentVal !== undefined && parentVal !== null && String(parentVal).trim() !== "";
-  }
-  if (item.showIf.hasValue === false) {
-    return parentVal === undefined || parentVal === null || String(parentVal).trim() === "";
-  }
-  return parentVal === item.showIf.value;
-}
-
-// Returns only the active status items for a room (no type, showIf satisfied).
-function getActiveStatusItems(groups, itemStatuses, itemInputs) {
-  return groups
-    .flatMap((g) => g.items)
-    .filter((item) => !item.type && itemIsVisible(item, itemStatuses, itemInputs));
-}
-
-function getRoomType(room = {}) {
-  const type = room.type ?? room.itemsKey ?? room.key;
-  return type === "ooa" ? "bedroom" : type;
-}
-
-function getRoomGroups(schema, room) {
-  return schema.items[getRoomType(room)] ?? schema.fallback;
-}
-
-// Aggregate item-level stats across all rooms, respecting showIf conditions.
-function computeItemStats(rooms, schema) {
-  let total = 0, ok = 0, attention = 0, issues = 0, na = 0, unchecked = 0;
-  for (const room of rooms) {
-    const itemStatuses = room.items ?? {};
-    const itemInputs = room.inputs ?? {};
-    const groups = getRoomGroups(schema, room);
-    const activeItems = getActiveStatusItems(groups, itemStatuses, itemInputs);
-    for (const item of activeItems) {
-      total++;
-      const s = itemStatuses[item.id] ?? "unchecked";
-      if (s === "ok") ok++;
-      else if (s === "attention") attention++;
-      else if (s === "issue") issues++;
-      else if (s === "na") na++;
-      else unchecked++;
-    }
-  }
-  return { total, ok, attention, issues, na, unchecked };
-}
 
 export const generateInspectionReport = onRequest(
   {
@@ -101,9 +96,6 @@ export const generateInspectionReport = onRequest(
     if (req.method !== "POST")
       return res.status(405).json({ error: "POST only" });
 
-    const { default: sharp } = await import("sharp");
-    const { Resend } = await import("resend");
-
     const {
       reportType,
       reportSubtype,
@@ -117,19 +109,131 @@ export const generateInspectionReport = onRequest(
       rooms,
       signatures,
       marketingPhotos,
-    } = req.body;
+    } = req.body ?? {};
 
-    if (!inspectionId || !Array.isArray(rooms) || !rooms.length) {
+    const requestBytes = Buffer.byteLength(JSON.stringify(req.body ?? {}), "utf8");
+    if (requestBytes > 2 * 1024 * 1024) {
+      return res.status(413).json({ error: "Report submission exceeds the 2 MB request limit." });
+    }
+    if (
+      typeof inspectionId !== "string"
+      || !/^[a-f0-9-]{36,64}$/i.test(inspectionId)
+      || !Array.isArray(rooms)
+      || !rooms.length
+      || rooms.length > 100
+    ) {
       return res.status(400).json({ error: "Missing inspectionId or rooms" });
+    }
+    const invalidRoom = rooms.find((room) =>
+      !room
+      || typeof room !== "object"
+      || Array.isArray(room)
+      || typeof room.id !== "string"
+      || room.id.length > 256
+      || typeof room.label !== "string"
+      || room.label.length > 500
+      || !Array.isArray(room.photos ?? [])
+      || !room.items
+      || typeof room.items !== "object"
+      || Array.isArray(room.items)
+      || !room.inputs
+      || typeof room.inputs !== "object"
+      || Array.isArray(room.inputs),
+    );
+    if (invalidRoom) {
+      return res.status(400).json({ error: "A report section has an invalid shape." });
+    }
+    if (!regenerationAccessKey && new Set(rooms.map((room) => room.id)).size !== rooms.length) {
+      return res.status(400).json({ error: "Report section identifiers must be unique." });
+    }
+    const requestedPhotoCount = rooms.reduce(
+      (sum, room) => sum + (room.photos?.length ?? 0),
+      0,
+    ) + Object.values(
+      marketingPhotos && typeof marketingPhotos === "object" && !Array.isArray(marketingPhotos)
+        ? marketingPhotos
+        : {},
+    ).reduce(
+      (sum, photos) => sum + (Array.isArray(photos) ? photos.length : 0),
+      0,
+    );
+    if (requestedPhotoCount > MAX_REPORT_PHOTOS) {
+      return res.status(413).json({
+        error: `Report contains ${requestedPhotoCount} photos; the limit is ${MAX_REPORT_PHOTOS}.`,
+      });
     }
 
     const schema = getSchema(reportType);
+    if (!schema) {
+      return res.status(400).json({ error: "Unsupported report type." });
+    }
+    if (reportType === "inspection" && !SUBTYPE_TITLES[reportSubtype]) {
+      return res.status(400).json({ error: "Unsupported inspection report subtype." });
+    }
+    if (schema.sdaFilter && !schema.pickerOptions.some((option) => option.key === reportSubtype)) {
+      return res.status(400).json({ error: "Unsupported SDA design category." });
+    }
+    const roomTypes = rooms.map(getRoomType);
+    const unsupportedRoomType = roomTypes.find((roomType) =>
+      !Object.prototype.hasOwnProperty.call(schema.items, roomType)
+    );
+    if (!regenerationAccessKey && unsupportedRoomType) {
+      return res.status(400).json({ error: `Unsupported report section type: ${unsupportedRoomType}` });
+    }
+    const missingRequiredSections = schema.requiredSections.filter(
+      (sectionType) => !roomTypes.includes(sectionType),
+    );
+    if (!regenerationAccessKey && missingRequiredSections.length) {
+      return res.status(400).json({
+        error: `Required report sections are missing: ${missingRequiredSections.join(", ")}`,
+      });
+    }
+    if (
+      typeof propertyAddress !== "string"
+      || !propertyAddress.trim()
+      || typeof inspectionDate !== "string"
+      || !isValidIsoDate(inspectionDate)
+      || typeof inspectorName !== "string"
+      || !inspectorName.trim()
+      || propertyAddress.length > 1000
+      || inspectionDate.length > 64
+      || inspectorName.length > 200
+      || typeof inspectorEmail !== "string"
+      || inspectorEmail.length > 320
+      || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inspectorEmail)
+    ) {
+      return res.status(400).json({ error: "Property, date, and inspector details are required." });
+    }
+    const missingRequiredAnswers = collectMissingRequiredAnswers(rooms, schema, reportSubtype);
+    if (!regenerationAccessKey && missingRequiredAnswers.length) {
+      return res.status(400).json({
+        error: `${missingRequiredAnswers.length} required checklist answer(s) are missing.`,
+        missingRequiredAnswers: missingRequiredAnswers.slice(0, 20).map(
+          (missing) => `${missing.roomLabel}: ${missing.itemLabel}`,
+        ),
+      });
+    }
+    const generationId = randomUUID();
+    const requestStartedAt = Date.now();
+    const logStage = (stage, details = {}) => console.log(JSON.stringify({
+      scope: "everhomes-report",
+      stage,
+      reportType,
+      inspectionId,
+      generationId,
+      elapsedMs: Date.now() - requestStartedAt,
+      ...details,
+    }));
 
     // Resolve the document title: use reportSubtype for inspections, or fall back to schema default
     const docTitle =
       (reportSubtype && SUBTYPE_TITLES[reportSubtype]) || schema.docTitle;
 
     const docRef = db.collection(schema.collection).doc(inspectionId);
+    logStage("request.validated", {
+      roomCount: rooms.length,
+      roomPhotoCount: requestedPhotoCount,
+    });
 
     // Reports are now created as resumable server-side drafts before the final
     // submission. The opaque draft key keeps the public report workflow
@@ -154,7 +258,12 @@ export const generateInspectionReport = onRequest(
     if (!isDraftSession && !isServerRegeneration && !isLegacyPendingSubmission) {
       return res.status(403).json({ error: "This device does not have permission to submit that draft." });
     }
-    if (["processing", "complete"].includes(draftData.status)) {
+    const claimableStatus = isServerRegeneration
+      ? draftData.status === "regenerating"
+      : isLegacyPendingSubmission
+        ? draftData.status === "pending"
+        : ["draft", "failed", "pending"].includes(draftData.status);
+    if (!claimableStatus) {
       return res.status(409).json({ error: "This report has already been submitted." });
     }
 
@@ -178,37 +287,75 @@ export const generateInspectionReport = onRequest(
     storedPayload.signatures?.tenants?.forEach((tenant) => {
       if (tenant?.signature) delete tenant.signature;
     });
+    if (Buffer.byteLength(JSON.stringify(storedPayload), "utf8") > 700 * 1024) {
+      return res.status(413).json({ error: "Report checklist data is too large to retain safely." });
+    }
 
     // ── Deadline guard ────────────────────────────────────────────────
-    // GCF hard-kills at 300s. We fire at 270s to cleanly reset Firestore
-    // state before the process is torn down. Without this, a timeout leaves
-    // the doc stuck on "processing" forever.
+    // Do not make the report retryable while this invocation may still be
+    // running: that would allow two generations to race and publish over one
+    // another. The scheduled sweeper recovers the processing state after the
+    // platform has definitely terminated an over-time invocation.
     let _deadlineTimer = null;
     const _armDeadline = () => {
       _deadlineTimer = setTimeout(async () => {
         console.error(`generateInspectionReport deadline reached for ${inspectionId}`);
         await docRef
           .update({
-            status: "failed",
-            error: "Report generation timed out",
-            failedAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
+            generationDeadlineWarning: "The generator reached its internal deadline and is awaiting automatic recovery.",
+            generationDeadlineReachedAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
           })
           .catch(() => {});
-        if (!res.headersSent)
-          res.status(504).json({ error: "Report timed out — please try again" });
       }, 270_000);
     };
 
+    let claimed = false;
+    let published = false;
     try {
       _armDeadline();
       // ── 1. Mark processing ────────────────────────────────────────
-      await docRef.update({
-        status: "processing",
-        startedAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
-        submittedAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
-        submissionPayload: storedPayload,
-        regenerationAccessKey: firebaseAdmin.firestore.FieldValue.delete(),
+      await db.runTransaction(async (transaction) => {
+        const currentSnapshot = await transaction.get(docRef);
+        if (!currentSnapshot.exists) {
+          const error = new Error("Report draft no longer exists.");
+          error.status = 409;
+          throw error;
+        }
+        const current = currentSnapshot.data();
+        const currentDraftSession = Boolean(draftAccessKey)
+          && current.draftAccessKey === draftAccessKey;
+        const currentRegeneration = Boolean(regenerationAccessKey)
+          && current.regenerationAccessKey === regenerationAccessKey;
+        const currentLegacyPending = !current.draftAccessKey
+          && !draftAccessKey
+          && current.status === "pending";
+        if (!currentDraftSession && !currentRegeneration && !currentLegacyPending) {
+          const error = new Error("This device does not have permission to submit that draft.");
+          error.status = 403;
+          throw error;
+        }
+        const currentClaimableStatus = currentRegeneration
+          ? current.status === "regenerating"
+          : currentLegacyPending
+            ? current.status === "pending"
+            : ["draft", "failed", "pending"].includes(current.status);
+        if (!currentClaimableStatus) {
+          const error = new Error("This report has already been submitted.");
+          error.status = 409;
+          throw error;
+        }
+        transaction.update(docRef, {
+          status: "processing",
+          startedAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
+          submittedAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
+          submissionPayload: storedPayload,
+          draftSnapshot: firebaseAdmin.firestore.FieldValue.delete(),
+          draftBytes: firebaseAdmin.firestore.FieldValue.delete(),
+          regenerationAccessKey: firebaseAdmin.firestore.FieldValue.delete(),
+        });
       });
+      claimed = true;
+      logStage("generation.claimed");
 
       // ── 2. Download all assets in parallel ───────────────────────
       // Runs up to CONCURRENCY fetches at a time to avoid hammering Storage.
@@ -217,6 +364,36 @@ export const generateInspectionReport = onRequest(
       // Originals remain in memory for the ZIP while compressed copies are
       // retained for the PDF, so limit simultaneous image processing as well.
       const CONCURRENCY = 6;
+      const { default: sharp } = await import("sharp");
+      const bucket = firebaseAdmin.storage().bucket();
+      const storagePrefix = `${schema.collection}/${inspectionId}/`;
+
+      async function loadReportAsset(asset, storagePathKey = "storagePath", urlKey = "url") {
+        const storagePath = asset?.[storagePathKey];
+        if (typeof storagePath === "string" && storagePath.startsWith(storagePrefix)) {
+          const [buffer] = await bucket.file(storagePath).download();
+          return buffer;
+        }
+
+        if (isLegacyPendingSubmission && asset?.[urlKey]) {
+          const parsedUrl = new URL(asset[urlKey]);
+          if (!["firebasestorage.googleapis.com", "storage.googleapis.com"].includes(parsedUrl.hostname)) {
+            throw new Error("Legacy report asset URL is not an approved Firebase Storage host.");
+          }
+          const response = await fetchAsset(asset[urlKey]);
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          return Buffer.from(await response.arrayBuffer());
+        }
+
+        throw new Error(`Report asset is missing a valid Storage path under ${storagePrefix}`);
+      }
+      let downloadedImageBytes = 0;
+      const trackImageBytes = (buffer) => {
+        downloadedImageBytes += buffer.length;
+        if (downloadedImageBytes > MAX_REPORT_IMAGE_BYTES) {
+          throw new Error("Report images exceed the 300 MB generation limit.");
+        }
+      };
 
       async function runConcurrent(tasks) {
         const results = [];
@@ -234,12 +411,11 @@ export const generateInspectionReport = onRequest(
       // Build flat task list for all room photos
       const photoTasks = rooms.flatMap((room) =>
         (room.photos ?? []).map((photo, i) => async () => {
-          if (!photo?.url) return null;
+          if (!photo?.url && !photo?.storagePath) return null;
           try {
-            const resp = await fetch(photo.url);
-            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-            const raw = Buffer.from(await resp.arrayBuffer());
-            const filename = `${room.label.replace(/[^a-zA-Z0-9]/g, "_")}_${i + 1}.jpg`;
+            const raw = await loadReportAsset(photo);
+            trackImageBytes(raw);
+            const filename = `${safeArchiveKey(room.id, "room")}_${i + 1}.${originalImageExtension(photo)}`;
             const { data: compressed, info } = await sharp(raw)
               .rotate()
               .resize(500, null, { withoutEnlargement: true })
@@ -277,16 +453,14 @@ export const generateInspectionReport = onRequest(
         )
       );
       async function downloadSignature(signature, label) {
-        if (!signature?.signatureUrl) {
+        if (!signature?.signatureUrl && !signature?.signatureStoragePath) {
           if (signatureIsExpected(signature, label === "staff")) {
             console.warn(`Signature URL is missing for ${label}`);
           }
           return null;
         }
         try {
-          const response = await fetch(signature.signatureUrl);
-          if (!response.ok) throw new Error(`HTTP ${response.status}`);
-          return Buffer.from(await response.arrayBuffer());
+          return await loadReportAsset(signature, "signatureStoragePath", "signatureUrl");
         } catch (error) {
           console.warn(`Signature fetch failed for ${label}:`, error.message);
           return null;
@@ -331,15 +505,25 @@ export const generateInspectionReport = onRequest(
           )
         : [];
 
-      const marketingResults = await Promise.allSettled(
+      const marketingResults = await runConcurrent(
         marketingEntries.map(async ({ slotKey, mp, i }) => {
-          if (!mp?.url) return null;
-          const resp = await fetch(mp.url);
-          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-          const raw = Buffer.from(await resp.arrayBuffer());
-          const ct = resp.headers.get("content-type") ?? "";
-          const ext = ct.includes("png") ? "png" : ct.includes("webp") ? "webp" : "jpg";
-          return { buffer: raw, filename: `${slotKey}_${i + 1}.${ext}`, slotKey, storagePath: mp.storagePath ?? null };
+          try {
+            if (!mp?.url && !mp?.storagePath) return { status: "fulfilled", value: null };
+            const raw = await loadReportAsset(mp);
+            trackImageBytes(raw);
+            const safeSlotKey = safeArchiveKey(slotKey, "marketing");
+            return {
+              status: "fulfilled",
+              value: {
+                buffer: raw,
+                filename: `${safeSlotKey}_${i + 1}.${originalImageExtension(mp)}`,
+                slotKey,
+                storagePath: mp.storagePath ?? null,
+              },
+            };
+          } catch (reason) {
+            return { status: "rejected", reason };
+          }
         }),
       );
 
@@ -358,6 +542,11 @@ export const generateInspectionReport = onRequest(
           `Could not retrieve ${marketingEntries.length - marketingAssets.length} of ${marketingEntries.length} marketing photos. The existing report was not replaced.`,
         );
       }
+      logStage("assets.validated", {
+        roomPhotos: photoAssets.length,
+        marketingPhotos: marketingAssets.length,
+        imageBytes: downloadedImageBytes,
+      });
 
       // ── 3. Build PDF ───────────────────────────────────────────────
       const pdfBuffer = await buildPDF({
@@ -381,10 +570,9 @@ export const generateInspectionReport = onRequest(
       );
 
       // ── 5. Save PDF + ZIP to Storage in parallel ─────────────────
-      const bucket = firebaseAdmin.storage().bucket();
-
-      const pdfStoragePath = `${schema.collection}/${inspectionId}/report.pdf`;
-      const zipStoragePath = `${schema.collection}/${inspectionId}/photos.zip`;
+      const artifactRoot = `${schema.collection}/${inspectionId}/generations/${generationId}`;
+      const pdfStoragePath = `${artifactRoot}/report.pdf`;
+      const zipStoragePath = `${artifactRoot}/photos.zip`;
 
       const [
         [pdfUrl],
@@ -403,12 +591,20 @@ export const generateInspectionReport = onRequest(
             expires: Date.now() + 90 * 24 * 60 * 60 * 1000,
           })),
       ]);
+      logStage("artifacts.saved", {
+        pdfBytes: pdfBuffer.length,
+        zipBytes: zipBuffer.length,
+        pdfStoragePath,
+        zipStoragePath,
+      });
 
       // ── 6. Send emails via Resend ──────────────────────────────────
+      const { Resend } = await import("resend");
       const resend = new Resend(RESEND_API_KEY.value());
       const dateLabel = formatDate(inspectionDate);
       const emailSubjectTitle = docTitle || schema.emailSubjectPrefix;
-      const subject = `${emailSubjectTitle} — ${propertyAddress} — ${dateLabel}`;
+      const subjectAddress = propertyAddress.replace(/[\r\n]+/g, " ").slice(0, 500);
+      const subject = `${emailSubjectTitle} — ${subjectAddress} — ${dateLabel}`;
       const cleanAddr = (propertyAddress ?? "Property").replace(
         /[^a-zA-Z0-9]/g,
         "_",
@@ -438,6 +634,7 @@ export const generateInspectionReport = onRequest(
               isAdmin: t.isAdmin,
               schema,
               docTitle,
+              reportSubtype,
               photosDownloadUrl,
             }),
             attachments,
@@ -445,20 +642,65 @@ export const generateInspectionReport = onRequest(
         ),
       );
 
-      // Must confirm admin email sent before deleting photos
-      const adminSend = emailResults[0];
-      if (adminSend.status === "rejected" || adminSend.value?.error) {
-        const reason =
-          adminSend.reason?.message ??
-          adminSend.value?.error?.message ??
-          "Unknown";
+      const emailDelivery = normaliseEmailDeliveries(emailResults, targets);
+      const adminDelivery = emailDelivery.find((delivery) => delivery.isAdmin);
+      if (!adminDelivery?.sent) {
+        const reason = adminDelivery?.error ?? "Unknown";
         throw new Error(`Admin email send failed: ${reason}`);
       }
+      const emailsSent = emailDelivery
+        .filter((delivery) => delivery.sent)
+        .map((delivery) => delivery.email);
+      const emailFailures = emailDelivery
+        .filter((delivery) => !delivery.sent)
+        .map((delivery) => ({ email: delivery.email, error: delivery.error }));
 
-      console.log(
-        "Email results:",
-        emailResults.map((r, i) => `${targets[i].email}: ${r.status}`),
-      );
+      logStage("email.finished", {
+        sentCount: emailsSent.length,
+        failedCount: emailFailures.length,
+        providerIds: emailDelivery
+          .filter((delivery) => delivery.providerId)
+          .map((delivery) => delivery.providerId),
+      });
+
+      const publishBatch = db.batch();
+      publishBatch.set(docRef.collection("artifactGenerations").doc(generationId), {
+        generationId,
+        reportType,
+        reportSubtype: reportSubtype ?? null,
+        pdfUrl,
+        pdfStoragePath,
+        photosDownloadUrl,
+        photosStoragePath: zipStoragePath,
+        pdfBytes: pdfBuffer.length,
+        zipBytes: zipBuffer.length,
+        emailsSent,
+        emailFailures,
+        publishedAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
+      });
+      publishBatch.update(docRef, {
+        status: "complete",
+        pdfUrl,
+        pdfStoragePath,
+        photosDownloadUrl,
+        photosStoragePath: zipStoragePath,
+        generationId,
+        emailsSent,
+        emailFailures,
+        emailProviderIds: emailDelivery
+          .filter((delivery) => delivery.providerId)
+          .map((delivery) => ({ email: delivery.email, id: delivery.providerId })),
+        error: firebaseAdmin.firestore.FieldValue.delete(),
+        regenerationError: firebaseAdmin.firestore.FieldValue.delete(),
+        generationDeadlineWarning: firebaseAdmin.firestore.FieldValue.delete(),
+        generationDeadlineReachedAt: firebaseAdmin.firestore.FieldValue.delete(),
+        completedAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
+      });
+      await publishBatch.commit();
+      logStage("report.published");
+      published = true;
+      clearTimeout(_deadlineTimer);
+      _deadlineTimer = null;
 
       // ── 7. Delete individual photos from Storage ───────────────────
       const toDelete = [
@@ -469,41 +711,71 @@ export const generateInspectionReport = onRequest(
       // It persists so reports can be regenerated after individual photos are
       // removed. Signature files also persist because they are not in the ZIP.
 
-      const deleteResults = await Promise.allSettled(
-        toDelete.map((p) => bucket.file(p.storagePath).delete()),
-      );
+      const sourcePhotoPrefixes = [
+        `${storagePrefix}photos/`,
+        `${storagePrefix}marketing/`,
+      ];
+      const restoredRegenerationPaths = toDelete
+        .map((photo) => photo.storagePath)
+        .filter((storagePath) =>
+          storagePath
+          && !sourcePhotoPrefixes.some((prefix) => storagePath.startsWith(prefix)),
+        );
+      const deleteResults = await Promise.allSettled([
+        ...sourcePhotoPrefixes.map((prefix) => bucket.deleteFiles({ prefix })),
+        ...restoredRegenerationPaths.map((storagePath) =>
+          bucket.file(storagePath).delete({ ignoreNotFound: true }),
+        ),
+      ]);
       const failedDeletes = deleteResults.filter(
         (r) => r.status === "rejected",
       ).length;
       if (failedDeletes) {
         console.warn(
-          `${failedDeletes}/${toDelete.length} photo deletions failed — manual cleanup needed for ${schema.collection}/${inspectionId}/`,
+          `${failedDeletes}/${deleteResults.length} photo cleanup operations failed — manual cleanup needed for ${schema.collection}/${inspectionId}/`,
         );
       }
 
       // ── 8. Mark complete ───────────────────────────────────────────
-      await docRef.update({
-        status: "complete",
-        pdfUrl,
-        pdfStoragePath,
-        photosDownloadUrl,
-        emailsSent: targets.map((t) => t.email),
-        completedAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
-      });
-
       clearTimeout(_deadlineTimer);
       if (res.headersSent) return; // deadline fired while we were finishing up
-      return res.status(200).json({ success: true, pdfUrl });
+      return res.status(200).json({
+        success: true,
+        pdfUrl,
+        emailsSent,
+        emailFailures,
+      });
     } catch (err) {
       clearTimeout(_deadlineTimer);
       if (res.headersSent) return; // deadline already responded
       console.error("generateInspectionReport failed:", err);
+      if (!claimed) {
+        return res.status(err.status ?? 409).json({
+          error: err.message ?? "Report could not be claimed for generation.",
+        });
+      }
+      if (!published) {
+        await firebaseAdmin.storage().bucket()
+          .deleteFiles({ prefix: `${schema.collection}/${inspectionId}/generations/${generationId}/` })
+          .catch(() => {});
+      }
+      const failureUpdate = isServerRegeneration && draftData.pdfUrl
+        ? {
+              status: "complete",
+              regenerationError: err.message,
+              regenFailedAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
+              generationDeadlineWarning: firebaseAdmin.firestore.FieldValue.delete(),
+              generationDeadlineReachedAt: firebaseAdmin.firestore.FieldValue.delete(),
+            }
+          : {
+              status: "failed",
+              error: err.message,
+              failedAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
+              generationDeadlineWarning: firebaseAdmin.firestore.FieldValue.delete(),
+              generationDeadlineReachedAt: firebaseAdmin.firestore.FieldValue.delete(),
+            };
       await docRef
-        .update({
-          status: "failed",
-          error: err.message,
-          failedAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
-        })
+        .update(failureUpdate)
         .catch(() => {});
       return res
         .status(500)
@@ -514,7 +786,7 @@ export const generateInspectionReport = onRequest(
 
 // ─── PDF Builder ──────────────────────────────────────────────────────────────
 
-async function buildPDF({
+export async function buildPDF({
   propertyAddress,
   inspectionDate,
   inspectorName,
@@ -756,7 +1028,7 @@ async function buildPDF({
 
     // Item-level stats
     const ITEM_STATS_Y = STATS_Y + 90;
-    const iStats = computeItemStats(rooms, schema);
+    const iStats = computeItemStats(rooms, schema, reportSubtype);
     const iStatItems = [
       { label: "ITEMS", val: iStats.total, color: "#1E293B" },
       { label: "OK", val: iStats.ok, color: "#10B981" },
@@ -908,7 +1180,7 @@ async function buildPDF({
       const itemInputs = room.inputs ?? {};
 
       // Tally item stats for this room (exclude non-status types and failed showIf conditions)
-      const statusItems = getActiveStatusItems(groups, itemStatuses, itemInputs);
+      const statusItems = getActiveStatusItems(groups, itemStatuses, itemInputs, schema, reportSubtype);
       const roomItemStats = {
         ok: 0,
         attention: 0,
@@ -1041,7 +1313,7 @@ async function buildPDF({
 
       for (const group of groups) {
         const visibleItems = group.items.filter((item) =>
-          itemIsVisible(item, itemStatuses, itemInputs),
+          itemIsVisible(item, itemStatuses, itemInputs, schema, reportSubtype),
         );
         if (!visibleItems.length) continue;
 
@@ -1641,13 +1913,16 @@ function buildEmailHtml({
   isAdmin,
   schema,
   docTitle,
+  reportSubtype,
   photosDownloadUrl,
 }) {
+  const safeAddress = escapeHtml(propertyAddress);
+  const safeInspectorName = escapeHtml(inspectorName || "Unknown");
   const flagged = rooms
     .filter((r) => r.status === "issue" || r.status === "attention")
     .sort((a, b) => (a.status === "issue" ? -1 : 1));
 
-  const iStats = computeItemStats(rooms, schema);
+  const iStats = computeItemStats(rooms, schema, reportSubtype);
 
   // Collect flagged individual items (issues first, then attention, max 20 for email)
   // Excludes items whose showIf condition is not met.
@@ -1658,7 +1933,7 @@ function buildEmailHtml({
     const groups = getRoomGroups(schema, room);
     for (const group of groups) {
       for (const item of group.items) {
-        if (!itemIsVisible(item, itemStatuses, itemInputs)) continue;
+        if (!itemIsVisible(item, itemStatuses, itemInputs, schema, reportSubtype)) continue;
         const status = itemStatuses[item.id];
         if (status === "issue" || status === "attention") {
           flaggedItems.push({
@@ -1678,9 +1953,9 @@ function buildEmailHtml({
     .map(
       (r) => `
         <tr>
-            <td style="padding:7px 12px;font-size:13px;color:#1E293B;border-bottom:1px solid #F1F5F9;">${r.label}</td>
+            <td style="padding:7px 12px;font-size:13px;color:#1E293B;border-bottom:1px solid #F1F5F9;">${escapeHtml(r.label)}</td>
             <td style="padding:7px 12px;font-size:12px;font-weight:700;color:${STATUS_META[r.status]?.hex};border-bottom:1px solid #F1F5F9;">${STATUS_META[r.status]?.label}</td>
-            <td style="padding:7px 12px;font-size:12px;color:#64748B;border-bottom:1px solid #F1F5F9;">${r.notes || "—"}</td>
+            <td style="padding:7px 12px;font-size:12px;color:#64748B;border-bottom:1px solid #F1F5F9;">${escapeHtml(r.notes || "—")}</td>
         </tr>`,
     )
     .join("");
@@ -1689,9 +1964,9 @@ function buildEmailHtml({
     .map(
       (it) => `
         <tr>
-            <td style="padding:5px 12px;font-size:12px;color:#64748B;border-bottom:1px solid #F1F5F9;">${it.roomLabel}</td>
+            <td style="padding:5px 12px;font-size:12px;color:#64748B;border-bottom:1px solid #F1F5F9;">${escapeHtml(it.roomLabel)}</td>
             <td style="padding:5px 12px;font-size:12px;color:#1E293B;border-bottom:1px solid #F1F5F9;">
-                ${it.itemLabel}${it.sda ? ' <span style="font-size:10px;font-weight:700;color:#7C3AED;background:#EDE9FE;padding:1px 5px;border-radius:4px;">SDA</span>' : ""}
+                ${escapeHtml(it.itemLabel)}${it.sda ? ' <span style="font-size:10px;font-weight:700;color:#7C3AED;background:#EDE9FE;padding:1px 5px;border-radius:4px;">SDA</span>' : ""}
             </td>
             <td style="padding:5px 12px;font-size:11px;font-weight:700;color:${STATUS_META[it.status]?.hex};border-bottom:1px solid #F1F5F9;">${STATUS_META[it.status]?.label}</td>
         </tr>`,
@@ -1717,8 +1992,8 @@ function buildEmailHtml({
     </table>
   </div>
   <div style="padding:28px 32px 24px; mso-line-height-rule:exactly;">
-    <p style="margin:0;padding:0 0 4px 0;font-size:17px;font-weight:700;color:#1E293B;">${propertyAddress}</p>
-    <p style="margin:0;padding:0 0 20px 0;font-size:13px;color:#64748B;">${inspectionDate} &middot; ${inspectorName || "Unknown"}</p>
+    <p style="margin:0;padding:0 0 4px 0;font-size:17px;font-weight:700;color:#1E293B;">${safeAddress}</p>
+    <p style="margin:0;padding:0 0 20px 0;font-size:13px;color:#64748B;">${escapeHtml(inspectionDate)} &middot; ${safeInspectorName}</p>
 
     <p style="margin:0 0 6px;font-size:10px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.08em;">Checklist Summary</p>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;">
@@ -1788,14 +2063,14 @@ function buildEmailHtml({
 
     <p style="font-size:12px;color:#94A3B8;line-height:1.7;margin:0 0 16px;">
       The full inspection report (PDF) is attached to this email.
-      ${isAdmin ? `<br>Everhomes Staff: ${inspectorName || "Unknown"}` : "A copy has also been sent to the Everhomes administration team."}
+      ${isAdmin ? `<br>Everhomes Staff: ${safeInspectorName}` : "A copy has also been sent to the Everhomes administration team."}
     </p>
 
     ${photosDownloadUrl ? `
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:8px;">
       <tr>
         <td>
-          <a href="${photosDownloadUrl}" style="display:inline-block;background:#7C3AED;color:#fff;font-size:13px;font-weight:700;text-decoration:none;padding:12px 24px;border-radius:8px;">
+          <a href="${escapeHtml(photosDownloadUrl)}" style="display:inline-block;background:#7C3AED;color:#fff;font-size:13px;font-weight:700;text-decoration:none;padding:12px 24px;border-radius:8px;">
             &#8595; Download Photos (ZIP)
           </a>
           <p style="margin:8px 0 0;font-size:11px;color:#CBD5E1;">Link expires in 90 days.</p>
@@ -1811,6 +2086,15 @@ function buildEmailHtml({
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
 
 function computeStats(rooms) {
   return {

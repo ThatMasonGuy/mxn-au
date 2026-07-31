@@ -25,18 +25,39 @@ export const REPORT_SCHEMAS = {
     collection: 'inspections',
     emailSubjectPrefix: 'Inspection Report',
     fromName: 'Everhomes Inspections',
+    sdaFilter: false,
+    pickerOptions: [],
+    requiredSections: ['entry', 'living', 'kitchen', 'general'],
   },
 
   handover: {
     items: handoverItems,
     fallback: [],
-    docTitle: 'Handover Inspection',
+    docTitle: 'Handover / Annual Review',
     collection: 'handovers',
     emailSubjectPrefix: 'Property Handover',
     fromName: 'Everhomes Onboarding',
+    sdaFilter: true,
+    requiredSections: [
+      'general',
+      'entrance',
+      'corridors',
+      'windows',
+      'sanitary',
+      'kitchen',
+      'laundry',
+      'bedroom',
+      'living',
+    ],
+    pickerOptions: [
+      { key: 'HPS', includes: ['HPS', 'FA', 'IL'] },
+      { key: 'FA', includes: ['FA', 'IL'] },
+      { key: 'IL', includes: ['IL'] },
+      { key: 'R', includes: ['R', 'IL'] },
+    ],
   },
 };
 
 export function getSchema(reportType) {
-  return REPORT_SCHEMAS[reportType] ?? REPORT_SCHEMAS.inspection;
+  return REPORT_SCHEMAS[reportType] ?? null;
 }

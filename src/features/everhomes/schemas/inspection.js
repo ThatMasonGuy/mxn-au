@@ -68,6 +68,7 @@ export default {
 
     // ── Display ───────────────────────────────────────────────────────────────
     title: 'Property Inspection',
+    docTitle: 'Property Inspection Report',
     subtitle: 'Walk through property rooms and capture photos for each area.',
     topBarLabel: 'Inspection',
 

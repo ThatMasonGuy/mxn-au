@@ -290,6 +290,11 @@ service cloud.firestore {
         allow read: if _isEverhomesAdmin();
         allow write: if false;
       }
+
+      match /artifactGenerations/{generationId} {
+        allow read: if _isEverhomesAdmin();
+        allow write: if false;
+      }
     }
 
     match /handovers/{inspectionId} {
@@ -297,6 +302,11 @@ service cloud.firestore {
       allow write: if false;
 
       match /uploadFailures/{failureId} {
+        allow read: if _isEverhomesAdmin();
+        allow write: if false;
+      }
+
+      match /artifactGenerations/{generationId} {
         allow read: if _isEverhomesAdmin();
         allow write: if false;
       }

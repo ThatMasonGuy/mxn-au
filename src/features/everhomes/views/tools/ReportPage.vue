@@ -143,7 +143,7 @@
           <div class="relative z-10 w-full max-w-sm bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-6">
             <h3 class="text-white font-black text-base mb-1">Clear Checklist?</h3>
             <p class="text-slate-400 text-sm mb-5">
-              All review data and photos will be permanently removed. This cannot be undone.
+              This removes the local report, recovery backup, and uploaded draft photos. This cannot be undone.
             </p>
             <div class="flex gap-3">
               <button
@@ -152,8 +152,9 @@
               >Cancel</button>
               <button
                 @click="doClear"
+                :disabled="clearConfirm.loading"
                 class="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-sm font-black transition-colors"
-              >Clear All</button>
+              >{{ clearConfirm.loading ? 'Clearing…' : 'Clear All' }}</button>
             </div>
           </div>
         </div>
@@ -198,14 +199,14 @@ const schema = computed(() => {
 })
 
 // ─── Composable ───────────────────────────────────────────────────────────────
-// useReportState is called with schema.value — since schema is a computed, if
-// the route ever changes reportType this will be a new instance automatically.
+// App.vue keys route views by fullPath, so changing report type remounts this
+// page with the matching isolated report store.
 // In practice a user navigates away and back, so the composable is always fresh.
 const reportState = useReportState(schema.value)
 
 // ─── Local UI state ───────────────────────────────────────────────────────────
 const submitModal = reactive({ open: false })
-const clearConfirm = reactive({ open: false })
+const clearConfirm = reactive({ open: false, loading: false })
 const resumeCopied = ref(false)
 
 const draftBackupMessage = computed(() => {
@@ -258,12 +259,22 @@ function onStarted() {
 function onSubmitted() {
   // Store plugin will persist the now-empty state automatically.
   // The modal stays open in Done state — SubmitModal handles close from there.
-  reportState.resetAll()
+  reportState.discardLocalReport().catch(() => reportState.resetAll())
 }
 
-function doClear() {
-  clearConfirm.open = false
-  reportState.resetAll()
+async function doClear() {
+  clearConfirm.loading = true
+  try {
+    await reportState.clearReport()
+    clearConfirm.open = false
+  } catch (error) {
+    reportState.openFatalError({
+      title: 'Could not clear report',
+      message: error.message ?? 'The report could not be cleared safely.',
+    })
+  } finally {
+    clearConfirm.loading = false
+  }
 }
 
 // ─── Theme — derived from schema, no reportType conditionals ──────────────────

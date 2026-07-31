@@ -234,7 +234,7 @@ export const CHECKLIST_ITEMS = {
         {
             group: 'SDA / Accessibility', sda: true,
             items: [
-                { id: 'width', label: 'Bay Width Accessible (≥3.2m)', sda: true },
+                { id: 'width', label: 'Bay Width Accessible (at least 3.2m)', sda: true },
                 { id: 'threshold', label: 'No Step at Entry', sda: true },
             ]
         },
@@ -256,7 +256,7 @@ export const CHECKLIST_ITEMS = {
             items: [
                 { id: 'nonSlip', label: 'Non-Slip Surface', sda: true },
                 { id: 'ramp', label: 'Ramp / Level Access', sda: true },
-                { id: 'threshold', label: 'Accessible Threshold (≤12mm)', sda: true },
+                { id: 'threshold', label: 'Accessible Threshold (maximum 12mm)', sda: true },
             ]
         },
     ],

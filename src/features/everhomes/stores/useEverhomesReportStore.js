@@ -5,11 +5,9 @@
 // pinia-plugin-persistedstate — components and composables never touch
 // localStorage directly.
 //
-// State is namespaced by reportType so handover and inspection never collide.
-// The key includes the schema's cacheVersion so a version bump automatically
-// orphans stale cached data with zero migration code.
-//
-// Cache key format: everhomes_report_${reportType}_${cacheVersion}
+// Inspection and Handover use different Pinia store IDs and persistence keys,
+// so their drafts can coexist without state leaking between routes. cacheVersion
+// is checked after rehydration and resets only the stale report-type draft.
 //
 // ── Photo persistence strategy ────────────────────────────────────────────────
 // We never drop photos that were uploading when the page closed. Instead:
@@ -22,10 +20,8 @@
 // Blob previewUrls are session-only memory addresses — they're stripped on
 // persist and restored from the permanent `url` on rehydration.
 //
-// ── Deferred save on active uploads ──────────────────────────────────────────
-// The plugin's shouldPersist hook returns false while any photo is uploading,
-// so mid-upload state is not written to disk mid-flight. The composable calls
-// flushPersist() when the last upload completes, triggering an immediate save.
+// Uploading photos are persisted as recoverable failed entries. Their original
+// File objects live in IndexedDB so an interrupted upload can be retried.
 
 import { defineStore } from 'pinia'
 import { ref, reactive, computed } from 'vue'
@@ -45,6 +41,8 @@ function serialisePhoto(p) {
         retryable:    p.retryable !== false,
         retryNote:    p.retryNote ?? '',
         attempts:     p.attempts ?? 0,
+        fileSize:     p.fileSize ?? 0,
+        localBackupAvailable: p.localBackupAvailable !== false,
         // Interrupted uploads are marked so the UI can offer a retry button.
         uploadStatus: p.uploadStatus === 'done' ? 'done' : 'failed',
     }
@@ -65,6 +63,8 @@ function rehydratePhoto(p) {
         retryable:    p.retryable !== false,
         retryNote:    p.retryNote ?? '',
         attempts:     p.attempts ?? 0,
+        fileSize:     p.fileSize ?? 0,
+        localBackupAvailable: p.localBackupAvailable !== false,
         // Surface interrupted uploads as failed so the retry button appears.
         uploadStatus: p.uploadStatus === 'done' ? 'done' : 'failed',
     }
@@ -85,6 +85,7 @@ function serialiseChecklistData(data = {}) {
             id,
             {
                 status: section.status ?? 'unchecked',
+                manualStatus: section.manualStatus ?? null,
                 notes:  section.notes  ?? '',
                 items:  section.items  ?? {},
                 inputs: section.inputs ?? {},
@@ -100,6 +101,7 @@ function rehydrateChecklistData(data = {}) {
             id,
             {
                 status: section.status ?? 'unchecked',
+                manualStatus: section.manualStatus ?? null,
                 notes:  section.notes  ?? '',
                 items:  section.items  ?? {},
                 inputs: section.inputs ?? {},
@@ -111,14 +113,27 @@ function rehydrateChecklistData(data = {}) {
 
 // ─── Store ────────────────────────────────────────────────────────────────────
 
-export const useEverhomesReportStore = defineStore(
-    'everhomesReport',
+export const REPORT_STORE_CONFIG = Object.freeze({
+    inspection: Object.freeze({
+        storeId: 'everhomesInspectionReport',
+        storageKey: 'everhomes_report_inspection',
+    }),
+    handover: Object.freeze({
+        storeId: 'everhomesHandoverReport',
+        storageKey: 'everhomes_report_handover',
+    }),
+})
+
+function createEverhomesReportStore(reportType) {
+    const config = REPORT_STORE_CONFIG[reportType]
+    return defineStore(
+    config.storeId,
     () => {
 
         // ── Active report identity ─────────────────────────────────────────────
-        // Set by ReportPage.vue on mount from route params + schema.
-        // Persisted so the plugin can build the correct storage key.
-        const reportType   = ref(null)  // 'handover' | 'inspection'
+        // Fixed by the store factory so Inspection and Handover can never share
+        // the same Pinia identity or persisted browser cache.
+        const activeReportType = ref(reportType)
         const cacheVersion = ref(null)  // from schema.cacheVersion e.g. 'v1'
 
         // ── Setup state ───────────────────────────────────────────────────────
@@ -176,6 +191,7 @@ export const useEverhomesReportStore = defineStore(
                 if (!checklistData[id]) {
                     checklistData[id] = {
                         status: 'unchecked',
+                        manualStatus: null,
                         notes:  '',
                         items:  {},
                         inputs: {},
@@ -208,7 +224,8 @@ export const useEverhomesReportStore = defineStore(
             Object.keys(marketingPhotos).forEach((k) => delete marketingPhotos[k])
 
             // Don't reset activeUploadCount here — if uploads are somehow still
-            // running when reset is called, the gate in shouldPersist still holds.
+            // running when reset is called, it must still be able to balance its
+            // own tracking counter when the upload finishes.
         }
 
         // ── Computed ──────────────────────────────────────────────────────────
@@ -216,7 +233,7 @@ export const useEverhomesReportStore = defineStore(
         const hasChecklistStarted = computed(() => checklistSections.value.length > 0)
 
         return {
-            reportType,
+            reportType: activeReportType,
             cacheVersion,
             setup,
             checklistSections,
@@ -235,26 +252,9 @@ export const useEverhomesReportStore = defineStore(
     // ── Persistence config ────────────────────────────────────────────────────
     {
         persist: {
-            // Dynamic key derived from the store's own reportType + cacheVersion.
-            // Each report type gets an isolated localStorage entry.
-            // A cacheVersion bump on the schema automatically orphans old data.
-            key: () => {
-                const store = useEverhomesReportStore()
-                if (store.reportType && store.cacheVersion) {
-                    return `everhomes_report_${store.reportType}_${store.cacheVersion}`
-                }
-                // Before reportType is set (initial hydration), use a temporary key.
-                // This should only ever hold null/empty state.
-                return 'everhomes_report_unkeyed'
-            },
-
-            // Block persistence while any upload is in flight.
-            // The composable triggers a $patch after the last upload resolves,
-            // which causes the plugin to re-evaluate and write the settled state.
-            shouldPersist: () => {
-                const store = useEverhomesReportStore()
-                return !store.hasActiveUploads
-            },
+            // Persistence configuration is resolved once when Pinia creates the
+            // store, so this key must be static.
+            key: config.storageKey,
 
             serializer: {
                 serialize(state) {
@@ -278,7 +278,7 @@ export const useEverhomesReportStore = defineStore(
                     try {
                         const data = JSON.parse(raw)
                         return {
-                            reportType:        data.reportType        ?? null,
+                            reportType,
                             cacheVersion:      data.cacheVersion      ?? null,
                             setup:             data.setup             ?? {},
                             checklistSections: data.checklistSections ?? [],
@@ -300,4 +300,39 @@ export const useEverhomesReportStore = defineStore(
             },
         },
     }
-)
+    )
+}
+
+const useInspectionReportStore = createEverhomesReportStore('inspection')
+const useHandoverReportStore = createEverhomesReportStore('handover')
+
+function migrateLegacyUnkeyedCache(reportType) {
+    if (typeof window === 'undefined') return
+    const config = REPORT_STORE_CONFIG[reportType]
+    if (window.localStorage.getItem(config.storageKey)) return
+
+    const legacyKey = 'everhomes_report_unkeyed'
+    const raw = window.localStorage.getItem(legacyKey)
+    if (!raw) return
+
+    try {
+        const legacy = JSON.parse(raw)
+        if (legacy.reportType === reportType) {
+            window.localStorage.setItem(config.storageKey, raw)
+            window.localStorage.removeItem(legacyKey)
+        }
+    } catch {
+        // Ignore an unrecognised legacy cache and start this report type cleanly.
+    }
+}
+
+export function useEverhomesReportStore(reportType) {
+    if (!REPORT_STORE_CONFIG[reportType]) {
+        throw new Error(`Unsupported Everhomes report type: ${reportType}`)
+    }
+
+    migrateLegacyUnkeyedCache(reportType)
+    return reportType === 'handover'
+        ? useHandoverReportStore()
+        : useInspectionReportStore()
+}

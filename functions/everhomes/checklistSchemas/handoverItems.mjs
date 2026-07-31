@@ -18,7 +18,7 @@ export const HANDOVER_ITEMS = {
             group: 'Floors, Walls & Ceilings',
             items: [
                 { id: 'floorFirmness', label: 'Internal Flooring — Firmness and Evenness' },
-                { id: 'carpetSpec', label: 'Carpet — Pile <11mm, Backing <4mm, Total ≤15mm', badges: ['FA', 'HPS'], sda: true },
+                { id: 'carpetSpec', label: 'Carpet — Pile <11mm, Backing <4mm, Total maximum 15mm', badges: ['FA', 'HPS'], sda: true },
                 { id: 'floorTransitions', label: 'Floor Surface Transitions — Max 3mm Vertical or 5mm Bevelled' },
                 { id: 'floorSlipRes', label: 'Slip Resistance of Internal Floor Finishes — P3 or R10' },
                 { id: 'floorContrast', label: 'Colour Contrast Between Floor and Wall Surfaces', badges: ['IL'], sda: true },

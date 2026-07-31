@@ -94,9 +94,12 @@
           <input
             v-model="reportState.setup.inspectionDate"
             type="date"
-            class="w-full max-w-full min-w-0 bg-white border border-slate-200 text-slate-800 text-base sm:text-sm font-medium rounded-xl px-3.5 py-2 focus:outline-none focus:ring-2 transition appearance-none"
-            :class="accentRingClass"
+            class="w-full max-w-full min-w-0 bg-white border text-slate-800 text-base sm:text-sm font-medium rounded-xl px-3.5 py-2 focus:outline-none focus:ring-2 transition appearance-none"
+            :class="[accentRingClass, reportState.setupErrors.date ? 'border-rose-400 ring-1 ring-rose-400' : 'border-slate-200']"
           />
+          <p v-if="reportState.setupErrors.date" class="text-rose-500 text-[0.65rem] font-bold mt-1">
+            A valid date is required
+          </p>
         </div>
       </div>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -127,7 +130,7 @@
             :class="[accentRingClass, reportState.setupErrors.email ? 'border-rose-400 ring-1 ring-rose-400' : 'border-slate-200']"
           />
           <p v-if="reportState.setupErrors.email" class="text-rose-500 text-[0.65rem] font-bold mt-1">
-            Staff email is required
+            A valid staff email is required
           </p>
         </div>
       </div>

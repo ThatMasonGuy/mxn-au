@@ -84,7 +84,7 @@
               <div>
                 <h3 class="text-white font-black text-lg">{{ schema.title }} Submitted</h3>
                 <p class="text-slate-400 text-sm mt-1">
-                  Report emailed to admin{{ reportState.setup.inspectorEmail ? ` and ${reportState.setup.inspectorEmail}` : '' }}.
+                  {{ state.deliveryMessage }}
                 </p>
               </div>
               <a
@@ -123,6 +123,29 @@
                     <X class="w-3.5 h-3.5 text-rose-400" />
                   </button>
                 </div>
+              </div>
+
+              <div
+                v-if="reportState.hasFailedUploads"
+                class="mx-5 mt-4 flex items-start gap-2.5 px-3.5 py-3 bg-rose-500/10 border border-rose-500/25 rounded-xl"
+              >
+                <XCircle class="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                <p class="text-xs text-rose-300 font-semibold">
+                  {{ reportState.failedUploadCount }} photo{{ reportState.failedUploadCount !== 1 ? 's' : '' }}
+                  failed to upload. Retry or remove {{ reportState.failedUploadCount === 1 ? 'it' : 'them' }} before submitting.
+                </p>
+              </div>
+
+              <div
+                v-if="reportState.missingRequiredAnswers.length"
+                class="mx-5 mt-4 flex items-start gap-2.5 px-3.5 py-3 bg-rose-500/10 border border-rose-500/25 rounded-xl"
+              >
+                <AlertTriangle class="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                <p class="text-xs text-rose-300 font-semibold">
+                  {{ reportState.missingRequiredAnswers.length }} required yes/no
+                  answer{{ reportState.missingRequiredAnswers.length !== 1 ? 's are' : ' is' }} missing.
+                  Complete {{ reportState.missingRequiredAnswers[0]?.sectionLabel || 'the highlighted section' }} before submitting.
+                </p>
               </div>
 
               <!-- Pre-submit form header -->
@@ -254,7 +277,7 @@
                 >Back</button>
                 <button
                   @click="confirmSubmit"
-                  :disabled="reportState.hasAnyUploading || !canSubmit"
+                  :disabled="reportState.hasAnyUploading || reportState.hasFailedUploads || reportState.missingRequiredAnswers.length > 0 || !canSubmit"
                   class="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-black transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2"
                 >
                   <Send class="w-4 h-4" />{{ state.error ? 'Try Again' : 'Confirm & Submit' }}
@@ -276,10 +299,6 @@ import {
   FileText, Send, X, ClipboardCheck,
 } from 'lucide-vue-next'
 import SignaturePad from 'signature_pad'
-import {
-  doc, setDoc, getDoc, onSnapshot, serverTimestamp,
-} from 'firebase/firestore'
-import { firestore } from '@/firebase'
 import { getReportDraft } from '@/features/everhomes/utils/reportDraftApi'
 
 const FUNCTIONS_URL    = import.meta.env.VITE_FUNCTIONS_URL ?? ''
@@ -301,6 +320,7 @@ const state = reactive({
   statusMessage: 'Generating report…',
   pdfUrl:        null,
   canFlush:      false,
+  deliveryMessage: 'Report generated successfully.',
 })
 
 // ─── Signature pad ────────────────────────────────────────────────────────────
@@ -405,9 +425,9 @@ function cropSignatureData(pad) {
   return cropped.toDataURL('image/png')
 }
 
-// ─── Firestore listener + timeout ─────────────────────────────────────────────
-let firestoreUnsub  = null
+// ─── Submission timeout ───────────────────────────────────────────────────────
 let submitTimeoutId = null
+let pollGeneration = 0
 
 function startTimeout() {
   clearTimeout(submitTimeoutId)
@@ -436,6 +456,11 @@ function applyDraftStatus(result) {
     state.loading = false
     state.done = true
     state.pdfUrl = result.pdfUrl ?? null
+    const sent = result.emailsSent ?? result.emailDelivery?.sent ?? []
+    const failed = result.emailFailures ?? result.emailDelivery?.failed ?? []
+    state.deliveryMessage = failed.length
+      ? `Report generated. Email delivered to ${sent.join(', ') || 'no recipients'}; delivery failed for ${failed.map((entry) => entry.email ?? entry).join(', ')}.`
+      : `Report emailed to ${sent.join(', ') || 'the configured recipients'}.`
     emit('submitted')
     return 'complete'
   }
@@ -476,22 +501,43 @@ async function uploadStaffSignature(payload) {
   const signatureData = payload.signatures?.staff?.signature
   if (!signatureData) return
 
-  const { uploadBytes, getDownloadURL, ref: storageRef } = await import('firebase/storage')
+  const { uploadBytesResumable, getDownloadURL, ref: storageRef } = await import('firebase/storage')
   const { storage } = await import('@/firebase')
   const signatureBlob = await (await fetch(signatureData)).blob()
   const signatureFile = new File([signatureBlob], 'staff_signature.png', { type: 'image/png' })
   const signaturePath = `${props.schema.reportType}s/${payload.inspectionId}/signatures/staff_signature.png`
   const signatureRef = storageRef(storage, signaturePath)
-  await uploadBytes(signatureRef, signatureFile, {
+  const uploadTask = uploadBytesResumable(signatureRef, signatureFile, {
     contentType: 'image/png',
     customMetadata: { everhomesDraftKey: payload.draftAccessKey },
   })
-  payload.signatures.staff.signatureUrl = await getDownloadURL(signatureRef)
+  await new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      uploadTask.cancel()
+      reject(new Error('Signature upload timed out after 60 seconds.'))
+    }, 60_000)
+    uploadTask.on('state_changed', undefined, (error) => {
+      clearTimeout(timeout)
+      reject(error)
+    }, () => {
+      clearTimeout(timeout)
+      resolve()
+    })
+  })
+  payload.signatures.staff.signatureUrl = await Promise.race([
+    getDownloadURL(signatureRef),
+    new Promise((_, reject) => setTimeout(() => reject(new Error('Retrieving the saved signature timed out.')), 20_000)),
+  ])
   payload.signatures.staff.signatureStoragePath = signaturePath
 }
 
 async function submitViaDraftService() {
-  if (props.reportState.hasAnyUploading || !canSubmit.value) return
+  if (
+    props.reportState.hasAnyUploading
+    || props.reportState.hasFailedUploads
+    || props.reportState.missingRequiredAnswers.length
+    || !canSubmit.value
+  ) return
   if (!navigator.onLine) {
     state.error = 'You appear to be offline. Your draft is kept on this device and will be backed up when you reconnect.'
     return
@@ -534,196 +580,50 @@ async function submitViaDraftService() {
     clearTimeout(requestTimeout)
     const body = await response.json().catch(() => ({}))
     if (!response.ok) throw new Error(body.details ?? body.error ?? `HTTP ${response.status}`)
-    applyDraftStatus({ status: 'complete', pdfUrl: body.pdfUrl })
+    applyDraftStatus({
+      status: 'complete',
+      pdfUrl: body.pdfUrl,
+      emailsSent: body.emailsSent,
+      emailFailures: body.emailFailures,
+      emailDelivery: body.emailDelivery,
+    })
   } catch (error) {
     // A timeout is ambiguous: use the same capability-scoped draft to learn
     // whether the server is still working rather than replacing its identity.
     state.statusMessage = error.name === 'AbortError'
       ? 'The request is taking a while. Checking whether the report is still generating…'
       : 'Checking whether the report reached the server…'
-    const status = await checkDraftStatus()
+    const status = await pollDraftStatus()
     if (!status) state.canFlush = true
   }
+}
+
+async function pollDraftStatus() {
+  const currentPoll = ++pollGeneration
+  const deadline = Date.now() + 5 * 60_000
+  while (props.open && currentPoll === pollGeneration && Date.now() < deadline) {
+    const status = await checkDraftStatus()
+    if (['complete', 'failed', 'draft'].includes(status)) return status
+    const remaining = deadline - Date.now()
+    if (remaining > 0) {
+      await new Promise((resolve) => setTimeout(resolve, Math.min(5_000, remaining)))
+    }
+  }
+  if (!props.open || currentPoll !== pollGeneration) return null
+  state.loading = false
+  state.error = 'Report generation is still not confirmed after five minutes. Your draft remains saved; use Check Status or contact admin before submitting again.'
+  state.canFlush = true
+  return null
 }
 
 // ─── Submit ───────────────────────────────────────────────────────────────────
 async function confirmSubmit() {
   return submitViaDraftService()
-  if (props.reportState.hasAnyUploading || !canSubmit.value) return
-
-  if (!navigator.onLine) {
-    state.error = 'You appear to be offline. Please check your internet connection and try again.'
-    return
-  }
-
-  state.loading       = true
-  state.error         = null
-  state.canFlush      = false
-  state.statusMessage = 'Generating report…'
-
-  // Ensure we have a report ID
-  if (!props.reportState.setup.reportId) {
-    props.reportState.setup.reportId = crypto.randomUUID()
-  }
-  const id = props.reportState.setup.reportId
-
-  const docRef = doc(firestore, `${props.schema.reportType}s`, id)
-
-  // Listen for status updates
-  if (firestoreUnsub) firestoreUnsub()
-  firestoreUnsub = onSnapshot(docRef, { includeMetadataChanges: true }, (snap) => {
-    const data = snap.data()
-    if (!data) return
-    if (snap.metadata.fromCache && data.status === 'pending') return
-
-    if (data.status === 'processing') {
-      state.statusMessage = 'Building PDF and packaging photos…'
-      clearTimeouts()
-      startTimeout()
-    } else if (data.status === 'complete') {
-      clearTimeouts()
-      firestoreUnsub?.()
-      state.loading = false
-      state.done    = true
-      state.pdfUrl  = data.pdfUrl ?? null
-      emit('submitted')
-    } else if (data.status === 'failed') {
-      clearTimeouts()
-      firestoreUnsub?.()
-      state.loading = false
-      state.error   = data.error ?? 'Report generation failed. Please try again.'
-    }
-  })
-
-  startTimeout()
-
-  // Build the full payload now so we can persist it alongside the initial doc write.
-  // This is the single most important thing for the regenerate feature — the payload
-  // MUST be written atomically with the doc creation, not in a separate updateDoc,
-  // because Firestore security rules typically only permit unauthenticated creates
-  // (not updates) on these public-facing collections.
-  const sigData  = cropSignatureData(staffSigPad)
-  const payload  = props.reportState.buildSubmitPayload(sigData)
-
-  // Build a stripped copy for Firestore storage — drop base64 image blobs (can be MB+).
-  // Signature images get deleted from Storage after report generation anyway, so their
-  // URLs are intentionally not included here; the ZIP preserves room photos for regen.
-  const storedPayload = JSON.parse(JSON.stringify(payload))
-  if (storedPayload.signatures?.staff?.signatureData)
-    delete storedPayload.signatures.staff.signatureData
-  storedPayload.signatures?.tenants?.forEach(t => { if (t?.signatureData) delete t.signatureData })
-
-  // Persist doc + payload in a single atomic write
-  try {
-    await setDoc(docRef, {
-      status:            'pending',
-      propertyAddress:   props.reportState.setup.propertyAddress,
-      inspectionDate:    props.reportState.setup.inspectionDate,
-      inspectorName:     props.reportState.setup.inspectorName,
-      inspectorEmail:    props.reportState.setup.inspectorEmail,
-      createdAt:         serverTimestamp(),
-      submissionPayload: storedPayload,
-    })
-  } catch (err) {
-    const isPermDenied = err?.code === 'permission-denied' || err?.message?.includes('PERMISSION_DENIED')
-    if (!isPermDenied) {
-      state.loading = false
-      state.error   = `Failed to create report record: ${err.message}`
-      return
-    }
-    // Permission-denied on the initial write is expected for some rule configs —
-    // the Cloud Function's admin SDK will create/update the doc directly.
-  }
-
-  // Upload staff signature to storage (after the initial doc write to avoid blocking it)
-  if (sigData) {
-    try {
-      const { uploadBytes, getDownloadURL, ref: storageRef } = await import('firebase/storage')
-      const { storage } = await import('@/firebase')
-      const sigBlob = await (await fetch(sigData)).blob()
-      const sigFile = new File([sigBlob], 'staff_signature.png', { type: 'image/png' })
-      const sigPath = `${props.schema.reportType}s/${id}/signatures/staff_signature.png`
-      const sigRef  = storageRef(storage, sigPath)
-      await uploadBytes(sigRef, sigFile, { contentType: 'image/png' })
-      const sigUrl  = await getDownloadURL(sigRef)
-      payload.signatures.staff.signatureUrl         = sigUrl
-      payload.signatures.staff.signatureStoragePath = sigPath
-    } catch (err) {
-      console.warn('Staff signature upload failed:', err.message)
-    }
-  }
-
-  try {
-    const controller   = new AbortController()
-    const fetchTimeout = setTimeout(() => controller.abort(), 60_000)
-
-    const response = await fetch(`${FUNCTIONS_URL}/generateInspectionReport`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      signal:  controller.signal,
-      body:    JSON.stringify(payload),
-    })
-    clearTimeout(fetchTimeout)
-
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({}))
-      throw new Error(err.details ?? err.error ?? `HTTP ${response.status}`)
-    }
-    // Success — Firestore listener handles the rest
-  } catch (err) {
-    if (err.name === 'AbortError') {
-      state.statusMessage = 'The request is taking a while — the report may still be generating.'
-    } else {
-      state.statusMessage = 'The request may not have reached the server.'
-    }
-    state.canFlush = true
-    // Keep loading: true, keep listener alive — function may still complete
-  }
 }
 
 // ─── Flush and check ──────────────────────────────────────────────────────────
 async function flushAndCheck() {
   return checkDraftStatus()
-  state.statusMessage = 'Checking report status…'
-  state.canFlush      = false
-
-  try {
-    const id    = props.reportState.setup.reportId
-    const docRef = doc(firestore, `${props.schema.reportType}s`, id)
-    const snap  = await getDoc(docRef)
-    const data  = snap.data()
-
-    if (!data) {
-      state.loading = false
-      state.error   = 'Report record not found on the server. Your data is safe — please try submitting again.'
-      props.reportState.setup.reportId = crypto.randomUUID()
-      return
-    }
-
-    if (data.status === 'complete') {
-      clearTimeouts()
-      firestoreUnsub?.()
-      state.loading = false
-      state.done    = true
-      state.pdfUrl  = data.pdfUrl ?? null
-      emit('submitted')
-    } else if (data.status === 'failed') {
-      clearTimeouts()
-      firestoreUnsub?.()
-      state.loading = false
-      state.error   = data.error ?? 'Report generation failed. Your data is safe — please try again.'
-    } else if (data.status === 'processing') {
-      state.statusMessage = 'Report is still being generated. Please wait…'
-      startTimeout()
-    } else {
-      state.loading = false
-      state.error   = 'The report request may not have reached the server. Please check your connection and try again.'
-      props.reportState.setup.reportId = crypto.randomUUID()
-    }
-  } catch (err) {
-    state.statusMessage = 'Unable to check status. Please check your internet connection.'
-    state.canFlush      = true
-  }
 }
 
 // ─── Close ────────────────────────────────────────────────────────────────────
@@ -733,12 +633,14 @@ function close() {
 }
 
 function resetState() {
+  pollGeneration += 1
   state.loading       = false
   state.done          = false
   state.error         = null
   state.statusMessage = 'Generating report…'
   state.pdfUrl        = null
   state.canFlush      = false
+  state.deliveryMessage = 'Report generated successfully.'
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -757,7 +659,7 @@ function flaggedStyle(status) {
 
 // ─── Cleanup ──────────────────────────────────────────────────────────────────
 onUnmounted(() => {
-  firestoreUnsub?.()
+  pollGeneration += 1
   clearTimeouts()
   destroySigPad()
 })
