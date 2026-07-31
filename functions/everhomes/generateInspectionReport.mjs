@@ -259,25 +259,57 @@ export const generateInspectionReport = onRequest(
       const photoResults = await runConcurrent(photoTasks);
       const zipAssets = photoResults.filter(Boolean).map((r) => r.zip);
       const photoAssets = photoResults.filter(Boolean).map((r) => r.pdf);
+      if (photoAssets.length !== photoTasks.length) {
+        throw new Error(
+          `Could not retrieve ${photoTasks.length - photoAssets.length} of ${photoTasks.length} report photos. The existing report was not replaced.`,
+        );
+      }
 
       // ── 2b. Download signature images (parallel) ────────────────
       const tenantList = Array.isArray(signatures?.tenants) ? signatures.tenants : [];
+      const signatureIsExpected = (signature, requireNamedSignature = false) => Boolean(
+        signature
+        && (
+          signature.signatureUrl
+          || signature.signatureStoragePath
+          || signature.signature
+          || (requireNamedSignature && (signature.name || signature.date))
+        )
+      );
+      async function downloadSignature(signature, label) {
+        if (!signature?.signatureUrl) {
+          if (signatureIsExpected(signature, label === "staff")) {
+            console.warn(`Signature URL is missing for ${label}`);
+          }
+          return null;
+        }
+        try {
+          const response = await fetch(signature.signatureUrl);
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          return Buffer.from(await response.arrayBuffer());
+        } catch (error) {
+          console.warn(`Signature fetch failed for ${label}:`, error.message);
+          return null;
+        }
+      }
       const [staffSigRaw, ...tenantSigRaws] = await Promise.all([
-        // Staff signature
-        signatures?.staff?.signatureUrl
-          ? fetch(signatures.staff.signatureUrl)
-              .then(async (r) => r.ok ? Buffer.from(await r.arrayBuffer()) : null)
-              .catch(() => null)
-          : Promise.resolve(null),
-        // Tenant signatures
-        ...tenantList.map((tenant) =>
-          tenant?.signatureUrl
-            ? fetch(tenant.signatureUrl)
-                .then(async (r) => r.ok ? Buffer.from(await r.arrayBuffer()) : null)
-                .catch(() => null)
-            : Promise.resolve(null),
-        ),
+        downloadSignature(signatures?.staff, "staff"),
+        ...tenantList.map((tenant, index) => downloadSignature(tenant, `tenant ${index + 1}`)),
       ]);
+      const missingSignatures = [];
+      if (signatureIsExpected(signatures?.staff, true) && !staffSigRaw) {
+        missingSignatures.push("staff signature");
+      }
+      tenantList.forEach((tenant, index) => {
+        if (signatureIsExpected(tenant) && !tenantSigRaws[index]) {
+          missingSignatures.push(`tenant signature ${index + 1}`);
+        }
+      });
+      if (missingSignatures.length) {
+        throw new Error(
+          `Could not retrieve ${missingSignatures.join(", ")}. The existing report was not replaced.`,
+        );
+      }
 
       const sigAssets = {
         staff: staffSigRaw ? {
@@ -321,6 +353,11 @@ export const generateInspectionReport = onRequest(
           return r.value;
         })
         .filter(Boolean);
+      if (marketingAssets.length !== marketingEntries.length) {
+        throw new Error(
+          `Could not retrieve ${marketingEntries.length - marketingAssets.length} of ${marketingEntries.length} marketing photos. The existing report was not replaced.`,
+        );
+      }
 
       // ── 3. Build PDF ───────────────────────────────────────────────
       const pdfBuffer = await buildPDF({
@@ -428,16 +465,9 @@ export const generateInspectionReport = onRequest(
         ...zipAssets.filter((p) => p.storagePath),
         ...marketingAssets.filter((p) => p.storagePath),
       ];
-      // Also delete signature images
-      if (signatures?.staff?.signatureStoragePath) {
-        toDelete.push({ storagePath: signatures.staff.signatureStoragePath });
-      }
-      for (const t of signatures?.tenants ?? []) {
-        if (t?.signatureStoragePath)
-          toDelete.push({ storagePath: t.signatureStoragePath });
-      }
       // Note: zipStoragePath is intentionally NOT deleted here.
-      // It persists in Storage for the 90-day signed URL window so recipients can download it.
+      // It persists so reports can be regenerated after individual photos are
+      // removed. Signature files also persist because they are not in the ZIP.
 
       const deleteResults = await Promise.allSettled(
         toDelete.map((p) => bucket.file(p.storagePath).delete()),
