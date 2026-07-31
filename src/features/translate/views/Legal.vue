@@ -589,13 +589,18 @@ const showConfettiButton = ref(false)
 const footerRef = ref(null)
 const confettiCanvas = ref(null)
 
+const htmlToPlainText = (html) => {
+    const document = new DOMParser().parseFromString(String(html), 'text/html')
+    return document.body.textContent || ''
+}
+
 // Dynamic word count and reading time
 const wordCount = computed(() => {
     let total = 0
 
     // Count intro words
     content.introduction.forEach(paragraph => {
-        const cleanText = paragraph.replace(/<[^>]*>/g, '')
+        const cleanText = htmlToPlainText(paragraph)
         total += cleanText.split(/\s+/).filter(word => word.length > 0).length
     })
 
@@ -604,11 +609,11 @@ const wordCount = computed(() => {
         section.subsections.forEach(subsection => {
             subsection.content.forEach(contentItem => {
                 if (contentItem.type === 'text') {
-                    const cleanText = contentItem.text.replace(/<[^>]*>/g, '')
+                    const cleanText = htmlToPlainText(contentItem.text)
                     total += cleanText.split(/\s+/).filter(word => word.length > 0).length
                 } else if (contentItem.type === 'list') {
                     contentItem.items.forEach(item => {
-                        const cleanText = item.replace(/<[^>]*>/g, '')
+                        const cleanText = htmlToPlainText(item)
                         total += cleanText.split(/\s+/).filter(word => word.length > 0).length
                     })
                 }

@@ -112,6 +112,20 @@ function normaliseUser(raw) {
  *   - Strip t.co URLs that point to referenced tweets (quoted/replied — embedded separately)
  *   - Replace all other t.co shortlinks with their human-readable display_url
  */
+export function isTwitterInternalUrl(rawUrl) {
+    try {
+        const parsed = new URL(rawUrl)
+        const hostname = parsed.hostname.toLowerCase()
+        return (
+            parsed.protocol === 'https:' &&
+            (hostname === 'twitter.com' || hostname === 'www.twitter.com' || hostname === 'x.com' || hostname === 'www.x.com') &&
+            parsed.pathname.startsWith('/i/')
+        )
+    } catch {
+        return false
+    }
+}
+
 function cleanTweetText(text, entities, referencedTweets = []) {
     if (!text || !entities?.urls?.length) return text
     // Build a set of tweet IDs that are explicitly referenced (quoted, replied-to, etc.)
@@ -126,8 +140,7 @@ function cleanTweetText(text, entities, referencedTweets = []) {
         const isRefTweet = refMatch && refIds.has(refMatch[1])
         const isMediaLink =
             disp.startsWith('pic.twitter.com') ||
-            exp.includes('twitter.com/i/') ||
-            exp.includes('x.com/i/') ||
+            isTwitterInternalUrl(exp) ||
             /\/(photo|video)\/\d+/.test(exp) ||
             isRefTweet
         if (isMediaLink) {

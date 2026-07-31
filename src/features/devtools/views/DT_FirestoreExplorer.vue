@@ -776,6 +776,20 @@ const formattedViewJson = computed(() => {
 
 // 🔥 Methods
 
+function randomFloat() {
+    const value = new Uint32Array(1)
+    globalThis.crypto.getRandomValues(value)
+    return value[0] / 0x100000000
+}
+
+function randomInt(maxExclusive) {
+    return Math.floor(randomFloat() * maxExclusive)
+}
+
+function randomToken(length = 8) {
+    return globalThis.crypto.randomUUID().replaceAll('-', '').slice(0, length)
+}
+
 function selectCollection(collectionId) {
     selectedCollection.value = collectionId
     currentPage.value = 1
@@ -789,17 +803,17 @@ function loadData() {
 
     setTimeout(() => {
         const mockData = []
-        const count = Math.floor(Math.random() * 50) + 10
+        const count = randomInt(50) + 10
 
         for (let i = 0; i < count; i++) {
             const now = new Date()
-            const created = new Date(now.getTime() - Math.random() * 30 * 24 * 60 * 60 * 1000)
-            const updated = Math.random() > 0.5
-                ? new Date(created.getTime() + Math.random() * 10 * 24 * 60 * 60 * 1000)
+            const created = new Date(now.getTime() - randomFloat() * 30 * 24 * 60 * 60 * 1000)
+            const updated = randomFloat() > 0.5
+                ? new Date(created.getTime() + randomFloat() * 10 * 24 * 60 * 60 * 1000)
                 : null
 
             let mockItem = {
-                id: `doc-${i + 1}-${Math.random().toString(36).substring(2, 8)}`,
+                id: `doc-${i + 1}-${randomToken(6)}`,
                 data: {
                     createdAt: created.toISOString(),
                     updatedAt: updated ? updated.toISOString() : null
@@ -811,33 +825,33 @@ function loadData() {
                     ...mockItem.data,
                     name: `User ${i + 1}`,
                     email: `user${i + 1}@example.com`,
-                    role: Math.random() > 0.8 ? 'admin' : 'user',
-                    active: Math.random() > 0.2
+                    role: randomFloat() > 0.8 ? 'admin' : 'user',
+                    active: randomFloat() > 0.2
                 }
             } else if (selectedCollection.value === 'products') {
                 mockItem.data = {
                     ...mockItem.data,
                     name: `Product ${i + 1}`,
-                    price: Math.floor(Math.random() * 10000) / 100,
-                    stock: Math.floor(Math.random() * 100),
+                    price: randomInt(10000) / 100,
+                    stock: randomInt(100),
                     categories: ['category-1', 'category-2']
                 }
             } else if (selectedCollection.value === 'orders') {
                 mockItem.data = {
                     ...mockItem.data,
-                    userId: `user-${Math.floor(Math.random() * 50) + 1}`,
-                    total: Math.floor(Math.random() * 50000) / 100,
-                    status: ['pending', 'processing', 'shipped', 'delivered'][Math.floor(Math.random() * 4)],
+                    userId: `user-${randomInt(50) + 1}`,
+                    total: randomInt(50000) / 100,
+                    status: ['pending', 'processing', 'shipped', 'delivered'][randomInt(4)],
                     items: [
-                        { productId: `prod-${Math.floor(Math.random() * 100) + 1}`, quantity: Math.floor(Math.random() * 5) + 1 }
+                        { productId: `prod-${randomInt(100) + 1}`, quantity: randomInt(5) + 1 }
                     ]
                 }
             } else {
                 mockItem.data = {
                     ...mockItem.data,
-                    value: Math.random().toString(36).substring(2, 10),
-                    active: Math.random() > 0.3,
-                    count: Math.floor(Math.random() * 100)
+                    value: randomToken(8),
+                    active: randomFloat() > 0.3,
+                    count: randomInt(100)
                 }
             }
 
@@ -891,7 +905,7 @@ function saveDocument() {
                 triggerToast(`Document ${selectedDocument.value.id} updated successfully`, 'success')
             }
         } else {
-            const id = newDocumentId.value || `doc-${Math.floor(Math.random() * 1000)}-${Math.random().toString(36).substring(2, 8)}`
+            const id = newDocumentId.value || `doc-${randomInt(1000)}-${randomToken(6)}`
             data.value.push({
                 id,
                 data: {

@@ -276,11 +276,7 @@ function generateVisualShareText() {
     const gameNumber = isUnlimited ? ` #${props.wordNumber + 1}` : ` ${new Date().toISOString().split('T')[0]}`
     const result = props.isWin ? `${props.attempts}/6` : 'X/6'
 
-    const visualGrid =
-        props.emojiGrid
-            ?.replace(/🟩/g, '🟩')
-            ?.replace(/🟨/g, '🟨')
-            ?.replace(/⬛/g, '⬛') || ''
+    const visualGrid = props.emojiGrid || ''
 
     const url = isUnlimited ? 'https://mxn.au/daily?game=wordle-unlimited' : 'https://mxn.au/daily?game=wordle'
 

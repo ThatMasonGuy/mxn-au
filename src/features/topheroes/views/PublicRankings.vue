@@ -427,6 +427,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { doc, getDoc, increment, updateDoc, setDoc } from 'firebase/firestore'
+import DOMPurify from 'dompurify'
 import { firestore } from '@/firebase'
 import { useGuildDataStore } from '@/features/topheroes/stores/useGuildDataStore'
 import { Button } from '@/shared/components/ui/button'
@@ -758,7 +759,10 @@ const exportToPNG = async () => {
             </div>
         `
         
-        exportContainer.innerHTML = content
+        exportContainer.innerHTML = DOMPurify.sanitize(content, {
+            ALLOWED_TAGS: ['div', 'h1', 'h2', 'p', 'span', 'table', 'thead', 'tbody', 'tr', 'th', 'td'],
+            ALLOWED_ATTR: ['style', 'colspan'],
+        })
         document.body.appendChild(exportContainer)
         
         // Wait for fonts and images to load
