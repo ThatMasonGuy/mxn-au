@@ -46,6 +46,12 @@ export const CHECKLIST_ITEMS = {
                 { id: 'nmiReading', label: 'National Metering Identifier (NMI)', type: 'text', placeholder: 'e.g. 6305012345' },
             ]
         },
+        {
+            group: 'General Fixtures',
+            items: [
+                { id: 'allRemotesWorking', label: 'All remotes are working', type: 'yesno' },
+            ]
+        },
     ],
 
     bedroom: [

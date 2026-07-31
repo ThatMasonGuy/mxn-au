@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node scripts/generate-seo-artifacts.js --sitemap && vite build && node scripts/generate-seo-artifacts.js --routes",
+    "build": "npm run check:everhomes-schemas && node scripts/generate-seo-artifacts.js --sitemap && vite build && node scripts/generate-seo-artifacts.js --routes",
+    "check:everhomes-schemas": "node scripts/verify-everhomes-report-schemas.mjs",
     "preview": "vite preview",
     "seo": "node scripts/generate-seo-artifacts.js --sitemap",
     "copy-files": "node scripts/copy-files.js"

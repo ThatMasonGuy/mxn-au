@@ -46,6 +46,7 @@ export const HANDOVER_ITEMS = {
                 { id: 'securityScreens', label: 'Security Screens — Present', type: 'yesno' },
                 { id: 'ceilingFans', label: 'Ceiling Fans — Present', type: 'yesno' },
                 { id: 'airConditioning', label: 'Air Conditioning — Present', type: 'yesno' },
+                { id: 'allRemotesWorking', label: 'All remotes are working', type: 'yesno' },
             ],
         },
         {
