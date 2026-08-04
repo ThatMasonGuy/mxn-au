@@ -204,6 +204,7 @@ import LayoutComponent from '@/features/everhomes/components/layouts/LayoutCompo
 import ToolBannerComponent from '@/features/everhomes/components/ui/ToolBannerComponent.vue'
 import { InformationCircleIcon } from '@heroicons/vue/24/solid'
 import SmartInput from '@/features/everhomes/components/ui/SmartInput.vue'
+import { trackEverhomesToolUsage } from '@/features/everhomes/utils/toolUsage'
 
 const billCost = ref(0);
 const billStartDate = ref('');
@@ -389,4 +390,15 @@ watch(billEndDate, (newValue) => {
         });
     }
 });
+
+watch([activeTab, easyModeTotalCost, advancedResults], ([mode, easyTotal, advanced]) => {
+    const hasResult = mode === 'easy' ? easyTotal > 0 : Number(advanced?.total) > 0
+    if (hasResult) {
+        void trackEverhomesToolUsage({
+            toolId: 'water-bills',
+            action: 'calculation_completed',
+            variant: mode,
+        })
+    }
+})
 </script>

@@ -430,6 +430,7 @@ import QRCodeStyling from 'qr-code-styling'
 
 import LayoutComponent from '@/features/everhomes/components/layouts/LayoutComponent.vue'
 import ToolBannerComponent from '@/features/everhomes/components/ui/ToolBannerComponent.vue'
+import { trackEverhomesToolUsage } from '@/features/everhomes/utils/toolUsage'
 
 import {
     QrCodeIcon,
@@ -500,6 +501,7 @@ const scanTestOpen = ref(false)
 const copied = ref(false)
 const copiedClipboard = ref(false)
 const activePreset = ref('default')
+const usageTrackingReady = ref(false)
 
 function slugify(str) {
     return str
@@ -595,6 +597,13 @@ function generateQR() {
     qrContainer.value.innerHTML = ''
     qrInstance.value = new QRCodeStyling(options)
     qrInstance.value.append(qrContainer.value)
+    if (usageTrackingReady.value) {
+        void trackEverhomesToolUsage({
+            toolId: 'qr-code',
+            action: 'qr_generated',
+            variant: inputMode.value === 'wifi' ? 'wifi' : 'text',
+        })
+    }
 }
 
 const debouncedGenerate = useDebounceFn(generateQR, 150)
@@ -610,11 +619,13 @@ watch(qrData, (newData) => {
 async function downloadPNG() {
     if (!qrInstance.value) return
     await qrInstance.value.download({ name: fileName.value.trim() || 'qrcode', extension: 'png' })
+    void trackEverhomesToolUsage({ toolId: 'qr-code', action: 'downloaded', variant: 'png' })
 }
 
 async function downloadSVG() {
     if (!qrInstance.value) return
     await qrInstance.value.download({ name: fileName.value.trim() || 'qrcode', extension: 'svg' })
+    void trackEverhomesToolUsage({ toolId: 'qr-code', action: 'downloaded', variant: 'svg' })
 }
 
 async function copyToClipboard() {
@@ -623,6 +634,7 @@ async function copyToClipboard() {
         const blob = await qrInstance.value.getRawData('png')
         await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
         copiedClipboard.value = true
+        void trackEverhomesToolUsage({ toolId: 'qr-code', action: 'copied', variant: 'image' })
         setTimeout(() => { copiedClipboard.value = false }, 2000)
     } catch {}
 }
@@ -631,6 +643,7 @@ async function copyDataString() {
     try {
         await navigator.clipboard.writeText(qrData.value)
         copied.value = true
+        void trackEverhomesToolUsage({ toolId: 'qr-code', action: 'copied', variant: 'data' })
         setTimeout(() => { copied.value = false }, 2000)
     } catch {}
 }
@@ -658,6 +671,7 @@ function resetAll() {
 onMounted(() => {
     nextTick(() => {
         if (qrData.value) generateQR()
+        usageTrackingReady.value = true
     })
 })
 </script>

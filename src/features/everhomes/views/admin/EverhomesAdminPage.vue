@@ -44,7 +44,7 @@
                                 Submissions, datasets, reports, and the small administrative rituals keeping civilisation duct-taped together.
                             </p>
 
-                            <div class="mt-7 flex flex-wrap items-center gap-3">
+                            <div v-if="activeTab === 'submissions'" class="mt-7 flex flex-wrap items-center gap-3">
                                 <button
                                     type="button"
                                     @click="loadSubmissions"
@@ -393,6 +393,8 @@
                         </div>
                     </div>
                 </section>
+
+                <ToolUsageDashboard v-if="activeTab === 'usage'" />
 
                 <!-- SDA Dataset tab -->
                 <section v-if="activeTab === 'sda'" class="grid gap-6 lg:grid-cols-2">
@@ -790,6 +792,7 @@ import { auth, firestore } from '@/firebase'
 import * as XLSX from 'xlsx'
 
 import LayoutComponent from '@/features/everhomes/components/layouts/LayoutComponent.vue'
+import ToolUsageDashboard from '@/features/everhomes/components/admin/ToolUsageDashboard.vue'
 import { useSdaPriceStore } from '@/features/everhomes/stores/useSdaPriceStore'
 import { useMainStore } from '@/shared/stores/useMainStore'
 import { extractSdaPricingData } from '@/features/everhomes/utils/sdaPriceExtractor'
@@ -799,7 +802,7 @@ import {
     FileText, FolderArchive, SendHorizontal, CheckCheck, AlertCircle,
     ClipboardCheck, ClipboardList, User, Calendar, Clock,
     CheckCircle2, AlertTriangle, FileSpreadsheet, CloudUpload,
-    BarChart3, TrendingUp, XCircle, ChevronDown, RotateCcw, Link, MailWarning,
+    BarChart3, TrendingUp, XCircle, ChevronDown, RotateCcw, Link, MailWarning, Activity,
 } from '@lucide/vue'
 
 const FUNCTIONS_URL = import.meta.env.VITE_FUNCTIONS_URL ?? ''
@@ -851,6 +854,7 @@ const mainStore = useMainStore()
 const activeTab = ref('submissions')
 const tabs = [
     { id: 'submissions', label: 'Submissions', icon: ClipboardCheck },
+    { id: 'usage',       label: 'Tool Usage',  icon: Activity },
     { id: 'sda',         label: 'SDA Dataset',  icon: Database },
 ]
 

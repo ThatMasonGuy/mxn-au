@@ -453,6 +453,7 @@ import ToolBannerComponent from '@/features/everhomes/components/ui/ToolBannerCo
 import SmartInput from '@/features/everhomes/components/ui/SmartInput.vue'
 import { useSdaPriceStore } from '@/features/everhomes/stores/useSdaPriceStore'
 import { isValidAppendixHParticipantRow } from '@/features/everhomes/utils/sdaAppendixH'
+import { trackEverhomesToolUsage } from '@/features/everhomes/utils/toolUsage'
 import {
     ExclamationTriangleIcon,
     TableCellsIcon,
@@ -812,6 +813,11 @@ function selectCalculator(calculator) {
     showCalculatorChooser.value = false
     lastActivityAt = Date.now()
     scheduleStalePrompt()
+    void trackEverhomesToolUsage({
+        toolId: 'participant-sda-funding',
+        action: 'calculator_selected',
+        variant: calculator === 'appendixH' ? 'appendix_h' : 'sda',
+    })
 }
 
 function openCalculatorChooser() {
@@ -887,6 +893,15 @@ watch(showCalculatorChooser, async show => {
 watch(appendixDwellingRows, syncAppendixEligibleCount)
 
 watch(() => store.appendixH[tableKey.value], syncAppendixDwelling)
+
+watch([activeCalculator, adjustedAmount], ([calculator, amount]) => {
+    if (!calculator || amount === null) return
+    void trackEverhomesToolUsage({
+        toolId: 'participant-sda-funding',
+        action: 'calculation_completed',
+        variant: calculator === 'appendixH' ? 'appendix_h' : 'sda',
+    })
+})
 
 onBeforeUnmount(() => {
     if (staleTimer) window.clearTimeout(staleTimer)

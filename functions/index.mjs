@@ -54,6 +54,7 @@ export {
 export { sweepStaleEverhomesReports } from './everhomes/reportMaintenance.mjs';
 export { resendReport } from './everhomes/resendReport.mjs';
 export { regenerateReport } from './everhomes/regenerateReport.mjs';
+export { recordEverhomesToolUsage } from './everhomes/recordToolUsage.mjs';
 
 // X2Vertical
 export { fetchTweet } from './x2vertical/fetchTweet.mjs';
