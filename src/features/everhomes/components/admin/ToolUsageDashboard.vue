@@ -1,6 +1,6 @@
 <template>
-    <section class="space-y-5">
-        <div class="flex flex-col gap-4 rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4 shadow-xl shadow-black/10 sm:flex-row sm:items-center sm:justify-between sm:rounded-[2rem] sm:p-5">
+    <section class="space-y-6 rounded-lg border border-white/10 bg-white/[0.035] p-4 sm:p-5">
+        <div class="flex flex-col gap-4 border-b border-white/10 pb-5 sm:flex-row sm:items-center sm:justify-between">
             <div>
                 <p class="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-300/70">Usage analytics</p>
                 <h2 class="mt-1 text-xl font-bold text-white">Everhomes tools</h2>
@@ -11,7 +11,7 @@
 
             <button
                 type="button"
-                class="inline-flex shrink-0 items-center justify-center gap-2 rounded-full border border-cyan-400/25 bg-cyan-400/10 px-4 py-2 text-sm font-semibold text-cyan-200 transition hover:border-cyan-300/50 hover:bg-cyan-400/15 disabled:cursor-not-allowed disabled:opacity-60"
+                class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-cyan-400/25 bg-cyan-400/10 px-4 py-2 text-sm font-semibold text-cyan-200 transition hover:border-cyan-300/50 hover:bg-cyan-400/15 disabled:cursor-not-allowed disabled:opacity-60"
                 :disabled="loading"
                 @click="loadUsage"
             >
@@ -20,107 +20,99 @@
             </button>
         </div>
 
-        <div class="flex w-full gap-1 overflow-x-auto rounded-2xl border border-white/10 bg-white/[0.04] p-1 sm:w-fit">
-            <button
-                v-for="option in periodOptions"
-                :key="option.days"
-                type="button"
-                class="min-w-[5.5rem] rounded-xl px-3 py-2 text-xs font-bold transition"
-                :class="periodDays === option.days
-                    ? 'border border-cyan-400/30 bg-cyan-400/15 text-cyan-200'
-                    : 'border border-transparent text-slate-500 hover:bg-white/[0.05] hover:text-slate-300'"
-                @click="periodDays = option.days"
-            >
-                {{ option.label }}
-            </button>
-        </div>
+        <fieldset>
+            <legend class="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Reporting period</legend>
+            <div class="inline-flex w-full overflow-hidden rounded-lg border border-white/10 sm:w-auto">
+                <button
+                    v-for="option in periodOptions"
+                    :key="option.days"
+                    type="button"
+                    class="min-w-0 flex-1 border-r border-white/10 px-4 py-2 text-xs font-bold transition last:border-r-0 sm:min-w-[5.5rem] sm:flex-none"
+                    :class="periodDays === option.days
+                        ? 'bg-cyan-400/15 text-cyan-200'
+                        : 'text-slate-500 hover:bg-white/[0.05] hover:text-slate-300'"
+                    @click="periodDays = option.days"
+                >
+                    {{ option.label }}
+                </button>
+            </div>
+        </fieldset>
 
-        <div v-if="loading && !dailyRows.length" class="flex items-center justify-center gap-3 rounded-[2rem] border border-white/10 bg-white/[0.04] py-24 text-slate-500">
+        <div v-if="loading && !dailyRows.length" class="flex items-center justify-center gap-3 border-y border-white/10 py-24 text-slate-500">
             <Loader2 class="h-5 w-5 animate-spin text-cyan-300" />
             <span class="text-sm">Loading usage…</span>
         </div>
 
-        <div v-else-if="error" class="rounded-[2rem] border border-red-400/20 bg-red-500/10 px-5 py-8 text-center">
+        <div v-else-if="error" class="rounded-lg border border-red-400/20 bg-red-500/10 px-5 py-8 text-center">
             <AlertCircle class="mx-auto h-6 w-6 text-red-300" />
             <p class="mt-3 font-semibold text-red-100">Could not load usage analytics</p>
             <p class="mt-1 text-sm text-red-200/80">{{ error }}</p>
         </div>
 
         <template v-else>
-            <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                <article
-                    v-for="stat in summaryStats"
-                    :key="stat.label"
-                    class="rounded-2xl border border-white/10 bg-white/[0.05] p-4 sm:p-5"
-                >
-                    <div class="flex items-center justify-between gap-3">
-                        <p class="text-xs font-semibold text-slate-500">{{ stat.label }}</p>
-                        <component :is="stat.icon" class="h-4 w-4" :style="{ color: stat.color }" />
-                    </div>
-                    <p class="mt-4 text-3xl font-black leading-none text-white tabular-nums">{{ stat.value }}</p>
-                    <p class="mt-2 text-[11px] leading-4 text-slate-600">{{ stat.hint }}</p>
-                </article>
-            </div>
+            <section>
+                <div class="mb-4">
+                    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-teal-300/70">Tool usage</p>
+                    <h3 class="mt-1 text-lg font-bold text-white">Activity by tool</h3>
+                </div>
 
-            <div class="grid gap-5 xl:grid-cols-[1.45fr_0.75fr]">
-                <section class="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4 sm:rounded-[2rem] sm:p-5">
-                    <div class="mb-5">
-                        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-teal-300/70">Tool ranking</p>
-                        <h3 class="mt-1 text-lg font-bold text-white">Usage by tool</h3>
+                <div class="border-y border-white/[0.08]">
+                    <div class="hidden grid-cols-[minmax(0,1fr)_8rem_10rem_6rem] gap-4 border-b border-white/[0.08] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-600 sm:grid">
+                        <span>Tool</span>
+                        <span class="text-right">Opens</span>
+                        <span class="text-right">Meaningful uses</span>
+                        <span class="text-right">Total</span>
                     </div>
 
-                    <div class="space-y-3">
-                        <article
+                    <div class="divide-y divide-white/[0.07]">
+                        <div
                             v-for="tool in rankedTools"
                             :key="tool.id"
-                            class="rounded-2xl border border-white/[0.08] bg-slate-950/30 p-4"
+                            class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-3 py-3 sm:grid-cols-[minmax(0,1fr)_8rem_10rem_6rem]"
+                            :class="tool.totalEvents ? '' : 'opacity-50'"
                         >
-                            <div class="flex items-start justify-between gap-4">
-                                <div class="min-w-0">
-                                    <p class="truncate text-sm font-bold text-white">{{ tool.name }}</p>
-                                    <p class="mt-1 text-xs text-slate-500">
-                                        {{ formatNumber(tool.opened) }} open{{ tool.opened === 1 ? '' : 's' }} · {{ formatNumber(tool.meaningfulUses) }} meaningful use{{ tool.meaningfulUses === 1 ? '' : 's' }}
-                                    </p>
-                                </div>
-                                <p class="shrink-0 text-xl font-black text-slate-200 tabular-nums">{{ formatNumber(tool.totalEvents) }}</p>
+                            <div class="min-w-0">
+                                <p class="truncate text-sm font-semibold text-slate-200">{{ tool.name }}</p>
+                                <p class="mt-1 text-xs text-slate-500 sm:hidden">
+                                    {{ formatNumber(tool.opened) }} opens · {{ formatNumber(tool.meaningfulUses) }} meaningful uses
+                                </p>
                             </div>
-                            <div class="mt-3 h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
-                                <div
-                                    class="h-full rounded-full bg-gradient-to-r from-teal-400 to-cyan-400"
-                                    :style="{ width: `${tool.percentage}%` }"
-                                />
-                            </div>
-                        </article>
+                            <p class="hidden text-right text-sm text-slate-400 tabular-nums sm:block">{{ formatNumber(tool.opened) }}</p>
+                            <p class="hidden text-right text-sm text-slate-400 tabular-nums sm:block">{{ formatNumber(tool.meaningfulUses) }}</p>
+                            <p class="text-right text-base font-bold text-white tabular-nums">{{ formatNumber(tool.totalEvents) }}</p>
+                        </div>
                     </div>
-                </section>
+                </div>
+            </section>
 
-                <section class="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4 sm:rounded-[2rem] sm:p-5">
-                    <div class="mb-5">
-                        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-violet-300/70">Calculator split</p>
-                        <h3 class="mt-1 text-lg font-bold text-white">Participant SDA funding</h3>
-                        <p class="mt-1 text-xs leading-5 text-slate-500">Selections and completed calculations by calculator.</p>
-                    </div>
+            <section class="border-t border-white/10 pt-6">
+                <div class="mb-4">
+                    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-violet-300/70">Calculator usage</p>
+                    <h3 class="mt-1 text-lg font-bold text-white">Participant SDA funding</h3>
+                    <p class="mt-1 text-xs leading-5 text-slate-500">Calculator selections and completed calculations.</p>
+                </div>
 
-                    <div class="space-y-3">
-                        <article
-                            v-for="calculator in calculatorSplit"
-                            :key="calculator.id"
-                            class="rounded-2xl border p-4"
-                            :style="{ borderColor: calculator.border, background: calculator.background }"
-                        >
-                            <div class="flex items-center justify-between gap-4">
-                                <div>
-                                    <p class="text-sm font-bold text-white">{{ calculator.name }}</p>
-                                    <p class="mt-1 text-xs text-slate-400">{{ calculator.completed }} completed</p>
-                                </div>
-                                <p class="text-2xl font-black text-white tabular-nums">{{ calculator.total }}</p>
-                            </div>
-                        </article>
-                    </div>
-                </section>
-            </div>
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <article
+                        v-for="calculator in calculatorSplit"
+                        :key="calculator.id"
+                        class="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-5 border-l-2 bg-white/[0.02] px-4 py-3"
+                        :style="{ borderColor: calculator.border }"
+                    >
+                        <p class="min-w-0 text-sm font-semibold text-slate-200">{{ calculator.name }}</p>
+                        <div class="text-right">
+                            <p class="text-[10px] uppercase tracking-wide text-slate-600">Selected</p>
+                            <p class="mt-1 text-lg font-bold text-white tabular-nums">{{ calculator.total }}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-[10px] uppercase tracking-wide text-slate-600">Completed</p>
+                            <p class="mt-1 text-lg font-bold text-white tabular-nums">{{ calculator.completed }}</p>
+                        </div>
+                    </article>
+                </div>
+            </section>
 
-            <section class="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4 sm:rounded-[2rem] sm:p-5">
+            <section class="border-t border-white/10 pt-6">
                 <div class="mb-5 flex items-end justify-between gap-4">
                     <div>
                         <p class="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-300/70">Recent activity</p>
@@ -129,11 +121,11 @@
                     <p class="text-xs text-slate-600">Most recent {{ recentEvents.length }}</p>
                 </div>
 
-                <div v-if="!recentEvents.length" class="rounded-2xl border border-dashed border-white/10 py-12 text-center text-sm text-slate-600">
+                <div v-if="!recentEvents.length" class="border-y border-dashed border-white/10 py-12 text-center text-sm text-slate-600">
                     No usage has been recorded yet.
                 </div>
 
-                <div v-else class="divide-y divide-white/[0.06] overflow-hidden rounded-2xl border border-white/[0.08] bg-slate-950/25">
+                <div v-else class="divide-y divide-white/[0.06] border-y border-white/[0.08]">
                     <div
                         v-for="event in recentEvents"
                         :key="event.id"
@@ -156,15 +148,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { collection, getDocs, limit, orderBy, query } from 'firebase/firestore'
-import {
-    Activity,
-    AlertCircle,
-    BarChart3,
-    CheckCircle2,
-    Eye,
-    Loader2,
-    RefreshCw,
-} from '@lucide/vue'
+import { AlertCircle, Loader2, RefreshCw } from '@lucide/vue'
 
 import { firestore } from '@/firebase'
 import { EVERHOMES_TOOL_CATALOGUE } from '@/features/everhomes/utils/toolUsage'
@@ -205,26 +189,8 @@ const rankedTools = computed(() => {
             totalEvents: matching.reduce((sum, row) => sum + Number(row.totalEvents || 0), 0),
         }
     }).sort((a, b) => b.totalEvents - a.totalEvents || a.name.localeCompare(b.name))
-    const largest = Math.max(1, ...rows.map(row => row.totalEvents))
-    return rows.map(row => ({ ...row, percentage: row.totalEvents ? Math.max(3, Math.round(row.totalEvents / largest * 100)) : 0 }))
+    return rows
 })
-
-const totalOpened = computed(() => rankedTools.value.reduce((sum, tool) => sum + tool.opened, 0))
-const totalMeaningfulUses = computed(() => rankedTools.value.reduce((sum, tool) => sum + tool.meaningfulUses, 0))
-const toolsUsed = computed(() => rankedTools.value.filter(tool => tool.totalEvents > 0).length)
-const activeSessions = computed(() => new Set(
-    recentEvents.value
-        .filter(event => event.date >= periodStart.value)
-        .map(event => event.sessionId)
-        .filter(Boolean),
-).size)
-
-const summaryStats = computed(() => [
-    { label: 'Tool opens', value: formatNumber(totalOpened.value), hint: `During the last ${periodDays.value} days`, icon: Eye, color: '#38bdf8' },
-    { label: 'Meaningful uses', value: formatNumber(totalMeaningfulUses.value), hint: 'Calculations, reports and exports', icon: CheckCircle2, color: '#2dd4bf' },
-    { label: 'Tools active', value: `${toolsUsed.value}/${EVERHOMES_TOOL_CATALOGUE.length}`, hint: 'Tools with recorded activity', icon: BarChart3, color: '#a78bfa' },
-    { label: 'Recent sessions', value: formatNumber(activeSessions.value), hint: 'Anonymous sessions in loaded activity', icon: Activity, color: '#fbbf24' },
-])
 
 const calculatorSplit = computed(() => {
     const matching = filteredDailyRows.value.filter(row => row.toolId === 'participant-sda-funding')
@@ -237,8 +203,8 @@ const calculatorSplit = computed(() => {
         completed.appendix_h += Number(row.actionVariants?.calculation_completed?.appendix_h || 0)
     }
     return [
-        { id: 'sda', name: 'SDA Calculator', total: totals.sda, completed: completed.sda, border: 'rgba(168,85,247,0.25)', background: 'rgba(168,85,247,0.08)' },
-        { id: 'appendix_h', name: 'Appendix H Calculator', total: totals.appendix_h, completed: completed.appendix_h, border: 'rgba(20,184,166,0.25)', background: 'rgba(20,184,166,0.08)' },
+        { id: 'sda', name: 'SDA Calculator', total: totals.sda, completed: completed.sda, border: 'rgba(168,85,247,0.7)' },
+        { id: 'appendix_h', name: 'Appendix H Calculator', total: totals.appendix_h, completed: completed.appendix_h, border: 'rgba(20,184,166,0.7)' },
     ]
 })
 
@@ -250,8 +216,12 @@ async function loadUsage() {
             getDocs(query(collection(firestore, 'everhomesToolUsageDaily'), orderBy('date', 'desc'), limit(700))),
             getDocs(query(collection(firestore, 'everhomesToolUsage'), orderBy('createdAt', 'desc'), limit(100))),
         ])
-        dailyRows.value = dailySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-        recentEvents.value = recentSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+        dailyRows.value = dailySnapshot.docs
+            .map(doc => ({ id: doc.id, ...doc.data() }))
+            .filter(row => row.toolId !== 'spreadsheet-import')
+        recentEvents.value = recentSnapshot.docs
+            .map(doc => ({ id: doc.id, ...doc.data() }))
+            .filter(event => event.toolId !== 'spreadsheet-import')
     } catch (loadError) {
         console.error('Failed to load Everhomes tool usage:', loadError)
         error.value = loadError.message ?? 'Unknown Firestore error'
@@ -274,8 +244,6 @@ function actionLabel(action) {
         copied: 'Copied',
         report_started: 'Report started',
         report_submitted: 'Report submitted',
-        import_started: 'Import started',
-        import_completed: 'Import completed',
     })[action] ?? action
 }
 

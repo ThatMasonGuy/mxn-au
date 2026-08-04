@@ -7,7 +7,6 @@ export const EVERHOMES_TOOL_CATALOGUE = Object.freeze([
     { id: 'qr-code', name: 'QR Code Generator' },
     { id: 'inspection-report', name: 'Inspection Report' },
     { id: 'handover-report', name: 'Handover Report' },
-    { id: 'spreadsheet-import', name: 'Spreadsheet Import' },
 ])
 
 const PRODUCTION_HOSTS = new Set([
@@ -54,8 +53,6 @@ export function resolveEverhomesTool(route = {}) {
     if (['/everhomes/placement-fee', '/everhomes/placement-fees', '/everhomes/placement'].includes(path)) return EVERHOMES_TOOL_CATALOGUE[1]
     if (path === '/everhomes/sda-returns' || path === '/everhomes/sda-return') return EVERHOMES_TOOL_CATALOGUE[2]
     if (path === '/everhomes/qr-code' || path === '/everhomes/qr') return EVERHOMES_TOOL_CATALOGUE[3]
-    if (path.startsWith('/everhomes/import')) return EVERHOMES_TOOL_CATALOGUE[6]
-
     const reportType = String(route.params?.reportType ?? '')
     if (reportType === 'handover' || path.includes('/handover')) return EVERHOMES_TOOL_CATALOGUE[5]
     if (reportType === 'inspection' || path.includes('/inspection')) return EVERHOMES_TOOL_CATALOGUE[4]

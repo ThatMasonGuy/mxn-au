@@ -22,7 +22,6 @@ test('every public Everhomes tool route resolves to a stable analytics ID', () =
     ['/everhomes/qr-code', {}, 'qr-code'],
     ['/everhomes/report/inspection', { reportType: 'inspection' }, 'inspection-report'],
     ['/everhomes/report/handover', { reportType: 'handover' }, 'handover-report'],
-    ['/everhomes/import/review', {}, 'spreadsheet-import'],
   ]
 
   for (const [path, params, expected] of cases) {
@@ -30,6 +29,7 @@ test('every public Everhomes tool route resolves to a stable analytics ID', () =
   }
   assert.equal(resolveEverhomesTool({ path: '/everhomes/admin' }), null)
   assert.equal(resolveEverhomesTool({ path: '/everhomes' }), null)
+  assert.equal(resolveEverhomesTool({ path: '/everhomes/import/review' }), null)
 })
 
 test('browser usage payload contains operational metadata only', () => {
@@ -81,6 +81,7 @@ test('server rejects undeclared tools, actions and variants', () => {
 
   for (const invalid of [
     { ...base, toolId: 'made-up-tool' },
+    { ...base, toolId: 'spreadsheet-import' },
     { ...base, action: 'saved_sensitive_inputs' },
     { ...base, variant: 'participant-name' },
     { ...base, eventId: 'not-a-uuid' },
