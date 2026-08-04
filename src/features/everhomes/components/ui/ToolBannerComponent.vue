@@ -23,6 +23,8 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
+
 const props = defineProps({
     title: { type: String, required: true },
     subtitle: { type: String, default: '' },
@@ -33,5 +35,5 @@ const props = defineProps({
     spacious: { type: Boolean, default: false },
 })
 
-const gradientClass = `bg-gradient-to-r ${props.gradient}`
+const gradientClass = computed(() => `bg-gradient-to-r ${props.gradient}`)
 </script>
