@@ -40,6 +40,10 @@ router.beforeEach(async (to, from, next) => {
 router.afterEach((to, from) => {
     updateMetaTagsEnhanced(to)
 
+    import('@/features/everhomes/utils/toolUsage')
+        .then(({ trackEverhomesRouteUsage }) => trackEverhomesRouteUsage(to))
+        .catch(err => console.warn('[Router] Failed to record Everhomes tool usage:', err))
+
     // Hide the loading screen
     stopLoading()
     

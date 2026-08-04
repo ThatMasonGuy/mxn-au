@@ -319,6 +319,20 @@ service cloud.firestore {
              .data.roles.hasAny(['admin']);
     }
 
+    match /everhomesToolUsage/{eventId} {
+      allow read: if _isEverhomesAdmin();
+      allow write: if false;
+    }
+
+    match /everhomesToolUsageDaily/{aggregateId} {
+      allow read: if _isEverhomesAdmin();
+      allow write: if false;
+    }
+
+    match /everhomesToolUsageSessions/{sessionId} {
+      allow read, write: if false;
+    }
+
     // Catch-all deny
     match /{document=**} {
       allow read, write: if false;

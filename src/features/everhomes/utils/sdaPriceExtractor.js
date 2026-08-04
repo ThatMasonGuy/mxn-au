@@ -1,4 +1,5 @@
 import * as XLSX from 'xlsx'
+import { isValidAppendixHParticipantRow } from './sdaAppendixH.js'
 
 function parseNum(val) {
     if (val === '' || val === null || val === undefined) return null
@@ -57,8 +58,8 @@ function extractExistingRows(rows, startRow, count = 11) {
     return result
 }
 
-// Each Appendix H benchmark table has 26 rows: 11 dwellings with variable sub-rows
-// (one per non-SDA occupancy offset). Total = 1+1+2+2+1+2+3+2+3+4+5 = 26.
+// The source sheet contains 26 rows. Participant limits are derived from dwelling
+// bedroom capacity, while retaining the workbook's calculated one-participant rows.
 const APPENDIX_H_BLOCK = [
     { dwelling: 'Apartment, 1 bedroom, 1 resident',    maxResidents: 1, count: 1 },
     { dwelling: 'Apartment, 2 bedrooms, 1 resident',   maxResidents: 1, count: 1 },
@@ -95,7 +96,7 @@ function extractAppendixHTable(rows, startRow, hasBasic) {
                 highPhysicalSupportWithOOA:  parseNum(row[14]),
             }
             if (hasBasic) entry.basicNoOOA = parseNum(row[4])
-            result.push(entry)
+            if (isValidAppendixHParticipantRow(entry)) result.push(entry)
         }
         offset += block.count
     }

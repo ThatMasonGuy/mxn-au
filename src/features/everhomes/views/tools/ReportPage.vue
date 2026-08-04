@@ -177,6 +177,7 @@ import SubmitModal         from '@/features/everhomes/components/SubmitModal.vue
 import ErrorLogModal       from '@/features/everhomes/components/ErrorLogModal.vue'
 
 import { useReportState }  from '@/features/everhomes/composables/useReportState'
+import { trackEverhomesToolUsage } from '@/features/everhomes/utils/toolUsage'
 
 // ─── Schema registry ──────────────────────────────────────────────────────────
 // Each report type maps to a schema file. Adding a new type = add an entry here
@@ -248,6 +249,10 @@ const showMarketing = computed(() => {
 
 // ─── Events ───────────────────────────────────────────────────────────────────
 function onStarted() {
+  void trackEverhomesToolUsage({
+    toolId: schema.value.reportType === 'handover' ? 'handover-report' : 'inspection-report',
+    action: 'report_started',
+  })
   // Scroll checklist into view after the DOM updates
   nextTick(() => {
     setTimeout(() => {
@@ -257,6 +262,10 @@ function onStarted() {
 }
 
 function onSubmitted() {
+  void trackEverhomesToolUsage({
+    toolId: schema.value.reportType === 'handover' ? 'handover-report' : 'inspection-report',
+    action: 'report_submitted',
+  })
   // Store plugin will persist the now-empty state automatically.
   // The modal stays open in Done state — SubmitModal handles close from there.
   reportState.discardLocalReport().catch(() => reportState.resetAll())
