@@ -36,8 +36,7 @@ export const botApiProxy = onRequest(
   {
     region: 'australia-southeast1',
     timeoutSeconds: 30,
-    memory: '256MiB',
-    cpu: 'gcf_gen1',
+    memory: '512MiB',
     invoker: 'public',
     cors: ALLOWED_ORIGINS,
     secrets: [BOT_SERVER_URL, BOT_API_KEY],

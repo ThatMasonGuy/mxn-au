@@ -60,7 +60,6 @@ test('Discord bot privilege and actor identity are enforced behind the server bo
   assert.match(sessionSource, /requireManagedDiscordGuild/)
   assert.match(proxySource, /await requireManagedDiscordGuild\(req, serverId\)/)
   assert.match(proxySource, /invoker:\s*'public'/)
-  assert.match(proxySource, /cpu:\s*'gcf_gen1'/)
   assert.match(proxySource, /userId: session\.discordUserId/)
   assert.match(proxySource, /creatorUserId: session\.discordUserId/)
   assert.doesNotMatch(botStore, /creatorUserId: this\.sessionId/)
