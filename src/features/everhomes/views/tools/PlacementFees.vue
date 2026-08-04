@@ -122,11 +122,12 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import LayoutComponent from '@/features/everhomes/components/layouts/LayoutComponent.vue'
 import ToolBannerComponent from '@/features/everhomes/components/ui/ToolBannerComponent.vue'
 import SmartInput from '@/features/everhomes/components/ui/SmartInput.vue'
 import { InformationCircleIcon } from '@heroicons/vue/24/solid'
+import { trackEverhomesToolUsage } from '@/features/everhomes/utils/toolUsage'
 
 const moveInDate = ref('')
 const durationType = ref('Fixed')
@@ -250,4 +251,19 @@ const calculationSummary = computed(() => {
 
     return `For a 3 week placement, the tool divides annual SDA (${formatCurrency(asNumber(annualSda.value))}) by ${formatNumber(365)} and fortnightly RRC (${formatCurrency(asNumber(fortnightlyRrc.value))}) by ${formatNumber(14)}, then adds those daily rates together and multiplies by ${formatNumber(placementDays)} days.`
 })
+
+watch(
+    [durationType, annualSda, fortnightlyRrc, moveInDate, annualSdaTouched, fortnightlyRrcTouched],
+    ([duration, sda, rrc, date, sdaTouched, rrcTouched]) => {
+        const engaged = duration === '3 Weeks'
+            ? asNumber(sda) > 0 || asNumber(rrc) > 0
+            : Boolean(date || sdaTouched || rrcTouched)
+        if (!engaged) return
+        void trackEverhomesToolUsage({
+            toolId: 'placement-fees',
+            action: 'calculation_completed',
+            variant: duration === '3 Weeks' ? 'three_weeks' : 'fixed',
+        })
+    },
+)
 </script>

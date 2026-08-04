@@ -25,31 +25,28 @@
 
             <div class="relative mx-auto max-w-7xl px-3 pb-24 pt-24 sm:px-6 sm:pt-28 lg:px-8">
                 <!-- Hero -->
-                <section class="mb-8 overflow-hidden rounded-[1.5rem] border border-white/10 bg-slate-950/45 p-5 shadow-2xl shadow-black/30 backdrop-blur sm:rounded-[2rem] sm:p-8 lg:p-10">
-                    <div class="grid gap-6 lg:grid-cols-[1fr_380px] lg:items-end">
+                <section class="mb-6 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/45 p-5 shadow-xl shadow-black/20 backdrop-blur sm:p-7">
+                    <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(430px,0.8fr)] lg:items-center">
                         <div class="min-w-0">
-                            <div class="mb-5 inline-flex max-w-full items-center gap-2 rounded-full border border-teal-400/25 bg-teal-400/10 px-3 py-1 text-xs font-semibold tracking-wide text-teal-300">
+                            <div class="mb-3 flex max-w-full items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-teal-300">
                                 <ShieldCheck class="h-3.5 w-3.5 shrink-0" />
                                 <span class="truncate">Site Admin</span>
                             </div>
 
-                            <h1 class="max-w-full text-[clamp(2.4rem,12vw,4rem)] font-black leading-[0.92] tracking-tight text-white sm:text-5xl lg:text-6xl">
-                                <span class="block whitespace-nowrap">Everhomes</span>
-                                <span class="block bg-gradient-to-r from-teal-300 via-cyan-300 to-sky-400 bg-clip-text text-transparent">
-                                    Admin
-                                </span>
+                            <h1 class="max-w-full text-[1.75rem] font-bold tracking-tight text-white sm:text-4xl">
+                                Everhomes <span class="text-teal-300">Admin</span>
                             </h1>
 
-                            <p class="mt-5 max-w-2xl text-[14px] leading-6 text-slate-300 sm:text-lg sm:leading-7">
-                                Submissions, datasets, reports, and the small administrative rituals keeping civilisation duct-taped together.
+                            <p class="mt-3 max-w-2xl text-sm leading-6 text-slate-400 sm:text-base">
+                                Manage report submissions, tool activity and SDA pricing data.
                             </p>
 
-                            <div class="mt-7 flex flex-wrap items-center gap-3">
+                            <div v-if="activeTab === 'submissions'" class="mt-5 flex flex-wrap items-center gap-3">
                                 <button
                                     type="button"
                                     @click="loadSubmissions"
                                     :disabled="loading"
-                                    class="inline-flex items-center gap-2 rounded-full border border-teal-400/25 bg-teal-400/10 px-4 py-2 text-sm font-semibold text-teal-200 transition hover:border-teal-300/50 hover:bg-teal-400/15 disabled:cursor-not-allowed disabled:opacity-60"
+                                    class="inline-flex items-center gap-2 rounded-lg border border-teal-400/25 bg-teal-400/10 px-4 py-2 text-sm font-semibold text-teal-200 transition hover:border-teal-300/50 hover:bg-teal-400/15 disabled:cursor-not-allowed disabled:opacity-60"
                                 >
                                     <RefreshCw class="h-4 w-4" :class="loading ? 'animate-spin' : ''" />
                                     Refresh submissions
@@ -61,8 +58,8 @@
                             </div>
                         </div>
 
-                        <aside class="rounded-3xl border border-white/10 bg-white/[0.06] p-5 shadow-xl shadow-black/20">
-                            <div class="mb-4 flex items-center justify-between gap-4">
+                        <aside class="rounded-2xl border border-white/10 bg-white/[0.045] px-5 py-4">
+                            <div class="flex items-center justify-between gap-5">
                                 <div>
                                     <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                                         System pulse
@@ -72,62 +69,64 @@
                                     </p>
                                 </div>
 
-                                <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-cyan-400/20 bg-cyan-400/10">
-                                    <BarChart3 class="h-5 w-5 text-cyan-300" />
+                                <div class="shrink-0 text-right">
+                                    <p class="text-3xl font-bold leading-none text-white tabular-nums">
+                                        {{ submissionTotal }}
+                                    </p>
+                                    <p class="mt-1 text-[11px] font-medium text-slate-500">submissions</p>
                                 </div>
                             </div>
 
-                            <div class="grid grid-cols-2 gap-3">
-                                <div
+                            <div class="mt-4 flex h-1.5 overflow-hidden rounded-full bg-white/[0.06]" aria-hidden="true">
+                                <span
                                     v-for="stat in stats"
                                     :key="stat.label"
-                                    class="rounded-2xl border border-white/10 bg-white/[0.06] p-4"
-                                >
-                                    <div class="mb-3 flex items-center justify-between gap-3">
-                                        <span class="text-xs font-semibold text-slate-500">{{ stat.label }}</span>
-                                        <div class="flex h-8 w-8 items-center justify-center rounded-xl" :style="{ background: stat.bgColor }">
-                                            <component :is="stat.icon" class="h-4 w-4" :style="{ color: stat.color }" />
-                                        </div>
-                                    </div>
-                                    <p class="text-3xl font-black leading-none text-white tabular-nums">
-                                        {{ stat.value }}
-                                    </p>
-                                </div>
+                                    class="h-full transition-[width]"
+                                    :style="{ width: `${stat.percentage}%`, backgroundColor: stat.color }"
+                                />
                             </div>
+
+                            <dl class="mt-4 grid grid-cols-2 gap-x-5 gap-y-2 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
+                                <div v-for="stat in stats" :key="stat.label" class="flex items-center gap-2">
+                                    <span class="h-2 w-2 shrink-0 rounded-full" :style="{ backgroundColor: stat.color }" />
+                                    <dt class="min-w-0 truncate text-xs text-slate-500">{{ stat.label }}</dt>
+                                    <dd class="ml-auto text-sm font-bold text-slate-200 tabular-nums">{{ stat.value }}</dd>
+                                </div>
+                            </dl>
                         </aside>
                     </div>
                 </section>
 
                 <!-- Tabs -->
-                <section class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div class="flex w-full gap-1 rounded-2xl border border-white/10 bg-white/[0.04] p-1 shadow-xl shadow-black/10 sm:w-fit">
+                <section class="mb-6 border-b border-white/10">
+                    <div class="flex w-full sm:w-fit">
                         <button
                             v-for="tab in tabs"
                             :key="tab.id"
                             type="button"
                             @click="activeTab = tab.id"
-                            class="flex min-w-0 flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold transition sm:flex-none sm:px-4"
+                            class="-mb-px flex min-w-0 flex-1 items-center justify-center gap-1 border-b-2 px-2 py-3 text-sm font-semibold transition sm:flex-none sm:gap-2 sm:px-4"
                             :class="activeTab === tab.id
-                                ? 'border border-teal-400/30 bg-teal-400/15 text-teal-200 shadow-lg shadow-teal-950/30'
-                                : 'border border-transparent text-slate-400 hover:bg-white/[0.05] hover:text-slate-200'"
+                                ? 'border-teal-400 text-teal-200'
+                                : 'border-transparent text-slate-500 hover:border-white/20 hover:text-slate-200'"
                         >
-                            <component :is="tab.icon" class="h-4 w-4 shrink-0" />
+                            <component :is="tab.icon" class="hidden h-4 w-4 shrink-0 sm:block" />
                             <span class="truncate">{{ tab.label }}</span>
                             <span
                                 v-if="tab.id === 'submissions' && allSubmissions.length"
-                                class="ml-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-black leading-none"
-                                :class="activeTab === 'submissions' ? 'bg-teal-400/20 text-teal-200' : 'bg-white/10 text-slate-500'"
+                                class="ml-0.5 text-[11px] font-bold leading-none tabular-nums"
+                                :class="activeTab === 'submissions' ? 'text-teal-300' : 'text-slate-600'"
                             >
-                                {{ allSubmissions.length }}
+                                ({{ allSubmissions.length }})
                             </span>
                         </button>
                     </div>
                 </section>
 
                 <!-- Submissions tab -->
-                <section v-if="activeTab === 'submissions'" class="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4 shadow-xl shadow-black/10 backdrop-blur sm:rounded-[2rem] sm:p-5">
+                <section v-if="activeTab === 'submissions'" class="rounded-lg border border-white/10 bg-white/[0.035] p-4 sm:p-5">
                     <!-- Filter bar -->
-                    <div class="mb-5 flex flex-col gap-3 border-b border-white/[0.07] pb-5 lg:flex-row lg:items-center lg:justify-between">
+                    <div class="mb-5 flex flex-col gap-5 border-b border-white/[0.07] pb-5 lg:flex-row lg:items-end lg:justify-between">
                         <div>
                             <p class="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-300/70">
                                 Submission queue
@@ -137,14 +136,16 @@
                             </h2>
                         </div>
 
-                        <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
-                            <div class="flex flex-wrap gap-2">
+                        <div class="grid gap-4 sm:grid-cols-2 lg:flex lg:items-end">
+                            <fieldset>
+                                <legend class="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Report type</legend>
+                                <div class="flex flex-wrap gap-1.5">
                                 <button
                                     v-for="f in typeFilters"
                                     :key="f.id"
                                     type="button"
                                     @click="typeFilter = f.id"
-                                    class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition"
+                                    class="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-semibold transition"
                                     :class="typeFilter === f.id
                                         ? 'border-teal-400/30 bg-teal-400/15 text-teal-200'
                                         : 'border-white/10 bg-white/[0.04] text-slate-400 hover:border-white/20 hover:text-slate-200'"
@@ -152,20 +153,24 @@
                                     <component :is="f.icon" class="h-3.5 w-3.5" />
                                     {{ f.label }}
                                 </button>
-                            </div>
+                                </div>
+                            </fieldset>
 
-                            <div class="flex flex-wrap gap-2 sm:justify-end">
+                            <fieldset>
+                                <legend class="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Status</legend>
+                                <div class="flex flex-wrap gap-1.5">
                                 <button
                                     v-for="s in statusFilters"
                                     :key="s.id"
                                     type="button"
-                                    @click="statusFilter = statusFilter === s.id ? 'all' : s.id"
-                                    class="rounded-full border px-3 py-1.5 text-[11px] font-black uppercase tracking-wide transition"
+                                    @click="statusFilter = s.id"
+                                    class="rounded-md border px-3 py-1.5 text-[11px] font-bold transition"
                                     :class="statusFilter === s.id ? s.activeClass : 'border-white/10 bg-white/[0.04] text-slate-500 hover:border-white/20 hover:text-slate-300'"
                                 >
                                     {{ s.label }}
                                 </button>
-                            </div>
+                                </div>
+                            </fieldset>
                         </div>
                     </div>
 
@@ -176,22 +181,22 @@
                         <span class="text-sm">Loading submissions…</span>
                     </div>
 
-                    <div v-else-if="submissionsError" class="rounded-[2rem] border border-red-400/20 bg-red-500/10 px-5 py-8 text-center">
+                    <div v-else-if="submissionsError" class="rounded-lg border border-red-400/20 bg-red-500/10 px-5 py-8 text-center">
                         <XCircle class="mx-auto h-6 w-6 text-red-300" />
                         <p class="mt-3 font-semibold text-red-100">Could not load submissions</p>
                         <p class="mt-1 text-sm text-red-200/80">{{ submissionsError }}</p>
                     </div>
 
                     <!-- Empty state -->
-                    <div v-else-if="!filteredSubmissions.length" class="rounded-[2rem] border border-white/10 bg-white/[0.035] py-20 text-center">
-                        <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06]">
+                    <div v-else-if="!filteredSubmissions.length" class="border-y border-white/10 py-20 text-center">
+                        <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04]">
                             <Inbox class="h-5 w-5 text-slate-500" />
                         </div>
                         <p class="font-semibold text-slate-300">
                             No submissions found
                         </p>
                         <p class="mt-1 text-sm text-slate-600">
-                            Try changing the filters. Riveting admin theatre, truly.
+                            Try changing the report type or status filters.
                         </p>
                     </div>
 
@@ -200,10 +205,10 @@
                         <article
                             v-for="sub in visibleSubmissions"
                             :key="sub.id"
-                            class="group relative overflow-visible rounded-[1.35rem] border border-white/10 bg-slate-950/35 p-3 pt-4 shadow-lg shadow-black/10 transition hover:border-white/20 hover:bg-white/[0.055]"
+                            class="group relative overflow-visible rounded-lg border border-white/10 bg-slate-950/35 p-3 pt-4 transition hover:border-white/20 hover:bg-white/[0.055]"
                         >
                             <!-- Decorative clipped layer only -->
-                            <div class="pointer-events-none absolute inset-0 overflow-hidden rounded-[1.35rem]">
+                            <div class="pointer-events-none absolute inset-0 overflow-hidden rounded-lg">
                                 <div
                                     class="absolute inset-x-0 top-0 h-1"
                                     :style="{
@@ -393,6 +398,8 @@
                         </div>
                     </div>
                 </section>
+
+                <ToolUsageDashboard v-if="activeTab === 'usage'" />
 
                 <!-- SDA Dataset tab -->
                 <section v-if="activeTab === 'sda'" class="grid gap-6 lg:grid-cols-2">
@@ -790,6 +797,7 @@ import { auth, firestore } from '@/firebase'
 import * as XLSX from 'xlsx'
 
 import LayoutComponent from '@/features/everhomes/components/layouts/LayoutComponent.vue'
+import ToolUsageDashboard from '@/features/everhomes/components/admin/ToolUsageDashboard.vue'
 import { useSdaPriceStore } from '@/features/everhomes/stores/useSdaPriceStore'
 import { useMainStore } from '@/shared/stores/useMainStore'
 import { extractSdaPricingData } from '@/features/everhomes/utils/sdaPriceExtractor'
@@ -799,7 +807,7 @@ import {
     FileText, FolderArchive, SendHorizontal, CheckCheck, AlertCircle,
     ClipboardCheck, ClipboardList, User, Calendar, Clock,
     CheckCircle2, AlertTriangle, FileSpreadsheet, CloudUpload,
-    BarChart3, TrendingUp, XCircle, ChevronDown, RotateCcw, Link, MailWarning,
+    BarChart3, TrendingUp, XCircle, ChevronDown, RotateCcw, Link, MailWarning, Activity,
 } from '@lucide/vue'
 
 const FUNCTIONS_URL = import.meta.env.VITE_FUNCTIONS_URL ?? ''
@@ -851,6 +859,7 @@ const mainStore = useMainStore()
 const activeTab = ref('submissions')
 const tabs = [
     { id: 'submissions', label: 'Submissions', icon: ClipboardCheck },
+    { id: 'usage',       label: 'Tool Usage',  icon: Activity },
     { id: 'sda',         label: 'SDA Dataset',  icon: Database },
 ]
 
@@ -906,12 +915,13 @@ const typeFilter   = ref('all')
 const statusFilter = ref('all')
 
 const typeFilters = [
-    { id: 'all',         label: 'All',        icon: BarChart3 },
+    { id: 'all',         label: 'All reports', icon: BarChart3 },
     { id: 'inspections', label: 'Inspections', icon: ClipboardCheck },
     { id: 'handovers',   label: 'Handovers',   icon: ClipboardList },
 ]
 
 const statusFilters = [
+    { id: 'all',        label: 'All statuses', activeClass: 'bg-slate-400/10 text-slate-200 border-slate-400/25' },
     { id: 'draft',      label: 'Drafts',     activeClass: 'bg-sky-500/15 text-sky-300 border-sky-500/30' },
     { id: 'complete',   label: 'Complete',   activeClass: 'bg-teal-500/15 text-teal-300 border-teal-500/30' },
     { id: 'processing', label: 'Processing', activeClass: 'bg-amber-500/15 text-amber-300 border-amber-500/30' },
@@ -945,20 +955,24 @@ watch([typeFilter, statusFilter], () => {
 })
 
 // ─── Stats ────────────────────────────────────────────────────────────────────
+const submissionTotal = computed(() => allSubmissions.value.length)
+
 const stats = computed(() => {
-    const total      = allSubmissions.value.length
+    const total      = submissionTotal.value
     const complete   = allSubmissions.value.filter(s => s.status === 'complete').length
     const processing = allSubmissions.value.filter(s => ['processing', 'pending', 'regenerating', 'deleting'].includes(s.status)).length
     const failed     = allSubmissions.value.filter(s => s.status === 'failed').length
     const drafts     = allSubmissions.value.filter(s => s.status === 'draft').length
 
     return [
-        { label: 'Total',      value: total,      icon: BarChart3,    color: '#94a3b8', bgColor: 'rgba(148,163,184,0.1)' },
-        { label: 'Complete',   value: complete,   icon: CheckCircle2, color: '#14b8a6', bgColor: 'rgba(20,184,166,0.12)' },
-        { label: 'Processing', value: processing, icon: TrendingUp,   color: '#f59e0b', bgColor: 'rgba(245,158,11,0.12)' },
-        { label: 'Failed',     value: failed,     icon: XCircle,      color: '#f43f5e', bgColor: 'rgba(244,63,94,0.12)' },
-        { label: 'Drafts',     value: drafts,     icon: CloudUpload,  color: '#38bdf8', bgColor: 'rgba(56,189,248,0.12)' },
-    ]
+        { label: 'Complete',   value: complete,   color: '#14b8a6' },
+        { label: 'Processing', value: processing, color: '#f59e0b' },
+        { label: 'Failed',     value: failed,     color: '#f43f5e' },
+        { label: 'Drafts',     value: drafts,     color: '#38bdf8' },
+    ].map(stat => ({
+        ...stat,
+        percentage: total ? (stat.value / total) * 100 : 0,
+    }))
 })
 
 // ─── Status badge component ───────────────────────────────────────────────────
