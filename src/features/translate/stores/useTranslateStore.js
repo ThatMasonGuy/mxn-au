@@ -1140,6 +1140,10 @@ export const useTranslateStore = defineStore('translate', () => {
     }
 }, {
     persist: {
-        paths: ['apiKey', 'selectedLanguage', 'fromLanguage', 'autoCopy', 'recentTranslations', 'syncHistory', 'selectedModel']
+        pick: ['selectedLanguage', 'fromLanguage', 'autoCopy', 'recentTranslations', 'syncHistory', 'selectedModel'],
+        afterHydrate: ({ store }) => {
+            store.apiKey = ''
+            store.$persist()
+        }
     }
 })

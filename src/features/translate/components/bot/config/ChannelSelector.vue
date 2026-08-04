@@ -122,7 +122,7 @@ async function fetchChannels() {
             `${import.meta.env.VITE_FUNCTIONS_URL}/getServerChannels?serverId=${props.serverId}`,
             {
                 headers: {
-                    'Authorization': `Bearer ${store.discordToken}`
+                    'Authorization': `Bearer ${store.sessionId}`
                 }
             }
         )

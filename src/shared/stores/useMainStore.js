@@ -49,6 +49,10 @@ export const useMainStore = defineStore('main', () => {
 }, {
   persist: {
     storage: localStorage,
-    paths: ['user', 'token', 'rememberMe']
+    pick: ['user', 'rememberMe'],
+    afterHydrate: ({ store }) => {
+      store.token = null
+      store.$persist()
+    }
   }
 })

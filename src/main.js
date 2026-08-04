@@ -7,6 +7,9 @@ import piniaPluginPersistedstate from 'pinia-plugin-persistedstate';
 
 import "./style.css";
 import echartsPlugin from '@/shared/plugins/echarts';
+import { initializeOptionalAnalytics } from '@/shared/analytics/analytics';
+
+void initializeOptionalAnalytics();
 
 const app = createApp(App);
 app.use(echartsPlugin);

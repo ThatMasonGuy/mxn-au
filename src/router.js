@@ -5,6 +5,8 @@ import { waitForAuth } from '@/auth'
 import { useMainStore } from '@/shared/stores/useMainStore'
 import { updateMetaTagsEnhanced } from '@/shared/utils/useDynamicMetaTags'
 import { useLoadingScreen } from '@/shared/composables/useLoadingScreen'
+import { stableRoutePath } from '@/shared/analytics/analyticsPolicy'
+import { trackPageView } from '@/shared/analytics/analytics'
 
 const routeModules = import.meta.glob(['./features/*/routes.js', './router/mainRoutes.js'], { eager: true })
 const routes = Object.values(routeModules).flatMap(module => module.default || [])
@@ -40,6 +42,8 @@ router.beforeEach(async (to, from, next) => {
 router.afterEach((to, from) => {
     updateMetaTagsEnhanced(to)
 
+    void trackPageView(to)
+
     import('@/features/everhomes/utils/toolUsage')
         .then(({ trackEverhomesRouteUsage }) => trackEverhomesRouteUsage(to))
         .catch(err => console.warn('[Router] Failed to record Everhomes tool usage:', err))
@@ -53,13 +57,15 @@ router.afterEach((to, from) => {
 
     pageViewDebounce = setTimeout(() => {
         const store = useMainStore()
+        const safePath = stableRoutePath(to)
+        const previousSafePath = stableRoutePath(from)
         if (store.isAuthenticated &&
-            to.path !== lastLoggedPath &&
-            to.path !== from.path) {
-            lastLoggedPath = to.path
+            safePath !== lastLoggedPath &&
+            safePath !== previousSafePath) {
+            lastLoggedPath = safePath
 
             import('@/shared/utils/useLogUserEvent')
-                .then(({ logPageView }) => logPageView(to.path))
+                .then(({ logPageView }) => logPageView(safePath))
                 .catch(err => console.warn('[Router] Failed to log page view:', err))
         }
     }, 300)

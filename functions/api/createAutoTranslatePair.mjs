@@ -5,6 +5,7 @@ import { onRequest } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 import { initializeApp, getApps } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
+import { requireManagedDiscordGuild } from './discordSession.mjs';
 
 // Initialize Firebase Admin
 if (getApps().length === 0) {
@@ -224,13 +225,7 @@ export const createAutoTranslatePair = onRequest(
         }
 
         try {
-            // Auth check
-            const authHeader = req.headers.authorization;
-            if (!authHeader || !authHeader.startsWith("Bearer ")) {
-                return res.status(401).json({ error: "Missing authorization" });
-            }
-
-            const userId = authHeader.substring(7);
+            const { discordUserId: userId } = await requireManagedDiscordGuild(req, req.body?.serverId);
 
             // Parse body
             const {
@@ -359,9 +354,10 @@ export const createAutoTranslatePair = onRequest(
             });
         } catch (error) {
             console.error("[AutoTranslate] Error:", error);
-            return res.status(500).json({
-                error: "Failed to create auto-translate pair",
-                details: error.message,
+            const status = Number(error?.status) || 500;
+            return res.status(status).json({
+                error: status === 500 ? "Failed to create auto-translate pair" : error.message,
+                details: status === 500 ? undefined : error.message,
             });
         }
     }

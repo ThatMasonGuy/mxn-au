@@ -7,6 +7,7 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { firestore } from "@/firebase";
+import { sanitizePathname, sanitizeReferrer } from "@/shared/analytics/analyticsPolicy";
 
 let currentSessionId = null;
 
@@ -31,8 +32,8 @@ export const startTrackingSession = async (uid) => {
       },
       locale: navigator.language || "en-AU",
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      referrer: document.referrer || "direct",
-      entryPage: window.location.pathname,
+      referrer: sanitizeReferrer(document.referrer),
+      entryPage: sanitizePathname(window.location.pathname),
       platform: navigator.platform,
       vendor: navigator.vendor,
     };
@@ -40,21 +41,6 @@ export const startTrackingSession = async (uid) => {
     const sessionRef = collection(firestore, `users/${uid}/tracking`);
     const docRef = await addDoc(sessionRef, session);
     currentSessionId = docRef.id;
-
-    // Set up beforeunload to mark session end
-    window.addEventListener("beforeunload", () => {
-      if (currentSessionId) {
-        // Use sendBeacon for reliability
-        const data = JSON.stringify({
-          endedAt: new Date().toISOString(),
-          duration: Date.now() - session.startedAt,
-        });
-        navigator.sendBeacon(
-          `/api/end-session/${uid}/${currentSessionId}`,
-          data,
-        );
-      }
-    });
 
     return currentSessionId;
   } catch (err) {

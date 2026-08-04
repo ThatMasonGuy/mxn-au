@@ -1,12 +1,12 @@
 // stores/useTranslateBotStore.js
 import { defineStore } from 'pinia'
 
-export const useTranslateStore = defineStore('translate', {
+export const useTranslateStore = defineStore('translateBot', {
   state: () => ({
     // Discord user info (safe, no tokens)
     discordUser: null,
     
-    // Session ID (user's Discord ID) - used to identify user to backend
+    // Opaque, short-lived server session token. Never a Discord user ID.
     sessionId: null,
     
     // Server data
@@ -20,10 +20,6 @@ export const useTranslateStore = defineStore('translate', {
 
   getters: {
     isDiscordAuthenticated: (state) => !!state.sessionId && !!state.discordUser,
-
-    getBotApiUrl: () => {
-      return import.meta.env.VITE_BOT_API_URL || 'https://bot-api.mxn.au'
-    },
 
     getFunctionsUrl: () => {
       return import.meta.env.VITE_FUNCTIONS_URL || 'https://australia-southeast1-mxn-translate.cloudfunctions.net'
@@ -39,6 +35,21 @@ export const useTranslateStore = defineStore('translate', {
   },
 
   actions: {
+    async botApiFetch(path, options = {}) {
+      if (!this.sessionId) throw new Error('Not authenticated')
+
+      const proxyUrl = new URL(`${this.getFunctionsUrl}/botApiProxy`)
+      proxyUrl.searchParams.set('path', path)
+
+      return fetch(proxyUrl, {
+        ...options,
+        headers: {
+          ...(options.headers || {}),
+          'Authorization': `Bearer ${this.sessionId}`,
+        },
+      })
+    },
+
     // ============================================================
     // DISCORD OAUTH
     // ============================================================
@@ -98,25 +109,10 @@ export const useTranslateStore = defineStore('translate', {
     setDiscordAuth(user, sessionId) {
       this.discordUser = user
       this.sessionId = sessionId
-      localStorage.setItem('discord_user', JSON.stringify(user))
-      localStorage.setItem('discord_session_id', sessionId)
     },
 
     loadDiscordAuth() {
-      try {
-        const user = localStorage.getItem('discord_user')
-        const sessionId = localStorage.getItem('discord_session_id')
-
-        if (user && sessionId) {
-          this.discordUser = JSON.parse(user)
-          this.sessionId = sessionId
-          return true
-        }
-      } catch (error) {
-        console.error('[Auth] Failed to load Discord auth:', error)
-        this.clearAuth()
-      }
-      return false
+      return Boolean(this.discordUser && this.sessionId)
     },
 
     clearAuth() {
@@ -201,14 +197,7 @@ export const useTranslateStore = defineStore('translate', {
 
     async fetchServerEmotes(serverId) {
       try {
-        const response = await fetch(
-          `${this.getBotApiUrl}/api/discord/${serverId}/emotes`,
-          {
-            headers: {
-              'Authorization': `Bearer ${import.meta.env.VITE_BOT_API_KEY}`
-            }
-          }
-        )
+        const response = await this.botApiFetch(`/api/discord/${serverId}/emotes`)
 
         if (!response.ok) {
           throw new Error('Failed to fetch server emotes')
@@ -228,14 +217,7 @@ export const useTranslateStore = defineStore('translate', {
 
     async fetchScheduledMessages(serverId) {
       try {
-        const response = await fetch(
-          `${this.getBotApiUrl}/api/calendar/${serverId}`,
-          {
-            headers: {
-              'Authorization': `Bearer ${import.meta.env.VITE_BOT_API_KEY}`
-            }
-          }
-        )
+        const response = await this.botApiFetch(`/api/calendar/${serverId}`)
 
         if (!response.ok) {
           throw new Error('Failed to fetch scheduled messages')
@@ -254,19 +236,15 @@ export const useTranslateStore = defineStore('translate', {
       }
 
       try {
-        const response = await fetch(
-          `${this.getBotApiUrl}/api/calendar/${serverId}`,
+        const response = await this.botApiFetch(
+          `/api/calendar/${serverId}`,
           {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${import.meta.env.VITE_BOT_API_KEY}`
+              'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-              ...payload,
-              creatorUserId: this.sessionId,
-              creatorUserName: this.discordUser.username,
-              creatorUserAvatar: this.discordUser.avatarUrl
+              ...payload
             })
           }
         )
@@ -296,13 +274,12 @@ export const useTranslateStore = defineStore('translate', {
 
     async updateScheduledMessage(serverId, messageId, payload) {
       try {
-        const response = await fetch(
-          `${this.getBotApiUrl}/api/calendar/${serverId}/${messageId}`,
+        const response = await this.botApiFetch(
+          `/api/calendar/${serverId}/${messageId}`,
           {
             method: 'PUT',
             headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${import.meta.env.VITE_BOT_API_KEY}`
+              'Content-Type': 'application/json'
             },
             body: JSON.stringify(payload)
           }
@@ -335,15 +312,9 @@ export const useTranslateStore = defineStore('translate', {
 
     async deleteScheduledMessage(serverId, messageId) {
       try {
-        const response = await fetch(
-          `${this.getBotApiUrl}/api/calendar/${serverId}/${messageId}`,
-          {
-            method: 'DELETE',
-            headers: {
-              'Authorization': `Bearer ${import.meta.env.VITE_BOT_API_KEY}`
-            }
-          }
-        )
+        const response = await this.botApiFetch(`/api/calendar/${serverId}/${messageId}`, {
+          method: 'DELETE'
+        })
 
         if (!response.ok) {
           throw new Error('Failed to delete scheduled message')
@@ -373,14 +344,7 @@ export const useTranslateStore = defineStore('translate', {
 
     async fetchAuditLogs(serverId, page = 1, pageSize = 25) {
       try {
-        const response = await fetch(
-          `${this.getBotApiUrl}/api/audit/${serverId}?page=${page}&pageSize=${pageSize}`,
-          {
-            headers: {
-              'Authorization': `Bearer ${import.meta.env.VITE_BOT_API_KEY}`
-            }
-          }
-        )
+        const response = await this.botApiFetch(`/api/audit/${serverId}?page=${page}&pageSize=${pageSize}`)
 
         if (!response.ok) {
           throw new Error('Failed to fetch audit logs')
@@ -400,18 +364,14 @@ export const useTranslateStore = defineStore('translate', {
       }
 
       try {
-        await fetch(
-          `${this.getBotApiUrl}/api/audit/${serverId}`,
+        await this.botApiFetch(
+          `/api/audit/${serverId}`,
           {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${import.meta.env.VITE_BOT_API_KEY}`
+              'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-              userId: this.sessionId,
-              userName: this.discordUser.username,
-              userAvatar: this.discordUser.avatarUrl,
               action,
               category,
               details,
@@ -464,14 +424,7 @@ export const useTranslateStore = defineStore('translate', {
 
     async fetchServerConfig(serverId) {
       try {
-        const response = await fetch(
-          `${this.getBotApiUrl}/api/config/${serverId}`,
-          {
-            headers: {
-              'Authorization': `Bearer ${import.meta.env.VITE_BOT_API_KEY}`
-            }
-          }
-        )
+        const response = await this.botApiFetch(`/api/config/${serverId}`)
 
         if (!response.ok) {
           throw new Error('Failed to fetch config')
@@ -486,13 +439,12 @@ export const useTranslateStore = defineStore('translate', {
 
     async updateGeneralConfig(serverId, enabled) {
       try {
-        const response = await fetch(
-          `${this.getBotApiUrl}/api/config/${serverId}/general`,
+        const response = await this.botApiFetch(
+          `/api/config/${serverId}/general`,
           {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${import.meta.env.VITE_BOT_API_KEY}`
+              'Content-Type': 'application/json'
             },
             body: JSON.stringify({ enabled })
           }
@@ -525,13 +477,12 @@ export const useTranslateStore = defineStore('translate', {
 
     async blockChannel(serverId, channelId) {
       try {
-        const response = await fetch(
-          `${this.getBotApiUrl}/api/config/${serverId}/block-channel`,
+        const response = await this.botApiFetch(
+          `/api/config/${serverId}/block-channel`,
           {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${import.meta.env.VITE_BOT_API_KEY}`
+              'Content-Type': 'application/json'
             },
             body: JSON.stringify({ channelId })
           }
@@ -561,13 +512,12 @@ export const useTranslateStore = defineStore('translate', {
 
     async unblockChannel(serverId, channelId) {
       try {
-        const response = await fetch(
-          `${this.getBotApiUrl}/api/config/${serverId}/unblock-channel`,
+        const response = await this.botApiFetch(
+          `/api/config/${serverId}/unblock-channel`,
           {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${import.meta.env.VITE_BOT_API_KEY}`
+              'Content-Type': 'application/json'
             },
             body: JSON.stringify({ channelId })
           }
@@ -601,13 +551,12 @@ export const useTranslateStore = defineStore('translate', {
 
     async addAnnouncementRoute(serverId, sourceChannelId, announcementChannelId) {
       try {
-        const response = await fetch(
-          `${this.getBotApiUrl}/api/config/${serverId}/announcement-route`,
+        const response = await this.botApiFetch(
+          `/api/config/${serverId}/announcement-route`,
           {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${import.meta.env.VITE_BOT_API_KEY}`
+              'Content-Type': 'application/json'
             },
             body: JSON.stringify({ sourceChannelId, announcementChannelId })
           }
@@ -637,15 +586,9 @@ export const useTranslateStore = defineStore('translate', {
 
     async removeAnnouncementRoute(serverId, sourceChannelId) {
       try {
-        const response = await fetch(
-          `${this.getBotApiUrl}/api/config/${serverId}/announcement-route/${sourceChannelId}`,
-          {
-            method: 'DELETE',
-            headers: {
-              'Authorization': `Bearer ${import.meta.env.VITE_BOT_API_KEY}`
-            }
-          }
-        )
+        const response = await this.botApiFetch(`/api/config/${serverId}/announcement-route/${sourceChannelId}`, {
+          method: 'DELETE'
+        })
 
         if (!response.ok) {
           throw new Error('Failed to remove announcement route')
@@ -719,15 +662,9 @@ export const useTranslateStore = defineStore('translate', {
 
     async deleteAutoTranslateChannel(serverId, channelId) {
       try {
-        const response = await fetch(
-          `${this.getBotApiUrl}/api/config/${serverId}/auto-translate/${channelId}`,
-          {
-            method: 'DELETE',
-            headers: {
-              'Authorization': `Bearer ${import.meta.env.VITE_BOT_API_KEY}`
-            }
-          }
-        )
+        const response = await this.botApiFetch(`/api/config/${serverId}/auto-translate/${channelId}`, {
+          method: 'DELETE'
+        })
 
         if (!response.ok) {
           throw new Error('Failed to delete auto-translate channel')
@@ -789,14 +726,7 @@ export const useTranslateStore = defineStore('translate', {
 
     async fetchServerStats(serverId) {
       try {
-        const response = await fetch(
-          `${this.getBotApiUrl}/api/stats/${serverId}`,
-          {
-            headers: {
-              'Authorization': `Bearer ${import.meta.env.VITE_BOT_API_KEY}`
-            }
-          }
-        )
+        const response = await this.botApiFetch(`/api/stats/${serverId}`)
 
         if (!response.ok) {
           throw new Error('Failed to fetch stats')
@@ -820,6 +750,13 @@ export const useTranslateStore = defineStore('translate', {
   },
 
   persist: {
-    paths: ['discordUser', 'sessionId']
+    storage: sessionStorage,
+    pick: ['discordUser', 'sessionId'],
+    afterHydrate: ({ store }) => {
+      localStorage.removeItem('discord_user')
+      localStorage.removeItem('discord_session_id')
+      localStorage.removeItem('discord_token')
+      store.$persist()
+    }
   }
 })

@@ -2,6 +2,10 @@
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { firestore } from "@/firebase";
 import { useMainStore } from "@/shared/stores/useMainStore";
+import {
+  sanitizeOperationalEventData,
+  sanitizePathname,
+} from "@/shared/analytics/analyticsPolicy";
 
 // Deduplication cache to prevent rapid duplicate events
 const eventCache = new Map();
@@ -21,8 +25,10 @@ export const logUserEvent = async (eventType, data = {}) => {
       return;
     }
 
+    const sanitizedData = sanitizeOperationalEventData(eventType, data);
+
     // Check for duplicate events
-    const cacheKey = getCacheKey(user.uid, eventType, data);
+    const cacheKey = getCacheKey(user.uid, eventType, sanitizedData);
     const cachedTime = eventCache.get(cacheKey);
 
     if (cachedTime && Date.now() - cachedTime < CACHE_DURATION) {
@@ -42,9 +48,9 @@ export const logUserEvent = async (eventType, data = {}) => {
       type: eventType,
       timestamp: serverTimestamp(),
       data: {
-        ...data,
+        ...sanitizedData,
         userAgent: navigator.userAgent,
-        url: window.location.href,
+        path: sanitizePathname(window.location.pathname),
         viewport: {
           width: window.innerWidth,
           height: window.innerHeight,
@@ -80,8 +86,7 @@ export const logAction = (action, details = {}) => {
 
 export const logError = (error, context = {}) => {
   return logUserEvent("error", {
-    error: error.message,
-    stack: error.stack,
-    ...context,
+    name: error?.name || 'Error',
+    area: context.area,
   });
 };

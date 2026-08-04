@@ -3,15 +3,7 @@
 
 import { onRequest } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
-import { initializeApp, getApps } from "firebase-admin/app";
-import { getFirestore } from "firebase-admin/firestore";
-
-// Initialize Firebase Admin
-if (getApps().length === 0) {
-  initializeApp();
-}
-
-const db = getFirestore();
+import { requireManagedDiscordGuild } from './discordSession.mjs';
 
 // Define secrets
 const DISCORD_BOT_TOKEN = defineSecret("DISCORD_BOT_TOKEN");
@@ -22,20 +14,6 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
-
-/**
- * Get valid access token for user, refreshing if needed
- */
-async function getValidAccessToken(userId) {
-  const userDoc = await db.collection("discord_users").doc(userId).get();
-
-  if (!userDoc.exists) {
-    return null;
-  }
-
-  const userData = userDoc.data();
-  return userData.accessToken;
-}
 
 /**
  * Fetch channels from Discord API using bot token
@@ -60,31 +38,6 @@ async function fetchGuildChannels(guildId, botToken) {
   return response.json();
 }
 
-/**
- * Check if user has access to this guild
- */
-async function verifyUserGuildAccess(userId, guildId) {
-  const accessToken = await getValidAccessToken(userId);
-
-  if (!accessToken) {
-    return false;
-  }
-
-  // Fetch user's guilds to verify access
-  const response = await fetch("https://discord.com/api/v10/users/@me/guilds", {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
-
-  if (!response.ok) {
-    return false;
-  }
-
-  const guilds = await response.json();
-  return guilds.some((g) => g.id === guildId);
-}
-
 export const getServerChannels = onRequest(
   {
     secrets: [DISCORD_BOT_TOKEN],
@@ -106,25 +59,13 @@ export const getServerChannels = onRequest(
     }
 
     try {
-      // Get user ID from auth header
-      const authHeader = req.headers.authorization;
-      if (!authHeader || !authHeader.startsWith("Bearer ")) {
-        return res.status(401).json({ error: "Missing authorization" });
-      }
-
-      const userId = authHeader.substring(7);
-
       // Get server ID from query
       const serverId = req.query.serverId;
       if (!serverId) {
         return res.status(400).json({ error: "serverId is required" });
       }
 
-      // Verify user has access to this guild
-      const hasAccess = await verifyUserGuildAccess(userId, serverId);
-      if (!hasAccess) {
-        return res.status(403).json({ error: "You don't have access to this server" });
-      }
+      await requireManagedDiscordGuild(req, serverId);
 
       // Fetch channels using bot token (more reliable, gets all channels)
       const botToken = DISCORD_BOT_TOKEN.value();
@@ -152,9 +93,10 @@ export const getServerChannels = onRequest(
       return res.json({ channels: formattedChannels });
     } catch (error) {
       console.error("[Channels] Error:", error);
-      return res.status(500).json({
-        error: "Failed to fetch channels",
-        details: error.message,
+      const status = Number(error?.status) || 500;
+      return res.status(status).json({
+        error: status === 500 ? "Failed to fetch channels" : error.message,
+        details: status === 500 ? undefined : error.message,
       });
     }
   }

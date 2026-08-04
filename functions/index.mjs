@@ -42,6 +42,7 @@ export { updateBotConfig } from './api/updateBotConfig.mjs';
 export { getServerChannels } from './api/getServerChannels.mjs';
 export { getServerRoles } from './api/getServerRoles.mjs';
 export { createAutoTranslatePair } from './api/createAutoTranslatePair.mjs';
+export { botApiProxy } from './api/botApiProxy.mjs';
 
 // Everhomes Functions
 export { generateInspectionReport } from './everhomes/generateInspectionReport.mjs';

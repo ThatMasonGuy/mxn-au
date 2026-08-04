@@ -1,5 +1,6 @@
 import { onRequest } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
+import { issueDiscordSession } from './discordSession.mjs';
 import { db } from "../config/firebase.mjs";
 
 const DISCORD_CLIENT_ID = defineSecret("DISCORD_CLIENT_ID");
@@ -99,6 +100,8 @@ export const discordAuth = onRequest(
 
       // Return ONLY safe user data to frontend
       // NO tokens, NO sensitive data
+      const sessionId = await issueDiscordSession(userData.id);
+
       return res.json({
         user: {
           id: userData.id,
@@ -109,9 +112,8 @@ export const discordAuth = onRequest(
             ? `https://cdn.discordapp.com/avatars/${userData.id}/${userData.avatar}.png`
             : `https://cdn.discordapp.com/embed/avatars/${parseInt(userData.discriminator || "0") % 5}.png`,
         },
-        // Session indicator - frontend uses this to prove they authenticated
-        // This is the user's Discord ID, which is already public
-        sessionId: userData.id,
+        // Opaque, expiring session credential. Discord IDs are not credentials.
+        sessionId,
       });
     } catch (error) {
       console.error("Discord auth error:", error);

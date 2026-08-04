@@ -20,27 +20,10 @@ const firebaseConfig = {
 const firebaseApp = initializeApp(firebaseConfig);
 setLogLevel('warning');
 
-let analytics = null;
-
-if (typeof window !== 'undefined') {
-  import('firebase/analytics')
-    .then(async ({ getAnalytics, isSupported }) => {
-      const analyticsSupported =
-        typeof isSupported === 'function' ? await isSupported() : true;
-
-      if (analyticsSupported) {
-        analytics = getAnalytics(firebaseApp);
-      }
-    })
-    .catch(() => {
-      analytics = null;
-    });
-}
-
 const firestore = getFirestore(firebaseApp);
 const auth = getAuth(firebaseApp);
 const realTimeDb = getDatabase(firebaseApp);
 const functions = getFunctions(firebaseApp, 'australia-southeast1');
 const storage = getStorage(firebaseApp);
 
-export { firestore, realTimeDb, analytics, functions, auth, storage };
+export { firebaseApp, firestore, realTimeDb, functions, auth, storage };

@@ -1,6 +1,6 @@
 # Google Analytics audit checkpoint — 2026-07-31
 
-Status: paused at the user's request. This is a read-only audit checkpoint. No GA4 console settings or application analytics code have been changed yet.
+Status: implementation in progress as of 2026-08-04. The original read-only findings remain below for history; the current state is recorded under Implementation progress.
 
 Working branch: `codex/analytics-foundation`, created from clean `main` at `ed1919a9f42eb94be5548e0a2406aec30ae78b8e`.
 
@@ -95,18 +95,32 @@ Top page paths include `/`, `/everhomes`, `/minecraft/mc`, `/minecraft`, `/everh
 ## Planned implementation
 
 1. Replace automatic Firebase Analytics initialization with a central analytics module.
-2. Default to no collection until the visitor explicitly allows optional analytics.
+2. Present one short, one-time Accept/Decline choice before optional Google Analytics starts, and remember the choice. This supersedes the earlier default-on draft after reviewing international cookie requirements.
 3. Keep all advertising consent states denied and disable Google Signals unless there is a future, justified advertising use case.
-4. Add a global consent banner, a persistent analytics preference, and a site-wide privacy/analytics page.
+4. Add one compact global notice and a concise `/analytics` preference page.
 5. Permit collection only on exact production hosts (`mxn.au`, `www.mxn.au`, `mxn-au.web.app`, and `mxn-au.firebaseapp.com`) in production builds.
 6. Disable automatic page views and send manual Vue Router page views with query strings and fragments stripped.
 7. Add a strict event/parameter allowlist so PII, addresses, report IDs, access keys, emails, free text, and raw errors cannot be sent accidentally.
-8. Add foundational events for authentication and the Everhomes report lifecycle, then add high-value feature completion events without personal data.
+8. Add allowlisted authentication events. Keep Everhomes analytics and required operational logging outside the optional preference.
 9. Add unit tests for production-host gating, URL sanitization, consent behavior, and event-parameter filtering.
 10. In GA4, enable query redaction for at least `code`, `error`, `error_description`, and `redirect`; raise event retention to 14 months; disable Google Signals; add both production domains to diagnostics; and complete property business details.
 11. After deployment, verify both consent choices, prove sanitized SPA page views and custom events in Realtime/DebugView, create required custom dimensions, and mark `sign_up` and successful report completion events as key events.
 12. Leave Internal Traffic in Testing until a real office/VPN IP rule is supplied and validated. Treat BigQuery as a separate opt-in decision.
 
+## Implementation progress — 2026-08-04
+
+- Merged current `main` into `codex/analytics-foundation` before continuing.
+- Optional GA4 now waits for a one-time Accept/Decline choice and can be changed at `/analytics`; the versioned choice and decision time are remembered locally. This conservative posture supersedes the earlier default-on implementation draft.
+- GA4 loads only in production builds on the four exact production hosts.
+- Advertising storage, ad user data, and ad personalisation remain denied. Google Signals and user-provided-data collection are disabled in GA4.
+- Manual page views use stable route patterns and strip query strings, fragments, and dynamic values. Unknown catch-all routes are recorded as `/404`.
+- GA4 event parameters and required Firestore operational-event fields are allowlisted. Raw URLs, free text, access keys, report IDs, and raw errors are not accepted by these logging paths.
+- Required Cloudflare, Everhomes, and operational logging were not made optional and their product behaviour was not changed.
+- GA4 event retention is now 14 months.
+- GA4 URL redaction is enabled for 14 keys: `code`, `error`, `error_description`, `redirect`, `state`, `token`, `accesskey`, `key`, `jobid`, `dataset`, `version`, `serverid`, `role`, and `guild_id`.
+- Enhanced Measurement browser-history page views, site search, and form interactions are disabled. Page loads remain enabled at the stream level; the app uses `send_page_view: false` and emits sanitized manual page views.
+- Local unit tests, production build, and browser UI/persistence checks passed. These application changes are not deployed yet.
+
 ## Resume point
 
-Continue from `codex/analytics-foundation`. No code or GA4 console mutation has been made, so implementation can begin directly from the planned implementation above.
+Finish final verification on `codex/analytics-foundation`, then commit/push/deploy only when requested. After deployment, confirm production Accept/Decline behaviour and sanitized events in GA4 Realtime/DebugView before creating key events or custom definitions.

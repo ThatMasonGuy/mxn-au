@@ -224,6 +224,20 @@ export default [
         },
     },
     {
+        path: '/analytics',
+        name: 'AnalyticsPreferences',
+        component: () => import('@/features/system/views/AnalyticsPreferences.vue'),
+        meta: {
+            requiresAuth: false,
+            role: null,
+            title: 'Analytics & Privacy',
+            drawerVisible: false,
+            layout: 'default',
+            description: 'Manage optional Google Analytics and review how MXN.au handles analytics data.',
+            requiresOverlay: false,
+        },
+    },
+    {
         path: '/404',
         name: '404',
         component: () => import('@/features/system/views/Error404.vue'),

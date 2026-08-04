@@ -1,6 +1,7 @@
 import { onRequest } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 import { db } from "../config/firebase.mjs";
+import { requireDiscordSession } from './discordSession.mjs';
 
 const DISCORD_CLIENT_ID = defineSecret("DISCORD_CLIENT_ID");
 const DISCORD_CLIENT_SECRET = defineSecret("DISCORD_CLIENT_SECRET");
@@ -104,21 +105,9 @@ export const getDiscordServers = onRequest(
       return res.status(405).json({ error: "Method not allowed. Please use GET." });
     }
 
-    // Get user ID from Authorization header
-    // Format: "Bearer <userId>" (NOT the access token anymore)
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return res.status(401).json({ error: "Missing or invalid authorization header" });
-    }
-
-    const userId = authHeader.substring(7);
-
-    // Validate userId format (Discord IDs are numeric strings, 17-19 digits)
-    if (!/^\d{17,19}$/.test(userId)) {
-      return res.status(401).json({ error: "Invalid user ID format" });
-    }
-
     try {
+      const { discordUserId: userId } = await requireDiscordSession(req);
+
       // Get valid access token from Firestore (refreshing if needed)
       let accessToken;
       try {
@@ -161,7 +150,8 @@ export const getDiscordServers = onRequest(
       // Filter to only guilds where user has MANAGE_GUILD permission
       const adminGuilds = allGuilds.filter((guild) => {
         const permissions = BigInt(guild.permissions);
-        return (permissions & BigInt(MANAGE_GUILD)) === BigInt(MANAGE_GUILD);
+        return (permissions & 0x8n) === 0x8n
+          || (permissions & BigInt(MANAGE_GUILD)) === BigInt(MANAGE_GUILD);
       });
       console.log(`User has admin access to ${adminGuilds.length} guilds`);
 
@@ -224,9 +214,10 @@ export const getDiscordServers = onRequest(
       });
     } catch (error) {
       console.error("Error fetching servers:", error);
-      return res.status(500).json({
-        error: "Failed to fetch servers",
-        details: error.message,
+      const status = Number(error?.status) || 500;
+      return res.status(status).json({
+        error: status === 500 ? "Failed to fetch servers" : error.message,
+        details: status === 500 ? undefined : error.message,
       });
     }
   }

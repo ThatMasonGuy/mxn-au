@@ -10,6 +10,7 @@
       <TopHeroesAdminHeader v-else-if="showTopHeroesOverlay && layout === 'admin'" />
 
       <Toaster />
+      <AnalyticsNotice />
 
       <!-- Page Content -->
       <div class="flex-grow">
@@ -41,6 +42,7 @@ import { ref, computed, watchEffect, defineAsyncComponent } from 'vue'
 import { useRoute } from 'vue-router'
 import { useLoadingScreen } from '@/shared/composables/useLoadingScreen'
 import LoadingScreen from '@/shared/components/common/LoadingScreen.vue'
+import AnalyticsNotice from '@/shared/components/common/AnalyticsNotice.vue'
 
 const { isLoading, loadingMessage } = useLoadingScreen()
 

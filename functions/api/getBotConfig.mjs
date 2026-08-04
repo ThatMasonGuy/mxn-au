@@ -1,5 +1,6 @@
 import { onRequest } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
+import { requireManagedDiscordGuild } from './discordSession.mjs';
 
 const BOT_SERVER_URL = defineSecret("BOT_SERVER_URL");
 const BOT_API_KEY = defineSecret("BOT_API_KEY");
@@ -24,37 +25,13 @@ export const getBotConfig = onRequest(
       return res.status(405).json({ error: "Method not allowed. Please use GET." });
     }
 
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return res.status(401).json({ error: "Missing or invalid authorization header" });
-    }
-
     const serverId = req.query.serverId;
     if (!serverId) {
       return res.status(400).json({ error: "Missing serverId parameter" });
     }
 
-    const accessToken = authHeader.substring(7);
-
     try {
-      // Verify user has permission to manage this server
-      const guildsResponse = await fetch("https://discord.com/api/users/@me/guilds", {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-
-      if (!guildsResponse.ok) {
-        throw new Error("Failed to fetch user guilds");
-      }
-
-      const guilds = await guildsResponse.json();
-      const guild = guilds.find((g) => g.id === serverId);
-
-      // Check if user has MANAGE_SERVER permission (0x00000020)
-      if (!guild || (parseInt(guild.permissions) & 0x00000020) !== 0x00000020) {
-        return res.status(403).json({ error: "You do not have permission to manage this server" });
-      }
+      await requireManagedDiscordGuild(req, serverId);
 
       // Fetch config from bot server
       const configResponse = await fetch(`${BOT_SERVER_URL.value()}/api/config/${serverId}`, {
@@ -72,9 +49,9 @@ export const getBotConfig = onRequest(
       return res.json({ config });
     } catch (error) {
       console.error("Error fetching config:", error);
-      return res.status(500).json({
-        error: "Failed to fetch configuration",
-        details: error.message,
+      const status = Number(error?.status) || 500;
+      return res.status(status).json({
+        error: status === 500 ? "Failed to fetch configuration" : error.message,
       });
     }
   }

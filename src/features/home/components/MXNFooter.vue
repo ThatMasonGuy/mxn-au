@@ -186,6 +186,10 @@
             <div class="flex flex-col sm:flex-row items-center justify-between gap-4 text-sm">
                 <p class="text-center sm:text-left text-white/60">
                     © {{ new Date().getFullYear() }} MXN.au - All rights reserved
+                    <span class="mx-2 text-white/20">·</span>
+                    <router-link to="/analytics" class="hover:text-white transition-colors">
+                        Analytics &amp; privacy
+                    </router-link>
                 </p>
                 
                 <p class="text-center text-white/70">

@@ -17,26 +17,11 @@ import {
 } from 'firebase/firestore'
 import { firestore } from '@/firebase'
 
-// Discord Webhook URLs
-const DISCORD_WEBHOOK_REPORTS = 'https://discord.com/api/webhooks/1423923070334402632/9iHvtuRkm2hNVXhFjXftfC_mcWplEOhzq_t3rZwKyC8HQ0Ly21Uo_robo8LuHY0s1XC0'
-const DISCORD_WEBHOOK_COMMENTS = 'https://discord.com/api/webhooks/1423923484492435517/pSRHY1mM0uFrFmc6_iOLLhjjv7RERB92cS95GuEUuQBP7ihDeOTStHCq6-UYbzd5fCSS'
-
-// Helper function to send Discord notifications
-const sendDiscordNotification = async (webhookUrl, embed) => {
-    try {
-        await fetch(webhookUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                embeds: [embed]
-            })
-        })
-    } catch (error) {
-        console.error('Failed to send Discord notification:', error)
-    }
-}
+// Intentionally retired: this TopHeroes community surface has been inactive for
+// roughly a year, and its former client-exposed Discord webhooks were abused and
+// have been revoked. Do not restore webhook delivery without a new product and
+// security decision. The legacy call sites remain harmless no-ops for context.
+const sendDiscordNotification = () => {}
 
 export const useTopHeroesPublicStore = defineStore('topHeroesPublic', () => {
     // State
@@ -507,7 +492,7 @@ export const useTopHeroesPublicStore = defineStore('topHeroesPublic', () => {
             const queueData = queueDetails.value[queueId] || queue
             const commentUrl = `${window.location.origin}/topheroes/queues/${queueId}#comment-${docRef.id}`
 
-            sendDiscordNotification(DISCORD_WEBHOOK_COMMENTS, {
+            sendDiscordNotification({
                 title: '💬 New Comment',
                 description: comment.text,
                 url: commentUrl,
@@ -595,7 +580,7 @@ export const useTopHeroesPublicStore = defineStore('topHeroesPublic', () => {
             const parentComment = commentsList?.find(c => c.id === commentId)
             const replyUrl = `${window.location.origin}/topheroes/queues/${queueId}#comment-${commentId}`
 
-            sendDiscordNotification(DISCORD_WEBHOOK_COMMENTS, {
+            sendDiscordNotification({
                 title: '↩️ New Reply',
                 description: reply.text,
                 url: replyUrl,
@@ -799,7 +784,7 @@ export const useTopHeroesPublicStore = defineStore('topHeroesPublic', () => {
             }
 
             // Send Discord notification for report
-            sendDiscordNotification(DISCORD_WEBHOOK_REPORTS, {
+            sendDiscordNotification({
                 title: `🚩 ${itemType} Reported`,
                 description: itemText.length > 200 ? itemText.substring(0, 200) + '...' : itemText,
                 url: itemUrl,
