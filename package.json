@@ -91,7 +91,7 @@
     "postcss": "^8.5.25",
     "rollup-plugin-visualizer": "^7.0.1",
     "tailwindcss": "^4.3.3",
-    "typescript": "^6.0.3",
+    "typescript": "^7.0.2",
     "vite": "^8.2.0",
     "vite-plugin-image-optimizer": "^2.0.3"
   },
