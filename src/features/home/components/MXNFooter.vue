@@ -185,7 +185,9 @@
             
             <div class="flex flex-col sm:flex-row items-center justify-between gap-4 text-sm">
                 <p class="text-center sm:text-left text-white/60">
-                    © {{ new Date().getFullYear() }} MXN.au - All rights reserved
+                    © {{ new Date().getFullYear() }} MXN.au
+                    <span class="mx-2 text-white/20">·</span>
+                    <a href="https://tempeststudios.com.au/" target="_blank" class="hover:text-white transition-colors">Tempest Studios</a>
                     <span class="mx-2 text-white/20">·</span>
                     <router-link to="/analytics" class="hover:text-white transition-colors">
                         Analytics &amp; privacy
@@ -199,7 +201,7 @@
                     </span>
                     by
                     <span class="font-semibold text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 to-purple-300 animate-gradient shimmer-glow">
-                        ThatMasonGuy
+                        Mason Bartholomai
                     </span>
                 </p>
             </div>
