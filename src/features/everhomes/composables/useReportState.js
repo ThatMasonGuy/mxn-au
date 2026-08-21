@@ -83,7 +83,6 @@ const REPORT_IMAGE_TYPES_BY_EXTENSION = Object.freeze({
     heif: 'image/heif',
     avif: 'image/avif',
 })
-const RETIRED_REPORT_PHOTO_LIMIT_ERROR = 'storage/report-photo-limit'
 
 function localIsoDate() {
     const now = new Date()
@@ -377,8 +376,8 @@ export function useReportState(schema) {
         window.addEventListener('offline', handleOffline)
         document.addEventListener('visibilitychange', handleVisibilityChange)
         restoreDraftFromLocation().then(async (restored) => {
-            const migratedPhotoCount = await migrateRetiredPhotoLimitFailures()
-            if (store.hasChecklistStarted && (!restored || migratedPhotoCount > 0)) {
+            const normalisedPhotoCount = await normaliseFailedPhotoRecovery()
+            if (store.hasChecklistStarted && (!restored || normalisedPhotoCount > 0)) {
                 scheduleDraftSync({ immediate: true })
             }
         })
@@ -922,11 +921,8 @@ export function useReportState(schema) {
         ]
     }
 
-    async function migrateRetiredPhotoLimitFailures() {
-        const photos = allReportPhotos().filter((photo) =>
-            photo.uploadStatus === 'failed'
-            && photo.errorCode === RETIRED_REPORT_PHOTO_LIMIT_ERROR
-        )
+    async function normaliseFailedPhotoRecovery() {
+        const photos = allReportPhotos().filter((photo) => photo.uploadStatus === 'failed')
 
         await Promise.all(photos.map(async (photo) => {
             const priorStoragePath = photo.storagePath || photo.intendedStoragePath
@@ -941,7 +937,7 @@ export function useReportState(schema) {
             photo.localBackupAvailable = Boolean(file)
             photo.errorCode = canRetry ? 'storage/retry-required' : 'storage/retry-file-unavailable'
             photo.errorMessage = canRetry
-                ? 'The previous 120-photo limit has been removed.'
+                ? 'This photo has not finished uploading.'
                 : 'The original image is not available in this browser.'
             photo.retryNote = canRetry
                 ? 'Retry to upload this photo.'

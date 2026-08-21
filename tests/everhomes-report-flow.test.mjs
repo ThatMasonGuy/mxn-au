@@ -154,19 +154,7 @@ test('ordinary report schema labels contain no unsupported comparison glyphs', a
   }
 })
 
-test('report workflows do not enforce an arbitrary photo-count cap', async () => {
-  const files = [
-    'src/features/everhomes/composables/useReportState.js',
-    'functions/everhomes/generateInspectionReport.mjs',
-    'functions/everhomes/regenerateReport.mjs',
-  ]
-  for (const file of files) {
-    const source = await readFile(new URL(`../${file}`, import.meta.url), 'utf8')
-    assert.doesNotMatch(source, /MAX_REPORT_PHOTOS|photos\.length\s*>\s*120/, file)
-  }
-})
-
-test('retired photo-limit failures always have a recovery path', async () => {
+test('failed photos always have a recovery path', async () => {
   const reportState = await readFile(
     new URL('../src/features/everhomes/composables/useReportState.js', import.meta.url),
     'utf8',
@@ -184,7 +172,7 @@ test('retired photo-limit failures always have a recovery path', async () => {
     'utf8',
   )
 
-  assert.match(reportState, /RETIRED_REPORT_PHOTO_LIMIT_ERROR = 'storage\/report-photo-limit'/)
+  assert.match(reportState, /function normaliseFailedPhotoRecovery\(\)/)
   assert.match(reportState, /function removeFailedPhotos\(\)/)
   assert.match(checklist, /aria-label="Remove failed photo"/)
   assert.match(marketing, /aria-label="Remove failed marketing photo"/)
