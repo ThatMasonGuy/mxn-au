@@ -154,6 +154,18 @@ test('ordinary report schema labels contain no unsupported comparison glyphs', a
   }
 })
 
+test('report workflows do not enforce an arbitrary photo-count cap', async () => {
+  const files = [
+    'src/features/everhomes/composables/useReportState.js',
+    'functions/everhomes/generateInspectionReport.mjs',
+    'functions/everhomes/regenerateReport.mjs',
+  ]
+  for (const file of files) {
+    const source = await readFile(new URL(`../${file}`, import.meta.url), 'utf8')
+    assert.doesNotMatch(source, /MAX_REPORT_PHOTOS|storage\/report-photo-limit/, file)
+  }
+})
+
 test('frontend and backend workflow configuration stays aligned', () => {
   for (const browserSchema of [inspectionSchema, handoverSchema]) {
     const functionSchema = REPORT_SCHEMAS[browserSchema.reportType]

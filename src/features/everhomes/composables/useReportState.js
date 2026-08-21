@@ -950,7 +950,6 @@ export function useReportState(schema) {
     const INITIAL_UPLOAD_TIMEOUT_MS = 30_000
     const MANUAL_RETRY_TIMEOUT_MS = 120_000
     const MAX_IMAGE_BYTES = 15 * 1024 * 1024
-    const MAX_REPORT_PHOTOS = 120
     const MAX_REPORT_IMAGE_BYTES = 300 * 1024 * 1024
 
     function classifyUploadError(err, context = {}) {
@@ -1017,13 +1016,6 @@ export function useReportState(schema) {
             throw { code: 'storage/file-too-large', message: 'This image is larger than the 15 MB upload limit.', retryable: false }
         }
         const photos = allReportPhotos()
-        if (photos.length > MAX_REPORT_PHOTOS) {
-            throw {
-                code: 'storage/report-photo-limit',
-                message: `This report is limited to ${MAX_REPORT_PHOTOS} photos. Remove an existing photo before adding another.`,
-                retryable: false,
-            }
-        }
         const totalBytes = photos.reduce((sum, photo) => sum + (Number(photo.fileSize) || 0), 0)
         if (totalBytes > MAX_REPORT_IMAGE_BYTES) {
             throw {

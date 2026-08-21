@@ -14,7 +14,6 @@ const RESEND_API_KEY = defineSecret("RESEND_API_KEY");
 
 const ADMIN_EMAIL = "admin@everhomes.com.au";
 const ASSET_FETCH_TIMEOUT_MS = 30_000;
-const MAX_REPORT_PHOTOS = 120;
 const MAX_REPORT_IMAGE_BYTES = 300 * 1024 * 1024;
 
 async function fetchAsset(url) {
@@ -157,12 +156,6 @@ export const generateInspectionReport = onRequest(
       (sum, photos) => sum + (Array.isArray(photos) ? photos.length : 0),
       0,
     );
-    if (requestedPhotoCount > MAX_REPORT_PHOTOS) {
-      return res.status(413).json({
-        error: `Report contains ${requestedPhotoCount} photos; the limit is ${MAX_REPORT_PHOTOS}.`,
-      });
-    }
-
     const schema = getSchema(reportType);
     if (!schema) {
       return res.status(400).json({ error: "Unsupported report type." });

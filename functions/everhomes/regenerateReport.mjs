@@ -15,7 +15,6 @@ import JSZip from 'jszip'
 import { createHash, randomUUID } from 'node:crypto'
 import { requireEverhomesAdmin } from './requireEverhomesAdmin.mjs'
 
-const MAX_REPORT_PHOTOS = 120
 const MAX_ARCHIVE_FILE_BYTES = 320 * 1024 * 1024
 const MAX_EXPANDED_PHOTO_BYTES = 300 * 1024 * 1024
 
@@ -177,13 +176,6 @@ export const regenerateReport = onRequest(
         })
       }
     }
-    if (photoAssets.length > MAX_REPORT_PHOTOS) {
-      return res.status(413).json({
-        error: `Regeneration stopped because the saved report contains more than ${MAX_REPORT_PHOTOS} photos.`,
-        details: 'The existing PDF and photo archive were left unchanged.',
-      })
-    }
-
     const signatureAssets = []
     const staffSignature = payload.signatures?.staff
     if (
