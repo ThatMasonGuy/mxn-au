@@ -162,8 +162,33 @@ test('report workflows do not enforce an arbitrary photo-count cap', async () =>
   ]
   for (const file of files) {
     const source = await readFile(new URL(`../${file}`, import.meta.url), 'utf8')
-    assert.doesNotMatch(source, /MAX_REPORT_PHOTOS|storage\/report-photo-limit/, file)
+    assert.doesNotMatch(source, /MAX_REPORT_PHOTOS|photos\.length\s*>\s*120/, file)
   }
+})
+
+test('retired photo-limit failures always have a recovery path', async () => {
+  const reportState = await readFile(
+    new URL('../src/features/everhomes/composables/useReportState.js', import.meta.url),
+    'utf8',
+  )
+  const checklist = await readFile(
+    new URL('../src/features/everhomes/components/ChecklistSection.vue', import.meta.url),
+    'utf8',
+  )
+  const marketing = await readFile(
+    new URL('../src/features/everhomes/components/MarketingPhotoPanel.vue', import.meta.url),
+    'utf8',
+  )
+  const accordion = await readFile(
+    new URL('../src/features/everhomes/components/SectionAccordion.vue', import.meta.url),
+    'utf8',
+  )
+
+  assert.match(reportState, /RETIRED_REPORT_PHOTO_LIMIT_ERROR = 'storage\/report-photo-limit'/)
+  assert.match(reportState, /function removeFailedPhotos\(\)/)
+  assert.match(checklist, /aria-label="Remove failed photo"/)
+  assert.match(marketing, /aria-label="Remove failed marketing photo"/)
+  assert.match(accordion, /Remove all failed/)
 })
 
 test('frontend and backend workflow configuration stays aligned', () => {

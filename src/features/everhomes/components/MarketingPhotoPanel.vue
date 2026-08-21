@@ -83,23 +83,34 @@
             <!-- Failed -->
             <div
               v-else-if="photo.uploadStatus === 'failed'"
-              class="absolute inset-0 bg-rose-900/85 flex flex-col items-center justify-center gap-1 p-1 text-center"
+              class="absolute inset-0 bg-rose-900/85 flex flex-col items-center justify-center gap-1 p-1 pb-8 text-center"
             >
               <AlertTriangle class="w-4 h-4 text-rose-300" />
               <span class="text-[9px] font-bold text-rose-200">{{ photo.errorCode || 'Upload failed' }}</span>
               <span class="max-w-full truncate text-[8px] text-rose-100" :title="photo.retryNote || photo.errorMessage">
                 {{ photo.retryNote || photo.errorMessage || 'The image could not be uploaded.' }}
               </span>
-              <button
-                v-if="photo.retryable"
-                type="button"
-                @click.stop="reportState.retryMarketingPhoto(slot.key, mpIdx)"
-                class="mt-0.5 rounded bg-white/15 px-1.5 py-0.5 text-[8px] font-black text-white hover:bg-white/25"
-              >Retry (2 min)</button>
+              <div class="absolute inset-x-1 bottom-1 flex flex-wrap items-center justify-center gap-1">
+                <button
+                  v-if="photo.retryable"
+                  type="button"
+                  aria-label="Retry failed marketing photo"
+                  @click.stop="reportState.retryMarketingPhoto(slot.key, mpIdx)"
+                  class="rounded bg-rose-500 px-1.5 py-0.5 text-[8px] font-black text-white hover:bg-rose-400"
+                >Retry</button>
+                <button
+                  type="button"
+                  aria-label="Remove failed marketing photo"
+                  @click.stop="reportState.removeMarketingPhoto(slot.key, mpIdx)"
+                  class="rounded bg-white/15 px-1.5 py-0.5 text-[8px] font-black text-white hover:bg-white/25"
+                >Remove</button>
+              </div>
             </div>
             <!-- Remove -->
             <button
-              v-if="photo.uploadStatus !== 'uploading'"
+              v-if="photo.uploadStatus === 'done'"
+              type="button"
+              aria-label="Remove marketing photo"
               @click.stop="reportState.removeMarketingPhoto(slot.key, mpIdx)"
               class="absolute top-1 right-1 w-5 h-5 bg-black/70 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
             >

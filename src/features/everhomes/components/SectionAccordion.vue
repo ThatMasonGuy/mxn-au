@@ -87,6 +87,26 @@
       </div>
     </Transition>
 
+    <div
+      v-if="reportState.hasFailedUploads"
+      class="mb-4 flex flex-col gap-3 rounded-2xl border border-rose-500/25 bg-rose-500/10 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+    >
+      <div class="flex items-start gap-2.5">
+        <AlertTriangle class="mt-0.5 h-4 w-4 shrink-0 text-rose-400" />
+        <p class="text-xs font-semibold text-rose-200">
+          {{ reportState.failedUploadCount }} photo{{ reportState.failedUploadCount === 1 ? '' : 's' }} could not be uploaded.
+          Retry recoverable photos, or remove failed entries and add them again.
+        </p>
+      </div>
+      <button
+        type="button"
+        @click="removeAllFailedPhotos"
+        class="shrink-0 rounded-lg bg-rose-500 px-3 py-2 text-xs font-black text-white transition-colors hover:bg-rose-400"
+      >
+        Remove all failed
+      </button>
+    </div>
+
     <!-- ── Section accordion ──────────────────────────────────────────── -->
     <div class="space-y-2">
       <div
@@ -238,5 +258,14 @@ function closePhotoModal() {
   photoModal.open         = false
   photoModal.sectionId    = null
   photoModal.sectionLabel = ''
+}
+
+function removeAllFailedPhotos() {
+  const count = props.reportState.failedUploadCount
+  if (!count) return
+  const confirmed = window.confirm(
+    `Remove ${count} failed photo ${count === 1 ? 'entry' : 'entries'}? Successfully uploaded photos will not be affected.`
+  )
+  if (confirmed) props.reportState.removeFailedPhotos()
 }
 </script>

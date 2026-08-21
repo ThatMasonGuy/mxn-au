@@ -178,7 +178,7 @@
             <!-- Failed overlay -->
             <div
               v-else-if="photo.uploadStatus === 'failed'"
-              class="absolute inset-0 bg-rose-900/80 flex flex-col items-center justify-center gap-1.5 p-1"
+              class="absolute inset-0 bg-rose-900/80 flex flex-col items-center justify-center gap-1.5 p-1 pb-9"
             >
               <AlertTriangle class="w-4 h-4 text-rose-300" />
               <span class="text-[9px] font-bold text-rose-200 text-center leading-tight">
@@ -187,17 +187,31 @@
               <span v-if="photo.errorCode" class="text-[9px] text-rose-100/80 text-center leading-tight">
                 {{ photo.errorCode }}
               </span>
-              <button
-                v-if="photo.retryable !== false"
-                @click.stop="reportState.retryPhoto(section.id, pIdx)"
-                class="text-[10px] font-black text-white bg-rose-500 rounded-lg px-2 py-1 hover:bg-rose-400 transition-colors"
-              >
-                Retry (2 min)
-              </button>
+              <div class="absolute inset-x-1 bottom-1 flex flex-wrap items-center justify-center gap-1">
+                <button
+                  v-if="photo.retryable !== false"
+                  type="button"
+                  aria-label="Retry failed photo"
+                  @click.stop="reportState.retryPhoto(section.id, pIdx)"
+                  class="text-[10px] font-black text-white bg-rose-500 rounded-lg px-2 py-1 hover:bg-rose-400 transition-colors"
+                >
+                  Retry
+                </button>
+                <button
+                  type="button"
+                  aria-label="Remove failed photo"
+                  @click.stop="reportState.removePhoto(section.id, pIdx)"
+                  class="text-[10px] font-black text-white bg-white/15 rounded-lg px-2 py-1 hover:bg-white/25 transition-colors"
+                >
+                  Remove
+                </button>
+              </div>
             </div>
             <!-- Remove -->
             <button
-              v-if="photo.uploadStatus !== 'uploading'"
+              v-if="photo.uploadStatus === 'done'"
+              type="button"
+              aria-label="Remove photo"
               @click.stop="reportState.removePhoto(section.id, pIdx)"
               class="absolute top-1 right-1 w-5 h-5 bg-black/70 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-rose-500/70"
             >

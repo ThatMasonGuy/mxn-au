@@ -83,6 +83,7 @@ const REPORT_IMAGE_TYPES_BY_EXTENSION = Object.freeze({
     heif: 'image/heif',
     avif: 'image/avif',
 })
+const RETIRED_REPORT_PHOTO_LIMIT_ERROR = 'storage/report-photo-limit'
 
 function localIsoDate() {
     const now = new Date()
@@ -375,8 +376,11 @@ export function useReportState(schema) {
         window.addEventListener('online',  handleOnline)
         window.addEventListener('offline', handleOffline)
         document.addEventListener('visibilitychange', handleVisibilityChange)
-        restoreDraftFromLocation().then((restored) => {
-            if (!restored && store.hasChecklistStarted) scheduleDraftSync({ immediate: true })
+        restoreDraftFromLocation().then(async (restored) => {
+            const migratedPhotoCount = await migrateRetiredPhotoLimitFailures()
+            if (store.hasChecklistStarted && (!restored || migratedPhotoCount > 0)) {
+                scheduleDraftSync({ immediate: true })
+            }
         })
     })
     onUnmounted(() => {
@@ -918,6 +922,35 @@ export function useReportState(schema) {
         ]
     }
 
+    async function migrateRetiredPhotoLimitFailures() {
+        const photos = allReportPhotos().filter((photo) =>
+            photo.uploadStatus === 'failed'
+            && photo.errorCode === RETIRED_REPORT_PHOTO_LIMIT_ERROR
+        )
+
+        await Promise.all(photos.map(async (photo) => {
+            const priorStoragePath = photo.storagePath || photo.intendedStoragePath
+            const file = !priorStoragePath && photo.id
+                ? retryFiles.get(photo.id) ?? await recoverReportUploadFile(photo.id).catch(() => null)
+                : null
+
+            if (file) retryFiles.set(photo.id, file)
+
+            const canRetry = Boolean(priorStoragePath || photo.url || file)
+            photo.retryable = canRetry
+            photo.localBackupAvailable = Boolean(file)
+            photo.errorCode = canRetry ? 'storage/retry-required' : 'storage/retry-file-unavailable'
+            photo.errorMessage = canRetry
+                ? 'The previous 120-photo limit has been removed.'
+                : 'The original image is not available in this browser.'
+            photo.retryNote = canRetry
+                ? 'Retry to upload this photo.'
+                : 'Remove this entry, then add the photo again.'
+        }))
+
+        return photos.length
+    }
+
     const failedUploadCount = computed(() =>
         allReportPhotos().filter((photo) => photo.uploadStatus === 'failed').length
     )
@@ -1388,6 +1421,29 @@ export function useReportState(schema) {
         photos.splice(photoIdx, 1)
     }
 
+    function removeFailedPhotos() {
+        let removed = 0
+
+        for (const [sectionId, section] of Object.entries(store.checklistData)) {
+            for (let index = (section.photos?.length ?? 0) - 1; index >= 0; index--) {
+                if (section.photos[index]?.uploadStatus !== 'failed') continue
+                removePhoto(sectionId, index)
+                removed++
+            }
+        }
+
+        for (const [slotKey, photos] of Object.entries(store.marketingPhotos)) {
+            for (let index = (photos?.length ?? 0) - 1; index >= 0; index--) {
+                if (photos[index]?.uploadStatus !== 'failed') continue
+                removeMarketingPhoto(slotKey, index)
+                removed++
+            }
+        }
+
+        if (removed) scheduleDraftSync({ immediate: true })
+        return removed
+    }
+
     async function discardLocalReport() {
         const photos = allReportPhotos()
         const photoIds = photos.map((photo) => photo.id).filter(Boolean)
@@ -1607,6 +1663,7 @@ export function useReportState(schema) {
         addMarketingPhoto,
         retryMarketingPhoto,
         removeMarketingPhoto,
+        removeFailedPhotos,
         discardLocalReport,
         clearReport,
 
