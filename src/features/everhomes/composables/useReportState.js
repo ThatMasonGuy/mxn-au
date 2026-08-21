@@ -329,6 +329,39 @@ export function useReportState(schema) {
         Object.assign(target, value)
     }
 
+    function prepareRestoredPhoto(photo = {}) {
+        if (photo.uploadStatus === 'done') return photo
+        return {
+            ...photo,
+            errorCode: 'storage/recovery-check',
+            errorMessage: 'Checking photo recovery options.',
+            retryNote: '',
+            retryable: false,
+            uploadStatus: 'failed',
+        }
+    }
+
+    function prepareRestoredChecklistData(checklistData = {}) {
+        return Object.fromEntries(
+            Object.entries(checklistData).map(([sectionId, section]) => [
+                sectionId,
+                {
+                    ...section,
+                    photos: (section?.photos ?? []).map(prepareRestoredPhoto),
+                },
+            ])
+        )
+    }
+
+    function prepareRestoredMarketingPhotos(marketingPhotos = {}) {
+        return Object.fromEntries(
+            Object.entries(marketingPhotos).map(([slotKey, photos]) => [
+                slotKey,
+                (photos ?? []).map(prepareRestoredPhoto),
+            ])
+        )
+    }
+
     async function restoreDraftFromLocation() {
         const hash = window.location.hash
         const prefix = '#everhomes-draft='
@@ -355,8 +388,8 @@ export function useReportState(schema) {
             store.resetAll()
             Object.assign(store.setup, result.draft.setup ?? {}, { reportId: draftId, draftAccessKey })
             store.checklistSections = result.draft.checklistSections ?? []
-            restoreObject(store.checklistData, result.draft.checklistData ?? {})
-            restoreObject(store.marketingPhotos, result.draft.marketingPhotos ?? {})
+            restoreObject(store.checklistData, prepareRestoredChecklistData(result.draft.checklistData))
+            restoreObject(store.marketingPhotos, prepareRestoredMarketingPhotos(result.draft.marketingPhotos))
             draftSync.status = 'saved'
             draftSync.revision = result.draftRevision ?? 0
             draftSync.lastSyncedAt = result.draftUpdatedAt ?? null

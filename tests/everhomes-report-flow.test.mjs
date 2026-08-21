@@ -171,8 +171,14 @@ test('failed photos always have a recovery path', async () => {
     new URL('../src/features/everhomes/components/SectionAccordion.vue', import.meta.url),
     'utf8',
   )
+  const store = await readFile(
+    new URL('../src/features/everhomes/stores/useEverhomesReportStore.js', import.meta.url),
+    'utf8',
+  )
 
   assert.match(reportState, /function normaliseFailedPhotoRecovery\(\)/)
+  assert.match(reportState, /function prepareRestoredPhoto\(photo = \{\}\)/)
+  assert.match(store, /errorCode:\s+uploaded \? \(p\.errorCode \?\? null\) : 'storage\/recovery-check'/)
   assert.match(reportState, /function removeFailedPhotos\(\)/)
   assert.match(checklist, /aria-label="Remove failed photo"/)
   assert.match(marketing, /aria-label="Remove failed marketing photo"/)

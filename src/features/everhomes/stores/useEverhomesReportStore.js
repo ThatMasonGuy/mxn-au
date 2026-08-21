@@ -49,6 +49,7 @@ function serialisePhoto(p) {
 }
 
 function rehydratePhoto(p) {
+    const uploaded = p.uploadStatus === 'done'
     return {
         id:           p.id ?? null,
         // Blob previewUrls do not survive sessions — restore from the permanent URL.
@@ -58,15 +59,15 @@ function rehydratePhoto(p) {
         storagePath:  p.storagePath ?? '',
         intendedStoragePath: p.intendedStoragePath ?? p.storagePath ?? '',
         caption:      p.caption ?? '',
-        errorCode:    p.errorCode ?? null,
-        errorMessage: p.errorMessage ?? '',
-        retryable:    p.retryable !== false,
-        retryNote:    p.retryNote ?? '',
+        errorCode:    uploaded ? (p.errorCode ?? null) : 'storage/recovery-check',
+        errorMessage: uploaded ? (p.errorMessage ?? '') : 'Checking photo recovery options.',
+        retryable:    uploaded ? p.retryable !== false : false,
+        retryNote:    uploaded ? (p.retryNote ?? '') : '',
         attempts:     p.attempts ?? 0,
         fileSize:     p.fileSize ?? 0,
         localBackupAvailable: p.localBackupAvailable !== false,
         // Surface interrupted uploads as failed so the retry button appears.
-        uploadStatus: p.uploadStatus === 'done' ? 'done' : 'failed',
+        uploadStatus: uploaded ? 'done' : 'failed',
     }
 }
 
