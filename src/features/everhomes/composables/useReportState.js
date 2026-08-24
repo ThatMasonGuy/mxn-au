@@ -48,6 +48,14 @@ import {
     isRequiredAnswerComplete,
     isStatusSectionComplete,
 } from '../utils/reportStatus'
+import {
+    getActiveReportBadges,
+    isReportItemVisible,
+} from '../utils/reportVisibility'
+import {
+    applyFailedPhotoRecoveryState,
+    prepareRestoredPhoto,
+} from '../utils/photoRecovery'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -329,18 +337,6 @@ export function useReportState(schema) {
         Object.assign(target, value)
     }
 
-    function prepareRestoredPhoto(photo = {}) {
-        if (photo.uploadStatus === 'done') return photo
-        return {
-            ...photo,
-            errorCode: 'storage/recovery-check',
-            errorMessage: 'Checking photo recovery options.',
-            retryNote: '',
-            retryable: false,
-            uploadStatus: 'failed',
-        }
-    }
-
     function prepareRestoredChecklistData(checklistData = {}) {
         return Object.fromEntries(
             Object.entries(checklistData).map(([sectionId, section]) => [
@@ -472,11 +468,7 @@ export function useReportState(schema) {
     // Returns the set of badge values that are "active" for the current
     // pickerValue. Only relevant when schema.sdaFilter is true.
     const activeSdaBadges = computed(() => {
-        if (!sdaFilter) return null // null = no filtering
-        const selected = store.setup.pickerValue
-        if (!selected) return null
-        const option = (schema.pickerOptions ?? []).find((o) => o.key === selected)
-        return option?.includes ? new Set(option.includes) : null
+        return getActiveReportBadges(schema, store.setup.pickerValue)
     })
 
     // ── Item visibility — single source of truth ──────────────────────────────
@@ -485,24 +477,13 @@ export function useReportState(schema) {
     //   1. Its showIf condition is satisfied (or it has no showIf)
     //   2. Its SDA badges pass the active filter (or sdaFilter is off)
     function isItemVisible(item, sectionId) {
-        // ── showIf check ─────────────────────────────────────────────────
-        if (item.showIf) {
-            const { id, value, hasValue } = item.showIf
-            const currentVal = store.checklistData[sectionId]?.inputs?.[id] ??
-                               store.checklistData[sectionId]?.items?.[id]  ??
-                               ''
-            const isFilled = currentVal !== undefined && currentVal !== null && String(currentVal).trim() !== ''
-            if (hasValue === true && !isFilled) return false
-            if (hasValue === false && isFilled) return false
-            if (hasValue === undefined && currentVal !== value) return false
-        }
-
-        // ── SDA badge filter ─────────────────────────────────────────────
-        if (sdaFilter && activeSdaBadges.value && item.badges?.length) {
-            if (!item.badges.some((b) => activeSdaBadges.value.has(b))) return false
-        }
-
-        return true
+        const section = store.checklistData[sectionId] ?? {}
+        return isReportItemVisible(item, {
+            inputs: section.inputs,
+            statuses: section.items,
+            sdaFilter,
+            activeBadges: activeSdaBadges.value,
+        })
     }
 
     // ── Section item helpers ──────────────────────────────────────────────────
@@ -965,16 +946,7 @@ export function useReportState(schema) {
 
             if (file) retryFiles.set(photo.id, file)
 
-            const canRetry = Boolean(priorStoragePath || photo.url || file)
-            photo.retryable = canRetry
-            photo.localBackupAvailable = Boolean(file)
-            photo.errorCode = canRetry ? 'storage/retry-required' : 'storage/retry-file-unavailable'
-            photo.errorMessage = canRetry
-                ? 'This photo has not finished uploading.'
-                : 'The original image is not available in this browser.'
-            photo.retryNote = canRetry
-                ? 'Retry to upload this photo.'
-                : 'Remove this entry, then add the photo again.'
+            applyFailedPhotoRecoveryState(photo, { localFileAvailable: Boolean(file) })
         }))
 
         return photos.length

@@ -11,6 +11,7 @@ import {
 } from 'firebase/firestore'
 import { firestore, auth } from '@/firebase'
 import { useMainStore } from '@/shared/stores/useMainStore'
+import { createTranslatePersistence } from '@/shared/stores/persistencePolicies'
 
 // shadcn/vue toast
 import { useToast } from '@/shared/components/ui/toast/use-toast'
@@ -1139,11 +1140,5 @@ export const useTranslateStore = defineStore('translate', () => {
         showToast,
     }
 }, {
-    persist: {
-        pick: ['selectedLanguage', 'fromLanguage', 'autoCopy', 'recentTranslations', 'syncHistory', 'selectedModel'],
-        afterHydrate: ({ store }) => {
-            store.apiKey = ''
-            store.$persist()
-        }
-    }
+    persist: createTranslatePersistence(localStorage)
 })

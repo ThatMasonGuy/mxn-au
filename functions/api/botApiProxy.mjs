@@ -1,6 +1,12 @@
 import { onRequest } from 'firebase-functions/v2/https'
 import { defineSecret } from 'firebase-functions/params'
 import { requireManagedDiscordGuild } from './discordSession.mjs'
+import {
+  enforceTrustedBotActor,
+  isAllowedBotProxyMethod,
+  safeBotProxyPath,
+  serverIdFromBotProxyPath,
+} from './botProxyPolicy.mjs'
 
 const BOT_SERVER_URL = defineSecret('BOT_SERVER_URL')
 const BOT_API_KEY = defineSecret('BOT_API_KEY')
@@ -14,24 +20,6 @@ const ALLOWED_ORIGINS = [
   'http://127.0.0.1:5173',
   'http://127.0.0.1:4173',
 ]
-const ALLOWED_METHODS = new Set(['GET', 'POST', 'PUT', 'DELETE'])
-const ALLOWED_PATH = /^\/api\/(?:discord|calendar|audit|config|stats)\/(\d{17,20})(?:\/[A-Za-z0-9_-]+)*$/
-
-function safeProxyPath(value) {
-  const rawPath = String(value || '')
-  if (!rawPath || rawPath.length > 500 || rawPath.includes('..')) return null
-
-  const parsed = new URL(rawPath, 'https://mxn.invalid')
-  if (!ALLOWED_PATH.test(parsed.pathname)) return null
-
-  const safeSearch = new URLSearchParams()
-  for (const [key, entry] of parsed.searchParams) {
-    if (['page', 'pageSize'].includes(key) && /^\d{1,4}$/.test(entry)) safeSearch.set(key, entry)
-  }
-
-  return `${parsed.pathname}${safeSearch.size ? `?${safeSearch}` : ''}`
-}
-
 export const botApiProxy = onRequest(
   {
     region: 'australia-southeast1',
@@ -43,38 +31,26 @@ export const botApiProxy = onRequest(
   },
   async (req, res) => {
     try {
-      if (!ALLOWED_METHODS.has(req.method)) {
+      if (!isAllowedBotProxyMethod(req.method)) {
         res.status(405).json({ error: 'Method not allowed' })
         return
       }
 
-      const proxyPath = safeProxyPath(req.query.path)
+      const proxyPath = safeBotProxyPath(req.query.path)
       if (!proxyPath) {
         res.status(400).json({ error: 'Unsupported bot API path' })
         return
       }
 
-      const serverId = new URL(proxyPath, 'https://mxn.invalid').pathname.match(ALLOWED_PATH)?.[1]
+      const serverId = serverIdFromBotProxyPath(proxyPath)
       const session = await requireManagedDiscordGuild(req, serverId)
-      let body = req.body
-
-      if (req.method === 'POST' && proxyPath.startsWith(`/api/audit/${serverId}`)) {
-        body = {
-          ...(body && typeof body === 'object' ? body : {}),
-          userId: session.discordUserId,
-          userName: session.userData.username,
-          userAvatar: session.userData.avatarUrl || null,
-        }
-      }
-
-      if (req.method === 'POST' && proxyPath === `/api/calendar/${serverId}`) {
-        body = {
-          ...(body && typeof body === 'object' ? body : {}),
-          creatorUserId: session.discordUserId,
-          creatorUserName: session.userData.username,
-          creatorUserAvatar: session.userData.avatarUrl || null,
-        }
-      }
+      const body = enforceTrustedBotActor({
+        method: req.method,
+        proxyPath,
+        serverId,
+        body: req.body,
+        session,
+      })
 
       const upstream = await fetch(`${BOT_SERVER_URL.value()}${proxyPath}`, {
         method: req.method,

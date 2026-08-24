@@ -1,6 +1,7 @@
 // @/shared/stores/useMainStore.js
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
+import { createMainPersistence } from './persistencePolicies'
 
 export const useMainStore = defineStore('main', () => {
   const user = ref(null)
@@ -47,12 +48,5 @@ export const useMainStore = defineStore('main', () => {
     clearAuth
   }
 }, {
-  persist: {
-    storage: localStorage,
-    pick: ['user', 'rememberMe'],
-    afterHydrate: ({ store }) => {
-      store.token = null
-      store.$persist()
-    }
-  }
+  persist: createMainPersistence(localStorage)
 })

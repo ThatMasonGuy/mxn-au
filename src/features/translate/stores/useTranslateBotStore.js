@@ -1,5 +1,6 @@
 // stores/useTranslateBotStore.js
 import { defineStore } from 'pinia'
+import { createTranslateBotPersistence } from '@/shared/stores/persistencePolicies'
 
 export const useTranslateStore = defineStore('translateBot', {
   state: () => ({
@@ -749,14 +750,5 @@ export const useTranslateStore = defineStore('translateBot', {
     }
   },
 
-  persist: {
-    storage: sessionStorage,
-    pick: ['discordUser', 'sessionId'],
-    afterHydrate: ({ store }) => {
-      localStorage.removeItem('discord_user')
-      localStorage.removeItem('discord_session_id')
-      localStorage.removeItem('discord_token')
-      store.$persist()
-    }
-  }
+  persist: createTranslateBotPersistence(sessionStorage, localStorage)
 })

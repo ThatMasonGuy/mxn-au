@@ -6,7 +6,7 @@ import { firebaseAdmin, db } from "../config/firebase.mjs";
 import { readFileSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -26,16 +26,6 @@ function originalImageExtension(asset = {}) {
   return ["jpg", "png", "webp", "heic", "heif", "avif"].includes(extension)
     ? extension
     : "jpg";
-}
-
-function safeArchiveKey(value, fallback) {
-  const raw = String(value ?? fallback);
-  const readable = raw
-    .replace(/[^a-zA-Z0-9_-]/g, "_")
-    .replace(/^_+|_+$/g, "")
-    .slice(0, 60) || fallback;
-  const digest = createHash("sha256").update(raw).digest("hex").slice(0, 8);
-  return `${readable}_${digest}`;
 }
 
 function isValidIsoDate(value) {
@@ -62,6 +52,7 @@ const STATUS_META = {
 // Zero changes needed here.
 import { getSchema } from "./checklistSchemas/index.mjs";
 import { normaliseEmailDeliveries } from "./emailDelivery.mjs";
+import { buildReportArtifactPaths, safeArchiveKey } from "./reportArtifacts.mjs";
 import {
   collectMissingRequiredAnswers,
   computeItemStats,
@@ -563,9 +554,11 @@ export const generateInspectionReport = onRequest(
       );
 
       // ── 5. Save PDF + ZIP to Storage in parallel ─────────────────
-      const artifactRoot = `${schema.collection}/${inspectionId}/generations/${generationId}`;
-      const pdfStoragePath = `${artifactRoot}/report.pdf`;
-      const zipStoragePath = `${artifactRoot}/photos.zip`;
+      const { pdfStoragePath, zipStoragePath } = buildReportArtifactPaths(
+        schema.collection,
+        inspectionId,
+        generationId,
+      );
 
       const [
         [pdfUrl],

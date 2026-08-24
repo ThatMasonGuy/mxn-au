@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto'
 import { db } from '../config/firebase.mjs'
+import { canManageDiscordGuild } from './discordAuthorization.mjs'
 
 const SESSION_COLLECTION = 'discord_sessions'
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000
@@ -89,13 +90,7 @@ export async function requireManagedDiscordGuild(req, serverId) {
 
   const guilds = await response.json()
   const guild = guilds.find(candidate => candidate.id === String(serverId))
-  const permissions = BigInt(guild?.permissions || 0)
-  const canManageGuild = guild && (
-    (permissions & 0x8n) === 0x8n
-    || (permissions & 0x20n) === 0x20n
-  )
-
-  if (!canManageGuild) {
+  if (!canManageDiscordGuild(guild)) {
     const error = new Error('You do not have permission to manage this server')
     error.status = 403
     throw error

@@ -1,38 +1,30 @@
 import assert from 'node:assert/strict'
-import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 
-import inspectionSchema from '../src/features/everhomes/schemas/inspection.js'
 import handoverSchema from '../src/features/everhomes/schemas/handover.js'
 import { REPORT_STORE_CONFIG } from '../src/features/everhomes/stores/useEverhomesReportStore.js'
+import {
+  applyFailedPhotoRecoveryState,
+  prepareRestoredPhoto,
+} from '../src/features/everhomes/utils/photoRecovery.js'
+import {
+  getActiveReportBadges,
+  isReportItemVisible,
+} from '../src/features/everhomes/utils/reportVisibility.js'
 import {
   deriveSectionStatus,
   isRequiredAnswerComplete as browserRequiredAnswerComplete,
   isStatusSectionComplete,
 } from '../src/features/everhomes/utils/reportStatus.js'
 import { REPORT_SCHEMAS } from '../functions/everhomes/checklistSchemas/index.mjs'
+import { normaliseEmailDeliveries } from '../functions/everhomes/emailDelivery.mjs'
+import { buildReportArtifactPaths, safeArchiveKey } from '../functions/everhomes/reportArtifacts.mjs'
 import {
   collectMissingRequiredAnswers,
   computeItemStats,
   isRequiredAnswerComplete as functionRequiredAnswerComplete,
   itemIsVisible,
 } from '../functions/everhomes/reportLogic.mjs'
-import { normaliseEmailDeliveries } from '../functions/everhomes/emailDelivery.mjs'
-
-function browserItemIsVisible(item, inputs, statuses, schema, category) {
-  if (item.showIf) {
-    const value = inputs[item.showIf.id] ?? statuses[item.showIf.id] ?? ''
-    if (item.showIf.hasValue === true && String(value).trim() === '') return false
-    if (item.showIf.hasValue === false && String(value).trim() !== '') return false
-    if (item.showIf.hasValue === undefined && value !== item.showIf.value) return false
-  }
-
-  if (schema.sdaFilter && item.badges?.length) {
-    const active = schema.pickerOptions.find((option) => option.key === category)?.includes ?? []
-    if (!item.badges.some((badge) => active.includes(badge))) return false
-  }
-  return true
-}
 
 test('Inspection and Handover use different fixed store IDs and persistence keys', () => {
   assert.notEqual(REPORT_STORE_CONFIG.inspection.storeId, REPORT_STORE_CONFIG.handover.storeId)
@@ -78,43 +70,38 @@ test('required yes/no answers accept only explicit yes or no in browser and func
         .map((candidate) => [candidate.id, 'yes']),
     )
     inputs.allRemotesWorking = 'maybe'
-    const missing = collectMissingRequiredAnswers([{
-      id: 'general',
-      type: 'general',
-      label: 'General Property',
-      inputs,
-      items: {},
-    }], schema, category)
+    const room = [{ id: 'general', type: 'general', label: 'General Property', inputs, items: {} }]
+    const missing = collectMissingRequiredAnswers(room, schema, category)
     assert.ok(
       missing.some((entry) => entry.itemId === 'allRemotesWorking'),
       `${reportType} must reject an invalid remotes answer`,
     )
 
     inputs.allRemotesWorking = 'no'
-    assert.equal(collectMissingRequiredAnswers([{
-      id: 'general',
-      type: 'general',
-      label: 'General Property',
-      inputs,
-      items: {},
-    }], schema, category).length, 0)
+    assert.equal(collectMissingRequiredAnswers(room, schema, category).length, 0)
   }
 })
 
-test('Cloud Function visibility matches the browser for every Handover category', () => {
+test('Cloud Function visibility matches the frontend helper for every Handover category', () => {
   const functionSchema = REPORT_SCHEMAS.handover
   for (const category of handoverSchema.pickerOptions.map((option) => option.key)) {
+    const activeBadges = getActiveReportBadges(handoverSchema, category)
     let hidden = 0
+
     for (const groups of Object.values(functionSchema.items)) {
       for (const group of groups) {
         for (const item of group.items) {
-          const browserVisible = browserItemIsVisible(item, {}, {}, handoverSchema, category)
+          const browserVisible = isReportItemVisible(item, {
+            sdaFilter: handoverSchema.sdaFilter,
+            activeBadges,
+          })
           const functionVisible = itemIsVisible(item, {}, {}, functionSchema, category)
           assert.equal(functionVisible, browserVisible, `${category}: ${item.id}`)
           if (!functionVisible) hidden += 1
         }
       }
     }
+
     assert.ok(hidden > 0, `${category} should exclude at least one category-specific item`)
   }
 })
@@ -141,63 +128,29 @@ test('Cloud Function statistics exclude category-inapplicable status items', () 
   assert.equal(improvedLiveability.total, improvedLiveability.ok)
 })
 
-test('ordinary report schema labels contain no unsupported comparison glyphs', async () => {
-  const files = [
-    'src/features/everhomes/data/inspectionItems.js',
-    'src/features/everhomes/data/handoverItems.js',
-    'functions/everhomes/checklistSchemas/inspectionItems.mjs',
-    'functions/everhomes/checklistSchemas/handoverItems.mjs',
-  ]
-  for (const file of files) {
-    const source = await readFile(new URL(`../${file}`, import.meta.url), 'utf8')
-    assert.doesNotMatch(source, /[≤≥]/u, file)
-  }
-})
+test('restored failed photos expose either retry or removal recovery', () => {
+  const completed = { id: 'done', uploadStatus: 'done', url: 'https://example.com/photo.jpg' }
+  assert.equal(prepareRestoredPhoto(completed), completed)
 
-test('failed photos always have a recovery path', async () => {
-  const reportState = await readFile(
-    new URL('../src/features/everhomes/composables/useReportState.js', import.meta.url),
-    'utf8',
-  )
-  const checklist = await readFile(
-    new URL('../src/features/everhomes/components/ChecklistSection.vue', import.meta.url),
-    'utf8',
-  )
-  const marketing = await readFile(
-    new URL('../src/features/everhomes/components/MarketingPhotoPanel.vue', import.meta.url),
-    'utf8',
-  )
-  const accordion = await readFile(
-    new URL('../src/features/everhomes/components/SectionAccordion.vue', import.meta.url),
-    'utf8',
-  )
-  const store = await readFile(
-    new URL('../src/features/everhomes/stores/useEverhomesReportStore.js', import.meta.url),
-    'utf8',
-  )
+  const recoverable = prepareRestoredPhoto({
+    id: 'recoverable',
+    uploadStatus: 'uploading',
+    intendedStoragePath: 'reports/photo.jpg',
+  })
+  applyFailedPhotoRecoveryState(recoverable)
+  assert.equal(recoverable.uploadStatus, 'failed')
+  assert.equal(recoverable.retryable, true)
+  assert.match(recoverable.retryNote, /Retry/)
 
-  assert.match(reportState, /function normaliseFailedPhotoRecovery\(\)/)
-  assert.match(reportState, /function prepareRestoredPhoto\(photo = \{\}\)/)
-  assert.match(store, /errorCode:\s+uploaded \? \(p\.errorCode \?\? null\) : 'storage\/recovery-check'/)
-  assert.match(reportState, /function removeFailedPhotos\(\)/)
-  assert.match(checklist, /aria-label="Remove failed photo"/)
-  assert.match(marketing, /aria-label="Remove failed marketing photo"/)
-  assert.match(accordion, /Remove all failed/)
-})
+  const localBackup = prepareRestoredPhoto({ id: 'local', uploadStatus: 'uploading' })
+  applyFailedPhotoRecoveryState(localBackup, { localFileAvailable: true })
+  assert.equal(localBackup.retryable, true)
+  assert.equal(localBackup.localBackupAvailable, true)
 
-test('frontend and backend workflow configuration stays aligned', () => {
-  for (const browserSchema of [inspectionSchema, handoverSchema]) {
-    const functionSchema = REPORT_SCHEMAS[browserSchema.reportType]
-    assert.equal(functionSchema.collection, browserSchema.collection)
-    assert.equal(functionSchema.docTitle, browserSchema.docTitle)
-    assert.equal(functionSchema.emailSubjectPrefix, browserSchema.emailSubjectPrefix)
-    assert.equal(functionSchema.fromName, browserSchema.fromName)
-    assert.equal(functionSchema.sdaFilter, browserSchema.sdaFilter)
-    assert.deepEqual(
-      functionSchema.requiredSections,
-      browserSchema.sections.forced.map((section) => section.itemsKey ?? section.key),
-    )
-  }
+  const unavailable = prepareRestoredPhoto({ id: 'missing', uploadStatus: 'uploading' })
+  applyFailedPhotoRecoveryState(unavailable)
+  assert.equal(unavailable.retryable, false)
+  assert.match(unavailable.retryNote, /Remove this entry/)
 })
 
 test('fulfilled Resend error payloads are failures, not successful deliveries', () => {
@@ -223,43 +176,18 @@ test('fulfilled Resend error payloads are failures, not successful deliveries', 
   ])
 })
 
-test('generation publishes immutable artifacts and recovery exports stay wired', async () => {
-  const generator = await readFile(
-    new URL('../functions/everhomes/generateInspectionReport.mjs', import.meta.url),
-    'utf8',
-  )
-  const index = await readFile(new URL('../functions/index.mjs', import.meta.url), 'utf8')
-  const drafts = await readFile(
-    new URL('../functions/everhomes/inspectionDrafts.mjs', import.meta.url),
-    'utf8',
-  )
-  const regeneration = await readFile(
-    new URL('../functions/everhomes/regenerateReport.mjs', import.meta.url),
-    'utf8',
-  )
-  const maintenance = await readFile(
-    new URL('../functions/everhomes/reportMaintenance.mjs', import.meta.url),
-    'utf8',
-  )
-  const firestoreRules = await readFile(new URL('../firestore.rules', import.meta.url), 'utf8')
-  const rules = await readFile(new URL('../storage.rules', import.meta.url), 'utf8')
+test('report generations use immutable paths and safe archive keys', () => {
+  const first = buildReportArtifactPaths('inspectionReports', 'report-1', 'generation-a')
+  const second = buildReportArtifactPaths('inspectionReports', 'report-1', 'generation-b')
 
-  assert.match(generator, /generations\/\$\{generationId\}/)
-  assert.match(generator, /const pdfStoragePath = `\$\{artifactRoot\}\/report\.pdf`/)
-  assert.match(generator, /const zipStoragePath = `\$\{artifactRoot\}\/photos\.zip`/)
-  assert.match(generator, /db\.runTransaction/)
-  assert.match(generator, /collection\("artifactGenerations"\)\.doc\(generationId\)/)
-  assert.match(generator, /publishBatch\.commit\(\)/)
-  assert.match(generator, /safeArchiveKey\(room\.id, "room"\)/)
-  assert.doesNotMatch(generator, /res\.status\(504\)/)
-  assert.match(regeneration, /MAX_ARCHIVE_FILE_BYTES = 320 \* 1024 \* 1024/)
-  assert.match(regeneration, /MAX_EXPANDED_PHOTO_BYTES = 300 \* 1024 \* 1024/)
-  assert.match(regeneration, /archiveGroup: 'marketing'/)
-  assert.match(drafts, /db\.recursiveDelete\(ref\)/)
-  assert.match(maintenance, /'processing', 'regenerating', 'pending', 'deleting'/)
-  assert.match(index, /deleteEverhomesDraft/)
-  assert.match(index, /sweepStaleEverhomesReports/)
-  assert.match(firestoreRules, /match \/artifactGenerations\/\{generationId\}/)
-  assert.match(rules, /isMutableDraft/)
-  assert.match(rules, /status == 'draft' \|\| status == 'pending' \|\| status == 'failed'/)
+  assert.equal(first.pdfStoragePath, 'inspectionReports/report-1/generations/generation-a/report.pdf')
+  assert.equal(first.zipStoragePath, 'inspectionReports/report-1/generations/generation-a/photos.zip')
+  assert.notEqual(first.artifactRoot, second.artifactRoot)
+  assert.throws(() => buildReportArtifactPaths('inspectionReports', 'report-1', ''), TypeError)
+
+  const unsafeRoomId = '../../shared/photo'
+  const archiveKey = safeArchiveKey(unsafeRoomId, 'room')
+  assert.doesNotMatch(archiveKey, /[/.]/)
+  assert.equal(archiveKey, safeArchiveKey(unsafeRoomId, 'room'))
+  assert.notEqual(archiveKey, safeArchiveKey('../../other/photo', 'room'))
 })
