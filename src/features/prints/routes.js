@@ -2,7 +2,7 @@ export default [
     {
         path: '/prints',
         name: 'Prints',
-        component: () => import('@/features/prints/views/PrintsHome.vue'),
+        redirect: '/404',
         meta: {
             requiresAuth: false,
             role: null,

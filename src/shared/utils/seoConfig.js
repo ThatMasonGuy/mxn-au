@@ -329,14 +329,6 @@ export const publicSeoRoutes = [
     priority: '0.7',
   },
   {
-    path: '/prints',
-    title: 'Photography Prints',
-    description:
-      'Fine art landscape and nature photography prints by Mason Bartholomai.',
-    changefreq: 'monthly',
-    priority: '0.6',
-  },
-  {
     path: '/discord',
     title: 'Discord Bots',
     description:
@@ -389,7 +381,6 @@ const collectionPagePaths = new Set([
   '/topheroes/queues',
   '/topheroes/velaris',
   '/topheroes/velaris/events',
-  '/prints',
   '/discord',
 ])
 
