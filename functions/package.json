@@ -27,6 +27,7 @@
   "overrides": {
     "brace-expansion": "5.0.9",
     "gaxios": "7.1.4",
+    "gcp-metadata": "8.1.2",
     "http-proxy-agent": "^7.0.2",
     "protobufjs": "^7.5.8",
     "retry-request": "^8.0.2",
