@@ -176,7 +176,7 @@
                         <p class="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-300/70">Recent activity</p>
                         <h3 class="mt-1 text-lg font-bold text-white">Latest tool events</h3>
                     </div>
-                    <p class="text-xs text-slate-600">Most recent {{ recentEvents.length }}</p>
+                    <p class="text-xs text-slate-600">Showing {{ visibleRecentEvents.length }} of {{ recentEvents.length }}</p>
                 </div>
 
                 <div v-if="!recentEvents.length" class="border-y border-dashed border-white/10 py-12 text-center text-sm text-slate-600">
@@ -185,7 +185,7 @@
 
                 <div v-else class="divide-y divide-white/[0.06] border-y border-white/[0.08]">
                     <div
-                        v-for="event in recentEvents"
+                        v-for="event in visibleRecentEvents"
                         :key="event.id"
                         class="grid gap-1 px-4 py-3 sm:grid-cols-[1fr_auto] sm:items-center sm:gap-4"
                     >
@@ -197,6 +197,28 @@
                         </div>
                         <p class="text-xs font-medium text-slate-600">{{ formatRelative(event.createdAt) }}</p>
                     </div>
+                </div>
+
+                <div v-if="recentEvents.length" class="flex flex-col items-center justify-center gap-2 pt-4 text-center">
+                    <button
+                        v-if="hasMoreRecentEvents"
+                        type="button"
+                        class="inline-flex items-center gap-2 rounded-full border border-cyan-400/25 bg-cyan-400/10 px-4 py-2 text-sm font-semibold text-cyan-200 transition hover:border-cyan-300/50 hover:bg-cyan-400/15"
+                        @click="loadMoreRecentEvents"
+                    >
+                        Load more
+                    </button>
+
+                    <p
+                        v-else
+                        class="rounded-full border border-white/10 bg-white/[0.035] px-4 py-2 text-xs font-semibold text-slate-500"
+                    >
+                        No more activity to load
+                    </p>
+
+                    <p class="text-[11px] font-medium text-slate-600">
+                        Showing {{ visibleRecentEvents.length }} of {{ recentEvents.length }} recent event{{ recentEvents.length === 1 ? '' : 's' }}
+                    </p>
                 </div>
             </section>
         </template>
@@ -222,6 +244,8 @@ const periodOptions = [
 const periodDays = ref(30)
 const dailyRows = ref([])
 const recentEvents = ref([])
+const RECENT_EVENTS_PAGE_SIZE = 10
+const visibleRecentEventCount = ref(RECENT_EVENTS_PAGE_SIZE)
 const loading = ref(false)
 const error = ref('')
 const storageUsage = ref(null)
@@ -241,6 +265,12 @@ function brisbaneDateKey(date) {
 
 const periodStart = computed(() => brisbaneDateKey(new Date(Date.now() - (periodDays.value - 1) * 86_400_000)))
 const filteredDailyRows = computed(() => dailyRows.value.filter(row => row.date >= periodStart.value))
+const visibleRecentEvents = computed(() => recentEvents.value.slice(0, visibleRecentEventCount.value))
+const hasMoreRecentEvents = computed(() => visibleRecentEventCount.value < recentEvents.value.length)
+
+function loadMoreRecentEvents() {
+    visibleRecentEventCount.value += RECENT_EVENTS_PAGE_SIZE
+}
 
 const rankedTools = computed(() => {
     const rows = EVERHOMES_TOOL_CATALOGUE.map(tool => {
@@ -325,6 +355,7 @@ async function loadUsage() {
         recentEvents.value = recentSnapshot.docs
             .map(doc => ({ id: doc.id, ...doc.data() }))
             .filter(event => event.toolId !== 'spreadsheet-import')
+        visibleRecentEventCount.value = RECENT_EVENTS_PAGE_SIZE
     } catch (loadError) {
         console.error('Failed to load Everhomes tool usage:', loadError)
         error.value = loadError.message ?? 'Unknown Firestore error'
