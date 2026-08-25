@@ -631,7 +631,7 @@
                 leave-from-class="opacity-100"
                 leave-to-class="opacity-0"
             >
-                <div v-if="reportDetailsModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-3 backdrop-blur-sm sm:p-6">
+                <div v-if="reportDetailsModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-3 backdrop-blur-sm sm:p-6" @click.self="closeReportDetails">
                     <div class="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-[#0f1e30] shadow-2xl shadow-black/50">
                         <div class="flex items-start justify-between gap-4 border-b border-white/10 px-5 py-4 sm:px-6">
                             <div class="flex min-w-0 items-center gap-3">
@@ -854,7 +854,7 @@
                 leave-from-class="opacity-100"
                 leave-to-class="opacity-0"
             >
-                <div v-if="deleteModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm">
+                <div v-if="deleteModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm" @click.self="deleteModal = null">
                     <div class="w-full max-w-md rounded-[2rem] border border-white/10 bg-[#0f1e30] p-6 shadow-2xl shadow-black/40">
                         <div class="mb-4 flex items-center gap-3">
                             <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-red-400/20 bg-red-400/10">
@@ -913,7 +913,7 @@
                 leave-from-class="opacity-100"
                 leave-to-class="opacity-0"
             >
-                <div v-if="regenModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm">
+                <div v-if="regenModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm" @click.self="regenModal = null">
                     <div class="w-full max-w-md rounded-[2rem] border border-white/10 bg-[#0f1e30] p-6 shadow-2xl shadow-black/40">
                         <div class="mb-4 flex items-center gap-3">
                             <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-violet-400/20 bg-violet-400/10">
