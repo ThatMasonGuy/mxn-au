@@ -1,5 +1,5 @@
 // @/shared/utils/useLogUserEvent.js
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { firestore } from "@/firebase";
 import { useMainStore } from "@/shared/stores/useMainStore";
 import {
@@ -58,10 +58,14 @@ export const logUserEvent = async (eventType, data = {}) => {
       },
     };
 
-    await addDoc(
+    const eventRef = doc(
       collection(firestore, `users/${user.uid}/userEvents`),
-      eventData,
     );
+
+    // setDoc is safe to retry against the generated reference. addDoc uses a
+    // create-only precondition, which can report "already exists" when a
+    // network interruption makes Firestore retry a write that already landed.
+    await setDoc(eventRef, eventData);
   } catch (err) {
     // More detailed error logging
     console.error("[logUserEvent] Failed to log:", {
