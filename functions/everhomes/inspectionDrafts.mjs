@@ -1,5 +1,6 @@
 import { onRequest } from 'firebase-functions/v2/https'
 import { firebaseAdmin, db } from '../config/firebase.mjs'
+import { sanitiseActivityActor } from './reportActivity.mjs'
 
 const REGION = 'australia-southeast1'
 // Keep browser recovery snapshots well below Firestore's document limit. Final
@@ -159,6 +160,7 @@ export const syncEverhomesDraft = endpoint('sync', async (req, res) => {
   const session = parseSession(req.body)
   const { draft, bytes } = requireDraft(req.body)
   const ref = db.collection(session.collection).doc(session.draftId)
+  const startedActivityRef = ref.collection('activity').doc()
 
   const result = await db.runTransaction(async (transaction) => {
     const existing = await transaction.get(ref)
@@ -208,6 +210,17 @@ export const syncEverhomesDraft = endpoint('sync', async (req, res) => {
       createdAt: timestamp,
       draftUpdatedAt: timestamp,
       updatedAt: timestamp,
+    })
+    transaction.create(startedActivityRef, {
+      kind: 'lifecycle',
+      type: 'report.started',
+      label: 'Report started',
+      actor: sanitiseActivityActor({
+        kind: 'reporter',
+        name: summary.inspectorName,
+        email: summary.inspectorEmail,
+      }, 'reporter'),
+      createdAt: timestamp,
     })
     return 1
   })

@@ -55,6 +55,10 @@ import { getSchema } from "./checklistSchemas/index.mjs";
 import { normaliseEmailDeliveries } from "./emailDelivery.mjs";
 import { buildReportArtifactPaths, safeArchiveKey } from "./reportArtifacts.mjs";
 import {
+  emailActivityRecord,
+  sanitiseActivityActor,
+} from "./reportActivity.mjs";
+import {
   collectMissingRequiredAnswers,
   computeItemStats,
   getActiveStatusItems,
@@ -96,6 +100,7 @@ export const generateInspectionReport = onRequest(
       inspectionId,
       draftAccessKey,
       regenerationAccessKey,
+      regenerationActor,
       propertyAddress,
       inspectionDate,
       inspectorName,
@@ -242,6 +247,13 @@ export const generateInspectionReport = onRequest(
       && draftData.draftAccessKey === draftAccessKey;
     const isServerRegeneration = Boolean(regenerationAccessKey)
       && draftData.regenerationAccessKey === regenerationAccessKey;
+    const activityActor = isServerRegeneration
+      ? sanitiseActivityActor(regenerationActor, "admin")
+      : sanitiseActivityActor({
+          kind: "reporter",
+          name: inspectorName,
+          email: inspectorEmail,
+        }, "reporter");
     // During the hosting migration, a browser that already loaded the old
     // frontend may create its legacy `pending` document just before rules are
     // tightened. Let that one existing submission finish; new documents cannot
@@ -306,6 +318,7 @@ export const generateInspectionReport = onRequest(
 
     let claimed = false;
     let published = false;
+    const submissionActivityRef = docRef.collection("activity").doc();
     try {
       _armDeadline();
       // ── 1. Mark processing ────────────────────────────────────────
@@ -348,6 +361,15 @@ export const generateInspectionReport = onRequest(
           draftBytes: firebaseAdmin.firestore.FieldValue.delete(),
           regenerationAccessKey: firebaseAdmin.firestore.FieldValue.delete(),
         });
+        if (!isServerRegeneration) {
+          transaction.set(submissionActivityRef, {
+            kind: "lifecycle",
+            type: "report.submitted",
+            label: "Report submitted",
+            actor: activityActor,
+            createdAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
+          });
+        }
       });
       claimed = true;
       logStage("generation.claimed");
@@ -738,6 +760,24 @@ export const generateInspectionReport = onRequest(
         emailFailures,
         publishedAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
       });
+      publishBatch.set(docRef.collection("activity").doc(), {
+        kind: "lifecycle",
+        type: isServerRegeneration ? "report.regenerated" : "report.generated",
+        label: isServerRegeneration ? "Report regenerated" : "Report generated",
+        actor: activityActor,
+        generationId,
+        createdAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
+      });
+      for (const delivery of emailDelivery) {
+        publishBatch.set(docRef.collection("activity").doc(), {
+          ...emailActivityRecord(delivery, {
+            action: isServerRegeneration ? "regeneration" : "generation",
+            actor: activityActor,
+            generationId,
+          }),
+          createdAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
+        });
+      }
       publishBatch.update(docRef, {
         status: "complete",
         pdfUrl,
@@ -754,6 +794,11 @@ export const generateInspectionReport = onRequest(
         regenerationError: firebaseAdmin.firestore.FieldValue.delete(),
         generationDeadlineWarning: firebaseAdmin.firestore.FieldValue.delete(),
         generationDeadlineReachedAt: firebaseAdmin.firestore.FieldValue.delete(),
+        regenerationPhase: firebaseAdmin.firestore.FieldValue.delete(),
+        regenerationPhaseStartedAt: firebaseAdmin.firestore.FieldValue.delete(),
+        regenerationProgress: firebaseAdmin.firestore.FieldValue.delete(),
+        regenerationRunId: firebaseAdmin.firestore.FieldValue.delete(),
+        regenerationRequestedBy: firebaseAdmin.firestore.FieldValue.delete(),
         completedAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
       });
       await publishBatch.commit();
@@ -823,6 +868,10 @@ export const generateInspectionReport = onRequest(
         ? {
               status: "complete",
               regenerationError: err.message,
+              regenerationPhase: "failed",
+              regenerationFinishedAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
+              regenerationProgress: firebaseAdmin.firestore.FieldValue.delete(),
+              regenerationRunId: firebaseAdmin.firestore.FieldValue.delete(),
               regenFailedAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
               generationDeadlineWarning: firebaseAdmin.firestore.FieldValue.delete(),
               generationDeadlineReachedAt: firebaseAdmin.firestore.FieldValue.delete(),
@@ -837,6 +886,15 @@ export const generateInspectionReport = onRequest(
       await docRef
         .update(failureUpdate)
         .catch(() => {});
+      await docRef.collection("activity").add({
+        kind: "lifecycle",
+        type: isServerRegeneration ? "report.regeneration_failed" : "report.generation_failed",
+        label: isServerRegeneration ? "Regeneration failed" : "Report generation failed",
+        actor: activityActor,
+        generationId,
+        error: err.message ?? "Unknown generation failure",
+        createdAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
+      }).catch(() => {});
       return res
         .status(500)
         .json({ error: "Report generation failed", details: err.message });

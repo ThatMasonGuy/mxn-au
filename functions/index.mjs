@@ -54,6 +54,7 @@ export {
 } from './everhomes/inspectionDrafts.mjs';
 export { sweepStaleEverhomesReports } from './everhomes/reportMaintenance.mjs';
 export { resendReport } from './everhomes/resendReport.mjs';
+export { getReportActivity } from './everhomes/getReportActivity.mjs';
 export { regenerateReport } from './everhomes/regenerateReport.mjs';
 export { deleteEverhomesReport } from './everhomes/deleteReport.mjs';
 export { getEverhomesStorageUsage } from './everhomes/getStorageUsage.mjs';

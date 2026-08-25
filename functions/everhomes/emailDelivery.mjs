@@ -9,6 +9,7 @@ export function normaliseEmailDeliveries(results, targets) {
       ...target,
       sent: !error,
       providerId: error ? null : result.value?.data?.id ?? null,
+      providerStatus: error ? 'failed' : 'sent',
       error: error?.message ?? (error ? String(error) : null),
     }
   })

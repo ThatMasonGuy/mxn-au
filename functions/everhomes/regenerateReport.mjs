@@ -17,6 +17,7 @@ import { pipeline } from 'node:stream/promises'
 import unzipper from 'unzipper'
 import { requireEverhomesAdmin } from './requireEverhomesAdmin.mjs'
 import { selectDirectRegenerationAssets } from './regenerationAssets.mjs'
+import { sanitiseActivityActor } from './reportActivity.mjs'
 
 const MAX_RESTORED_PHOTO_BYTES = 15 * 1024 * 1024
 
@@ -61,8 +62,9 @@ export const regenerateReport = onRequest(
     if (req.method === 'OPTIONS') return res.status(204).send('')
     if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' })
 
+    let admin
     try {
-      await requireEverhomesAdmin(req)
+      admin = await requireEverhomesAdmin(req)
     } catch (error) {
       return res.status(error.status ?? 500).json({ error: error.message ?? 'Could not verify administrator access' })
     }
@@ -114,6 +116,70 @@ export const regenerateReport = onRequest(
         arrayBufferBytes: arrayBuffers,
         ...details,
       }))
+    }
+    const activityActor = sanitiseActivityActor({
+      kind: 'admin',
+      uid: admin.uid,
+      name: admin.name,
+      email: admin.email,
+    }, 'admin')
+    const phaseStartedAt = firebaseAdmin.firestore.FieldValue.serverTimestamp()
+    const regenerationActivityRef = docRef.collection('activity').doc()
+    try {
+      await db.runTransaction(async (transaction) => {
+        const currentSnapshot = await transaction.get(docRef)
+        const current = currentSnapshot.data()
+        if (
+          ['processing', 'regenerating', 'pending'].includes(current.status)
+          || ['preparing', 'restoring', 'generating'].includes(current.regenerationPhase)
+        ) {
+          const conflict = new Error('This report is already being generated.')
+          conflict.status = 409
+          throw conflict
+        }
+        transaction.update(docRef, {
+          regenerationPhase: 'preparing',
+          regenerationPhaseStartedAt: phaseStartedAt,
+          regenerationRunId,
+          regenerationRequestedBy: activityActor,
+          regenerationProgress: { completed: 0, total: 0 },
+          regenerationError: firebaseAdmin.firestore.FieldValue.delete(),
+        })
+        transaction.set(regenerationActivityRef, {
+          kind: 'lifecycle',
+          type: 'report.regeneration_started',
+          label: 'Regeneration started',
+          actor: activityActor,
+          regenerationRunId,
+          createdAt: phaseStartedAt,
+        })
+      })
+    } catch (error) {
+      return res.status(error.status ?? 409).json({ error: error.message })
+    }
+
+    async function markRegenerationFailed(message) {
+      const timestamp = firebaseAdmin.firestore.FieldValue.serverTimestamp()
+      const batch = db.batch()
+      batch.update(docRef, {
+        regenerationPhase: 'failed',
+        regenerationError: message,
+        regenerationFinishedAt: timestamp,
+        regenerationProgress: firebaseAdmin.firestore.FieldValue.delete(),
+        regenerationRunId: firebaseAdmin.firestore.FieldValue.delete(),
+      })
+      batch.set(docRef.collection('activity').doc(), {
+        kind: 'lifecycle',
+        type: 'report.regeneration_failed',
+        label: 'Regeneration failed',
+        actor: activityActor,
+        regenerationRunId,
+        error: message,
+        createdAt: timestamp,
+      })
+      await batch.commit().catch((error) => {
+        console.error('Could not persist regeneration failure state:', error)
+      })
     }
 
     // Only sign objects inside the report's own folder. Even though this is an
@@ -270,6 +336,7 @@ export const regenerateReport = onRequest(
     const missingSignatures = allAssets
       .filter((record) => record.storagePathKey === 'signatureStoragePath' && !record.available)
     if (missingSignatures.length) {
+      await markRegenerationFailed('Regeneration stopped because a saved signature is unavailable.')
       return res.status(409).json({
         error: 'Regeneration stopped because a saved signature is unavailable.',
         details: `Missing ${missingSignatures.map((record) => record.label).join(', ')}. The existing PDF and photo archive were left unchanged.`,
@@ -281,6 +348,7 @@ export const regenerateReport = onRequest(
     )
     if (missingPhotos.length) {
       if (!zipExists) {
+        await markRegenerationFailed('Regeneration stopped because the original photo archive is unavailable.')
         return res.status(409).json({
           error: 'Regeneration stopped because the original photo archive is unavailable.',
           details: `${missingPhotos.length} expected photo(s) could not be restored. The existing PDF was left unchanged.`,
@@ -295,6 +363,10 @@ export const regenerateReport = onRequest(
       }
       const restoredRecords = new Set()
       let restoredImageBytes = 0
+      await docRef.update({
+        regenerationPhase: 'restoring',
+        regenerationProgress: { completed: 0, total: missingPhotos.length },
+      })
       logStage('archive.restore.started', {
         missingPhotoCount: missingPhotos.length,
         zipStoragePath,
@@ -352,6 +424,12 @@ export const regenerateReport = onRequest(
           record.available = true
           restoredRecords.add(record)
           if (restoredRecords.size % 25 === 0 || restoredRecords.size === missingPhotos.length) {
+            await docRef.update({
+              regenerationProgress: {
+                completed: restoredRecords.size,
+                total: missingPhotos.length,
+              },
+            })
             logStage('archive.restore.progress', {
               restoredPhotoCount: restoredRecords.size,
               missingPhotoCount: missingPhotos.length,
@@ -364,6 +442,7 @@ export const regenerateReport = onRequest(
         await Promise.allSettled(
           temporaryStoragePaths.map((storagePath) => bucket.file(storagePath).delete({ ignoreNotFound: true })),
         )
+        await markRegenerationFailed(`The original photo archive could not be restored: ${error.message}`)
         return res.status(409).json({
           error: 'Regeneration stopped because the original photo archive could not be restored.',
           details: 'The existing PDF and photo archive were left unchanged.',
@@ -380,6 +459,7 @@ export const regenerateReport = onRequest(
         await Promise.allSettled(
           temporaryStoragePaths.map((storagePath) => bucket.file(storagePath).delete({ ignoreNotFound: true })),
         )
+        await markRegenerationFailed(`The photo archive is missing ${unrestorablePhotos.length} expected photo(s).`)
         return res.status(409).json({
           error: 'Regeneration stopped because the photo archive is incomplete.',
           details: `Missing ${unrestorablePhotos.map((record) => record.label).join(', ')}. The existing PDF and photo archive were left unchanged.`,
@@ -416,6 +496,7 @@ export const regenerateReport = onRequest(
       await Promise.allSettled(
         temporaryStoragePaths.map((storagePath) => bucket.file(storagePath).delete({ ignoreNotFound: true })),
       )
+      await markRegenerationFailed(error.message)
       return res.status(error.status ?? 409).json({ error: error.message })
     }
 
@@ -423,8 +504,13 @@ export const regenerateReport = onRequest(
       ?? process.env.GCLOUD_PROJECT
     const fnUrl = `https://australia-southeast1-${projectId}.cloudfunctions.net/generateInspectionReport`
     payload.regenerationAccessKey = regenerationAccessKey
+    payload.regenerationActor = activityActor
 
     try {
+      await docRef.update({
+        regenerationPhase: 'generating',
+        regenerationProgress: firebaseAdmin.firestore.FieldValue.delete(),
+      })
       logStage('generation.started', {
         temporaryPhotoCount: temporaryStoragePaths.length,
       })
@@ -457,6 +543,10 @@ export const regenerateReport = onRequest(
       await docRef.update({
         status: data.status === 'complete' ? 'complete' : 'failed',
         regenerationError: `Regeneration failed: ${err.message}`,
+        regenerationPhase: 'failed',
+        regenerationFinishedAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
+        regenerationProgress: firebaseAdmin.firestore.FieldValue.delete(),
+        regenerationRunId: firebaseAdmin.firestore.FieldValue.delete(),
         regenerationAccessKey: firebaseAdmin.firestore.FieldValue.delete(),
       }).catch(() => {})
       return res.status(500).json({

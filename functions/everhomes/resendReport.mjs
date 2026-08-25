@@ -7,6 +7,10 @@ import { defineSecret } from 'firebase-functions/params'
 import { firebaseAdmin, db } from '../config/firebase.mjs'
 import { requireEverhomesAdmin } from './requireEverhomesAdmin.mjs'
 import { normaliseEmailDeliveries } from './emailDelivery.mjs'
+import {
+  emailActivityRecord,
+  sanitiseActivityActor,
+} from './reportActivity.mjs'
 
 const RESEND_API_KEY = defineSecret('RESEND_API_KEY')
 const ADMIN_EMAIL = 'admin@everhomes.com.au'
@@ -42,13 +46,20 @@ export const resendReport = onRequest(
     if (req.method === 'OPTIONS') return res.status(204).send('')
     if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' })
 
+    let admin
     try {
-      await requireEverhomesAdmin(req)
+      admin = await requireEverhomesAdmin(req)
     } catch (error) {
       return res.status(error.status ?? 500).json({ error: error.message ?? 'Could not verify administrator access' })
     }
 
-    const { collection, docId, extraEmails = [] } = req.body ?? {}
+    const {
+      collection,
+      docId,
+      extraEmails = [],
+      recipients: requestedRecipients,
+      updateReportContact = false,
+    } = req.body ?? {}
     if (!collection || !docId) {
       return res.status(400).json({ error: 'Missing collection or docId' })
     }
@@ -63,6 +74,20 @@ export const resendReport = onRequest(
     ) {
       return res.status(400).json({ error: 'Extra recipients must be a list of no more than 20 valid email addresses' })
     }
+    if (
+      requestedRecipients !== undefined
+      && (
+        !Array.isArray(requestedRecipients)
+        || requestedRecipients.length < 1
+        || requestedRecipients.length > 20
+        || requestedRecipients.some((email) => !isEmailAddress(email))
+      )
+    ) {
+      return res.status(400).json({ error: 'Recipients must be a list of one to 20 valid email addresses' })
+    }
+    if (updateReportContact === true && requestedRecipients?.length !== 1) {
+      return res.status(400).json({ error: 'Updating the report contact requires exactly one recipient' })
+    }
 
     const docRef = db.collection(collection).doc(docId)
     const snap = await docRef.get()
@@ -76,13 +101,18 @@ export const resendReport = onRequest(
     const { Resend } = await import('resend')
     const resend = new Resend(RESEND_API_KEY.value())
 
-    // Compile recipients: original list + any extras specified by admin
-    const recipients = Array.from(new Set([
-      ADMIN_EMAIL,
-      ...(isEmailAddress(data.inspectorEmail) ? [data.inspectorEmail] : []),
-      ...(Array.isArray(data.emailsSent) ? data.emailsSent : []).filter(isEmailAddress),
-      ...extraEmails.map((email) => email.trim()),
-    ])).slice(0, 25)
+    // A supplied recipient list is an explicit targeted resend. Omitting it
+    // preserves the existing resend-to-all behavior for older clients.
+    const recipients = Array.from(new Set(
+      requestedRecipients !== undefined
+        ? requestedRecipients.map((email) => email.trim().toLowerCase())
+        : [
+            ADMIN_EMAIL,
+            ...(isEmailAddress(data.inspectorEmail) ? [data.inspectorEmail] : []),
+            ...(Array.isArray(data.emailsSent) ? data.emailsSent : []).filter(isEmailAddress),
+            ...extraEmails.map((email) => email.trim()),
+          ].map((email) => email.toLowerCase()),
+    )).slice(0, 25)
 
     const typeLabel = collection === 'handovers' ? 'Handover / Annual Review' : 'Inspection Report'
     const dateLabel = data.inspectionDate ?? 'Unknown Date'
@@ -164,19 +194,57 @@ export const resendReport = onRequest(
     )
     const sent = deliveries.filter((delivery) => delivery.sent)
     const failed = deliveries.filter((delivery) => !delivery.sent)
-    if (!sent.length) {
-      return res.status(500).json({ error: 'All emails failed to send' })
+    const timestamp = firebaseAdmin.firestore.FieldValue.serverTimestamp()
+    const actor = sanitiseActivityActor({
+      kind: 'admin',
+      uid: admin.uid,
+      name: admin.name,
+      email: admin.email,
+    }, 'admin')
+    const action = requestedRecipients !== undefined ? 'targeted_resend' : 'resend_all'
+    const activityBatch = db.batch()
+    for (const delivery of deliveries) {
+      activityBatch.set(docRef.collection('activity').doc(), {
+        ...emailActivityRecord(delivery, { action, actor, generationId: data.generationId ?? null }),
+        createdAt: timestamp,
+      })
     }
-
-    // Log resend in Firestore
-    await docRef.update({
+    const reportUpdate = {
       lastResentAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
       lastResentTo: sent.map((delivery) => delivery.email),
       lastResendFailures: failed.map((delivery) => ({ email: delivery.email, error: delivery.error })),
       lastResendProviderIds: sent
         .filter((delivery) => delivery.providerId)
         .map((delivery) => ({ email: delivery.email, id: delivery.providerId })),
-    }).catch(() => {})
+    }
+    if (updateReportContact === true) {
+      reportUpdate.inspectorEmail = recipients[0]
+      if (data.submissionPayload) {
+        reportUpdate['submissionPayload.inspectorEmail'] = recipients[0]
+      }
+      activityBatch.set(docRef.collection('activity').doc(), {
+        kind: 'lifecycle',
+        type: 'report.contact_updated',
+        label: 'Report contact updated',
+        actor,
+        recipient: recipients[0],
+        createdAt: timestamp,
+      })
+    }
+    activityBatch.update(docRef, reportUpdate)
+    let auditWarning = null
+    await activityBatch.commit().catch((error) => {
+      console.error('Could not persist report resend activity:', error)
+      auditWarning = 'The email result could not be added to report history.'
+    })
+
+    if (!sent.length) {
+      return res.status(502).json({
+        error: 'All emails failed to send',
+        failures: failed.map((delivery) => ({ email: delivery.email, error: delivery.error })),
+        auditWarning,
+      })
+    }
 
     return res.status(200).json({
       success: true,
@@ -184,6 +252,8 @@ export const resendReport = onRequest(
       failed: failed.length,
       recipients,
       failures: failed.map((delivery) => ({ email: delivery.email, error: delivery.error })),
+      auditWarning,
+      reportContactUpdated: updateReportContact === true,
     })
   }
 )

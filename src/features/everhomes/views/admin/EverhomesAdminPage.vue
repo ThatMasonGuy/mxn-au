@@ -312,32 +312,19 @@
                                             Package
                                         </a>
 
-                                        <div
-                                            v-if="sub.pdfUrl || sub.submissionPayload"
-                                            class="flex"
+                                        <button
+                                            type="button"
+                                            @click="openReportDetails(sub)"
+                                            :disabled="deletingId === sub.id"
+                                            class="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.045] px-3 py-1.5 text-xs font-semibold text-slate-300 transition hover:border-violet-400/30 hover:bg-violet-400/10 hover:text-violet-200 disabled:cursor-not-allowed disabled:opacity-50"
                                         >
-                                            <button
-                                                type="button"
-                                                @click="triggerResend(sub)"
-                                                :disabled="!sub.pdfUrl || resendingId === sub.id || regenId === sub.id"
-                                                class="inline-flex items-center gap-1.5 rounded-l-full border border-r-0 px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-50"
-                                                :class="resendSuccess === sub.id ? 'border-teal-400/30 bg-teal-400/10 text-teal-200' : 'border-white/10 bg-white/[0.045] text-slate-300 hover:border-teal-400/30 hover:bg-teal-400/10 hover:text-teal-200'"
-                                            >
-                                                <Loader2 v-if="resendingId === sub.id" class="h-3.5 w-3.5 animate-spin" />
-                                                <CheckCheck v-else-if="resendSuccess === sub.id" class="h-3.5 w-3.5" />
-                                                <SendHorizontal v-else class="h-3.5 w-3.5" />
-                                                {{ resendSuccess === sub.id ? 'Sent' : resendingId === sub.id ? 'Sending…' : 'Resend' }}
-                                            </button>
-
-                                            <button
-                                                type="button"
-                                                @click.stop="openActionMenu($event, sub)"
-                                                :disabled="resendingId === sub.id || regenId === sub.id"
-                                                class="inline-flex items-center justify-center rounded-r-full border border-white/10 bg-white/[0.045] px-2 py-1.5 text-slate-500 transition hover:border-white/20 hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
-                                            >
-                                                <ChevronDown class="h-3 w-3" />
-                                            </button>
-                                        </div>
+                                            <Loader2
+                                                v-if="resendingId === sub.id || regenId === sub.id || ['preparing', 'restoring', 'generating'].includes(sub.regenerationPhase)"
+                                                class="h-3.5 w-3.5 animate-spin"
+                                            />
+                                            <Activity v-else class="h-3.5 w-3.5" />
+                                            {{ regenId === sub.id || ['preparing', 'restoring', 'generating'].includes(sub.regenerationPhase) ? 'Regenerating…' : resendingId === sub.id ? 'Sending…' : 'Details' }}
+                                        </button>
                                     </div>
                                 </div>
 
@@ -634,7 +621,7 @@
             </div>
         </main>
 
-        <!-- Resend confirm modal -->
+        <!-- Report details, activity and delivery modal -->
         <Teleport to="body">
             <Transition
                 enter-active-class="transition duration-150"
@@ -644,47 +631,202 @@
                 leave-from-class="opacity-100"
                 leave-to-class="opacity-0"
             >
-                <div v-if="resendModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm">
-                    <div class="w-full max-w-md rounded-[2rem] border border-white/10 bg-[#0f1e30] p-6 shadow-2xl shadow-black/40">
-                        <div class="mb-4 flex items-center gap-3">
-                            <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-teal-400/20 bg-teal-400/10">
-                                <SendHorizontal class="h-5 w-5 text-teal-300" />
+                <div v-if="reportDetailsModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-3 backdrop-blur-sm sm:p-6">
+                    <div class="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-[#0f1e30] shadow-2xl shadow-black/50">
+                        <div class="flex items-start justify-between gap-4 border-b border-white/10 px-5 py-4 sm:px-6">
+                            <div class="flex min-w-0 items-center gap-3">
+                                <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-violet-400/20 bg-violet-400/10">
+                                    <Activity class="h-5 w-5 text-violet-300" />
+                                </div>
+                                <div class="min-w-0">
+                                    <h3 class="truncate text-base font-bold text-white">Report details</h3>
+                                    <p class="truncate text-xs text-slate-400">{{ reportDetailsModal.report.propertyAddress || 'Unknown property' }}</p>
+                                </div>
                             </div>
-                            <div>
-                                <h3 class="text-base font-bold text-white">Resend Report</h3>
-                                <p class="text-xs text-slate-500">Re-email the existing PDF to all recipients</p>
+                            <div class="flex shrink-0 items-center gap-2">
+                                <button
+                                    type="button"
+                                    @click="loadReportActivity(true)"
+                                    :disabled="activityLoading || activityRefreshing"
+                                    class="inline-flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1.5 text-xs font-semibold text-slate-400 transition hover:border-white/20 hover:text-white disabled:opacity-50"
+                                >
+                                    <RefreshCw class="h-3.5 w-3.5" :class="activityRefreshing ? 'animate-spin' : ''" />
+                                    Refresh
+                                </button>
+                                <button
+                                    type="button"
+                                    @click="closeReportDetails"
+                                    class="rounded-full border border-white/10 p-2 text-slate-500 transition hover:border-white/20 hover:text-white"
+                                    aria-label="Close report details"
+                                >
+                                    <X class="h-4 w-4" />
+                                </button>
                             </div>
                         </div>
 
-                        <div class="mb-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-                            <p class="mb-0.5 text-sm font-semibold text-white">{{ resendModal.propertyAddress }}</p>
-                            <p class="text-xs text-slate-400">
-                                {{ resendModal.collection === 'inspections' ? 'Inspection' : 'Handover' }}
-                                · {{ resendModal.inspectionDate }}
-                            </p>
-                            <div v-if="resendModal.emailsSent?.length" class="mt-3 flex flex-wrap gap-1.5">
-                                <span v-for="email in resendModal.emailsSent" :key="email" class="rounded-full border border-white/10 bg-white/[0.06] px-2 py-0.5 text-[10px] text-slate-400">
-                                    {{ email }}
-                                </span>
+                        <div class="overflow-y-auto p-5 sm:p-6">
+                            <div class="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                                <div class="rounded-2xl border border-white/10 bg-white/[0.035] p-3">
+                                    <p class="text-[10px] font-bold uppercase tracking-widest text-slate-500">Status</p>
+                                    <div class="mt-2"><StatusBadge :status="reportDetailsModal.report.status" /></div>
+                                </div>
+                                <div class="rounded-2xl border border-white/10 bg-white/[0.035] p-3">
+                                    <p class="text-[10px] font-bold uppercase tracking-widest text-slate-500">Report date</p>
+                                    <p class="mt-2 text-xs font-semibold text-white">{{ reportDetailsModal.report.inspectionDate || '—' }}</p>
+                                </div>
+                                <div class="rounded-2xl border border-white/10 bg-white/[0.035] p-3">
+                                    <p class="text-[10px] font-bold uppercase tracking-widest text-slate-500">Prepared by</p>
+                                    <p class="mt-2 truncate text-xs font-semibold text-white">{{ reportDetailsModal.report.inspectorName || '—' }}</p>
+                                </div>
+                                <div class="rounded-2xl border border-white/10 bg-white/[0.035] p-3">
+                                    <p class="text-[10px] font-bold uppercase tracking-widest text-slate-500">Report contact</p>
+                                    <p class="mt-2 truncate text-xs font-semibold text-white">{{ reportDetailsModal.report.inspectorEmail || '—' }}</p>
+                                </div>
                             </div>
-                        </div>
 
-                        <div class="flex gap-3">
-                            <button
-                                type="button"
-                                @click="confirmResend"
-                                class="flex flex-1 items-center justify-center gap-2 rounded-full border border-teal-400/40 bg-teal-500/70 py-2.5 text-sm font-bold text-white transition hover:bg-teal-500/85"
+                            <div
+                                v-if="reportOperationActive"
+                                class="mb-5 flex items-start gap-3 rounded-2xl border border-amber-400/25 bg-amber-400/10 p-4"
                             >
-                                <SendHorizontal class="h-4 w-4" />
-                                Resend Now
-                            </button>
-                            <button
-                                type="button"
-                                @click="resendModal = null"
-                                class="rounded-full border border-white/10 px-5 py-2.5 text-sm font-semibold text-slate-400 transition hover:border-white/20 hover:text-white"
-                            >
-                                Cancel
-                            </button>
+                                <Loader2 class="mt-0.5 h-4 w-4 shrink-0 animate-spin text-amber-300" />
+                                <div class="min-w-0">
+                                    <p class="text-sm font-bold text-amber-100">{{ reportOperationLabel }}</p>
+                                    <p v-if="reportDetailsModal.report.regenerationProgress?.total" class="mt-1 text-xs text-amber-200/75">
+                                        Restored {{ reportDetailsModal.report.regenerationProgress.completed }} of {{ reportDetailsModal.report.regenerationProgress.total }} photos
+                                    </p>
+                                    <p v-else class="mt-1 text-xs text-amber-200/75">This modal will update automatically while the operation runs.</p>
+                                </div>
+                            </div>
+
+                            <div v-if="activityNotice" class="mb-5 rounded-2xl border border-teal-400/20 bg-teal-400/10 px-4 py-3 text-xs text-teal-100">
+                                {{ activityNotice }}
+                            </div>
+                            <div v-if="reportDetailsError" class="mb-5 rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-xs text-red-200">
+                                {{ reportDetailsError }}
+                            </div>
+
+                            <div class="grid gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(280px,0.65fr)]">
+                                <section class="rounded-2xl border border-white/10 bg-white/[0.025] p-4 sm:p-5">
+                                    <div class="mb-4 flex items-center justify-between gap-3">
+                                        <div>
+                                            <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-violet-300/70">Audit trail</p>
+                                            <h4 class="mt-1 text-sm font-bold text-white">Activity and email delivery</h4>
+                                        </div>
+                                        <span class="rounded-full border border-white/10 px-2.5 py-1 text-[10px] font-bold text-slate-500">{{ reportActivity.length }} events</span>
+                                    </div>
+
+                                    <div v-if="activityLoading" class="flex items-center justify-center gap-2 py-16 text-sm text-slate-500">
+                                        <Loader2 class="h-4 w-4 animate-spin text-violet-300" />
+                                        Loading history…
+                                    </div>
+                                    <div v-else-if="!reportActivity.length" class="py-12 text-center text-sm text-slate-500">
+                                        No activity has been recorded yet.
+                                    </div>
+                                    <ol v-else class="space-y-3">
+                                        <li
+                                            v-for="event in reportActivity"
+                                            :key="event.id"
+                                            class="rounded-2xl border border-white/[0.08] bg-white/[0.035] p-3.5"
+                                        >
+                                            <div class="flex items-start justify-between gap-3">
+                                                <div class="min-w-0">
+                                                    <div class="flex flex-wrap items-center gap-2">
+                                                        <p class="text-xs font-bold text-white">{{ activityTitle(event) }}</p>
+                                                        <span
+                                                            v-if="event.kind === 'email'"
+                                                            class="rounded-full border px-2 py-0.5 text-[9px] font-black uppercase tracking-wider"
+                                                            :class="emailStatusClass(event.providerStatus)"
+                                                        >
+                                                            {{ emailStatusLabel(event.providerStatus) }}
+                                                        </span>
+                                                    </div>
+                                                    <p v-if="event.recipient" class="mt-1 break-all text-xs text-slate-300">{{ event.recipient }}</p>
+                                                    <p v-if="event.error" class="mt-1 text-[11px] leading-4 text-red-300">{{ event.error }}</p>
+                                                    <p class="mt-1.5 text-[10px] text-slate-500">
+                                                        {{ activityActorLabel(event.actor) }}
+                                                        <span v-if="event.action"> · {{ activityActionLabel(event.action) }}</span>
+                                                    </p>
+                                                </div>
+                                                <time class="shrink-0 text-right text-[10px] leading-4 text-slate-600">{{ formatActivityTime(event.occurredAt) }}</time>
+                                            </div>
+                                        </li>
+                                    </ol>
+                                </section>
+
+                                <aside class="space-y-4">
+                                    <section v-if="reportDetailsModal.report.pdfUrl" class="rounded-2xl border border-teal-400/15 bg-teal-400/[0.06] p-4">
+                                        <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-teal-300/70">Send report</p>
+                                        <label class="mt-3 block text-xs font-semibold text-slate-300" for="report-recipient-email">Recipient email</label>
+                                        <input
+                                            id="report-recipient-email"
+                                            v-model.trim="targetRecipientEmail"
+                                            type="email"
+                                            autocomplete="email"
+                                            placeholder="correct.person@example.com"
+                                            class="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-teal-400/50"
+                                        />
+                                        <label class="mt-3 flex cursor-pointer items-start gap-2 text-[11px] leading-4 text-slate-400">
+                                            <input v-model="updateReportContact" type="checkbox" class="mt-0.5 rounded border-white/20 bg-black/20" />
+                                            <span>Use this address as the report contact for future regenerations.</span>
+                                        </label>
+                                        <button
+                                            type="button"
+                                            @click="sendToTargetRecipient"
+                                            :disabled="targetedSendLoading || resendAllLoading || !validTargetRecipient"
+                                            class="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full border border-teal-400/40 bg-teal-500/70 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-teal-500/85 disabled:cursor-not-allowed disabled:opacity-50"
+                                        >
+                                            <Loader2 v-if="targetedSendLoading" class="h-4 w-4 animate-spin" />
+                                            <SendHorizontal v-else class="h-4 w-4" />
+                                            {{ targetedSendLoading ? 'Sending…' : 'Send to this address' }}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            @click="resendOriginalRecipients"
+                                            :disabled="targetedSendLoading || resendAllLoading"
+                                            class="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/10 px-4 py-2.5 text-xs font-semibold text-slate-400 transition hover:border-white/20 hover:text-white disabled:opacity-50"
+                                        >
+                                            <Loader2 v-if="resendAllLoading" class="h-3.5 w-3.5 animate-spin" />
+                                            <RefreshCw v-else class="h-3.5 w-3.5" />
+                                            {{ resendAllLoading ? 'Sending…' : 'Resend to original recipients' }}
+                                        </button>
+                                    </section>
+
+                                    <section class="rounded-2xl border border-violet-400/15 bg-violet-400/[0.06] p-4">
+                                        <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-violet-300/70">Report actions</p>
+                                        <div class="mt-3 grid gap-2">
+                                            <a
+                                                v-if="reportDetailsModal.report.pdfUrl"
+                                                :href="reportDetailsModal.report.pdfUrl"
+                                                target="_blank"
+                                                rel="noopener"
+                                                class="inline-flex items-center justify-center gap-2 rounded-full border border-white/10 px-4 py-2.5 text-xs font-semibold text-slate-300 transition hover:border-white/20 hover:text-white"
+                                            >
+                                                <FileText class="h-3.5 w-3.5" /> View PDF
+                                            </a>
+                                            <a
+                                                v-if="reportDetailsModal.report.photosDownloadUrl"
+                                                :href="reportDetailsModal.report.photosDownloadUrl"
+                                                target="_blank"
+                                                rel="noopener"
+                                                class="inline-flex items-center justify-center gap-2 rounded-full border border-white/10 px-4 py-2.5 text-xs font-semibold text-slate-300 transition hover:border-white/20 hover:text-white"
+                                            >
+                                                <FolderArchive class="h-3.5 w-3.5" /> Download package
+                                            </a>
+                                            <button
+                                                type="button"
+                                                @click="triggerRegen(reportDetailsModal.submission)"
+                                                :disabled="!reportDetailsModal.report.canRegenerate || regenId === reportDetailsModal.report.id || reportOperationActive"
+                                                class="inline-flex items-center justify-center gap-2 rounded-full border border-violet-400/35 bg-violet-500/20 px-4 py-2.5 text-xs font-bold text-violet-100 transition hover:bg-violet-500/30 disabled:cursor-not-allowed disabled:opacity-40"
+                                            >
+                                                <Loader2 v-if="regenId === reportDetailsModal.report.id || reportOperationActive" class="h-3.5 w-3.5 animate-spin" />
+                                                <RotateCcw v-else class="h-3.5 w-3.5" />
+                                                {{ regenId === reportDetailsModal.report.id || reportOperationActive ? 'Regenerating…' : 'Regenerate report' }}
+                                            </button>
+                                        </div>
+                                        <p v-if="!reportDetailsModal.report.canRegenerate" class="mt-2 text-[10px] leading-4 text-slate-500">This older report has no stored regeneration payload.</p>
+                                    </section>
+                                </aside>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -791,10 +933,12 @@
                             <button
                                 type="button"
                                 @click="confirmRegen"
-                                class="flex flex-1 items-center justify-center gap-2 rounded-full border border-violet-400/40 bg-violet-500/70 py-2.5 text-sm font-bold text-white transition hover:bg-violet-500/85"
+                                :disabled="regenId === regenModal.id"
+                                class="flex flex-1 items-center justify-center gap-2 rounded-full border border-violet-400/40 bg-violet-500/70 py-2.5 text-sm font-bold text-white transition hover:bg-violet-500/85 disabled:cursor-not-allowed disabled:opacity-50"
                             >
-                                <RotateCcw class="h-4 w-4" />
-                                Regenerate
+                                <Loader2 v-if="regenId === regenModal.id" class="h-4 w-4 animate-spin" />
+                                <RotateCcw v-else class="h-4 w-4" />
+                                {{ regenId === regenModal.id ? 'Starting…' : 'Regenerate' }}
                             </button>
                             <button
                                 type="button"
@@ -809,60 +953,12 @@
             </Transition>
         </Teleport>
 
-        <!-- Action dropdown — Teleported to body so it's never clipped by stacking contexts -->
-        <Teleport to="body">
-            <!-- Click-away backdrop -->
-            <div v-if="actionMenuId" class="fixed inset-0 z-[200]" @click="actionMenuId = null" />
-
-            <Transition
-                enter-active-class="transition duration-100 ease-out"
-                enter-from-class="opacity-0 scale-95"
-                enter-to-class="opacity-100 scale-100"
-                leave-active-class="transition duration-75 ease-in"
-                leave-from-class="opacity-100 scale-100"
-                leave-to-class="opacity-0 scale-95"
-            >
-                <div
-                    v-if="actionMenuSub"
-                    class="fixed z-[201] min-w-[190px] overflow-hidden rounded-2xl"
-                    :style="{
-                        top: actionMenuPos.top + 'px',
-                        right: actionMenuPos.right + 'px',
-                        background: '#111f33',
-                        border: '1px solid rgba(255,255,255,0.22)',
-                        boxShadow: '0 12px 48px rgba(0,0,0,0.85), 0 2px 8px rgba(0,0,0,0.5)',
-                    }"
-                >
-                    <button
-                        type="button"
-                        @click="triggerResend(actionMenuSub); actionMenuId = null"
-                        class="flex w-full items-center gap-2.5 px-4 py-3.5 text-left text-xs font-semibold text-white transition-colors hover:bg-white/[0.09] active:bg-white/[0.12]"
-                    >
-                        <SendHorizontal class="h-3.5 w-3.5 shrink-0 text-teal-400" />
-                        Resend email
-                    </button>
-                    <div style="height:1px; background: rgba(255,255,255,0.12);" />
-                    <button
-                        type="button"
-                        @click="triggerRegen(actionMenuSub); actionMenuId = null"
-                        :disabled="!actionMenuSub.submissionPayload"
-                        class="flex w-full items-center gap-2.5 px-4 py-3.5 text-left text-xs font-semibold text-white transition-colors hover:bg-white/[0.09] active:bg-white/[0.12] disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                        <RotateCcw class="h-3.5 w-3.5 shrink-0 text-violet-400" :class="regenId === actionMenuSub.id ? 'animate-spin' : ''" />
-                        <span>
-                            Regenerate report
-                            <span v-if="!actionMenuSub.submissionPayload" class="mt-0.5 block text-[10px] text-slate-500">No stored payload</span>
-                        </span>
-                    </button>
-                </div>
-            </Transition>
-        </Teleport>
     </LayoutComponent>
 </template>
 
 
 <script setup>
-import { ref, computed, onMounted, defineComponent, h, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, defineComponent, h, watch } from 'vue'
 import { collection, query, orderBy, limit, startAfter, getDocs } from 'firebase/firestore'
 import { auth, firestore } from '@/firebase'
 import * as XLSX from 'xlsx'
@@ -875,10 +971,10 @@ import { extractSdaPricingData } from '@/features/everhomes/utils/sdaPriceExtrac
 
 import {
     ShieldCheck, RefreshCw, Loader2, Inbox, Database, DatabaseZap, Upload,
-    FileText, FolderArchive, SendHorizontal, CheckCheck, AlertCircle,
+    FileText, FolderArchive, SendHorizontal, AlertCircle,
     ClipboardCheck, ClipboardList, User, Calendar, Clock,
     CheckCircle2, AlertTriangle, FileSpreadsheet, CloudUpload,
-    BarChart3, TrendingUp, XCircle, ChevronDown, RotateCcw, Link, MailWarning, Activity, Trash2,
+    BarChart3, TrendingUp, XCircle, RotateCcw, Link, MailWarning, Activity, Trash2, X,
 } from '@lucide/vue'
 
 const FUNCTIONS_URL = import.meta.env.VITE_FUNCTIONS_URL ?? ''
@@ -1069,62 +1165,248 @@ const StatusBadge = defineComponent({
     }
 })
 
-// ─── Action dropdown (split button) ──────────────────────────────────────────
-// Teleported to <body> to escape stacking contexts; positioned via fixed coords.
-const actionMenuId  = ref(null)
-const actionMenuPos = ref({ top: 0, right: 0 })
+// ─── Report activity and delivery controls ──────────────────────────────────
+const reportDetailsModal = ref(null)
+const reportActivity = ref([])
+const activityLoading = ref(false)
+const activityRefreshing = ref(false)
+const reportDetailsError = ref('')
+const activityNotice = ref('')
+const targetRecipientEmail = ref('')
+const updateReportContact = ref(false)
+const targetedSendLoading = ref(false)
+const resendAllLoading = ref(false)
+const resendingId = ref(null)
+let activityPollTimer = null
 
-// The submission object currently shown in the dropdown
-const actionMenuSub = computed(() =>
-    actionMenuId.value
-        ? allSubmissions.value.find(s => s.id === actionMenuId.value) ?? null
-        : null
-)
+const ACTIVE_REGENERATION_PHASES = new Set(['preparing', 'restoring', 'generating'])
+const ACTIVE_REPORT_STATUSES = new Set(['pending', 'processing', 'regenerating'])
 
-function openActionMenu(event, sub) {
-    const rect = event.currentTarget.getBoundingClientRect()
-    actionMenuPos.value = {
-        top:   rect.bottom + 6,                         // 6px below the button
-        right: window.innerWidth - rect.right,          // align right edge
+const reportOperationActive = computed(() => {
+    const report = reportDetailsModal.value?.report
+    return Boolean(
+        report
+        && (
+            ACTIVE_REGENERATION_PHASES.has(report.regenerationPhase)
+            || ACTIVE_REPORT_STATUSES.has(report.status)
+            || regenId.value === report.id
+        )
+    )
+})
+
+const reportOperationLabel = computed(() => {
+    const report = reportDetailsModal.value?.report
+    if (!report) return 'Working…'
+    if (report.regenerationPhase === 'preparing') return 'Preparing report regeneration…'
+    if (report.regenerationPhase === 'restoring') return 'Restoring the report photos…'
+    if (report.regenerationPhase === 'generating') return 'Generating the PDF and sending emails…'
+    if (report.status === 'pending' || report.status === 'processing') return 'Generating the report…'
+    return 'Regenerating the report…'
+})
+
+const validTargetRecipient = computed(() => (
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(targetRecipientEmail.value)
+    && targetRecipientEmail.value.length <= 320
+))
+
+function reportSummary(submission) {
+    return {
+        id: submission.id,
+        collection: submission.collection,
+        status: submission.status ?? 'unknown',
+        regenerationPhase: submission.regenerationPhase ?? null,
+        regenerationProgress: submission.regenerationProgress ?? null,
+        propertyAddress: submission.propertyAddress ?? '',
+        inspectionDate: submission.inspectionDate ?? null,
+        inspectorName: submission.inspectorName ?? null,
+        inspectorEmail: submission.inspectorEmail ?? null,
+        pdfUrl: submission.pdfUrl ?? null,
+        photosDownloadUrl: submission.photosDownloadUrl ?? null,
+        canRegenerate: Boolean(submission.submissionPayload),
     }
-    actionMenuId.value = actionMenuId.value === sub.id ? null : sub.id
 }
 
-// ─── Resend ───────────────────────────────────────────────────────────────────
-const resendModal   = ref(null)
-const resendingId   = ref(null)
-const resendSuccess = ref(null)
-
-function triggerResend(sub) {
-    resendModal.value = sub
+function clearActivityPoll() {
+    if (activityPollTimer) clearTimeout(activityPollTimer)
+    activityPollTimer = null
 }
 
-async function confirmResend() {
-    const sub = resendModal.value
-    if (!sub) return
-    resendModal.value = null
-    resendingId.value = sub.id
-    resendSuccess.value = null
+function scheduleActivityPoll() {
+    clearActivityPoll()
+    if (!reportDetailsModal.value || !reportOperationActive.value) return
+    activityPollTimer = setTimeout(async () => {
+        await loadReportActivity(false)
+        scheduleActivityPoll()
+    }, 5_000)
+}
 
+async function openReportDetails(submission) {
+    clearActivityPoll()
+    reportDetailsModal.value = { submission, report: reportSummary(submission) }
+    reportActivity.value = []
+    targetRecipientEmail.value = submission.inspectorEmail ?? ''
+    updateReportContact.value = false
+    reportDetailsError.value = ''
+    activityNotice.value = ''
+    await loadReportActivity(true)
+}
+
+function closeReportDetails() {
+    clearActivityPoll()
+    reportDetailsModal.value = null
+    reportActivity.value = []
+    reportDetailsError.value = ''
+    activityNotice.value = ''
+}
+
+async function loadReportActivity(refreshProviderStatuses = false) {
+    const modal = reportDetailsModal.value
+    if (!modal || activityLoading.value || activityRefreshing.value) return
+    const initialLoad = reportActivity.value.length === 0
+    if (initialLoad) activityLoading.value = true
+    else activityRefreshing.value = true
+    reportDetailsError.value = ''
     try {
+        const res = await fetchWithTimeout(`${FUNCTIONS_URL}/getReportActivity`, {
+            method: 'POST',
+            headers: await adminRequestHeaders(),
+            body: JSON.stringify({
+                collection: modal.report.collection,
+                docId: modal.report.id,
+                refreshProviderStatuses,
+            }),
+        }, 65_000)
+        const body = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(body.error ?? `HTTP ${res.status}`)
+        if (reportDetailsModal.value !== modal) return
+        modal.report = { ...modal.report, ...body.report }
+        reportActivity.value = Array.isArray(body.events) ? body.events : []
+        const submission = allSubmissions.value.find(candidate => (
+            candidate.id === body.report.id && candidate.collection === body.report.collection
+        ))
+        if (submission) Object.assign(submission, body.report)
+    } catch (error) {
+        if (reportDetailsModal.value === modal) {
+            reportDetailsError.value = `Could not load report history: ${error.message}`
+        }
+    } finally {
+        activityLoading.value = false
+        activityRefreshing.value = false
+        if (reportDetailsModal.value === modal) scheduleActivityPoll()
+    }
+}
+
+async function sendReportEmails({ recipients, updateContact = false } = {}) {
+    const modal = reportDetailsModal.value
+    if (!modal) return
+    const targeted = Array.isArray(recipients)
+    if (targeted) targetedSendLoading.value = true
+    else resendAllLoading.value = true
+    resendingId.value = modal.report.id
+    reportDetailsError.value = ''
+    activityNotice.value = ''
+    try {
+        const bodyPayload = {
+            collection: modal.report.collection,
+            docId: modal.report.id,
+            updateReportContact: updateContact,
+        }
+        if (targeted) bodyPayload.recipients = recipients
         const res = await fetchWithTimeout(`${FUNCTIONS_URL}/resendReport`, {
             method: 'POST',
             headers: await adminRequestHeaders(),
-            body: JSON.stringify({ collection: sub.collection, docId: sub.id }),
+            body: JSON.stringify(bodyPayload),
         }, 60_000)
         const body = await res.json().catch(() => ({}))
         if (!res.ok) throw new Error(body.error ?? `HTTP ${res.status}`)
-        if (body.failed) {
-            alert(`Resend partially completed: ${body.sent} email${body.sent === 1 ? '' : 's'} sent; ${body.failed} failed: ${body.failures?.map((failure) => failure.email).join(', ') || 'unknown recipient'}`)
-            return
+        const failedMessage = body.failed
+            ? ` ${body.failed} recipient${body.failed === 1 ? '' : 's'} failed.`
+            : ''
+        activityNotice.value = `${body.sent} email${body.sent === 1 ? '' : 's'} accepted for delivery.${failedMessage}${body.auditWarning ? ` ${body.auditWarning}` : ''}`
+        if (body.reportContactUpdated && targeted) {
+            modal.report.inspectorEmail = recipients[0]
+            modal.submission.inspectorEmail = recipients[0]
+            targetRecipientEmail.value = recipients[0]
+            updateReportContact.value = false
         }
-        resendSuccess.value = sub.id
-        setTimeout(() => { if (resendSuccess.value === sub.id) resendSuccess.value = null }, 4000)
-    } catch (err) {
-        alert(`Resend failed: ${err.message}`)
+        await loadReportActivity(true)
+    } catch (error) {
+        reportDetailsError.value = `Email send failed: ${error.message}`
+        await loadReportActivity(true)
     } finally {
+        targetedSendLoading.value = false
+        resendAllLoading.value = false
         resendingId.value = null
     }
+}
+
+function sendToTargetRecipient() {
+    if (!validTargetRecipient.value) return
+    return sendReportEmails({
+        recipients: [targetRecipientEmail.value.trim().toLowerCase()],
+        updateContact: updateReportContact.value,
+    })
+}
+
+function resendOriginalRecipients() {
+    return sendReportEmails()
+}
+
+function emailStatusLabel(status) {
+    return ({
+        bounced: 'Bounced', failed: 'Failed', complained: 'Spam report', suppressed: 'Suppressed',
+        delivered: 'Delivered', delivery_delayed: 'Delayed', sent: 'Sent', queued: 'Queued',
+        scheduled: 'Scheduled', opened: 'Opened', clicked: 'Clicked', canceled: 'Canceled',
+    })[status] ?? 'Unknown'
+}
+
+function emailStatusClass(status) {
+    if (['bounced', 'failed', 'complained', 'suppressed', 'canceled'].includes(status)) {
+        return 'border-red-400/25 bg-red-400/10 text-red-300'
+    }
+    if (['delivered', 'opened', 'clicked'].includes(status)) {
+        return 'border-teal-400/25 bg-teal-400/10 text-teal-300'
+    }
+    if (status === 'delivery_delayed') return 'border-amber-400/25 bg-amber-400/10 text-amber-300'
+    return 'border-slate-400/20 bg-slate-400/10 text-slate-400'
+}
+
+function activityTitle(event) {
+    if (event.kind === 'email') return 'Email delivery'
+    return event.label ?? ({
+        'report.started': 'Report started',
+        'report.submitted': 'Report submitted',
+        'report.generated': 'Report generated',
+        'report.regenerated': 'Report regenerated',
+        'report.generation_failed': 'Report generation failed',
+        'report.regeneration_started': 'Regeneration started',
+        'report.regeneration_failed': 'Regeneration failed',
+        'report.contact_updated': 'Report contact updated',
+    })[event.type] ?? 'Report activity'
+}
+
+function activityActorLabel(actor) {
+    if (!actor) return 'System'
+    const identity = actor.name || actor.email
+    if (identity) return `${identity}${actor.kind === 'admin' ? ' (admin)' : ''}`
+    return actor.kind === 'admin' ? 'Everhomes administrator' : actor.kind === 'reporter' ? 'Report author' : 'System'
+}
+
+function activityActionLabel(action) {
+    return ({
+        generation: 'Initial send', regeneration: 'Regeneration send',
+        targeted_resend: 'Targeted resend', resend_all: 'Resend to original recipients',
+        resend: 'Administrative resend',
+    })[action] ?? action.replaceAll('_', ' ')
+}
+
+function formatActivityTime(value) {
+    if (!value) return 'Time unavailable'
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return 'Time unavailable'
+    return new Intl.DateTimeFormat('en-AU', {
+        dateStyle: 'medium', timeStyle: 'short', timeZone: 'Australia/Brisbane',
+    }).format(date)
 }
 
 // ─── Delete draft/failed report ──────────────────────────────────────────────
@@ -1174,6 +1456,13 @@ async function confirmRegen() {
     if (!sub) return
     regenModal.value = null
     regenId.value = sub.id
+    activityNotice.value = 'Regeneration started. Progress will update here automatically.'
+    reportDetailsError.value = ''
+    if (reportDetailsModal.value?.report.id === sub.id) {
+        reportDetailsModal.value.report.regenerationPhase = 'preparing'
+        reportDetailsModal.value.report.regenerationProgress = null
+        scheduleActivityPoll()
+    }
 
     try {
         const res = await fetchWithTimeout(`${FUNCTIONS_URL}/regenerateReport`, {
@@ -1184,11 +1473,17 @@ async function confirmRegen() {
         const body = await res.json().catch(() => ({}))
         if (!res.ok) throw new Error(body.details ?? body.error ?? `HTTP ${res.status}`)
         regenSuccess.value = sub.id
-        // Reload submissions so the status reflects "pending" / eventual "complete"
-        setTimeout(() => loadSubmissions(), 2000)
+        activityNotice.value = 'Report regenerated and the email attempts have finished.'
+        await loadReportActivity(true)
+        await loadSubmissions()
         setTimeout(() => { if (regenSuccess.value === sub.id) regenSuccess.value = null }, 6000)
     } catch (err) {
-        alert(`Regeneration failed: ${err.message}`)
+        if (reportDetailsModal.value?.report.id === sub.id) {
+            reportDetailsError.value = `Regeneration failed: ${err.message}`
+            await loadReportActivity(true)
+        } else {
+            alert(`Regeneration failed: ${err.message}`)
+        }
     } finally {
         regenId.value = null
     }
@@ -1281,4 +1576,6 @@ onMounted(async () => {
     loadSubmissions()
     if (!sdaStore.hasData) sdaStore.fetchData()
 })
+
+onUnmounted(clearActivityPoll)
 </script>

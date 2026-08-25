@@ -19,6 +19,12 @@ import {
 import { REPORT_SCHEMAS } from '../functions/everhomes/checklistSchemas/index.mjs'
 import { normaliseEmailDeliveries } from '../functions/everhomes/emailDelivery.mjs'
 import { buildReportArtifactPaths, safeArchiveKey } from '../functions/everhomes/reportArtifacts.mjs'
+import {
+  emailActivityRecord,
+  normaliseProviderStatus,
+  sanitiseActivityActor,
+  sortActivityNewestFirst,
+} from '../functions/everhomes/reportActivity.mjs'
 import { canDeleteEverhomesReport } from '../functions/everhomes/reportDeletionPolicy.mjs'
 import {
   addStorageObject,
@@ -31,6 +37,62 @@ import {
   isRequiredAnswerComplete as functionRequiredAnswerComplete,
   itemIsVisible,
 } from '../functions/everhomes/reportLogic.mjs'
+
+test('report activity records preserve observable email outcomes and safe actor details', () => {
+  const actor = sanitiseActivityActor({
+    kind: 'admin',
+    uid: ' admin-123 ',
+    name: ' Report Admin ',
+    email: 'admin@example.com',
+  })
+  assert.deepEqual(actor, {
+    kind: 'admin',
+    uid: 'admin-123',
+    name: 'Report Admin',
+    email: 'admin@example.com',
+  })
+
+  assert.deepEqual(emailActivityRecord({
+    email: ' Correct.Person@Example.com ',
+    sent: true,
+    providerId: 'email_123',
+    providerStatus: 'delivered',
+    error: null,
+  }, { action: 'targeted_resend', actor, generationId: 'generation_1' }), {
+    kind: 'email',
+    type: 'email.attempted',
+    action: 'targeted_resend',
+    recipient: 'correct.person@example.com',
+    accepted: true,
+    providerId: 'email_123',
+    providerStatus: 'delivered',
+    error: null,
+    generationId: 'generation_1',
+    actor,
+  })
+
+  const failure = emailActivityRecord({
+    email: 'wrong@example.com',
+    sent: false,
+    error: 'Rejected by provider',
+  }, { action: 'generation' })
+  assert.equal(failure.accepted, false)
+  assert.equal(failure.providerStatus, 'failed')
+  assert.equal(failure.error, 'Rejected by provider')
+})
+
+test('report activity status and ordering helpers handle provider and legacy data', () => {
+  assert.equal(normaliseProviderStatus('bounced'), 'bounced')
+  assert.equal(normaliseProviderStatus('unexpected', 'sent'), 'sent')
+  assert.deepEqual(
+    sortActivityNewestFirst([
+      { id: 'old', occurredAt: '2026-08-24T01:00:00.000Z' },
+      { id: 'unknown', occurredAt: null },
+      { id: 'new', occurredAt: '2026-08-25T01:00:00.000Z' },
+    ]).map((event) => event.id),
+    ['new', 'old', 'unknown'],
+  )
+})
 
 test('Inspection and Handover use different fixed store IDs and persistence keys', () => {
   assert.notEqual(REPORT_STORE_CONFIG.inspection.storeId, REPORT_STORE_CONFIG.handover.storeId)
