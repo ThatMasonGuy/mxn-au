@@ -56,6 +56,7 @@ import {
     applyFailedPhotoRecoveryState,
     prepareRestoredPhoto,
 } from '../utils/photoRecovery'
+import { evaluateReportPhotoSize } from '../utils/reportPhotoPolicy'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -983,8 +984,6 @@ export function useReportState(schema) {
     const MAX_UPLOAD_ATTEMPTS = 3
     const INITIAL_UPLOAD_TIMEOUT_MS = 30_000
     const MANUAL_RETRY_TIMEOUT_MS = 120_000
-    const MAX_IMAGE_BYTES = 15 * 1024 * 1024
-    const MAX_REPORT_IMAGE_BYTES = 300 * 1024 * 1024
 
     function classifyUploadError(err, context = {}) {
         const code = err?.code ?? 'unknown'
@@ -1046,17 +1045,13 @@ export function useReportState(schema) {
                 retryable: false,
             }
         }
-        if (file.size >= MAX_IMAGE_BYTES) {
-            throw { code: 'storage/file-too-large', message: 'This image is larger than the 15 MB upload limit.', retryable: false }
-        }
         const photos = allReportPhotos()
-        const totalBytes = photos.reduce((sum, photo) => sum + (Number(photo.fileSize) || 0), 0)
-        if (totalBytes > MAX_REPORT_IMAGE_BYTES) {
-            throw {
-                code: 'storage/report-size-limit',
-                message: 'This report has reached the 300 MB total image limit. Remove or resize an existing photo.',
-                retryable: false,
-            }
+        const sizePolicy = evaluateReportPhotoSize(
+            file.size,
+            photos.map((photo) => photo.fileSize),
+        )
+        if (!sizePolicy.allowed) {
+            throw { code: 'storage/file-too-large', message: 'This image is larger than the 15 MB upload limit.', retryable: false }
         }
     }
 

@@ -11,12 +11,13 @@
 
 import { onRequest } from 'firebase-functions/v2/https'
 import { firebaseAdmin, db } from '../config/firebase.mjs'
-import JSZip from 'jszip'
 import { createHash, randomUUID } from 'node:crypto'
+import { Transform } from 'node:stream'
+import { pipeline } from 'node:stream/promises'
+import unzipper from 'unzipper'
 import { requireEverhomesAdmin } from './requireEverhomesAdmin.mjs'
 
-const MAX_ARCHIVE_FILE_BYTES = 320 * 1024 * 1024
-const MAX_EXPANDED_PHOTO_BYTES = 300 * 1024 * 1024
+const MAX_RESTORED_PHOTO_BYTES = 15 * 1024 * 1024
 
 function archiveImageContentType(extension) {
   return {
@@ -249,90 +250,80 @@ export const regenerateReport = onRequest(
         })
       }
 
-      let zip
-      try {
-        const [zipMetadata] = await zipFile.getMetadata()
-        if (Number(zipMetadata.size) > MAX_ARCHIVE_FILE_BYTES) {
-          return res.status(409).json({
-            error: 'Regeneration stopped because the original photo archive exceeds the 320 MB compressed safety limit.',
-            details: 'The existing PDF and photo archive were left unchanged.',
-          })
-        }
-        const [zipBuffer] = await zipFile.download()
-        zip = await JSZip.loadAsync(zipBuffer)
-        const expandedBytes = Object.values(zip.files).reduce(
-          (sum, entry) => sum + (Number(entry?._data?.uncompressedSize) || 0),
-          0,
-        )
-        if (expandedBytes > MAX_EXPANDED_PHOTO_BYTES) {
-          return res.status(409).json({
-            error: 'Regeneration stopped because the expanded photo archive exceeds the 300 MB safety limit.',
-            details: 'The existing PDF and photo archive were left unchanged.',
-          })
-        }
-      } catch (error) {
-        console.error(`regenerateReport: could not read ${zipStoragePath}:`, error.message)
-        return res.status(409).json({
-          error: 'Regeneration stopped because the original photo archive could not be read.',
-          details: 'The existing PDF and photo archive were left unchanged.',
-        })
-      }
-
       const archiveEntries = new Map()
-      for (const [archivePath, entry] of Object.entries(zip.files)) {
-        if (entry.dir) continue
-        const filename = archivePath.split('/').pop()
-        const archiveGroup = archivePath.includes('/marketing/') ? 'marketing' : 'room'
-        archiveEntries.set(`${archiveGroup}:${filename}`, entry)
-      }
-
       for (const record of missingPhotos) {
-        const filename = record.archiveFilenames.find((name) =>
-          archiveEntries.has(`${record.archiveGroup}:${name}`),
-        )
-        record.archiveFilename = filename
-        record.archiveEntry = filename
-          ? archiveEntries.get(`${record.archiveGroup}:${filename}`)
-          : null
+        for (const filename of record.archiveFilenames) {
+          archiveEntries.set(`${record.archiveGroup}:${filename}`, record)
+        }
       }
-      const unrestorablePhotos = missingPhotos.filter((record) => !record.archiveEntry)
-      if (unrestorablePhotos.length) {
-        return res.status(409).json({
-          error: 'Regeneration stopped because the photo archive is incomplete.',
-          details: `Missing ${unrestorablePhotos.map((record) => record.label).join(', ')}. The existing PDF and photo archive were left unchanged.`,
-        })
-      }
-
+      const restoredRecords = new Set()
       try {
-        let restoredImageBytes = 0
-        await runConcurrent(missingPhotos.map((record) => async () => {
-          const buffer = Buffer.from(await record.archiveEntry.async('arraybuffer'))
-          restoredImageBytes += buffer.length
-          if (restoredImageBytes > MAX_EXPANDED_PHOTO_BYTES) {
-            throw new Error('The expanded photo archive exceeds the 300 MB safety limit.')
+        const archive = zipFile.createReadStream().pipe(unzipper.Parse({ forceStream: true }))
+        for await (const entry of archive) {
+          if (entry.type === 'Directory') {
+            entry.autodrain()
+            continue
           }
-          const extension = record.archiveFilename.split('.').pop().toLowerCase()
+
+          const archivePath = entry.path.replaceAll('\\', '/')
+          const filename = archivePath.split('/').pop()
+          const archiveGroup = archivePath.includes('/marketing/') ? 'marketing' : 'room'
+          const record = archiveEntries.get(`${archiveGroup}:${filename}`)
+          if (!record || restoredRecords.has(record)) {
+            entry.autodrain()
+            continue
+          }
+
+          const extension = filename.split('.').pop().toLowerCase()
           const contentType = archiveImageContentType(extension)
           const storagePath = `${record.temporaryStoragePath}.${extension}`
           const file = bucket.file(storagePath)
-          await file.save(buffer, { resumable: false, metadata: { contentType } })
           temporaryStoragePaths.push(storagePath)
+          let restoredImageBytes = 0
+          const sizeGuard = new Transform({
+            transform(chunk, _encoding, callback) {
+              restoredImageBytes += chunk.length
+              if (restoredImageBytes >= MAX_RESTORED_PHOTO_BYTES) {
+                callback(new Error(`Archived photo ${filename} exceeds the 15 MB per-image safety limit.`))
+                return
+              }
+              callback(null, chunk)
+            },
+          })
+          await pipeline(
+            entry,
+            sizeGuard,
+            file.createWriteStream({ resumable: false, metadata: { contentType } }),
+          )
           const [url] = await file.getSignedUrl({
             action: 'read',
             expires: Date.now() + urlExpiryMs,
           })
+          record.archiveFilename = filename
           record.asset.storagePath = storagePath
           record.asset.url = url
           record.available = true
-        }))
+          restoredRecords.add(record)
+        }
       } catch (error) {
+        console.error(`regenerateReport: could not read ${zipStoragePath}:`, error.message)
         await Promise.allSettled(
           temporaryStoragePaths.map((storagePath) => bucket.file(storagePath).delete({ ignoreNotFound: true })),
         )
-        console.error('regenerateReport: could not restore archived photos:', error.message)
-        return res.status(500).json({
-          error: 'Regeneration stopped while restoring the archived photos.',
+        return res.status(409).json({
+          error: 'Regeneration stopped because the original photo archive could not be restored.',
           details: 'The existing PDF and photo archive were left unchanged.',
+        })
+      }
+
+      const unrestorablePhotos = missingPhotos.filter((record) => !record.available)
+      if (unrestorablePhotos.length) {
+        await Promise.allSettled(
+          temporaryStoragePaths.map((storagePath) => bucket.file(storagePath).delete({ ignoreNotFound: true })),
+        )
+        return res.status(409).json({
+          error: 'Regeneration stopped because the photo archive is incomplete.',
+          details: `Missing ${unrestorablePhotos.map((record) => record.label).join(', ')}. The existing PDF and photo archive were left unchanged.`,
         })
       }
     }

@@ -18,11 +18,11 @@
     "archiver": "^8.0.0",
     "firebase-admin": "^14.2.0",
     "firebase-functions": "^7.3.2",
-    "jszip": "^3.10.1",
     "openai": "^7.2.0",
     "pdfkit": "^0.19.1",
     "resend": "^6.18.1",
-    "sharp": "^0.35.3"
+    "sharp": "^0.35.3",
+    "unzipper": "^0.12.5"
   },
   "overrides": {
     "brace-expansion": "5.0.9",

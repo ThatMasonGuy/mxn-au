@@ -7,6 +7,8 @@ import { readFileSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import { randomUUID } from "node:crypto";
+import { Readable } from "node:stream";
+import { writeReportZip } from "./reportZip.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -14,7 +16,6 @@ const RESEND_API_KEY = defineSecret("RESEND_API_KEY");
 
 const ADMIN_EMAIL = "admin@everhomes.com.au";
 const ASSET_FETCH_TIMEOUT_MS = 30_000;
-const MAX_REPORT_IMAGE_BYTES = 300 * 1024 * 1024;
 
 async function fetchAsset(url) {
   return fetch(url, { signal: AbortSignal.timeout(ASSET_FETCH_TIMEOUT_MS) });
@@ -75,6 +76,9 @@ export const generateInspectionReport = onRequest(
     region: "australia-southeast1",
     timeoutSeconds: 300,
     memory: "4GiB",
+    cpu: 1,
+    concurrency: 1,
+    maxInstances: 3,
     cors: true,
     secrets: [RESEND_API_KEY],
   },
@@ -371,12 +375,27 @@ export const generateInspectionReport = onRequest(
 
         throw new Error(`Report asset is missing a valid Storage path under ${storagePrefix}`);
       }
+      async function openReportAssetStream(asset, storagePathKey = "storagePath", urlKey = "url") {
+        const storagePath = asset?.[storagePathKey];
+        if (typeof storagePath === "string" && storagePath.startsWith(storagePrefix)) {
+          return bucket.file(storagePath).createReadStream();
+        }
+
+        if (isLegacyPendingSubmission && asset?.[urlKey]) {
+          const parsedUrl = new URL(asset[urlKey]);
+          if (!["firebasestorage.googleapis.com", "storage.googleapis.com"].includes(parsedUrl.hostname)) {
+            throw new Error("Legacy report asset URL is not an approved Firebase Storage host.");
+          }
+          const response = await fetchAsset(asset[urlKey]);
+          if (!response.ok || !response.body) throw new Error(`HTTP ${response.status}`);
+          return Readable.fromWeb(response.body);
+        }
+
+        throw new Error(`Report asset is missing a valid Storage path under ${storagePrefix}`);
+      }
       let downloadedImageBytes = 0;
       const trackImageBytes = (buffer) => {
         downloadedImageBytes += buffer.length;
-        if (downloadedImageBytes > MAX_REPORT_IMAGE_BYTES) {
-          throw new Error("Report images exceed the 300 MB generation limit.");
-        }
       };
 
       async function runConcurrent(tasks) {
@@ -406,7 +425,13 @@ export const generateInspectionReport = onRequest(
               .jpeg({ quality: 60 })
               .toBuffer({ resolveWithObject: true });
             return {
-              zip: { buffer: raw, filename, roomLabel: room.label, roomId: room.id, storagePath: photo.storagePath ?? null },
+              zip: {
+                filename,
+                roomLabel: room.label,
+                roomId: room.id,
+                storagePath: photo.storagePath ?? null,
+                url: photo.url ?? null,
+              },
               pdf: { buffer: compressed, width: info.width, height: info.height, filename, caption: photo.caption ?? "", roomLabel: room.label, roomId: room.id, storagePath: photo.storagePath ?? null },
             };
           } catch (err) {
@@ -499,10 +524,10 @@ export const generateInspectionReport = onRequest(
             return {
               status: "fulfilled",
               value: {
-                buffer: raw,
                 filename: `${safeSlotKey}_${i + 1}.${originalImageExtension(mp)}`,
                 slotKey,
                 storagePath: mp.storagePath ?? null,
+                url: mp.url ?? null,
               },
             };
           } catch (reason) {
@@ -545,24 +570,20 @@ export const generateInspectionReport = onRequest(
         reportSubtype,
       });
 
-      // ── 4. Build zip (room images + marketing) ───────────────────
-      const zipBuffer = await buildZip(
-        zipAssets,
-        marketingAssets,
-        propertyAddress,
-        inspectionDate,
-      );
-
-      // ── 5. Save PDF + ZIP to Storage in parallel ─────────────────
+      // ── 4. Save PDF + stream original photos into a ZIP ──────────
+      // Originals are deliberately read again here rather than retained from
+      // PDF processing. This keeps memory bounded as photo counts grow and
+      // avoids constructing a second full-size ZIP buffer in RAM.
       const { pdfStoragePath, zipStoragePath } = buildReportArtifactPaths(
         schema.collection,
         inspectionId,
         generationId,
       );
+      const zipFile = bucket.file(zipStoragePath);
 
       const [
         [pdfUrl],
-        [photosDownloadUrl],
+        zipResult,
       ] = await Promise.all([
         bucket.file(pdfStoragePath)
           .save(pdfBuffer, { metadata: { contentType: "application/pdf" } })
@@ -570,16 +591,29 @@ export const generateInspectionReport = onRequest(
             action: "read",
             expires: Date.now() + 10 * 365 * 24 * 60 * 60 * 1000,
           })),
-        bucket.file(zipStoragePath)
-          .save(zipBuffer, { metadata: { contentType: "application/zip" } })
-          .then(() => bucket.file(zipStoragePath).getSignedUrl({
+        writeReportZip({
+          zipAssets,
+          marketingAssets,
+          propertyAddress,
+          inspectionDate,
+          openAssetStream: openReportAssetStream,
+          destination: zipFile.createWriteStream({
+            resumable: false,
+            metadata: { contentType: "application/zip" },
+          }),
+        }).then(async ({ sourceBytes, zipBytes }) => {
+          const [photosDownloadUrl] = await zipFile.getSignedUrl({
             action: "read",
             expires: Date.now() + 90 * 24 * 60 * 60 * 1000,
-          })),
+          });
+          return { photosDownloadUrl, sourceBytes, zipBytes };
+        }),
       ]);
+      const { photosDownloadUrl, sourceBytes: archivedImageBytes, zipBytes } = zipResult;
       logStage("artifacts.saved", {
         pdfBytes: pdfBuffer.length,
-        zipBytes: zipBuffer.length,
+        zipBytes,
+        archivedImageBytes,
         pdfStoragePath,
         zipStoragePath,
       });
@@ -659,7 +693,7 @@ export const generateInspectionReport = onRequest(
         photosDownloadUrl,
         photosStoragePath: zipStoragePath,
         pdfBytes: pdfBuffer.length,
-        zipBytes: zipBuffer.length,
+        zipBytes,
         emailsSent,
         emailFailures,
         publishedAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
@@ -1845,47 +1879,6 @@ export async function buildPDF({
     doc.switchToPage(range.start + range.count - 1);
 
     doc.end();
-  });
-}
-
-// ─── Zip Builder ──────────────────────────────────────────────────────────────
-
-async function buildZip(
-  zipAssets,
-  marketingAssets,
-  propertyAddress,
-  inspectionDate,
-) {
-  const { ZipArchive } = await import("archiver");
-
-  return new Promise((resolve, reject) => {
-    const archive = new ZipArchive({ zlib: { level: 6 } });
-    const chunks = [];
-    archive.on("data", (c) => chunks.push(c));
-    archive.on("end", () => resolve(Buffer.concat(chunks)));
-    archive.on("error", reject);
-
-    const cleanAddr = (propertyAddress ?? "Property")
-      .replace(/[^a-zA-Z0-9\s]/g, "")
-      .trim()
-      .replace(/\s+/g, "_");
-
-    const baseFolder = `${cleanAddr}_${inspectionDate}_Photos`;
-
-    for (const p of zipAssets) {
-      archive.append(p.buffer, {
-        name: `${baseFolder}/${p.filename}`,
-      });
-    }
-
-    // Marketing photos in a subfolder (uncompressed originals)
-    for (const mp of marketingAssets ?? []) {
-      archive.append(mp.buffer, {
-        name: `${baseFolder}/marketing/${mp.filename}`,
-      });
-    }
-
-    archive.finalize();
   });
 }
 
