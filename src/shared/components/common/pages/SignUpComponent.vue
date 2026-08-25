@@ -27,19 +27,19 @@
                 <!-- Glass morphism container with enhanced backdrop -->
                 <div class="w-full max-w-2xl relative">
                     <div
-                        class="backdrop-blur-xl bg-black/20 border border-white/10 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
+                        class="backdrop-blur-xl bg-black/20 border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
                         <!-- Subtle gradient overlay -->
                         <div class="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent rounded-3xl"></div>
 
                         <div class="relative z-10">
                             <div class="grid gap-2 text-center mb-8">
                                 <h1
-                                    class="text-5xl font-bold mb-2 bg-gradient-to-r from-white via-purple-200 to-blue-200 bg-clip-text text-transparent">
+                                    class="text-4xl sm:text-5xl font-bold mb-2 bg-gradient-to-r from-white via-purple-200 to-blue-200 bg-clip-text text-transparent">
                                     Tempest
                                     <span
                                         class="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent -ml-2">ID</span>
                                 </h1>
-                                <h2 class="text-2xl font-semibold text-white/90">{{ title }}</h2>
+                                <h2 class="text-xl sm:text-2xl font-semibold text-white/90">{{ title }}</h2>
                                 <p class="text-white/70 text-sm leading-relaxed">
                                     {{ subtitle }}
                                 </p>
@@ -74,25 +74,8 @@
 
                             <!-- Signup form - only show when not authenticated -->
                             <form v-else class="grid gap-6" @submit.prevent="handleSignUp">
-                                <!-- Username -->
-                                <div class="grid gap-3">
-                                    <Label for="userName" class="text-white/90 font-medium flex items-center gap-2">
-                                        <User class="w-4 h-4" />
-                                        Username
-                                    </Label>
-                                    <div class="relative group">
-                                        <Input id="userName" type="text" autocomplete="username"
-                                            placeholder="AwesomeUser24" required v-model="userName"
-                                            :disabled="isLoading"
-                                            class="bg-white/10 border-white/20 text-white placeholder:text-white/50 rounded-xl h-12 px-4 backdrop-blur-sm focus:bg-white/15 focus:border-purple-400/50 transition-all duration-300 group-hover:bg-white/15 disabled:opacity-50 disabled:cursor-not-allowed" />
-                                        <div
-                                            class="absolute inset-0 rounded-xl bg-gradient-to-r from-purple-500/20 to-blue-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
-                                        </div>
-                                    </div>
-                                </div>
-
                                 <!-- First and Last Name -->
-                                <div class="grid grid-cols-2 gap-4">
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div class="grid gap-3">
                                         <Label for="firstName"
                                             class="text-white/90 font-medium flex items-center gap-2">
@@ -142,18 +125,18 @@
                                     </div>
                                 </div>
 
-                                <!-- Country and Phone Number -->
-                                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                <!-- Country and Date of Birth -->
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div class="grid gap-3">
                                         <Label for="country" class="text-white/90 font-medium flex items-center gap-2">
                                             <Globe class="w-4 h-4" />
-                                            Country
+                                            Country <span class="text-white/50 font-normal">(optional)</span>
                                         </Label>
                                         <div class="relative group">
                                             <Select v-model="selectedCountry" :disabled="isLoading">
-                                                <SelectTrigger
+                                                <SelectTrigger id="country"
                                                     class="bg-white/10 border-white/20 text-white rounded-xl h-12 backdrop-blur-sm focus:bg-white/15 focus:border-purple-400/50 transition-all duration-300 group-hover:bg-white/15 disabled:opacity-50 disabled:cursor-not-allowed">
-                                                    <SelectValue placeholder="Select your Country"
+                                                    <SelectValue placeholder="Select your country"
                                                         class="text-white/50">
                                                         <span class="text-white">{{ displaySelectedCountry }}</span>
                                                     </SelectValue>
@@ -161,7 +144,7 @@
                                                 <SelectContent>
                                                     <SelectItem v-for="country in countries" :key="country.code"
                                                         :value="country.code">
-                                                        {{ country.label }} ({{ country.value }})
+                                                        {{ country.label }}
                                                     </SelectItem>
                                                 </SelectContent>
                                             </Select>
@@ -171,38 +154,30 @@
                                         </div>
                                     </div>
                                     <div class="grid gap-3">
-                                        <Label for="phoneNumber"
-                                            class="text-white/90 font-medium flex items-center gap-2">
-                                            <Phone class="w-4 h-4" />
-                                            Phone Number
-                                        </Label>
+                                        <div class="flex items-center gap-2">
+                                            <Label for="dateOfBirth" class="text-white/90 font-medium flex items-center gap-2">
+                                                <Calendar class="w-4 h-4" />
+                                                Date of Birth
+                                            </Label>
+                                            <Tooltip>
+                                                <TooltipTrigger as-child>
+                                                    <button type="button" aria-label="Why date of birth is required"
+                                                        class="inline-flex h-5 w-5 items-center justify-center rounded-full text-white/55 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400">
+                                                        <Info class="h-3.5 w-3.5" aria-hidden="true" />
+                                                    </button>
+                                                </TooltipTrigger>
+                                                <TooltipContent side="top" class="max-w-56">
+                                                    Used for your personal profile.
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        </div>
                                         <div class="relative group">
-                                            <span
-                                                class="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/70 text-sm z-10">{{
-                                                    callCode || '+61' }}</span>
-                                            <Input id="phoneNumber" type="tel" autocomplete="tel"
-                                                placeholder="0412 345 678" required v-model="phoneNumber"
+                                            <Input id="dateOfBirth" type="date" required v-model="dateOfBirth"
                                                 :disabled="isLoading"
-                                                :class="`bg-white/10 border-white/20 text-white placeholder:text-white/50 rounded-xl h-12 backdrop-blur-sm focus:bg-white/15 focus:border-purple-400/50 transition-all duration-300 group-hover:bg-white/15 disabled:opacity-50 disabled:cursor-not-allowed ${phonePadding}`" />
+                                                class="bg-white/10 border-white/20 text-white placeholder:text-white/50 rounded-xl h-12 px-4 backdrop-blur-sm focus:bg-white/15 focus:border-purple-400/50 transition-all duration-300 group-hover:bg-white/15 disabled:opacity-50 disabled:cursor-not-allowed" />
                                             <div
                                                 class="absolute inset-0 rounded-xl bg-gradient-to-r from-purple-500/20 to-blue-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
                                             </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Date of Birth -->
-                                <div class="grid gap-3">
-                                    <Label for="dateOfBirth" class="text-white/90 font-medium flex items-center gap-2">
-                                        <Calendar class="w-4 h-4" />
-                                        Date of Birth
-                                    </Label>
-                                    <div class="relative group">
-                                        <Input id="dateOfBirth" type="date" required v-model="dateOfBirth"
-                                            :disabled="isLoading"
-                                            class="bg-white/10 border-white/20 text-white placeholder:text-white/50 rounded-xl h-12 px-4 backdrop-blur-sm focus:bg-white/15 focus:border-purple-400/50 transition-all duration-300 group-hover:bg-white/15 disabled:opacity-50 disabled:cursor-not-allowed" />
-                                        <div
-                                            class="absolute inset-0 rounded-xl bg-gradient-to-r from-purple-500/20 to-blue-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
                                         </div>
                                     </div>
                                 </div>
@@ -291,6 +266,11 @@ import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
 import { Label } from '@/shared/components/ui/label'
 import {
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger
+} from '@/shared/components/ui/tooltip'
+import {
     Select,
     SelectContent,
     SelectItem,
@@ -300,7 +280,6 @@ import {
 import {
     User,
     Mail,
-    Phone,
     Globe,
     Calendar,
     Lock,
@@ -308,7 +287,8 @@ import {
     UserPlus,
     CheckCircle,
     LogOut,
-    Loader2
+    Loader2,
+    Info
 } from '@lucide/vue'
 import countryList from '@/shared/data/countries.json'
 import { signUp, signOut } from '@/auth'
@@ -331,7 +311,7 @@ const props = defineProps({
     },
     subtitle: {
         type: String,
-        default: 'Join us today and start your journey with TempestID'
+        default: 'Use your TempestID across MXN tools and personal features'
     },
     imageUrls: {
         type: Array,
@@ -349,9 +329,7 @@ let imageRotationTimerId
 
 const firstName = ref('')
 const lastName = ref('')
-const userName = ref('')
 const emailAddress = ref('')
-const phoneNumber = ref('')
 const password = ref('')
 const confirmPassword = ref('')
 const selectedCountry = ref('')
@@ -403,33 +381,9 @@ const handleLogout = async () => {
     }
 }
 
-const callCode = computed(() => {
-    const country = countries.value.find((c) => c.code === selectedCountry.value)
-    return country ? country.value : ''
-})
-
-const phonePadding = computed(() => {
-    const length = callCode.value.length
-    if (length === 2) return 'pl-7'
-    if (length === 3) return 'pl-9'
-    if (length === 4) return 'pl-11'
-    if (length === 5) return 'pl-12'
-    if (length === 6) return 'pl-[52px]'
-    return 'pl-9'
-})
-
-const formattedPhoneNumber = computed(() => {
-    if (selectedCountry.value && phoneNumber.value) {
-        let formatted = phoneNumber.value.replace(/\s+/g, '')
-        if (formatted.startsWith('0')) formatted = formatted.substring(1)
-        return `${callCode.value}${formatted}`
-    }
-    return phoneNumber.value.replace(/\s+/g, '').replace(/^0/, '')
-})
-
 const displaySelectedCountry = computed(() => {
     const country = countries.value.find((c) => c.code === selectedCountry.value)
-    return country ? `${country.label} (${country.value})` : ''
+    return country ? country.label : ''
 })
 
 const handleSignUp = async () => {
@@ -440,9 +394,7 @@ const handleSignUp = async () => {
         await signUp({
             firstName: firstName.value,
             lastName: lastName.value,
-            userName: userName.value,
             email: emailAddress.value,
-            phoneNumber: formattedPhoneNumber.value,
             countryCode: selectedCountry.value,
             country: countryName.value,
             dateOfBirth: dateOfBirth.value,

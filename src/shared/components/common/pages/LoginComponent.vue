@@ -27,19 +27,19 @@
                 <!-- Glass morphism container with enhanced backdrop -->
                 <div class="w-full max-w-md relative">
                     <div
-                        class="backdrop-blur-xl bg-black/20 border border-white/10 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
+                        class="backdrop-blur-xl bg-black/20 border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
                         <!-- Subtle gradient overlay -->
                         <div class="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent rounded-3xl"></div>
 
                         <div class="relative z-10">
                             <div class="grid gap-2 text-center mb-8">
                                 <h1
-                                    class="text-5xl font-bold mb-2 bg-gradient-to-r from-white via-purple-200 to-blue-200 bg-clip-text text-transparent">
+                                    class="text-4xl sm:text-5xl font-bold mb-2 bg-gradient-to-r from-white via-purple-200 to-blue-200 bg-clip-text text-transparent">
                                     Tempest
                                     <span
                                         class="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent -ml-2">ID</span>
                                 </h1>
-                                <h2 class="text-2xl font-semibold text-white/90">{{ title }}</h2>
+                                <h2 class="text-xl sm:text-2xl font-semibold text-white/90">{{ title }}</h2>
                                 <p class="text-white/70 text-sm leading-relaxed">
                                     {{ subtitle }}
                                 </p>

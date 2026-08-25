@@ -1,3 +1,22 @@
+const slugifyNamePart = (value) => String(value ?? '')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+
+export const generateCompatibilityUserName = ({ firstName = '', lastName = '', uid = '' } = {}) => {
+    const stableUid = String(uid).trim()
+    if (!stableUid) throw new Error('A user ID is required to generate a username.')
+
+    const nameSlug = [firstName, lastName]
+        .map(slugifyNamePart)
+        .filter(Boolean)
+        .join('-') || 'user'
+
+    return `${nameSlug}-${stableUid}`
+}
+
 export const generateUserProfile = ({
     uid,
     email,

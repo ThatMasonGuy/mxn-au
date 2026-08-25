@@ -1,7 +1,7 @@
 // @/shared/utils/useCreateNewUser.js
 import { doc, setDoc, writeBatch, collection, addDoc, serverTimestamp } from 'firebase/firestore'
 import { firestore } from '@/firebase'
-import { generateUserProfile } from './useGenerateUserProfile'
+import { generateCompatibilityUserName, generateUserProfile } from './useGenerateUserProfile'
 
 export const useCreateNewUser = async (authUser, profileInput = {}) => {
     if (!authUser?.uid || !authUser?.email) {
@@ -16,7 +16,12 @@ export const useCreateNewUser = async (authUser, profileInput = {}) => {
             uid: authUser.uid,
             email: authUser.email,
             provider: authUser.providerData?.[0]?.providerId || 'password',
-            ...profileInput
+            ...profileInput,
+            userName: generateCompatibilityUserName({
+                firstName: profileInput.firstName,
+                lastName: profileInput.lastName,
+                uid: authUser.uid
+            })
         })
 
         // Add main profile doc to batch
