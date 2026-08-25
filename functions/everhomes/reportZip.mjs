@@ -1,33 +1,44 @@
 import { Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 
-function reportPhotoFolder(propertyAddress, inspectionDate) {
-  const cleanAddress = (propertyAddress ?? "Property")
-    .replace(/[^a-zA-Z0-9\s]/g, "")
+function reportDateFolder(inspectionDate) {
+  const value = String(inspectionDate ?? "").trim();
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : "Undated";
+}
+
+function safeReportFilename(value) {
+  const basename = String(value ?? "Report.pdf")
+    .replaceAll("\\", "/")
+    .split("/")
+    .pop();
+  const safe = basename
+    .replace(/[\u0000-\u001f<>:"|?*]/g, "_")
+    .replace(/^\.+/, "")
     .trim()
-    .replace(/\s+/g, "_");
-  return `${cleanAddress}_${inspectionDate}_Photos`;
+    .slice(0, 200);
+  return safe || "Report.pdf";
 }
 
 /**
- * Stream original report photos into a ZIP destination. Asset streams are
- * opened by the caller so this helper works with both Cloud Storage objects
- * and legacy approved download URLs without buffering the complete archive.
+ * Stream a SharePoint-ready report package into a ZIP destination. Original
+ * asset streams are opened by the caller so the archive stays bounded without
+ * buffering the complete photo set or ZIP in memory.
  */
 export async function writeReportZip({
   zipAssets,
   marketingAssets = [],
-  propertyAddress,
   inspectionDate,
+  reportFile,
   openAssetStream,
   destination,
   signal,
 }) {
+  if (!reportFile) throw new TypeError("reportFile is required for a report package.");
   const { ZipArchive } = await import("archiver");
   // Report originals are already compressed image formats. Recompressing them
   // consumed CPU while barely changing archive size, so store them directly.
   const archive = new ZipArchive({ store: true });
-  const folder = reportPhotoFolder(propertyAddress, inspectionDate);
+  const folder = reportDateFolder(inspectionDate);
   let sourceBytes = 0;
   let zipBytes = 0;
 
@@ -87,11 +98,19 @@ export async function writeReportZip({
 
   try {
     for (const asset of zipAssets) {
-      await appendAsset(asset, `${folder}/${asset.filename}`);
+      await appendAsset(asset, `${folder}/Photos/${asset.filename}`);
     }
     for (const asset of marketingAssets) {
-      await appendAsset(asset, `${folder}/marketing/${asset.filename}`);
+      await appendAsset(asset, `${folder}/Photos/marketing/${asset.filename}`);
     }
+
+    const resolvedReportFile = await reportFile;
+    if (!Buffer.isBuffer(resolvedReportFile?.buffer)) {
+      throw new TypeError("reportFile.buffer must be a PDF Buffer.");
+    }
+    archive.append(resolvedReportFile.buffer, {
+      name: `${folder}/${safeReportFilename(resolvedReportFile.filename)}`,
+    });
 
     const finalized = archive.finalize();
     await Promise.all([finalized, completion]);

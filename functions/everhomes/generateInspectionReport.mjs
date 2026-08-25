@@ -563,6 +563,19 @@ export const generateInspectionReport = onRequest(
         imageBytes: downloadedImageBytes,
       });
 
+      const dateLabel = formatDate(inspectionDate);
+      const emailSubjectTitle = docTitle || schema.emailSubjectPrefix;
+      const subjectAddress = propertyAddress.replace(/[\r\n]+/g, " ").slice(0, 500);
+      const subject = `${emailSubjectTitle} — ${subjectAddress} — ${dateLabel}`;
+      const cleanAddr = (propertyAddress ?? "Property").replace(
+        /[^a-zA-Z0-9]/g,
+        "_",
+      );
+      const filePrefix = emailSubjectTitle.replace(/\s+/g, "_");
+      const pdfName = `${filePrefix}_${cleanAddr}_${inspectionDate}_Report.pdf`;
+      const zipName = `${inspectionDate}_${filePrefix}_${cleanAddr}_Report.zip`
+        .replace(/[^a-zA-Z0-9._-]/g, "_");
+
       // ── 3. Build/save PDF while streaming originals into a ZIP ───
       // These workloads are independent. Running them together lets native
       // image/PDF work use the second CPU while the archive waits on Storage.
@@ -575,7 +588,7 @@ export const generateInspectionReport = onRequest(
       const zipFile = bucket.file(zipStoragePath);
       const zipAbortController = new AbortController();
 
-      const pdfWork = buildPDF({
+      const pdfBuild = buildPDF({
         propertyAddress,
         inspectionDate,
         inspectorName,
@@ -585,8 +598,12 @@ export const generateInspectionReport = onRequest(
         docTitle,
         sigAssets,
         reportSubtype,
-      }).then(async (pdfBuffer) => {
+      }).then((pdfBuffer) => {
         logStage("pdf.built", { pdfBytes: pdfBuffer.length });
+        return pdfBuffer;
+      });
+
+      const pdfWork = pdfBuild.then(async (pdfBuffer) => {
         await bucket.file(pdfStoragePath)
           .save(pdfBuffer, { metadata: { contentType: "application/pdf" } });
         const [pdfUrl] = await bucket.file(pdfStoragePath).getSignedUrl({
@@ -603,13 +620,16 @@ export const generateInspectionReport = onRequest(
       const zipWork = writeReportZip({
         zipAssets,
         marketingAssets,
-        propertyAddress,
         inspectionDate,
+        reportFile: pdfBuild.then((pdfBuffer) => ({ filename: pdfName, buffer: pdfBuffer })),
         openAssetStream: openReportAssetStream,
         signal: zipAbortController.signal,
         destination: zipFile.createWriteStream({
           resumable: false,
-          metadata: { contentType: "application/zip" },
+          metadata: {
+            contentType: "application/zip",
+            contentDisposition: `attachment; filename="${zipName}"`,
+          },
         }),
       }).then(async ({ sourceBytes, zipBytes }) => {
         const [photosDownloadUrl] = await zipFile.getSignedUrl({
@@ -646,16 +666,6 @@ export const generateInspectionReport = onRequest(
       // ── 6. Send emails via Resend ──────────────────────────────────
       const { Resend } = await import("resend");
       const resend = new Resend(RESEND_API_KEY.value());
-      const dateLabel = formatDate(inspectionDate);
-      const emailSubjectTitle = docTitle || schema.emailSubjectPrefix;
-      const subjectAddress = propertyAddress.replace(/[\r\n]+/g, " ").slice(0, 500);
-      const subject = `${emailSubjectTitle} — ${subjectAddress} — ${dateLabel}`;
-      const cleanAddr = (propertyAddress ?? "Property").replace(
-        /[^a-zA-Z0-9]/g,
-        "_",
-      );
-      const filePrefix = emailSubjectTitle.replace(/\s+/g, "_");
-      const pdfName = `${filePrefix}_${cleanAddr}_${inspectionDate}_Report.pdf`;
       const attachments = [
         { filename: pdfName, content: pdfBuffer },
       ];
@@ -2075,9 +2085,9 @@ function buildEmailHtml({
       <tr>
         <td>
           <a href="${escapeHtml(photosDownloadUrl)}" style="display:inline-block;background:#7C3AED;color:#fff;font-size:13px;font-weight:700;text-decoration:none;padding:12px 24px;border-radius:8px;">
-            &#8595; Download Photos (ZIP)
+            &#8595; Download Report Package (ZIP)
           </a>
-          <p style="margin:8px 0 0;font-size:11px;color:#CBD5E1;">Link expires in 90 days.</p>
+          <p style="margin:8px 0 0;font-size:11px;color:#CBD5E1;">Includes the PDF and original photos in a SharePoint-ready date folder. Link expires in 90 days.</p>
         </td>
       </tr>
     </table>` : ""}

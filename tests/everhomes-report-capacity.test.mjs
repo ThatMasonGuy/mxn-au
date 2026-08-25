@@ -19,7 +19,7 @@ test('report uploads allow aggregate photo sets larger than 300 MB', () => {
   assert.equal(evaluateReportPhotoSize(MAX_REPORT_PHOTO_BYTES).allowed, false)
 })
 
-test('streamed report ZIP includes 150 originals without a complete archive buffer input', async () => {
+test('streamed report package includes the PDF and 150 originals in the SharePoint-ready layout', async () => {
   let activeSourceStreams = 0
   let maxActiveSourceStreams = 0
   const zipAssets = Array.from({ length: 150 }, (_, index) => ({
@@ -41,8 +41,11 @@ test('streamed report ZIP includes 150 originals without a complete archive buff
   const result = await writeReportZip({
     zipAssets,
     marketingAssets,
-    propertyAddress: '1 Example Street',
     inspectionDate: '2026-08-25',
+    reportFile: Promise.resolve({
+      filename: 'Inspection_Report_1_Example_Street.pdf',
+      buffer: Buffer.from('report-pdf'),
+    }),
     openAssetStream: async (asset) => {
       activeSourceStreams += 1
       maxActiveSourceStreams = Math.max(maxActiveSourceStreams, activeSourceStreams)
@@ -72,11 +75,13 @@ test('streamed report ZIP includes 150 originals without a complete archive buff
   assert.equal(result.zipBytes, archive.length)
   assert.equal(maxActiveSourceStreams, 1)
   assert.equal(archive.subarray(0, 2).toString('ascii'), 'PK')
-  assert.match(archive.toString('latin1'), /1_Example_Street_2026-08-25_Photos\/room_150\.jpg/)
-  assert.match(archive.toString('latin1'), /1_Example_Street_2026-08-25_Photos\/marketing\/hero_1\.jpg/)
+  assert.match(archive.toString('latin1'), /2026-08-25\/Inspection_Report_1_Example_Street\.pdf/)
+  assert.match(archive.toString('latin1'), /2026-08-25\/Photos\/room_150\.jpg/)
+  assert.match(archive.toString('latin1'), /2026-08-25\/Photos\/marketing\/hero_1\.jpg/)
+  assert.match(archive.toString('latin1'), /report-pdf/)
 })
 
-test('streamed report ZIP aborts its active source when sibling artifact work fails', async () => {
+test('streamed report package aborts its active source when sibling artifact work fails', async () => {
   const controller = new AbortController()
   let openedStreams = 0
   let activeSourceClosed = false
@@ -93,6 +98,7 @@ test('streamed report ZIP aborts its active source when sibling artifact work fa
     ],
     propertyAddress: '1 Example Street',
     inspectionDate: '2026-08-25',
+    reportFile: Promise.resolve({ filename: 'Report.pdf', buffer: Buffer.from('report-pdf') }),
     openAssetStream: async () => {
       openedStreams += 1
       const source = new Readable({ read() {} })
@@ -110,4 +116,31 @@ test('streamed report ZIP aborts its active source when sibling artifact work fa
   await assert.rejects(archiveWork, /PDF generation failed/)
   assert.equal(openedStreams, 1)
   assert.equal(activeSourceClosed, true)
+})
+
+test('report package paths cannot escape the date folder', async () => {
+  const chunks = []
+  const destination = new Writable({
+    write(chunk, _encoding, callback) {
+      chunks.push(Buffer.from(chunk))
+      callback()
+    },
+  })
+
+  await writeReportZip({
+    zipAssets: [],
+    inspectionDate: '../../outside',
+    reportFile: Promise.resolve({
+      filename: '../../Unsafe:Report.pdf',
+      buffer: Buffer.from('report-pdf'),
+    }),
+    openAssetStream: async () => {
+      throw new Error('No photo stream should be opened')
+    },
+    destination,
+  })
+
+  const archiveText = Buffer.concat(chunks).toString('latin1')
+  assert.match(archiveText, /Undated\/Unsafe_Report\.pdf/)
+  assert.doesNotMatch(archiveText, /\.\.\//)
 })

@@ -137,7 +137,7 @@ export const resendReport = onRequest(
         ${photosDownloadUrl ? `
         <br />
         <a href="${escapeHtml(photosDownloadUrl)}" style="display:inline-block;margin-top:8px;padding:10px 20px;background:#1e293b;color:#ffffff;font-size:14px;font-weight:600;text-decoration:none;border-radius:8px;">
-          Download Photos ZIP
+          Download Report Package ZIP
         </a>` : ''}
         <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;" />
         <p style="font-size:12px;color:#94a3b8;margin:0;">

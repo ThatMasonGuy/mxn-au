@@ -309,7 +309,7 @@
                                             class="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.045] px-3 py-1.5 text-xs font-semibold text-slate-300 transition hover:border-cyan-400/30 hover:bg-cyan-400/10 hover:text-cyan-200"
                                         >
                                             <FolderArchive class="h-3.5 w-3.5" />
-                                            Photos
+                                            Package
                                         </a>
 
                                         <div
@@ -783,7 +783,7 @@
                         <div class="mb-4 flex items-start gap-2 rounded-2xl border border-amber-400/20 bg-amber-400/10 px-3 py-2.5">
                             <AlertTriangle class="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-300" />
                             <p class="text-xs leading-5 text-amber-200">
-                                This will <strong>overwrite the existing PDF</strong>, unpack the photos ZIP back into storage, re-run the full report pipeline, and re-send emails to all original recipients.
+                                This will <strong>overwrite the existing PDF</strong>, unpack the report package back into storage, re-run the full report pipeline, and re-send emails to all original recipients.
                             </p>
                         </div>
 
