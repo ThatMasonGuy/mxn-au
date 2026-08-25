@@ -21,6 +21,11 @@ import { normaliseEmailDeliveries } from '../functions/everhomes/emailDelivery.m
 import { buildReportArtifactPaths, safeArchiveKey } from '../functions/everhomes/reportArtifacts.mjs'
 import { canDeleteEverhomesReport } from '../functions/everhomes/reportDeletionPolicy.mjs'
 import {
+  addStorageObject,
+  createStorageUsageSummary,
+  estimateLegacyFirebaseStorageUsd,
+} from '../functions/everhomes/storageUsageCore.mjs'
+import {
   collectMissingRequiredAnswers,
   computeItemStats,
   isRequiredAnswerComplete as functionRequiredAnswerComplete,
@@ -200,4 +205,32 @@ test('admin report deletion is limited to draft and failed reports', () => {
   for (const status of ['complete', 'pending', 'processing', 'regenerating', 'deleting', null, undefined]) {
     assert.equal(canDeleteEverhomesReport(status), false, `${status} must remain protected`)
   }
+})
+
+test('storage usage separates Everhomes files from unrelated bucket objects', () => {
+  const summary = createStorageUsageSummary()
+  addStorageObject(summary, { name: 'inspections/report-1/photos/one.jpg', size: '1500000000' })
+  addStorageObject(summary, { name: 'handovers/report-2/generations/a/report.pdf', size: 500000000 })
+  addStorageObject(summary, { name: 'users/legacy/logo.png', size: 250000000 })
+  addStorageObject(summary, { name: 'inspections/report-1/empty.jpg', size: 'invalid' })
+
+  assert.deepEqual(summary, {
+    total: { bytes: 2250000000, objects: 4 },
+    inspections: { bytes: 1500000000, objects: 2 },
+    handovers: { bytes: 500000000, objects: 1 },
+    other: { bytes: 250000000, objects: 1 },
+  })
+})
+
+test('legacy Firebase storage estimate applies its five GB free allowance', () => {
+  assert.deepEqual(estimateLegacyFirebaseStorageUsd(4_000_000_000), {
+    storedGb: 4,
+    billableGb: 0,
+    monthlyStorageUsd: 0,
+  })
+  assert.deepEqual(estimateLegacyFirebaseStorageUsd(7_000_000_000), {
+    storedGb: 7,
+    billableGb: 2,
+    monthlyStorageUsd: 0.052,
+  })
 })

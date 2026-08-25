@@ -12,10 +12,10 @@
             <button
                 type="button"
                 class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-cyan-400/25 bg-cyan-400/10 px-4 py-2 text-sm font-semibold text-cyan-200 transition hover:border-cyan-300/50 hover:bg-cyan-400/15 disabled:cursor-not-allowed disabled:opacity-60"
-                :disabled="loading"
-                @click="loadUsage"
+                :disabled="loading || storageLoading"
+                @click="refreshUsage"
             >
-                <RefreshCw class="h-4 w-4" :class="loading ? 'animate-spin' : ''" />
+                <RefreshCw class="h-4 w-4" :class="loading || storageLoading ? 'animate-spin' : ''" />
                 Refresh usage
             </button>
         </div>
@@ -51,6 +51,64 @@
 
         <template v-else>
             <section>
+                <div class="mb-4">
+                    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-sky-300/70">Cloud Storage</p>
+                    <h3 class="mt-1 text-lg font-bold text-white">Report storage and cost</h3>
+                    <p class="mt-1 text-xs leading-5 text-slate-500">Live object totals from the Firebase bucket. File contents are not downloaded.</p>
+                </div>
+
+                <div v-if="storageLoading && !storageUsage" class="flex items-center justify-center gap-3 border-y border-white/10 py-12 text-slate-500">
+                    <Loader2 class="h-5 w-5 animate-spin text-sky-300" />
+                    <span class="text-sm">Calculating stored files…</span>
+                </div>
+
+                <div v-else-if="storageError" class="rounded-lg border border-red-400/20 bg-red-500/10 px-5 py-6 text-center">
+                    <AlertCircle class="mx-auto h-5 w-5 text-red-300" />
+                    <p class="mt-2 text-sm font-semibold text-red-100">Could not calculate storage usage</p>
+                    <p class="mt-1 text-xs text-red-200/80">{{ storageError }}</p>
+                </div>
+
+                <template v-else-if="storageUsage">
+                    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                        <article class="rounded-lg border border-white/[0.08] bg-white/[0.025] p-4">
+                            <p class="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-600">Total bucket</p>
+                            <p class="mt-2 text-xl font-bold text-white tabular-nums">{{ formatBytes(storageUsage.usage.total.bytes) }}</p>
+                            <p class="mt-1 text-xs text-slate-500">{{ formatNumber(storageUsage.usage.total.objects) }} files</p>
+                        </article>
+                        <article class="rounded-lg border border-cyan-400/15 bg-cyan-400/[0.04] p-4">
+                            <p class="text-[10px] font-semibold uppercase tracking-[0.14em] text-cyan-300/60">Everhomes reports</p>
+                            <p class="mt-2 text-xl font-bold text-cyan-100 tabular-nums">{{ formatBytes(storageUsage.usage.everhomes.bytes) }}</p>
+                            <p class="mt-1 text-xs text-slate-500">{{ formatNumber(storageUsage.usage.everhomes.objects) }} files</p>
+                        </article>
+                        <article class="rounded-lg border border-white/[0.08] bg-white/[0.025] p-4">
+                            <p class="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-600">Other / legacy</p>
+                            <p class="mt-2 text-xl font-bold text-white tabular-nums">{{ formatBytes(storageUsage.usage.other.bytes) }}</p>
+                            <p class="mt-1 text-xs text-slate-500">{{ formatNumber(storageUsage.usage.other.objects) }} files</p>
+                        </article>
+                        <article class="rounded-lg border border-teal-400/15 bg-teal-400/[0.04] p-4">
+                            <p class="text-[10px] font-semibold uppercase tracking-[0.14em] text-teal-300/60">Storage run-rate</p>
+                            <p class="mt-2 text-xl font-bold text-teal-100 tabular-nums">{{ formatStorageCost(storageUsage.pricing) }}</p>
+                            <p class="mt-1 text-xs text-slate-500">Estimated per month</p>
+                        </article>
+                    </div>
+
+                    <div class="mt-4 divide-y divide-white/[0.07] border-y border-white/[0.08]">
+                        <div v-for="row in storageBreakdown" :key="row.id" class="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-4 px-3 py-3 text-sm">
+                            <span class="font-semibold text-slate-300">{{ row.label }}</span>
+                            <span class="text-slate-500 tabular-nums">{{ formatNumber(row.objects) }} files</span>
+                            <span class="min-w-20 text-right font-bold text-white tabular-nums">{{ formatBytes(row.bytes) }}</span>
+                        </div>
+                    </div>
+
+                    <p class="mt-3 text-[11px] leading-5 text-slate-600">
+                        {{ storagePricingNote }} Downloads, operations, taxes and currency conversion are not included.
+                        This scans live files; recently deleted files can remain billable during Cloud Storage soft-delete retention.
+                        Snapshot {{ formatStorageScanTime(storageUsage.scannedAt) }}.
+                    </p>
+                </template>
+            </section>
+
+            <section class="border-t border-white/10 pt-6">
                 <div class="mb-4">
                     <p class="text-xs font-semibold uppercase tracking-[0.2em] text-teal-300/70">Tool usage</p>
                     <h3 class="mt-1 text-lg font-bold text-white">Activity by tool</h3>
@@ -150,8 +208,10 @@ import { computed, onMounted, ref } from 'vue'
 import { collection, getDocs, limit, orderBy, query } from 'firebase/firestore'
 import { AlertCircle, Loader2, RefreshCw } from '@lucide/vue'
 
-import { firestore } from '@/firebase'
+import { auth, firestore } from '@/firebase'
 import { EVERHOMES_TOOL_CATALOGUE } from '@/features/everhomes/utils/toolUsage'
+
+const FUNCTIONS_URL = import.meta.env.VITE_FUNCTIONS_URL ?? ''
 
 const periodOptions = [
     { days: 7, label: '7 days' },
@@ -164,6 +224,9 @@ const dailyRows = ref([])
 const recentEvents = ref([])
 const loading = ref(false)
 const error = ref('')
+const storageUsage = ref(null)
+const storageLoading = ref(false)
+const storageError = ref('')
 
 function brisbaneDateKey(date) {
     const parts = new Intl.DateTimeFormat('en-CA', {
@@ -208,6 +271,46 @@ const calculatorSplit = computed(() => {
     ]
 })
 
+const storageBreakdown = computed(() => {
+    const usage = storageUsage.value?.usage
+    if (!usage) return []
+    return [
+        { id: 'inspections', label: 'Inspection reports', ...usage.inspections },
+        { id: 'handovers', label: 'Handover reports', ...usage.handovers },
+        { id: 'other', label: 'Other / unclassified', ...usage.other },
+    ]
+})
+
+const storagePricingNote = computed(() => {
+    const pricing = storageUsage.value?.pricing
+    if (!pricing) return 'No automatic storage-price estimate is available for this bucket type.'
+    return `Storage-only estimate in ${pricing.currency}: first ${pricing.freeStorageGb} GB free, then $${pricing.storageUsdPerGbMonth.toFixed(3)}/GB-month.`
+})
+
+async function loadStorageUsage() {
+    storageLoading.value = true
+    storageError.value = ''
+    try {
+        const token = await auth.currentUser?.getIdToken()
+        if (!token) throw new Error('Your administrator session has expired. Please sign in again.')
+        const response = await fetch(`${FUNCTIONS_URL}/getEverhomesStorageUsage`, {
+            headers: { Authorization: `Bearer ${token}` },
+        })
+        const body = await response.json().catch(() => ({}))
+        if (!response.ok) throw new Error(body.error ?? `HTTP ${response.status}`)
+        storageUsage.value = body
+    } catch (loadError) {
+        console.error('Failed to load Cloud Storage usage:', loadError)
+        storageError.value = loadError.message ?? 'Unknown Cloud Storage error'
+    } finally {
+        storageLoading.value = false
+    }
+}
+
+function refreshUsage() {
+    return Promise.all([loadUsage(), loadStorageUsage()])
+}
+
 async function loadUsage() {
     loading.value = true
     error.value = ''
@@ -232,6 +335,36 @@ async function loadUsage() {
 
 function formatNumber(value) {
     return new Intl.NumberFormat('en-AU').format(Number(value) || 0)
+}
+
+function formatBytes(value) {
+    const bytes = Math.max(0, Number(value) || 0)
+    if (bytes < 1_000) return `${bytes} B`
+    const units = ['KB', 'MB', 'GB', 'TB']
+    let amount = bytes
+    let unit = 'B'
+    for (const candidate of units) {
+        amount /= 1_000
+        unit = candidate
+        if (amount < 1_000) break
+    }
+    return `${amount.toLocaleString('en-AU', { maximumFractionDigits: amount >= 100 ? 1 : 2 })} ${unit}`
+}
+
+function formatStorageCost(pricing) {
+    if (!pricing) return 'Not available'
+    return new Intl.NumberFormat('en-AU', {
+        style: 'currency',
+        currency: pricing.currency,
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    }).format(pricing.monthlyStorageUsd)
+}
+
+function formatStorageScanTime(value) {
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return 'just now'
+    return date.toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' })
 }
 
 function actionLabel(action) {
@@ -281,5 +414,5 @@ function formatRelative(timestamp) {
     return new Date(milliseconds).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-onMounted(loadUsage)
+onMounted(refreshUsage)
 </script>
