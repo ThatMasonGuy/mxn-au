@@ -8,6 +8,10 @@ import {
   createStorageSummary,
   createUserSummary,
 } from '../functions/siteAdmin/overviewCore.mjs'
+import {
+  createBillingSummary,
+  createGa4Summary,
+} from '../functions/siteAdmin/externalSourcesCore.mjs'
 
 test('site administration requires the dedicated siteAdmin role', () => {
   assert.equal(hasSiteAdminRole(['siteAdmin']), true)
@@ -106,4 +110,46 @@ test('storage summaries group every object and byte by its first path segment', 
       { name: 'avatars', bytes: 50, objects: 1 },
     ],
   })
+})
+
+test('GA4 summaries keep optional analytics totals separate from the daily series', () => {
+  const metricValues = (...values) => values.map((value) => ({ value: String(value) }))
+  const summary = createGa4Summary({
+    rows: [{ metricValues: metricValues(62, 47, 165, 240, 310) }],
+  }, {
+    rows: [
+      { dimensionValues: [{ value: '20260824' }], metricValues: metricValues(4, 2, 5, 8, 10) },
+      { dimensionValues: [{ value: '20260825' }], metricValues: metricValues(3, 1, 4, 6, 8) },
+    ],
+  }, '443572528')
+
+  assert.deepEqual(summary.totals, {
+    activeUsers: 62,
+    newUsers: 47,
+    sessions: 165,
+    views: 240,
+    events: 310,
+  })
+  assert.equal(summary.daily[1].date, '2026-08-25')
+  assert.match(summary.scope, /visitors who chose analytics/i)
+})
+
+test('billing summaries apply credits and label the month-end figure as a run-rate projection', () => {
+  const summary = createBillingSummary([
+    { usageDate: '2026-08-01', service: 'Cloud Firestore', currency: 'AUD', grossCost: 2, credits: -1, netCost: 1 },
+    { usageDate: '2026-08-02', service: 'Cloud Firestore', currency: 'AUD', grossCost: 3, credits: -1, netCost: 2 },
+    { usageDate: '2026-08-02', service: 'Cloud Functions', currency: 'AUD', grossCost: 1, credits: 0, netCost: 1 },
+  ], {
+    now: new Date('2026-08-25T00:00:00.000Z'),
+    projectId: 'mxn-au',
+    datasetId: 'mxn_billing',
+  })
+
+  assert.equal(summary.grossCost, 6)
+  assert.equal(summary.credits, -2)
+  assert.equal(summary.netCost, 4)
+  assert.equal(summary.projectedMonthEnd, 62)
+  assert.equal(summary.reportedThrough, '2026-08-02')
+  assert.equal(summary.services[0].name, 'Cloud Firestore')
+  assert.match(summary.projectionBasis, /2 reported days scaled across 31 days/i)
 })

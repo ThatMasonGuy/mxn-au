@@ -283,13 +283,46 @@
           <div class="service-grid">
             <article class="service-card service-card--pink">
               <span class="service-icon"><BarChart3 :size="24" aria-hidden="true" /></span>
-              <div><p class="mini-label">Optional analytics</p><h2>Google Analytics 4</h2><p>{{ overview?.sources?.ga4?.detail || 'The GA4 reporting API is not connected to this admin centre.' }}</p></div>
-              <span class="status-chip status-chip--muted">Not connected</span>
+              <div>
+                <p class="mini-label">Optional analytics</p>
+                <h2>Google Analytics 4</h2>
+                <template v-if="ga4Source?.status === 'available'">
+                  <p>{{ ga4Source.data.scope }}</p>
+                  <dl class="service-metrics">
+                    <div><dt>Active users</dt><dd>{{ formatInteger(ga4Source.data.totals.activeUsers) }}</dd></div>
+                    <div><dt>New users</dt><dd>{{ formatInteger(ga4Source.data.totals.newUsers) }}</dd></div>
+                    <div><dt>Sessions</dt><dd>{{ formatInteger(ga4Source.data.totals.sessions) }}</dd></div>
+                    <div><dt>Views</dt><dd>{{ formatInteger(ga4Source.data.totals.views) }}</dd></div>
+                  </dl>
+                </template>
+                <p v-else>{{ sourceMessage(ga4Source, 'GA4 data is not available yet.') }}</p>
+              </div>
+              <span class="status-chip" :class="sourceStatusClass(ga4Source)">{{ sourceStatusLabel(ga4Source) }}</span>
             </article>
             <article class="service-card service-card--orange">
               <span class="service-icon"><Receipt :size="24" aria-hidden="true" /></span>
-              <div><p class="mini-label">Project spend</p><h2>Cloud billing</h2><p>{{ overview?.sources?.billing?.detail || 'Cloud Billing export is not connected, so a consolidated estimate is unavailable.' }}</p></div>
-              <span class="status-chip status-chip--muted">Not connected</span>
+              <div>
+                <p class="mini-label">Project spend</p>
+                <h2>Cloud billing</h2>
+                <template v-if="billingSource?.status === 'available'">
+                  <p>
+                    Exported costs{{ billingSource.data.reportedThrough ? ` through ${formatDate(billingSource.data.reportedThrough)}` : ' for the current month' }}.
+                    Credits are included before the total is calculated.
+                  </p>
+                  <dl class="service-metrics">
+                    <div><dt>Month to date</dt><dd>{{ formatCost(billingSource.data.netCost, billingSource.data.currency) }}</dd></div>
+                    <div><dt>Month-end run rate</dt><dd>{{ billingSource.data.projectedMonthEnd == null ? '—' : formatCost(billingSource.data.projectedMonthEnd, billingSource.data.currency) }}</dd></div>
+                  </dl>
+                  <ol v-if="billingSource.data.services.length" class="cost-services" aria-label="Costs by Google Cloud service">
+                    <li v-for="service in billingSource.data.services.slice(0, 4)" :key="service.name">
+                      <span>{{ service.name }}</span>
+                      <strong>{{ formatCost(service.netCost, billingSource.data.currency) }}</strong>
+                    </li>
+                  </ol>
+                </template>
+                <p v-else>{{ sourceMessage(billingSource, 'Billing data is not available yet.') }}</p>
+              </div>
+              <span class="status-chip" :class="sourceStatusClass(billingSource)">{{ sourceStatusLabel(billingSource) }}</span>
             </article>
             <article class="service-card service-card--cyan">
               <span class="service-icon"><Database :size="24" aria-hidden="true" /></span>
@@ -305,7 +338,14 @@
 
           <section class="cost-boundary" aria-labelledby="cost-title">
             <Receipt :size="21" aria-hidden="true" />
-            <div><strong id="cost-title">Why there isn’t a made-up grand total</strong><span>Reads, writes, functions, egress and regional pricing do not come from document volume alone. A reliable whole-project estimate needs an authorised Cloud Billing connection.</span></div>
+            <div v-if="billingSource?.status === 'available'">
+              <strong id="cost-title">Actual exports, cautious estimate</strong>
+              <span>Month-to-date spend comes from Cloud Billing. The month-end figure is a simple run rate based on {{ billingSource.data.projectionBasis.toLowerCase() }} Billing data can arrive after the usage it describes.</span>
+            </div>
+            <div v-else>
+              <strong id="cost-title">Waiting for the billing export</strong>
+              <span>The first cost table can take several hours to appear. Document volume alone is not being used to invent a project total.</span>
+            </div>
           </section>
         </section>
       </template>
@@ -369,6 +409,8 @@ const usersSource = computed(() => overview.value?.sources?.users)
 const activitySource = computed(() => overview.value?.sources?.activity)
 const firestoreSource = computed(() => overview.value?.sources?.firestore)
 const storageSource = computed(() => overview.value?.sources?.storage)
+const ga4Source = computed(() => overview.value?.sources?.ga4)
+const billingSource = computed(() => overview.value?.sources?.billing)
 const recentActivity = computed(() => activitySource.value?.data?.items?.slice(0, 6) ?? [])
 const dataOnline = computed(() => Boolean(overview.value) && !fatalError.value)
 const hasSourceErrors = computed(() => Object.values(overview.value?.sources ?? {}).some((source) => source.status === 'error'))
@@ -391,19 +433,48 @@ const sourceStatusRows = computed(() => [
   sourceRow('Activity trail', activitySource.value, 'Required signed-in operational events', Activity),
   sourceRow('Firestore', firestoreSource.value, 'Counts with sampled payload estimates', Database),
   sourceRow('Cloud Storage', storageSource.value, 'Stored objects and bytes', HardDrive),
-  { label: 'Google Analytics 4', status: 'Not connected', detail: overview.value?.sources?.ga4?.detail || 'Reporting API not connected', tone: 'muted', icon: BarChart3 },
-  { label: 'Cloud billing', status: 'Not connected', detail: overview.value?.sources?.billing?.detail || 'Billing export not connected', tone: 'muted', icon: Receipt },
+  sourceRow(
+    'Google Analytics 4',
+    ga4Source.value,
+    `${formatInteger(ga4Source.value?.data?.totals?.activeUsers)} active users · last 30 days`,
+    BarChart3,
+  ),
+  sourceRow(
+    'Cloud billing',
+    billingSource.value,
+    billingSource.value?.data?.reportedThrough
+      ? `${formatCost(billingSource.value.data.netCost, billingSource.value.data.currency)} this month · through ${formatDate(billingSource.value.data.reportedThrough)}`
+      : 'Connected · no exported costs this month',
+    Receipt,
+  ),
 ])
 
 function sourceRow(label, source, detail, icon) {
   const available = source?.status === 'available'
+  const waiting = source?.status === 'waiting'
   return {
     label,
-    status: available ? 'Live' : 'Offline',
-    detail: available ? detail : (source?.error || 'Waiting for the data service'),
-    tone: available ? 'good' : 'error',
+    status: available ? 'Live' : (waiting ? 'Waiting' : 'Offline'),
+    detail: available ? detail : sourceMessage(source, 'Waiting for the data service'),
+    tone: available ? 'good' : (waiting ? 'muted' : 'error'),
     icon,
   }
+}
+
+function sourceMessage(source, fallback) {
+  return source?.detail || source?.error || fallback
+}
+
+function sourceStatusLabel(source) {
+  if (source?.status === 'available') return 'Live'
+  if (source?.status === 'waiting') return 'Waiting'
+  return 'Offline'
+}
+
+function sourceStatusClass(source) {
+  if (source?.status === 'available') return 'status-chip--good'
+  if (source?.status === 'waiting') return 'status-chip--muted'
+  return 'status-chip--error'
 }
 
 async function loadOverview() {
@@ -450,6 +521,11 @@ function formatDateTime(value) {
   return date ? new Intl.DateTimeFormat('en-AU', { dateStyle: 'medium', timeStyle: 'short' }).format(date) : 'Never'
 }
 
+function formatDate(value) {
+  const date = parseDate(value)
+  return date ? new Intl.DateTimeFormat('en-AU', { dateStyle: 'medium' }).format(date) : 'an unknown date'
+}
+
 function formatRelative(value) {
   const date = parseDate(value)
   if (!date) return 'at an unknown time'
@@ -465,6 +541,16 @@ function formatRelative(value) {
 
 function formatCurrency(value, currency = 'USD') {
   return new Intl.NumberFormat('en-AU', { style: 'currency', currency, maximumFractionDigits: 2 }).format(Number(value) || 0)
+}
+
+function formatCost(value, currency = 'AUD') {
+  const amount = Number(value) || 0
+  return new Intl.NumberFormat('en-AU', {
+    style: 'currency',
+    currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: amount !== 0 && Math.abs(amount) < 1 ? 4 : 2,
+  }).format(amount)
 }
 
 function humanise(value) {
@@ -668,7 +754,7 @@ h1 { margin-bottom: .55rem; font-size: clamp(2rem, 4vw, 3.45rem); line-height: .
 .storage-groups li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: .7rem; padding: .55rem 0; border-bottom: 1px solid var(--line-soft); font-size: .62rem; }
 .storage-groups span { color: var(--dim); }
 .service-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
-.service-card { --service-accent: var(--pink); position: relative; min-height: 190px; border: 1px solid var(--line); border-radius: 21px; background: var(--panel); padding: 1.15rem; display: grid; grid-template-columns: 46px minmax(0, 1fr); gap: .9rem; }
+.service-card { --service-accent: var(--pink); position: relative; min-height: 190px; border: 1px solid var(--line); border-radius: 21px; background: var(--panel); padding: 1.15rem 1.15rem 3.2rem; display: grid; grid-template-columns: 46px minmax(0, 1fr); gap: .9rem; }
 .service-card::after { content: ''; position: absolute; inset: auto 0 0; height: 4px; background: var(--service-accent); border-radius: 0 0 21px 21px; }
 .service-card--orange { --service-accent: var(--orange); }
 .service-card--cyan { --service-accent: var(--cyan); }
@@ -677,6 +763,14 @@ h1 { margin-bottom: .55rem; font-size: clamp(2rem, 4vw, 3.45rem); line-height: .
 .service-card h2 { margin-bottom: .35rem; font-size: 1rem; }
 .service-card p:not(.mini-label) { color: var(--muted); font-size: .68rem; line-height: 1.5; margin-bottom: 0; }
 .service-card > .status-chip { position: absolute; right: 1rem; bottom: 1rem; }
+.service-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; margin: .85rem 0 0; }
+.service-metrics div { min-width: 0; border-top: 1px solid var(--line-soft); padding-top: .5rem; }
+.service-metrics dt { color: var(--dim); font-size: .58rem; }
+.service-metrics dd { margin: .15rem 0 0; color: var(--text); font-size: 1rem; font-weight: 780; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.cost-services { list-style: none; margin: .65rem 0 0; padding: 0; }
+.cost-services li { display: flex; justify-content: space-between; gap: .75rem; border-top: 1px solid var(--line-soft); padding: .4rem 0; font-size: .6rem; }
+.cost-services span { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cost-services strong { color: var(--text); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .friendly-empty { min-height: 115px; color: var(--dim); display: flex; align-items: center; justify-content: center; gap: .7rem; text-align: left; }
 .friendly-empty strong, .friendly-empty span { display: block; }
 .friendly-empty strong { color: var(--muted); font-size: .72rem; }

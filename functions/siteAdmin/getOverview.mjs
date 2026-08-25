@@ -3,6 +3,11 @@ import { firebaseAdmin, db } from '../config/firebase.mjs'
 import { estimateLegacyFirebaseStorageUsd } from '../everhomes/storageUsageCore.mjs'
 import { requireSiteAdmin } from './requireSiteAdmin.mjs'
 import {
+  loadBillingOverview,
+  loadGa4Overview,
+  SourceWaitingError,
+} from './externalSources.mjs'
+import {
   createActivitySummary,
   createCollectionSummary,
   createStorageSummary,
@@ -115,6 +120,9 @@ function asSourceResult(loader) {
     .then((data) => ({ status: 'available', data }))
     .catch((error) => {
       console.error('Site admin source failed:', error)
+      if (error instanceof SourceWaitingError) {
+        return { status: 'waiting', detail: error.message }
+      }
       return { status: 'error', error: 'This source could not be loaded. Try refreshing the snapshot.' }
     })
 }
@@ -143,10 +151,12 @@ export const getSiteAdminOverview = onRequest(
 
     const users = await asSourceResult(loadUsers)
     const userItems = users.status === 'available' ? users.data.items : []
-    const [activity, firestore, storage] = await Promise.all([
+    const [activity, firestore, storage, ga4, billing] = await Promise.all([
       asSourceResult(() => loadActivity(userItems)),
       asSourceResult(loadFirestoreInventory),
       asSourceResult(loadStorageInventory),
+      asSourceResult(loadGa4Overview),
+      asSourceResult(loadBillingOverview),
     ])
 
     return res.status(200).json({
@@ -157,14 +167,8 @@ export const getSiteAdminOverview = onRequest(
         activity,
         firestore,
         storage,
-        ga4: {
-          status: 'not_connected',
-          detail: 'The GA4 reporting API is not connected to this admin centre.',
-        },
-        billing: {
-          status: 'not_connected',
-          detail: 'Cloud Billing export is not connected, so a consolidated Firebase cost estimate is unavailable.',
-        },
+        ga4,
+        billing,
       },
     })
   },

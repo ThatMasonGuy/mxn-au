@@ -14,6 +14,8 @@
   "main": "index.mjs",
   "type": "module",
   "dependencies": {
+    "@google-analytics/data": "^7.0.0",
+    "@google-cloud/bigquery": "^9.0.2",
     "@google-cloud/pubsub": "^5.0.0",
     "archiver": "^8.0.0",
     "firebase-admin": "^14.2.0",
