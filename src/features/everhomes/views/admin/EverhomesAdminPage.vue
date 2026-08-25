@@ -1180,7 +1180,7 @@ async function confirmRegen() {
             method: 'POST',
             headers: await adminRequestHeaders(),
             body: JSON.stringify({ collection: sub.collection, docId: sub.id }),
-        }, 480_000)
+        }, 910_000)
         const body = await res.json().catch(() => ({}))
         if (!res.ok) throw new Error(body.details ?? body.error ?? `HTTP ${res.status}`)
         regenSuccess.value = sub.id

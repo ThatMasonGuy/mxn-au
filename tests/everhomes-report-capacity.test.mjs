@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { Readable, Writable } from 'node:stream'
 import test from 'node:test'
 
+import { selectDirectRegenerationAssets } from '../functions/everhomes/regenerationAssets.mjs'
 import { writeReportZip } from '../functions/everhomes/reportZip.mjs'
 import {
   MAX_REPORT_PHOTO_BYTES,
@@ -17,6 +18,18 @@ test('report uploads allow aggregate photo sets larger than 300 MB', () => {
   assert.equal(result.allowed, true)
   assert.equal(result.aggregateBytes, 450 * 1024 * 1024)
   assert.equal(evaluateReportPhotoSize(MAX_REPORT_PHOTO_BYTES).allowed, false)
+})
+
+test('regeneration uses the retained archive instead of checking deleted photos individually', () => {
+  const photos = Array.from({ length: 150 }, (_, index) => ({
+    label: `photo ${index + 1}`,
+    storagePathKey: 'storagePath',
+  }))
+  const signature = { label: 'staff signature', storagePathKey: 'signatureStoragePath' }
+  const allAssets = [...photos, signature]
+
+  assert.deepEqual(selectDirectRegenerationAssets(allAssets, true), [signature])
+  assert.deepEqual(selectDirectRegenerationAssets(allAssets, false), allAssets)
 })
 
 test('streamed report package includes the PDF and 150 originals in the SharePoint-ready layout', async () => {

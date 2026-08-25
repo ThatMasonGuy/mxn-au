@@ -16,6 +16,7 @@ import { Transform } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 import unzipper from 'unzipper'
 import { requireEverhomesAdmin } from './requireEverhomesAdmin.mjs'
+import { selectDirectRegenerationAssets } from './regenerationAssets.mjs'
 
 const MAX_RESTORED_PHOTO_BYTES = 15 * 1024 * 1024
 
@@ -47,8 +48,11 @@ export const regenerateReport = onRequest(
     // This request waits for the generator to finish so an upstream failure can
     // be surfaced to the admin. Its timeout is deliberately longer than the
     // internal generator request deadline.
-    timeoutSeconds: 540,
-    memory: '2GiB',
+    timeoutSeconds: 900,
+    memory: '4GiB',
+    cpu: 2,
+    concurrency: 1,
+    maxInstances: 3,
     cors: true,
   },
   async (req, res) => {
@@ -94,6 +98,23 @@ export const regenerateReport = onRequest(
     const regenerationRoot = `${storagePrefix}regen_photos/${regenerationRunId}`
     const temporaryStoragePaths = []
     const archiveImageExtensions = ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif', 'avif']
+    const requestStartedAt = Date.now()
+    const logStage = (stage, details = {}) => {
+      const { rss, heapUsed, external, arrayBuffers } = process.memoryUsage()
+      console.log(JSON.stringify({
+        scope: 'everhomes-regeneration',
+        stage,
+        collection,
+        docId,
+        regenerationRunId,
+        elapsedMs: Date.now() - requestStartedAt,
+        rssBytes: rss,
+        heapUsedBytes: heapUsed,
+        externalBytes: external,
+        arrayBufferBytes: arrayBuffers,
+        ...details,
+      }))
+    }
 
     // Only sign objects inside the report's own folder. Even though this is an
     // admin endpoint, that prevents a stored payload from becoming a way to
@@ -213,16 +234,37 @@ export const regenerateReport = onRequest(
         urlKey: 'signatureUrl',
       })),
     ]
+
+    const zipStoragePath = data.photosStoragePath?.startsWith(storagePrefix)
+      ? data.photosStoragePath
+      : `${storagePrefix}photos.zip`
+    const zipFile = bucket.file(zipStoragePath)
+    const [zipExists] = await zipFile.exists()
+    // A completed report deliberately removes its individual photos after the
+    // retained archive is published. When that archive exists, checking every
+    // old photo path adds minutes of guaranteed misses to large regenerations.
+    // Signatures are not archived and must still be checked directly.
+    const directCheckAssets = selectDirectRegenerationAssets(allAssets, zipExists)
+    logStage('assets.discovered', {
+      photoCount: photoAssets.length,
+      signatureCount: signatureAssets.length,
+      archiveAvailable: zipExists,
+      directCheckCount: directCheckAssets.length,
+    })
     const directResults = await runConcurrent(
-      allAssets.map((record) => () => refreshStoredAssetUrl(
+      directCheckAssets.map((record) => () => refreshStoredAssetUrl(
         record.asset,
         record.storagePathKey,
         record.urlKey,
         record.label,
       )),
     )
-    allAssets.forEach((record, index) => {
+    directCheckAssets.forEach((record, index) => {
       record.available = directResults[index] === true
+    })
+    logStage('direct-assets.checked', {
+      checkedCount: directCheckAssets.length,
+      availableCount: directCheckAssets.filter((record) => record.available).length,
     })
 
     const missingSignatures = allAssets
@@ -238,11 +280,6 @@ export const regenerateReport = onRequest(
       (record) => record.storagePathKey === 'storagePath' && !record.available,
     )
     if (missingPhotos.length) {
-      const zipStoragePath = data.photosStoragePath?.startsWith(storagePrefix)
-        ? data.photosStoragePath
-        : `${storagePrefix}photos.zip`
-      const zipFile = bucket.file(zipStoragePath)
-      const [zipExists] = await zipFile.exists()
       if (!zipExists) {
         return res.status(409).json({
           error: 'Regeneration stopped because the original photo archive is unavailable.',
@@ -257,8 +294,17 @@ export const regenerateReport = onRequest(
         }
       }
       const restoredRecords = new Set()
+      let restoredImageBytes = 0
+      logStage('archive.restore.started', {
+        missingPhotoCount: missingPhotos.length,
+        zipStoragePath,
+      })
       try {
-        const archive = zipFile.createReadStream().pipe(unzipper.Parse({ forceStream: true }))
+        const zipSource = zipFile.createReadStream()
+        // Google Cloud Storage's retrying PassThrough already owns several
+        // listeners; unzipper legitimately adds more for this one stream.
+        zipSource.setMaxListeners(Math.max(zipSource.getMaxListeners(), 20))
+        const archive = zipSource.pipe(unzipper.Parse({ forceStream: true }))
         for await (const entry of archive) {
           if (entry.type === 'Directory') {
             entry.autodrain()
@@ -279,11 +325,12 @@ export const regenerateReport = onRequest(
           const storagePath = `${record.temporaryStoragePath}.${extension}`
           const file = bucket.file(storagePath)
           temporaryStoragePaths.push(storagePath)
-          let restoredImageBytes = 0
+          let currentImageBytes = 0
           const sizeGuard = new Transform({
             transform(chunk, _encoding, callback) {
+              currentImageBytes += chunk.length
               restoredImageBytes += chunk.length
-              if (restoredImageBytes >= MAX_RESTORED_PHOTO_BYTES) {
+              if (currentImageBytes >= MAX_RESTORED_PHOTO_BYTES) {
                 callback(new Error(`Archived photo ${filename} exceeds the 15 MB per-image safety limit.`))
                 return
               }
@@ -304,6 +351,13 @@ export const regenerateReport = onRequest(
           record.asset.url = url
           record.available = true
           restoredRecords.add(record)
+          if (restoredRecords.size % 25 === 0 || restoredRecords.size === missingPhotos.length) {
+            logStage('archive.restore.progress', {
+              restoredPhotoCount: restoredRecords.size,
+              missingPhotoCount: missingPhotos.length,
+              restoredImageBytes,
+            })
+          }
         }
       } catch (error) {
         console.error(`regenerateReport: could not read ${zipStoragePath}:`, error.message)
@@ -315,6 +369,11 @@ export const regenerateReport = onRequest(
           details: 'The existing PDF and photo archive were left unchanged.',
         })
       }
+
+      logStage('archive.restore.finished', {
+        restoredPhotoCount: restoredRecords.size,
+        restoredImageBytes,
+      })
 
       const unrestorablePhotos = missingPhotos.filter((record) => !record.available)
       if (unrestorablePhotos.length) {
@@ -329,7 +388,11 @@ export const regenerateReport = onRequest(
     }
 
     const readyCount = allAssets.filter((record) => record.available).length
-    console.log(`regenerateReport: prepared ${readyCount}/${allAssets.length} stored assets for ${collection}/${docId}`)
+    logStage('assets.prepared', {
+      readyCount,
+      totalAssetCount: allAssets.length,
+      temporaryPhotoCount: temporaryStoragePaths.length,
+    })
 
     const regenerationAccessKey = `${randomUUID().replaceAll('-', '')}${randomUUID().replaceAll('-', '')}`
     try {
@@ -362,6 +425,9 @@ export const regenerateReport = onRequest(
     payload.regenerationAccessKey = regenerationAccessKey
 
     try {
+      logStage('generation.started', {
+        temporaryPhotoCount: temporaryStoragePaths.length,
+      })
       const resp = await fetch(fnUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -374,6 +440,8 @@ export const regenerateReport = onRequest(
         throw new Error(err.details ?? err.error ?? `HTTP ${resp.status}`)
       }
 
+      logStage('generation.finished', { status: resp.status })
+
       await Promise.allSettled(
         temporaryStoragePaths.map((storagePath) => bucket.file(storagePath).delete({ ignoreNotFound: true })),
       )
@@ -382,6 +450,7 @@ export const regenerateReport = onRequest(
         message: 'Regeneration complete.',
       })
     } catch (err) {
+      logStage('generation.failed', { error: err.message })
       await Promise.allSettled(
         temporaryStoragePaths.map((storagePath) => bucket.file(storagePath).delete({ ignoreNotFound: true })),
       )

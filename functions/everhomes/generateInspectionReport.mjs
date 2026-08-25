@@ -384,7 +384,12 @@ export const generateInspectionReport = onRequest(
       async function openReportAssetStream(asset, storagePathKey = "storagePath", urlKey = "url") {
         const storagePath = asset?.[storagePathKey];
         if (typeof storagePath === "string" && storagePath.startsWith(storagePrefix)) {
-          return bucket.file(storagePath).createReadStream();
+          const source = bucket.file(storagePath).createReadStream();
+          // GCS retry streams already register several lifecycle listeners;
+          // Archiver and pipeline add more while consuming this one source.
+          // Each source is still opened and closed serially by writeReportZip.
+          source.setMaxListeners(Math.max(source.getMaxListeners(), 20));
+          return source;
         }
 
         if (isLegacyPendingSubmission && asset?.[urlKey]) {
