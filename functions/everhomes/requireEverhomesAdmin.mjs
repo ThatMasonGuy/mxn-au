@@ -1,4 +1,5 @@
 import { firebaseAdmin, db } from '../config/firebase.mjs'
+import { hasEverhomesAdminRole } from './adminRoles.mjs'
 
 export async function requireEverhomesAdmin(request) {
   const header = request.get('authorization') ?? ''
@@ -20,7 +21,7 @@ export async function requireEverhomesAdmin(request) {
 
   const user = await db.collection('users').doc(decoded.uid).get()
   const roles = user.data()?.roles ?? []
-  if (!Array.isArray(roles) || !roles.some((role) => role === 'admin' || role === 'siteAdmin')) {
+  if (!hasEverhomesAdminRole(roles)) {
     const error = new Error('Administrator access is required')
     error.status = 403
     throw error

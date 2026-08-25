@@ -22,6 +22,7 @@ import {
 } from '../src/features/everhomes/utils/reportStatus.js'
 import { REPORT_SCHEMAS } from '../functions/everhomes/checklistSchemas/index.mjs'
 import { normaliseEmailDeliveries } from '../functions/everhomes/emailDelivery.mjs'
+import { hasEverhomesAdminRole } from '../functions/everhomes/adminRoles.mjs'
 import { buildReportArtifactPaths, safeArchiveKey } from '../functions/everhomes/reportArtifacts.mjs'
 import {
   emailActivityRecord,
@@ -41,6 +42,13 @@ import {
   isRequiredAnswerComplete as functionRequiredAnswerComplete,
   itemIsVisible,
 } from '../functions/everhomes/reportLogic.mjs'
+
+test('Everhomes administration requires its dedicated role', () => {
+  assert.equal(hasEverhomesAdminRole(['everhomesAdmin']), true)
+  assert.equal(hasEverhomesAdminRole(['admin']), false)
+  assert.equal(hasEverhomesAdminRole(['siteAdmin']), false)
+  assert.equal(hasEverhomesAdminRole(null), false)
+})
 
 test('admin recipient entry creates unique normalized addresses from commas and spaces', () => {
   assert.deepEqual(

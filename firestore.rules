@@ -23,7 +23,7 @@ service cloud.firestore {
       let roles = _userRoles();
       return request.auth != null
         && roles != null
-        && roles.hasAny(['admin', 'siteAdmin']);
+        && roles.hasAny(['everhomesAdmin']);
     }
 
     // Reusable: allow updates that ONLY touch a specific whitelist of fields
@@ -39,14 +39,15 @@ service cloud.firestore {
     // ─────────────────────────────────────────────────────────────────────────────
     match /users/{userId} {
       allow read: if request.auth != null && request.auth.uid == userId;
-      allow write: if request.auth != null && request.auth.uid == userId;
-
-      // Allow initial unauth'd create if all required fields present,
-      // or normal auth'd self-create.
-      allow create: if (request.auth != null && request.auth.uid == userId) ||
-                    (request.auth == null && request.resource.data.keys().hasAll([
-                      'firstName', 'lastName', 'userName', 'emailAddress', 'phoneNumber', 'dateOfBirth'
-                    ]));
+      // Users can maintain their own profile, but privileged roles are assigned
+      // only through trusted admin tooling (Admin SDK/Firestore console).
+      allow create: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.roles == ['user'];
+      allow update: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.roles == resource.data.roles;
+      allow delete: if request.auth != null && request.auth.uid == userId;
 
       match /dailyChallenges/{document=**} {
         allow read: if request.auth != null && request.auth.uid == userId;
@@ -314,9 +315,7 @@ service cloud.firestore {
 
     match /everhomesSdaPricing/{docId} {
       allow read: if true;
-      allow write: if request.auth != null
-        && get(/databases/$(database)/documents/users/$(request.auth.uid))
-             .data.roles.hasAny(['admin']);
+      allow write: if _isEverhomesAdmin();
     }
 
     match /everhomesToolUsage/{eventId} {

@@ -19,7 +19,7 @@
 //     allow read: if true;
 //     allow write: if request.auth != null
 //       && get(/databases/$(database)/documents/users/$(request.auth.uid))
-//            .data.roles.hasAny(['admin']);
+//            .data.roles.hasAny(['everhomesAdmin']);
 //   }
 
 import { defineStore } from 'pinia'

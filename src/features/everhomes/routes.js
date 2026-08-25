@@ -8,7 +8,7 @@ export default [
         component: () => import('@/features/everhomes/views/admin/EverhomesAdminPage.vue'),
         meta: {
             requiresAuth: true,
-            role: ROLES.SITE_ADMIN,
+            role: ROLES.EVERHOMES_ADMIN,
             title: 'Everhomes Admin',
             drawerRanking: null,
             drawerVisible: false,
