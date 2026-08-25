@@ -19,6 +19,25 @@ function isEmailAddress(value) {
     && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
 }
 
+function latestReportRecipients(data) {
+  const completedAt = data.completedAt?.toMillis?.() ?? (Date.parse(data.completedAt ?? '') || 0)
+  const lastResentAt = data.lastResentAt?.toMillis?.() ?? (Date.parse(data.lastResentAt ?? '') || 0)
+  const generationRecipients = [
+    ...(Array.isArray(data.emailsSent) ? data.emailsSent : []),
+    ...(Array.isArray(data.emailFailures) ? data.emailFailures.map((failure) => failure?.email) : []),
+  ]
+  const resendRecipients = [
+    ...(Array.isArray(data.lastResentTo) ? data.lastResentTo : []),
+    ...(Array.isArray(data.lastResendFailures) ? data.lastResendFailures.map((failure) => failure?.email) : []),
+  ]
+  const candidates = lastResentAt >= completedAt && resendRecipients.length
+    ? resendRecipients
+    : generationRecipients
+  const valid = candidates.filter(isEmailAddress).map((email) => email.trim().toLowerCase())
+  if (!valid.length && isEmailAddress(data.inspectorEmail)) valid.push(data.inspectorEmail.trim().toLowerCase())
+  return Array.from(new Set(valid)).slice(0, 20)
+}
+
 function legacyEmailEvents(data, existingProviderIds, existingRecipientActions) {
   const reporter = sanitiseActivityActor({
     kind: 'reporter',
@@ -257,6 +276,7 @@ export const getReportActivity = onRequest(
         inspectionDate: data.inspectionDate ?? null,
         inspectorName: data.inspectorName ?? null,
         inspectorEmail: data.inspectorEmail ?? null,
+        previousRecipients: latestReportRecipients(data),
         pdfUrl: data.pdfUrl ?? null,
         photosDownloadUrl: data.photosDownloadUrl ?? null,
         canRegenerate: Boolean(data.submissionPayload),

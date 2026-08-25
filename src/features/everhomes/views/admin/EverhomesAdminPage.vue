@@ -722,7 +722,7 @@
                                     <div v-else-if="!reportActivity.length" class="py-12 text-center text-sm text-slate-500">
                                         No activity has been recorded yet.
                                     </div>
-                                    <ol v-else class="space-y-3">
+                                    <ol v-else class="max-h-[52vh] space-y-3 overflow-y-auto pr-1">
                                         <li
                                             v-for="event in reportActivity"
                                             :key="event.id"
@@ -756,39 +756,65 @@
                                 <aside class="space-y-4">
                                     <section v-if="reportDetailsModal.report.pdfUrl" class="rounded-2xl border border-teal-400/15 bg-teal-400/[0.06] p-4">
                                         <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-teal-300/70">Send report</p>
-                                        <label class="mt-3 block text-xs font-semibold text-slate-300" for="report-recipient-email">Recipient email</label>
+                                        <label class="mt-3 block text-xs font-semibold text-slate-300" for="report-recipient-email">Recipients</label>
                                         <input
                                             id="report-recipient-email"
-                                            v-model.trim="targetRecipientEmail"
-                                            type="email"
-                                            autocomplete="email"
-                                            placeholder="correct.person@example.com"
+                                            v-model="recipientInput"
+                                            type="text"
+                                            inputmode="email"
+                                            autocomplete="off"
+                                            placeholder="Type an email, then space or comma"
                                             class="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-teal-400/50"
+                                            @keydown="handleRecipientKeydown"
+                                            @paste="handleRecipientPaste"
+                                            @blur="commitRecipientInput"
                                         />
+                                        <p v-if="recipientInputError" class="mt-2 text-[10px] leading-4 text-red-300">{{ recipientInputError }}</p>
+                                        <div v-if="recipientEmails.length" class="mt-3 flex flex-wrap gap-2">
+                                            <span
+                                                v-for="email in recipientEmails"
+                                                :key="email"
+                                                class="inline-flex max-w-full items-center gap-1.5 rounded-full border border-teal-400/25 bg-teal-400/10 py-1 pl-2.5 pr-1 text-[11px] font-semibold text-teal-100"
+                                            >
+                                                <span class="truncate">{{ email }}</span>
+                                                <button
+                                                    type="button"
+                                                    @click="removeRecipient(email)"
+                                                    class="shrink-0 rounded-full p-1 text-teal-300/70 transition hover:bg-white/10 hover:text-white"
+                                                    :aria-label="`Remove ${email}`"
+                                                >
+                                                    <X class="h-3 w-3" />
+                                                </button>
+                                            </span>
+                                        </div>
+                                        <p v-else class="mt-2 text-[10px] leading-4 text-amber-300">Add at least one recipient to resend or regenerate.</p>
                                         <label class="mt-3 flex cursor-pointer items-start gap-2 text-[11px] leading-4 text-slate-400">
-                                            <input v-model="updateReportContact" type="checkbox" class="mt-0.5 rounded border-white/20 bg-black/20" />
-                                            <span>Use this address as the report contact for future regenerations.</span>
+                                            <input v-model="updateReportContact" type="checkbox" :disabled="recipientEmails.length !== 1" class="mt-0.5 rounded border-white/20 bg-black/20 disabled:opacity-40" />
+                                            <span>Use the selected address as the report contact. Available when exactly one recipient is selected.</span>
                                         </label>
-                                        <button
-                                            type="button"
-                                            @click="sendToTargetRecipient"
-                                            :disabled="targetedSendLoading || resendAllLoading || !validTargetRecipient"
-                                            class="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full border border-teal-400/40 bg-teal-500/70 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-teal-500/85 disabled:cursor-not-allowed disabled:opacity-50"
-                                        >
-                                            <Loader2 v-if="targetedSendLoading" class="h-4 w-4 animate-spin" />
-                                            <SendHorizontal v-else class="h-4 w-4" />
-                                            {{ targetedSendLoading ? 'Sending…' : 'Send to this address' }}
-                                        </button>
-                                        <button
-                                            type="button"
-                                            @click="resendOriginalRecipients"
-                                            :disabled="targetedSendLoading || resendAllLoading"
-                                            class="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/10 px-4 py-2.5 text-xs font-semibold text-slate-400 transition hover:border-white/20 hover:text-white disabled:opacity-50"
-                                        >
-                                            <Loader2 v-if="resendAllLoading" class="h-3.5 w-3.5 animate-spin" />
-                                            <RefreshCw v-else class="h-3.5 w-3.5" />
-                                            {{ resendAllLoading ? 'Sending…' : 'Resend to original recipients' }}
-                                        </button>
+                                        <div class="mt-4 grid grid-cols-2 gap-2">
+                                            <button
+                                                type="button"
+                                                @click="resendToSelectedRecipients"
+                                                :disabled="resendLoading || reportOperationActive || !recipientEmails.length"
+                                                class="inline-flex items-center justify-center gap-2 rounded-full border border-teal-400/40 bg-teal-500/70 px-3 py-2.5 text-xs font-bold text-white transition hover:bg-teal-500/85 disabled:cursor-not-allowed disabled:opacity-50"
+                                            >
+                                                <Loader2 v-if="resendLoading" class="h-3.5 w-3.5 animate-spin" />
+                                                <SendHorizontal v-else class="h-3.5 w-3.5" />
+                                                {{ resendLoading ? 'Sending…' : 'Resend report' }}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                @click="triggerRegen(reportDetailsModal.submission, recipientEmails)"
+                                                :disabled="!reportDetailsModal.report.canRegenerate || regenId === reportDetailsModal.report.id || reportOperationActive || resendLoading || !recipientEmails.length"
+                                                class="inline-flex items-center justify-center gap-2 rounded-full border border-violet-400/35 bg-violet-500/20 px-3 py-2.5 text-xs font-bold text-violet-100 transition hover:bg-violet-500/30 disabled:cursor-not-allowed disabled:opacity-40"
+                                            >
+                                                <Loader2 v-if="regenId === reportDetailsModal.report.id || reportOperationActive" class="h-3.5 w-3.5 animate-spin" />
+                                                <RotateCcw v-else class="h-3.5 w-3.5" />
+                                                {{ regenId === reportDetailsModal.report.id || reportOperationActive ? 'Regenerating…' : 'Regenerate' }}
+                                            </button>
+                                        </div>
+                                        <p v-if="!reportDetailsModal.report.canRegenerate" class="mt-2 text-[10px] leading-4 text-slate-500">This older report has no stored regeneration payload.</p>
                                     </section>
 
                                     <section class="rounded-2xl border border-violet-400/15 bg-violet-400/[0.06] p-4">
@@ -812,18 +838,7 @@
                                             >
                                                 <FolderArchive class="h-3.5 w-3.5" /> Download package
                                             </a>
-                                            <button
-                                                type="button"
-                                                @click="triggerRegen(reportDetailsModal.submission)"
-                                                :disabled="!reportDetailsModal.report.canRegenerate || regenId === reportDetailsModal.report.id || reportOperationActive"
-                                                class="inline-flex items-center justify-center gap-2 rounded-full border border-violet-400/35 bg-violet-500/20 px-4 py-2.5 text-xs font-bold text-violet-100 transition hover:bg-violet-500/30 disabled:cursor-not-allowed disabled:opacity-40"
-                                            >
-                                                <Loader2 v-if="regenId === reportDetailsModal.report.id || reportOperationActive" class="h-3.5 w-3.5 animate-spin" />
-                                                <RotateCcw v-else class="h-3.5 w-3.5" />
-                                                {{ regenId === reportDetailsModal.report.id || reportOperationActive ? 'Regenerating…' : 'Regenerate report' }}
-                                            </button>
                                         </div>
-                                        <p v-if="!reportDetailsModal.report.canRegenerate" class="mt-2 text-[10px] leading-4 text-slate-500">This older report has no stored regeneration payload.</p>
                                     </section>
                                 </aside>
                             </div>
@@ -925,7 +940,7 @@
                         <div class="mb-4 flex items-start gap-2 rounded-2xl border border-amber-400/20 bg-amber-400/10 px-3 py-2.5">
                             <AlertTriangle class="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-300" />
                             <p class="text-xs leading-5 text-amber-200">
-                                This will <strong>overwrite the existing PDF</strong>, unpack the report package back into storage, re-run the full report pipeline, and re-send emails to all original recipients.
+                                This will <strong>overwrite the existing PDF</strong>, unpack the report package back into storage, re-run the full report pipeline, and send it to the {{ regenModal.selectedRecipients.length }} selected recipient{{ regenModal.selectedRecipients.length === 1 ? '' : 's' }}.
                             </p>
                         </div>
 
@@ -968,6 +983,7 @@ import ToolUsageDashboard from '@/features/everhomes/components/admin/ToolUsageD
 import { useSdaPriceStore } from '@/features/everhomes/stores/useSdaPriceStore'
 import { useMainStore } from '@/shared/stores/useMainStore'
 import { extractSdaPricingData } from '@/features/everhomes/utils/sdaPriceExtractor'
+import { addReportRecipients } from '@/features/everhomes/utils/reportRecipients'
 
 import {
     ShieldCheck, RefreshCw, Loader2, Inbox, Database, DatabaseZap, Upload,
@@ -1172,10 +1188,12 @@ const activityLoading = ref(false)
 const activityRefreshing = ref(false)
 const reportDetailsError = ref('')
 const activityNotice = ref('')
-const targetRecipientEmail = ref('')
+const recipientInput = ref('')
+const recipientInputError = ref('')
+const recipientEmails = ref([])
+const recipientsInitialised = ref(false)
 const updateReportContact = ref(false)
-const targetedSendLoading = ref(false)
-const resendAllLoading = ref(false)
+const resendLoading = ref(false)
 const resendingId = ref(null)
 let activityPollTimer = null
 
@@ -1204,11 +1222,6 @@ const reportOperationLabel = computed(() => {
     return 'Regenerating the report…'
 })
 
-const validTargetRecipient = computed(() => (
-    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(targetRecipientEmail.value)
-    && targetRecipientEmail.value.length <= 320
-))
-
 function reportSummary(submission) {
     return {
         id: submission.id,
@@ -1220,6 +1233,7 @@ function reportSummary(submission) {
         inspectionDate: submission.inspectionDate ?? null,
         inspectorName: submission.inspectorName ?? null,
         inspectorEmail: submission.inspectorEmail ?? null,
+        previousRecipients: Array.isArray(submission.emailsSent) ? submission.emailsSent : [],
         pdfUrl: submission.pdfUrl ?? null,
         photosDownloadUrl: submission.photosDownloadUrl ?? null,
         canRegenerate: Boolean(submission.submissionPayload),
@@ -1244,7 +1258,10 @@ async function openReportDetails(submission) {
     clearActivityPoll()
     reportDetailsModal.value = { submission, report: reportSummary(submission) }
     reportActivity.value = []
-    targetRecipientEmail.value = submission.inspectorEmail ?? ''
+    recipientInput.value = ''
+    recipientInputError.value = ''
+    recipientEmails.value = []
+    recipientsInitialised.value = false
     updateReportContact.value = false
     reportDetailsError.value = ''
     activityNotice.value = ''
@@ -1257,6 +1274,10 @@ function closeReportDetails() {
     reportActivity.value = []
     reportDetailsError.value = ''
     activityNotice.value = ''
+    recipientInput.value = ''
+    recipientInputError.value = ''
+    recipientEmails.value = []
+    recipientsInitialised.value = false
 }
 
 async function loadReportActivity(refreshProviderStatuses = false) {
@@ -1281,6 +1302,14 @@ async function loadReportActivity(refreshProviderStatuses = false) {
         if (reportDetailsModal.value !== modal) return
         modal.report = { ...modal.report, ...body.report }
         reportActivity.value = Array.isArray(body.events) ? body.events : []
+        if (!recipientsInitialised.value) {
+            const previous = Array.isArray(body.report.previousRecipients)
+                ? body.report.previousRecipients
+                : []
+            const fallback = previous.length ? previous : [body.report.inspectorEmail].filter(Boolean)
+            recipientEmails.value = addReportRecipients([], fallback.join(',')).recipients
+            recipientsInitialised.value = true
+        }
         const submission = allSubmissions.value.find(candidate => (
             candidate.id === body.report.id && candidate.collection === body.report.collection
         ))
@@ -1296,12 +1325,49 @@ async function loadReportActivity(refreshProviderStatuses = false) {
     }
 }
 
-async function sendReportEmails({ recipients, updateContact = false } = {}) {
+function addRecipientsFromInput(value) {
+    const result = addReportRecipients(recipientEmails.value, value)
+    recipientEmails.value = result.recipients
+    if (recipientEmails.value.length !== 1) updateReportContact.value = false
+    recipientInputError.value = result.invalid.length
+        ? `Invalid email${result.invalid.length === 1 ? '' : 's'}: ${result.invalid.join(', ')}`
+        : result.overflow
+            ? 'A maximum of 20 recipients can be selected.'
+            : ''
+    return result
+}
+
+function commitRecipientInput() {
+    if (!recipientInput.value.trim()) return true
+    const result = addRecipientsFromInput(recipientInput.value)
+    recipientInput.value = result.invalid.join(' ')
+    return result.invalid.length === 0 && !result.overflow
+}
+
+function handleRecipientKeydown(event) {
+    if (!['Enter', ',', ' ', 'Tab'].includes(event.key) || !recipientInput.value.trim()) return
+    if (event.key !== 'Tab') event.preventDefault()
+    commitRecipientInput()
+}
+
+function handleRecipientPaste(event) {
+    const text = event.clipboardData?.getData('text') ?? ''
+    if (!/[,;\s]/.test(text.trim())) return
+    event.preventDefault()
+    addRecipientsFromInput(text)
+    recipientInput.value = ''
+}
+
+function removeRecipient(email) {
+    recipientEmails.value = recipientEmails.value.filter(candidate => candidate !== email)
+    recipientInputError.value = ''
+    if (recipientEmails.value.length !== 1) updateReportContact.value = false
+}
+
+async function sendReportEmails({ recipients, updateContact = false }) {
     const modal = reportDetailsModal.value
     if (!modal) return
-    const targeted = Array.isArray(recipients)
-    if (targeted) targetedSendLoading.value = true
-    else resendAllLoading.value = true
+    resendLoading.value = true
     resendingId.value = modal.report.id
     reportDetailsError.value = ''
     activityNotice.value = ''
@@ -1311,7 +1377,7 @@ async function sendReportEmails({ recipients, updateContact = false } = {}) {
             docId: modal.report.id,
             updateReportContact: updateContact,
         }
-        if (targeted) bodyPayload.recipients = recipients
+        bodyPayload.recipients = recipients
         const res = await fetchWithTimeout(`${FUNCTIONS_URL}/resendReport`, {
             method: 'POST',
             headers: await adminRequestHeaders(),
@@ -1323,10 +1389,9 @@ async function sendReportEmails({ recipients, updateContact = false } = {}) {
             ? ` ${body.failed} recipient${body.failed === 1 ? '' : 's'} failed.`
             : ''
         activityNotice.value = `${body.sent} email${body.sent === 1 ? '' : 's'} accepted for delivery.${failedMessage}${body.auditWarning ? ` ${body.auditWarning}` : ''}`
-        if (body.reportContactUpdated && targeted) {
+        if (body.reportContactUpdated) {
             modal.report.inspectorEmail = recipients[0]
             modal.submission.inspectorEmail = recipients[0]
-            targetRecipientEmail.value = recipients[0]
             updateReportContact.value = false
         }
         await loadReportActivity(true)
@@ -1334,22 +1399,17 @@ async function sendReportEmails({ recipients, updateContact = false } = {}) {
         reportDetailsError.value = `Email send failed: ${error.message}`
         await loadReportActivity(true)
     } finally {
-        targetedSendLoading.value = false
-        resendAllLoading.value = false
+        resendLoading.value = false
         resendingId.value = null
     }
 }
 
-function sendToTargetRecipient() {
-    if (!validTargetRecipient.value) return
+function resendToSelectedRecipients() {
+    if (!commitRecipientInput() || !recipientEmails.value.length) return
     return sendReportEmails({
-        recipients: [targetRecipientEmail.value.trim().toLowerCase()],
+        recipients: [...recipientEmails.value],
         updateContact: updateReportContact.value,
     })
-}
-
-function resendOriginalRecipients() {
-    return sendReportEmails()
 }
 
 function emailStatusLabel(status) {
@@ -1447,8 +1507,11 @@ const regenModal   = ref(null)
 const regenId      = ref(null)
 const regenSuccess = ref(null)
 
-function triggerRegen(sub) {
-    regenModal.value = sub
+function triggerRegen(sub, recipients) {
+    if (!commitRecipientInput()) return
+    const selectedRecipients = Array.isArray(recipients) ? [...recipients] : [...recipientEmails.value]
+    if (!selectedRecipients.length) return
+    regenModal.value = { ...sub, selectedRecipients }
 }
 
 async function confirmRegen() {
@@ -1468,7 +1531,11 @@ async function confirmRegen() {
         const res = await fetchWithTimeout(`${FUNCTIONS_URL}/regenerateReport`, {
             method: 'POST',
             headers: await adminRequestHeaders(),
-            body: JSON.stringify({ collection: sub.collection, docId: sub.id }),
+            body: JSON.stringify({
+                collection: sub.collection,
+                docId: sub.id,
+                recipients: sub.selectedRecipients,
+            }),
         }, 910_000)
         const body = await res.json().catch(() => ({}))
         if (!res.ok) throw new Error(body.details ?? body.error ?? `HTTP ${res.status}`)

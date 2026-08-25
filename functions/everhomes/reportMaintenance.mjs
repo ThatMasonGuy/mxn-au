@@ -92,6 +92,7 @@ export const sweepStaleEverhomesReports = onSchedule(
           regenerationFinishedAt: timestamp,
           regenerationProgress: firebaseAdmin.firestore.FieldValue.delete(),
           regenerationRunId: firebaseAdmin.firestore.FieldValue.delete(),
+          regenerationRecipients: firebaseAdmin.firestore.FieldValue.delete(),
         })
         batch.set(document.ref.collection('activity').doc(), {
           kind: 'lifecycle',

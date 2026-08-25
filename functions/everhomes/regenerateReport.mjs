@@ -69,12 +69,27 @@ export const regenerateReport = onRequest(
       return res.status(error.status ?? 500).json({ error: error.message ?? 'Could not verify administrator access' })
     }
 
-    const { collection, docId } = req.body
+    const { collection, docId, recipients: requestedRecipients } = req.body
     if (!collection || !docId) {
       return res.status(400).json({ error: 'Missing collection or docId' })
     }
     if (!['inspections', 'handovers'].includes(collection)) {
       return res.status(400).json({ error: 'Invalid collection' })
+    }
+    if (
+      requestedRecipients !== undefined
+      && (
+        !Array.isArray(requestedRecipients)
+        || requestedRecipients.length < 1
+        || requestedRecipients.length > 20
+        || requestedRecipients.some((email) => (
+          typeof email !== 'string'
+          || email.length > 320
+          || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+        ))
+      )
+    ) {
+      return res.status(400).json({ error: 'Recipients must contain one to 20 valid email addresses' })
     }
 
     const docRef = db.collection(collection).doc(docId)
@@ -82,6 +97,13 @@ export const regenerateReport = onRequest(
     if (!snap.exists) return res.status(404).json({ error: 'Report not found' })
 
     const data = snap.data()
+    const recipients = Array.from(new Set(
+      requestedRecipients === undefined
+        ? ['admin@everhomes.com.au', data.inspectorEmail]
+            .filter((email) => typeof email === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+            .map((email) => email.trim().toLowerCase())
+        : requestedRecipients.map((email) => email.trim().toLowerCase()),
+    ))
     if (!data.submissionPayload) {
       return res.status(400).json({
         error: 'No stored payload - this report was submitted before the regenerate feature was added.',
@@ -142,6 +164,7 @@ export const regenerateReport = onRequest(
           regenerationPhaseStartedAt: phaseStartedAt,
           regenerationRunId,
           regenerationRequestedBy: activityActor,
+          regenerationRecipients: recipients,
           regenerationProgress: { completed: 0, total: 0 },
           regenerationError: firebaseAdmin.firestore.FieldValue.delete(),
         })
@@ -151,6 +174,7 @@ export const regenerateReport = onRequest(
           label: 'Regeneration started',
           actor: activityActor,
           regenerationRunId,
+          recipients,
           createdAt: phaseStartedAt,
         })
       })
@@ -167,6 +191,7 @@ export const regenerateReport = onRequest(
         regenerationFinishedAt: timestamp,
         regenerationProgress: firebaseAdmin.firestore.FieldValue.delete(),
         regenerationRunId: firebaseAdmin.firestore.FieldValue.delete(),
+        regenerationRecipients: firebaseAdmin.firestore.FieldValue.delete(),
       })
       batch.set(docRef.collection('activity').doc(), {
         kind: 'lifecycle',
@@ -505,6 +530,7 @@ export const regenerateReport = onRequest(
     const fnUrl = `https://australia-southeast1-${projectId}.cloudfunctions.net/generateInspectionReport`
     payload.regenerationAccessKey = regenerationAccessKey
     payload.regenerationActor = activityActor
+    payload.regenerationRecipients = recipients
 
     try {
       await docRef.update({
@@ -547,6 +573,7 @@ export const regenerateReport = onRequest(
         regenerationFinishedAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
         regenerationProgress: firebaseAdmin.firestore.FieldValue.delete(),
         regenerationRunId: firebaseAdmin.firestore.FieldValue.delete(),
+        regenerationRecipients: firebaseAdmin.firestore.FieldValue.delete(),
         regenerationAccessKey: firebaseAdmin.firestore.FieldValue.delete(),
       }).catch(() => {})
       return res.status(500).json({

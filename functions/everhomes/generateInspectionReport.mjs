@@ -101,6 +101,7 @@ export const generateInspectionReport = onRequest(
       draftAccessKey,
       regenerationAccessKey,
       regenerationActor,
+      regenerationRecipients,
       propertyAddress,
       inspectionDate,
       inspectorName,
@@ -197,6 +198,21 @@ export const generateInspectionReport = onRequest(
     ) {
       return res.status(400).json({ error: "Property, date, and inspector details are required." });
     }
+    if (
+      regenerationRecipients !== undefined
+      && (
+        !Array.isArray(regenerationRecipients)
+        || regenerationRecipients.length < 1
+        || regenerationRecipients.length > 20
+        || regenerationRecipients.some((email) => (
+          typeof email !== "string"
+          || email.length > 320
+          || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+        ))
+      )
+    ) {
+      return res.status(400).json({ error: "Regeneration recipients must contain one to 20 valid email addresses." });
+    }
     const missingRequiredAnswers = collectMissingRequiredAnswers(rooms, schema, reportSubtype);
     if (!regenerationAccessKey && missingRequiredAnswers.length) {
       return res.status(400).json({
@@ -264,6 +280,9 @@ export const generateInspectionReport = onRequest(
 
     if (!isDraftSession && !isServerRegeneration && !isLegacyPendingSubmission) {
       return res.status(403).json({ error: "This device does not have permission to submit that draft." });
+    }
+    if (regenerationRecipients !== undefined && !isServerRegeneration) {
+      return res.status(403).json({ error: "Custom recipients are available only for administrator regenerations." });
     }
     const claimableStatus = isServerRegeneration
       ? draftData.status === "regenerating"
@@ -697,9 +716,13 @@ export const generateInspectionReport = onRequest(
         { filename: pdfName, content: pdfBuffer },
       ];
 
-      const targets = [{ email: ADMIN_EMAIL, isAdmin: true }];
-      if (inspectorEmail)
-        targets.push({ email: inspectorEmail, isAdmin: false });
+      const targets = isServerRegeneration && Array.isArray(regenerationRecipients)
+        ? Array.from(new Set(regenerationRecipients.map((email) => email.trim().toLowerCase())))
+            .map((email) => ({ email, isAdmin: email === ADMIN_EMAIL }))
+        : [
+            { email: ADMIN_EMAIL, isAdmin: true },
+            ...(inspectorEmail ? [{ email: inspectorEmail, isAdmin: false }] : []),
+          ];
 
       const emailResults = await Promise.allSettled(
         targets.map((t) =>
@@ -726,7 +749,7 @@ export const generateInspectionReport = onRequest(
 
       const emailDelivery = normaliseEmailDeliveries(emailResults, targets);
       const adminDelivery = emailDelivery.find((delivery) => delivery.isAdmin);
-      if (!adminDelivery?.sent) {
+      if ((!isServerRegeneration || !Array.isArray(regenerationRecipients)) && !adminDelivery?.sent) {
         const reason = adminDelivery?.error ?? "Unknown";
         throw new Error(`Admin email send failed: ${reason}`);
       }
@@ -799,6 +822,7 @@ export const generateInspectionReport = onRequest(
         regenerationProgress: firebaseAdmin.firestore.FieldValue.delete(),
         regenerationRunId: firebaseAdmin.firestore.FieldValue.delete(),
         regenerationRequestedBy: firebaseAdmin.firestore.FieldValue.delete(),
+        regenerationRecipients: firebaseAdmin.firestore.FieldValue.delete(),
         completedAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
       });
       await publishBatch.commit();
@@ -872,6 +896,7 @@ export const generateInspectionReport = onRequest(
               regenerationFinishedAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
               regenerationProgress: firebaseAdmin.firestore.FieldValue.delete(),
               regenerationRunId: firebaseAdmin.firestore.FieldValue.delete(),
+              regenerationRecipients: firebaseAdmin.firestore.FieldValue.delete(),
               regenFailedAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
               generationDeadlineWarning: firebaseAdmin.firestore.FieldValue.delete(),
               generationDeadlineReachedAt: firebaseAdmin.firestore.FieldValue.delete(),

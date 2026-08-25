@@ -12,6 +12,10 @@ import {
   isReportItemVisible,
 } from '../src/features/everhomes/utils/reportVisibility.js'
 import {
+  addReportRecipients,
+  normaliseReportRecipient,
+} from '../src/features/everhomes/utils/reportRecipients.js'
+import {
   deriveSectionStatus,
   isRequiredAnswerComplete as browserRequiredAnswerComplete,
   isStatusSectionComplete,
@@ -37,6 +41,31 @@ import {
   isRequiredAnswerComplete as functionRequiredAnswerComplete,
   itemIsVisible,
 } from '../functions/everhomes/reportLogic.mjs'
+
+test('admin recipient entry creates unique normalized addresses from commas and spaces', () => {
+  assert.deepEqual(
+    addReportRecipients(
+      ['existing@example.com'],
+      'New.Person@Example.com, second@example.com third@example.com new.person@example.com',
+    ),
+    {
+      recipients: [
+        'existing@example.com',
+        'new.person@example.com',
+        'second@example.com',
+        'third@example.com',
+      ],
+      invalid: [],
+      overflow: false,
+    },
+  )
+  assert.equal(normaliseReportRecipient('not-an-email'), null)
+  assert.deepEqual(addReportRecipients([], 'good@example.com broken'), {
+    recipients: ['good@example.com'],
+    invalid: ['broken'],
+    overflow: false,
+  })
+})
 
 test('report activity records preserve observable email outcomes and safe actor details', () => {
   const actor = sanitiseActivityActor({
