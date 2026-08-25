@@ -278,6 +278,18 @@
                                             {{ copiedDraftId === sub.id ? 'Link copied' : 'Copy recovery link' }}
                                         </button>
 
+                                        <button
+                                            v-if="['draft', 'failed'].includes(sub.status)"
+                                            type="button"
+                                            @click="triggerDelete(sub)"
+                                            :disabled="deletingId === sub.id"
+                                            class="inline-flex items-center gap-1.5 rounded-full border border-red-400/25 bg-red-400/10 px-3 py-1.5 text-xs font-semibold text-red-200 transition hover:border-red-300/50 hover:bg-red-400/15 disabled:cursor-not-allowed disabled:opacity-50"
+                                        >
+                                            <Loader2 v-if="deletingId === sub.id" class="h-3.5 w-3.5 animate-spin" />
+                                            <Trash2 v-else class="h-3.5 w-3.5" />
+                                            {{ deletingId === sub.id ? 'Deleting…' : 'Delete' }}
+                                        </button>
+
                                         <a
                                             v-if="sub.pdfUrl"
                                             :href="sub.pdfUrl"
@@ -679,6 +691,65 @@
             </Transition>
         </Teleport>
 
+        <!-- Delete confirm modal -->
+        <Teleport to="body">
+            <Transition
+                enter-active-class="transition duration-150"
+                enter-from-class="opacity-0"
+                enter-to-class="opacity-100"
+                leave-active-class="transition duration-100"
+                leave-from-class="opacity-100"
+                leave-to-class="opacity-0"
+            >
+                <div v-if="deleteModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm">
+                    <div class="w-full max-w-md rounded-[2rem] border border-white/10 bg-[#0f1e30] p-6 shadow-2xl shadow-black/40">
+                        <div class="mb-4 flex items-center gap-3">
+                            <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-red-400/20 bg-red-400/10">
+                                <Trash2 class="h-5 w-5 text-red-300" />
+                            </div>
+                            <div>
+                                <h3 class="text-base font-bold text-white">Delete Report</h3>
+                                <p class="text-xs text-slate-500">Permanently remove this {{ deleteModal.status }} report</p>
+                            </div>
+                        </div>
+
+                        <div class="mb-3 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                            <p class="mb-0.5 text-sm font-semibold text-white">{{ deleteModal.propertyAddress || 'Untitled report' }}</p>
+                            <p class="text-xs text-slate-400">
+                                {{ deleteModal.collection === 'inspections' ? 'Inspection' : 'Handover' }}
+                                <span v-if="deleteModal.inspectionDate"> · {{ deleteModal.inspectionDate }}</span>
+                            </p>
+                        </div>
+
+                        <div class="mb-4 flex items-start gap-2 rounded-2xl border border-red-400/20 bg-red-500/10 px-3 py-2.5">
+                            <AlertTriangle class="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-300" />
+                            <p class="text-xs leading-5 text-red-200">
+                                This permanently removes the report record and every stored photo. Completed reports cannot be deleted.
+                            </p>
+                        </div>
+
+                        <div class="flex gap-3">
+                            <button
+                                type="button"
+                                @click="confirmDelete"
+                                class="flex flex-1 items-center justify-center gap-2 rounded-full border border-red-400/40 bg-red-500/70 py-2.5 text-sm font-bold text-white transition hover:bg-red-500/85"
+                            >
+                                <Trash2 class="h-4 w-4" />
+                                Delete permanently
+                            </button>
+                            <button
+                                type="button"
+                                @click="deleteModal = null"
+                                class="rounded-full border border-white/10 px-5 py-2.5 text-sm font-semibold text-slate-400 transition hover:border-white/20 hover:text-white"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </Transition>
+        </Teleport>
+
         <!-- Regenerate confirm modal -->
         <Teleport to="body">
             <Transition
@@ -807,7 +878,7 @@ import {
     FileText, FolderArchive, SendHorizontal, CheckCheck, AlertCircle,
     ClipboardCheck, ClipboardList, User, Calendar, Clock,
     CheckCircle2, AlertTriangle, FileSpreadsheet, CloudUpload,
-    BarChart3, TrendingUp, XCircle, ChevronDown, RotateCcw, Link, MailWarning, Activity,
+    BarChart3, TrendingUp, XCircle, ChevronDown, RotateCcw, Link, MailWarning, Activity, Trash2,
 } from '@lucide/vue'
 
 const FUNCTIONS_URL = import.meta.env.VITE_FUNCTIONS_URL ?? ''
@@ -1053,6 +1124,39 @@ async function confirmResend() {
         alert(`Resend failed: ${err.message}`)
     } finally {
         resendingId.value = null
+    }
+}
+
+// ─── Delete draft/failed report ──────────────────────────────────────────────
+const deleteModal = ref(null)
+const deletingId = ref(null)
+
+function triggerDelete(sub) {
+    deleteModal.value = sub
+}
+
+async function confirmDelete() {
+    const sub = deleteModal.value
+    if (!sub) return
+    deleteModal.value = null
+    deletingId.value = sub.id
+
+    try {
+        const res = await fetchWithTimeout(`${FUNCTIONS_URL}/deleteEverhomesReport`, {
+            method: 'POST',
+            headers: await adminRequestHeaders(),
+            body: JSON.stringify({ collection: sub.collection, docId: sub.id }),
+        }, 130_000)
+        const body = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(body.error ?? `HTTP ${res.status}`)
+        allSubmissions.value = allSubmissions.value.filter(candidate => (
+            candidate.id !== sub.id || candidate.collection !== sub.collection
+        ))
+    } catch (err) {
+        alert(`Deletion failed: ${err.message}`)
+        await loadSubmissions()
+    } finally {
+        deletingId.value = null
     }
 }
 

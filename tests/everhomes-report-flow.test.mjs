@@ -19,6 +19,7 @@ import {
 import { REPORT_SCHEMAS } from '../functions/everhomes/checklistSchemas/index.mjs'
 import { normaliseEmailDeliveries } from '../functions/everhomes/emailDelivery.mjs'
 import { buildReportArtifactPaths, safeArchiveKey } from '../functions/everhomes/reportArtifacts.mjs'
+import { canDeleteEverhomesReport } from '../functions/everhomes/reportDeletionPolicy.mjs'
 import {
   collectMissingRequiredAnswers,
   computeItemStats,
@@ -190,4 +191,13 @@ test('report generations use immutable paths and safe archive keys', () => {
   assert.doesNotMatch(archiveKey, /[/.]/)
   assert.equal(archiveKey, safeArchiveKey(unsafeRoomId, 'room'))
   assert.notEqual(archiveKey, safeArchiveKey('../../other/photo', 'room'))
+})
+
+test('admin report deletion is limited to draft and failed reports', () => {
+  assert.equal(canDeleteEverhomesReport('draft'), true)
+  assert.equal(canDeleteEverhomesReport('failed'), true)
+
+  for (const status of ['complete', 'pending', 'processing', 'regenerating', 'deleting', null, undefined]) {
+    assert.equal(canDeleteEverhomesReport(status), false, `${status} must remain protected`)
+  }
 })
