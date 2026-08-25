@@ -242,13 +242,13 @@
                                 </div>
 
                                 <Button type="submit" :disabled="isLoading"
-                                    class="w-full h-12 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-300 border-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">
+                                    class="group relative overflow-hidden w-full h-12 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-300 border-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">
                                     <Loader2 v-if="isLoading" class="w-4 h-4 mr-2 animate-spin" />
                                     <UserPlus v-else class="w-4 h-4 mr-2" />
                                     <span class="relative z-10">{{ isLoading ? 'Creating Account...' : 'Create Account'
                                         }}</span>
-                                    <div v-if="!isLoading"
-                                        class="absolute inset-0 bg-gradient-to-r from-purple-400/20 to-blue-400/20 rounded-xl opacity-0 hover:opacity-100 transition-opacity duration-300">
+                                    <div v-if="!isLoading" aria-hidden="true"
+                                        class="pointer-events-none absolute inset-0 bg-gradient-to-r from-purple-400/20 to-blue-400/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                                     </div>
                                 </Button>
                             </form>
@@ -285,7 +285,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
@@ -345,6 +345,7 @@ const props = defineProps({
 const currentImageIndex = ref(0)
 const currentImage = ref(props.imageUrls[0])
 const nextImage = ref(props.imageUrls[1])
+let imageRotationTimerId
 
 const firstName = ref('')
 const lastName = ref('')
@@ -367,14 +368,12 @@ const changeImage = () => {
     nextImage.value = props.imageUrls[nextIndex]
 }
 
-onMounted(async () => {
-    setInterval(changeImage, 8000)
-    if (user) {
-        setTimeout(() => {
-            const active = document.activeElement
-            if (active && ['INPUT', 'TEXTAREA'].includes(active.tagName)) active.blur()
-        }, 0)
-    }
+onMounted(() => {
+    imageRotationTimerId = window.setInterval(changeImage, 8000)
+})
+
+onUnmounted(() => {
+    window.clearInterval(imageRotationTimerId)
 })
 
 const countryName = computed(() => {

@@ -118,11 +118,11 @@
                                     </Label>
                                 </div>
                                 <Button type="submit" :disabled="isLoading"
-                                    class="w-full h-12 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-300 border-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">
+                                    class="group relative overflow-hidden w-full h-12 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-300 border-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">
                                     <Loader2 v-if="isLoading" class="w-4 h-4 mr-2 animate-spin" />
                                     <span class="relative z-10">{{ isLoading ? 'Signing In...' : 'Sign In' }}</span>
-                                    <div v-if="!isLoading"
-                                        class="absolute inset-0 bg-gradient-to-r from-purple-400/20 to-blue-400/20 rounded-xl opacity-0 hover:opacity-100 transition-opacity duration-300">
+                                    <div v-if="!isLoading" aria-hidden="true"
+                                        class="pointer-events-none absolute inset-0 bg-gradient-to-r from-purple-400/20 to-blue-400/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                                     </div>
                                 </Button>
                             </form>
@@ -162,7 +162,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
@@ -210,6 +210,7 @@ const isLoggingOut = ref(false)
 const currentImageIndex = ref(0)
 const currentImage = ref(props.imageUrls[0])
 const nextImage = ref(props.imageUrls[1])
+let imageRotationTimerId
 
 const changeImage = () => {
     currentImageIndex.value = (currentImageIndex.value + 1) % props.imageUrls.length
@@ -219,8 +220,8 @@ const changeImage = () => {
     nextImage.value = props.imageUrls[nextIndex]
 }
 
-onMounted(async () => {
-    setInterval(changeImage, 6000)
+onMounted(() => {
+    imageRotationTimerId = window.setInterval(changeImage, 6000)
 
     if (route.query.redirect) {
         toast({
@@ -229,6 +230,10 @@ onMounted(async () => {
             variant: 'info'
         })
     }
+})
+
+onUnmounted(() => {
+    window.clearInterval(imageRotationTimerId)
 })
 
 const handleEmailLogin = async () => {
