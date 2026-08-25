@@ -76,7 +76,7 @@ export const generateInspectionReport = onRequest(
     region: "australia-southeast1",
     timeoutSeconds: 300,
     memory: "4GiB",
-    cpu: 1,
+    cpu: 2,
     concurrency: 1,
     maxInstances: 3,
     cors: true,
@@ -203,15 +203,22 @@ export const generateInspectionReport = onRequest(
     }
     const generationId = randomUUID();
     const requestStartedAt = Date.now();
-    const logStage = (stage, details = {}) => console.log(JSON.stringify({
-      scope: "everhomes-report",
-      stage,
-      reportType,
-      inspectionId,
-      generationId,
-      elapsedMs: Date.now() - requestStartedAt,
-      ...details,
-    }));
+    const logStage = (stage, details = {}) => {
+      const { rss, heapUsed, external, arrayBuffers } = process.memoryUsage();
+      console.log(JSON.stringify({
+        scope: "everhomes-report",
+        stage,
+        reportType,
+        inspectionId,
+        generationId,
+        elapsedMs: Date.now() - requestStartedAt,
+        rssBytes: rss,
+        heapUsedBytes: heapUsed,
+        externalBytes: external,
+        arrayBufferBytes: arrayBuffers,
+        ...details,
+      }));
+    };
 
     // Resolve the document title: use reportSubtype for inspections, or fall back to schema default
     const docTitle =
@@ -347,10 +354,9 @@ export const generateInspectionReport = onRequest(
 
       // ── 2. Download all assets in parallel ───────────────────────
       // Runs up to CONCURRENCY fetches at a time to avoid hammering Storage.
-      // zipAssets  — raw originals, no processing, for the download ZIP
-      // photoAssets — small compressed versions for PDF embed only
-      // Originals remain in memory for the ZIP while compressed copies are
-      // retained for the PDF, so limit simultaneous image processing as well.
+      // zipAssets — references to raw originals for the streamed download ZIP
+      // photoAssets — small compressed buffers retained for the PDF only
+      // Limit simultaneous image processing so decoded images stay bounded.
       const CONCURRENCY = 6;
       const { default: sharp } = await import("sharp");
       const bucket = firebaseAdmin.storage().bucket();
@@ -557,8 +563,19 @@ export const generateInspectionReport = onRequest(
         imageBytes: downloadedImageBytes,
       });
 
-      // ── 3. Build PDF ───────────────────────────────────────────────
-      const pdfBuffer = await buildPDF({
+      // ── 3. Build/save PDF while streaming originals into a ZIP ───
+      // These workloads are independent. Running them together lets native
+      // image/PDF work use the second CPU while the archive waits on Storage.
+      // ZIP sources remain serial and bounded inside writeReportZip.
+      const { pdfStoragePath, zipStoragePath } = buildReportArtifactPaths(
+        schema.collection,
+        inspectionId,
+        generationId,
+      );
+      const zipFile = bucket.file(zipStoragePath);
+      const zipAbortController = new AbortController();
+
+      const pdfWork = buildPDF({
         propertyAddress,
         inspectionDate,
         inspectorName,
@@ -568,47 +585,55 @@ export const generateInspectionReport = onRequest(
         docTitle,
         sigAssets,
         reportSubtype,
+      }).then(async (pdfBuffer) => {
+        logStage("pdf.built", { pdfBytes: pdfBuffer.length });
+        await bucket.file(pdfStoragePath)
+          .save(pdfBuffer, { metadata: { contentType: "application/pdf" } });
+        const [pdfUrl] = await bucket.file(pdfStoragePath).getSignedUrl({
+          action: "read",
+          expires: Date.now() + 10 * 365 * 24 * 60 * 60 * 1000,
+        });
+        logStage("pdf.saved", { pdfBytes: pdfBuffer.length, pdfStoragePath });
+        return { pdfBuffer, pdfUrl };
+      }).catch((error) => {
+        zipAbortController.abort(error);
+        throw error;
       });
 
-      // ── 4. Save PDF + stream original photos into a ZIP ──────────
-      // Originals are deliberately read again here rather than retained from
-      // PDF processing. This keeps memory bounded as photo counts grow and
-      // avoids constructing a second full-size ZIP buffer in RAM.
-      const { pdfStoragePath, zipStoragePath } = buildReportArtifactPaths(
-        schema.collection,
-        inspectionId,
-        generationId,
-      );
-      const zipFile = bucket.file(zipStoragePath);
-
-      const [
-        [pdfUrl],
-        zipResult,
-      ] = await Promise.all([
-        bucket.file(pdfStoragePath)
-          .save(pdfBuffer, { metadata: { contentType: "application/pdf" } })
-          .then(() => bucket.file(pdfStoragePath).getSignedUrl({
-            action: "read",
-            expires: Date.now() + 10 * 365 * 24 * 60 * 60 * 1000,
-          })),
-        writeReportZip({
-          zipAssets,
-          marketingAssets,
-          propertyAddress,
-          inspectionDate,
-          openAssetStream: openReportAssetStream,
-          destination: zipFile.createWriteStream({
-            resumable: false,
-            metadata: { contentType: "application/zip" },
-          }),
-        }).then(async ({ sourceBytes, zipBytes }) => {
-          const [photosDownloadUrl] = await zipFile.getSignedUrl({
-            action: "read",
-            expires: Date.now() + 90 * 24 * 60 * 60 * 1000,
-          });
-          return { photosDownloadUrl, sourceBytes, zipBytes };
+      const zipWork = writeReportZip({
+        zipAssets,
+        marketingAssets,
+        propertyAddress,
+        inspectionDate,
+        openAssetStream: openReportAssetStream,
+        signal: zipAbortController.signal,
+        destination: zipFile.createWriteStream({
+          resumable: false,
+          metadata: { contentType: "application/zip" },
         }),
-      ]);
+      }).then(async ({ sourceBytes, zipBytes }) => {
+        const [photosDownloadUrl] = await zipFile.getSignedUrl({
+          action: "read",
+          expires: Date.now() + 90 * 24 * 60 * 60 * 1000,
+        });
+        logStage("zip.saved", {
+          zipBytes,
+          archivedImageBytes: sourceBytes,
+          zipStoragePath,
+        });
+        return { photosDownloadUrl, sourceBytes, zipBytes };
+      });
+
+      const [pdfOutcome, zipOutcome] = await Promise.allSettled([pdfWork, zipWork]);
+      if (pdfOutcome.status === "rejected" || zipOutcome.status === "rejected") {
+        zipAbortController.abort(
+          pdfOutcome.status === "rejected" ? pdfOutcome.reason : zipOutcome.reason,
+        );
+        throw pdfOutcome.status === "rejected" ? pdfOutcome.reason : zipOutcome.reason;
+      }
+
+      const { pdfBuffer, pdfUrl } = pdfOutcome.value;
+      const zipResult = zipOutcome.value;
       const { photosDownloadUrl, sourceBytes: archivedImageBytes, zipBytes } = zipResult;
       logStage("artifacts.saved", {
         pdfBytes: pdfBuffer.length,

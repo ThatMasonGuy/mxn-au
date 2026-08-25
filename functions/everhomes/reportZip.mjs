@@ -21,6 +21,7 @@ export async function writeReportZip({
   inspectionDate,
   openAssetStream,
   destination,
+  signal,
 }) {
   const { ZipArchive } = await import("archiver");
   // Report originals are already compressed image formats. Recompressing them
@@ -37,27 +38,51 @@ export async function writeReportZip({
     },
   });
   const completion = pipeline(archive, outputCounter, destination);
+  let activeSource = null;
+
+  const abortError = () => {
+    if (signal?.reason instanceof Error) return signal.reason;
+    const error = new Error("Report ZIP generation was aborted.");
+    error.name = "AbortError";
+    return error;
+  };
 
   const failArchive = (error) => {
+    if (activeSource && !activeSource.destroyed) activeSource.destroy(error);
     if (!archive.destroyed) archive.destroy(error);
   };
 
+  const handleAbort = () => {
+    const error = abortError();
+    failArchive(error);
+    if (!destination.destroyed) destination.destroy(error);
+  };
+
+  signal?.addEventListener("abort", handleAbort, { once: true });
+
   const appendAsset = async (asset, archivePath) => {
+    if (signal?.aborted) throw abortError();
     const source = await openAssetStream(asset);
     if (!source || typeof source.pipe !== "function") {
       throw new Error(`Could not open report photo stream for ${archivePath}`);
     }
 
+    activeSource = source;
     const sourceCounter = new Transform({
       transform(chunk, _encoding, callback) {
         sourceBytes += chunk.length;
         callback(null, chunk);
       },
     });
-    source.once("error", failArchive);
-    sourceCounter.once("error", failArchive);
     archive.append(sourceCounter, { name: archivePath });
-    source.pipe(sourceCounter);
+    try {
+      // Wait until Archiver has consumed this source before opening the next
+      // one. This keeps the number of live Storage streams bounded and avoids
+      // listener and buffer growth as photo counts increase.
+      await pipeline(source, sourceCounter);
+    } finally {
+      activeSource = null;
+    }
   };
 
   try {
@@ -76,5 +101,7 @@ export async function writeReportZip({
     destination.destroy(error);
     await completion.catch(() => {});
     throw error;
+  } finally {
+    signal?.removeEventListener("abort", handleAbort);
   }
 }
