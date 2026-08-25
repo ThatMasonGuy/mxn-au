@@ -788,10 +788,6 @@
                                             </span>
                                         </div>
                                         <p v-else class="mt-2 text-[10px] leading-4 text-amber-300">Add at least one recipient to resend or regenerate.</p>
-                                        <label class="mt-3 flex cursor-pointer items-start gap-2 text-[11px] leading-4 text-slate-400">
-                                            <input v-model="updateReportContact" type="checkbox" :disabled="recipientEmails.length !== 1" class="mt-0.5 rounded border-white/20 bg-black/20 disabled:opacity-40" />
-                                            <span>Use the selected address as the report contact. Available when exactly one recipient is selected.</span>
-                                        </label>
                                         <div class="mt-4 grid grid-cols-2 gap-2">
                                             <button
                                                 type="button"
@@ -1192,7 +1188,6 @@ const recipientInput = ref('')
 const recipientInputError = ref('')
 const recipientEmails = ref([])
 const recipientsInitialised = ref(false)
-const updateReportContact = ref(false)
 const resendLoading = ref(false)
 const resendingId = ref(null)
 let activityPollTimer = null
@@ -1262,7 +1257,6 @@ async function openReportDetails(submission) {
     recipientInputError.value = ''
     recipientEmails.value = []
     recipientsInitialised.value = false
-    updateReportContact.value = false
     reportDetailsError.value = ''
     activityNotice.value = ''
     await loadReportActivity(true)
@@ -1328,7 +1322,6 @@ async function loadReportActivity(refreshProviderStatuses = false) {
 function addRecipientsFromInput(value) {
     const result = addReportRecipients(recipientEmails.value, value)
     recipientEmails.value = result.recipients
-    if (recipientEmails.value.length !== 1) updateReportContact.value = false
     recipientInputError.value = result.invalid.length
         ? `Invalid email${result.invalid.length === 1 ? '' : 's'}: ${result.invalid.join(', ')}`
         : result.overflow
@@ -1361,10 +1354,9 @@ function handleRecipientPaste(event) {
 function removeRecipient(email) {
     recipientEmails.value = recipientEmails.value.filter(candidate => candidate !== email)
     recipientInputError.value = ''
-    if (recipientEmails.value.length !== 1) updateReportContact.value = false
 }
 
-async function sendReportEmails({ recipients, updateContact = false }) {
+async function sendReportEmails({ recipients }) {
     const modal = reportDetailsModal.value
     if (!modal) return
     resendLoading.value = true
@@ -1375,9 +1367,8 @@ async function sendReportEmails({ recipients, updateContact = false }) {
         const bodyPayload = {
             collection: modal.report.collection,
             docId: modal.report.id,
-            updateReportContact: updateContact,
+            recipients,
         }
-        bodyPayload.recipients = recipients
         const res = await fetchWithTimeout(`${FUNCTIONS_URL}/resendReport`, {
             method: 'POST',
             headers: await adminRequestHeaders(),
@@ -1389,11 +1380,6 @@ async function sendReportEmails({ recipients, updateContact = false }) {
             ? ` ${body.failed} recipient${body.failed === 1 ? '' : 's'} failed.`
             : ''
         activityNotice.value = `${body.sent} email${body.sent === 1 ? '' : 's'} accepted for delivery.${failedMessage}${body.auditWarning ? ` ${body.auditWarning}` : ''}`
-        if (body.reportContactUpdated) {
-            modal.report.inspectorEmail = recipients[0]
-            modal.submission.inspectorEmail = recipients[0]
-            updateReportContact.value = false
-        }
         await loadReportActivity(true)
     } catch (error) {
         reportDetailsError.value = `Email send failed: ${error.message}`
@@ -1408,7 +1394,6 @@ function resendToSelectedRecipients() {
     if (!commitRecipientInput() || !recipientEmails.value.length) return
     return sendReportEmails({
         recipients: [...recipientEmails.value],
-        updateContact: updateReportContact.value,
     })
 }
 

@@ -58,7 +58,6 @@ export const resendReport = onRequest(
       docId,
       extraEmails = [],
       recipients: requestedRecipients,
-      updateReportContact = false,
     } = req.body ?? {}
     if (!collection || !docId) {
       return res.status(400).json({ error: 'Missing collection or docId' })
@@ -85,10 +84,6 @@ export const resendReport = onRequest(
     ) {
       return res.status(400).json({ error: 'Recipients must be a list of one to 20 valid email addresses' })
     }
-    if (updateReportContact === true && requestedRecipients?.length !== 1) {
-      return res.status(400).json({ error: 'Updating the report contact requires exactly one recipient' })
-    }
-
     const docRef = db.collection(collection).doc(docId)
     const snap = await docRef.get()
     if (!snap.exists) return res.status(404).json({ error: 'Report not found' })
@@ -217,20 +212,6 @@ export const resendReport = onRequest(
         .filter((delivery) => delivery.providerId)
         .map((delivery) => ({ email: delivery.email, id: delivery.providerId })),
     }
-    if (updateReportContact === true) {
-      reportUpdate.inspectorEmail = recipients[0]
-      if (data.submissionPayload) {
-        reportUpdate['submissionPayload.inspectorEmail'] = recipients[0]
-      }
-      activityBatch.set(docRef.collection('activity').doc(), {
-        kind: 'lifecycle',
-        type: 'report.contact_updated',
-        label: 'Report contact updated',
-        actor,
-        recipient: recipients[0],
-        createdAt: timestamp,
-      })
-    }
     activityBatch.update(docRef, reportUpdate)
     let auditWarning = null
     await activityBatch.commit().catch((error) => {
@@ -253,7 +234,6 @@ export const resendReport = onRequest(
       recipients,
       failures: failed.map((delivery) => ({ email: delivery.email, error: delivery.error })),
       auditWarning,
-      reportContactUpdated: updateReportContact === true,
     })
   }
 )
