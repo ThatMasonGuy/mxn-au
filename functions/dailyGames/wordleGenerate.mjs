@@ -5,6 +5,7 @@ import { defineSecret } from 'firebase-functions/params'
 import { FieldValue } from 'firebase-admin/firestore'
 import OpenAI from 'openai'
 import { db } from '../config/firebase.mjs'
+import { storedWordleAnswer } from './wordleQuality.mjs'
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Secrets
@@ -54,8 +55,8 @@ async function fetchBanSet(todayId) {
         .where('__name__', '<=', todayId)
         .get()
     pastSnap.forEach((doc) => {
-        const w = String(doc.data()?.word || '').toUpperCase()
-        if (isFiveLetters(w)) ban.add(w)
+        const answer = storedWordleAnswer(doc.data())
+        if (answer) ban.add(answer)
     })
 
     // Today → +365d
@@ -64,8 +65,8 @@ async function fetchBanSet(todayId) {
         .where('__name__', '<=', endFuture)
         .get()
     futureSnap.forEach((doc) => {
-        const w = String(doc.data()?.word || '').toUpperCase()
-        if (isFiveLetters(w)) ban.add(w)
+        const answer = storedWordleAnswer(doc.data())
+        if (answer) ban.add(answer)
     })
 
     return ban
