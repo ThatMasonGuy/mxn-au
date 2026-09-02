@@ -1,0 +1,18 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+
+import {
+  deriveUnlimitedOutcome,
+  resolveUnlimitedGameNumber,
+} from '../src/features/daily/utils/wordleUnlimitedGame.js';
+
+test('Unlimited derives completion only from a solved row or the sixth miss', () => {
+  assert.equal(deriveUnlimitedOutcome(['G', 'G', 'G', 'G', 'G'], 2), 'win');
+  assert.equal(deriveUnlimitedOutcome(['B', 'B', 'B', 'B', 'B'], 5), null);
+  assert.equal(deriveUnlimitedOutcome(['B', 'B', 'B', 'B', 'B'], 6), 'loss');
+});
+
+test('the active Unlimited puzzle keeps its original number after stats update', () => {
+  assert.equal(resolveUnlimitedGameNumber({ number: 7 }, 7), 7);
+  assert.equal(resolveUnlimitedGameNumber({}, 7), 8);
+});

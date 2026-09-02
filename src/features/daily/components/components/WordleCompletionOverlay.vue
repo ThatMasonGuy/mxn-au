@@ -48,9 +48,8 @@
                             <!-- Main message -->
                             <h2 class="text-xl sm:text-2xl font-bold mb-1 sm:mb-2" :class="titleClasses">
                                 {{ title }}
-                                <span v-if="wordNumber >= 0"
-                                    class="ml-1 sm:ml-2 text-base sm:text-lg font-normal text-white/70">#{{ wordNumber +
-                                    1 }}</span>
+                                <span v-if="wordNumber > 0"
+                                    class="ml-1 sm:ml-2 text-base sm:text-lg font-normal text-white/70">#{{ wordNumber }}</span>
                             </h2>
 
                             <!-- Sub message -->
@@ -153,7 +152,7 @@ const shareCopied = ref(false)
 let timer = null
 let confettiAnimation = null
 
-const showNewGame = computed(() => props.wordNumber >= 0)
+const showNewGame = computed(() => props.wordNumber > 0)
 
 const gridRows = computed(() => {
     if (!props.emojiGrid) return []

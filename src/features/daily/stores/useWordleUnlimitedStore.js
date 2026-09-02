@@ -12,6 +12,10 @@ import {
 } from "firebase/firestore";
 import { useDailyStore } from "./useDailyStore";
 import { isAllowedFiveLetterGuess } from "@/features/daily/utils/wordList";
+import {
+  deriveUnlimitedOutcome,
+  resolveUnlimitedGameNumber,
+} from "@/features/daily/utils/wordleUnlimitedGame";
 
 const REGION = "australia-southeast2";
 const functions = () => getFunctions(undefined, REGION);
@@ -102,6 +106,7 @@ export const useWordleUnlimitedStore = defineStore("wordleUnlimited", {
     // User info
     user: null,
     _profileUnsubscribe: null,
+    _completionSubmitting: false,
 
     // Current game state
     currentGame: null,
@@ -170,6 +175,10 @@ export const useWordleUnlimitedStore = defineStore("wordleUnlimited", {
     currentWordIndex() {
       return this.profile.totalPlayed;
     },
+
+    currentWordNumber() {
+      return resolveUnlimitedGameNumber(this.currentGame, this.profile.totalPlayed);
+    },
   },
 
   actions: {
@@ -218,6 +227,27 @@ export const useWordleUnlimitedStore = defineStore("wordleUnlimited", {
       } catch (error) {
         console.warn("Error syncing with daily store:", error);
       }
+    },
+
+    _applyProfile(data) {
+      if (!data) return;
+      this.profile = {
+        totalPlayed: data.totalPlayed || 0,
+        wins: data.wins || 0,
+        losses: data.losses || 0,
+        currentStreak: data.currentStreak || 0,
+        maxStreak: data.maxStreak || 0,
+        winPercentage: data.totalPlayed
+          ? Math.round(((data.wins || 0) / data.totalPlayed) * 100)
+          : 0,
+        attemptsHistogram: data.attemptsHistogram
+          ? [1, 2, 3, 4, 5, 6].map(
+              (index) => data.attemptsHistogram[String(index)] || 0,
+            )
+          : [0, 0, 0, 0, 0, 0],
+        lastPlayedAt: data.lastPlayedAt || null,
+      };
+      this._syncWithDailyStore();
     },
 
     _ensurePlayedWordsSet() {
@@ -304,6 +334,7 @@ export const useWordleUnlimitedStore = defineStore("wordleUnlimited", {
 
         this.currentGame = {
           word: selectedWord,
+          number: this.profile.totalPlayed + 1,
           status: "idle",
           rows: [],
           attempts: 0,
@@ -409,6 +440,7 @@ export const useWordleUnlimitedStore = defineStore("wordleUnlimited", {
 
           this.currentGame = {
             word: mostRecentInProgress.word,
+            number: this.profile.totalPlayed + 1,
             status: "idle", // Always idle since it's in progress
             rows: rows,
             attempts: mostRecentInProgress.attempts || rows.length,
@@ -461,6 +493,10 @@ export const useWordleUnlimitedStore = defineStore("wordleUnlimited", {
               await this.startNewGame({ force: true });
             }
 
+            if (this.currentGame && ["won", "lost"].includes(this.currentGame.status)) {
+              await this._submitCompletion(this.currentGame.status === "won" ? "win" : "loss");
+            }
+
             this.initialized = true;
             this.loadingMessage = "";
             resolve();
@@ -487,25 +523,7 @@ export const useWordleUnlimitedStore = defineStore("wordleUnlimited", {
       );
       this._profileUnsubscribe = onSnapshot(profileRef, (snapshot) => {
         if (snapshot.exists()) {
-          const data = snapshot.data();
-          this.profile = {
-            totalPlayed: data.totalPlayed || 0,
-            wins: data.wins || 0,
-            losses: data.losses || 0,
-            currentStreak: data.currentStreak || 0,
-            maxStreak: data.maxStreak || 0,
-            winPercentage: data.totalPlayed
-              ? Math.round((data.wins / data.totalPlayed) * 100)
-              : 0,
-            attemptsHistogram: data.attemptsHistogram
-              ? [1, 2, 3, 4, 5, 6].map(
-                  (i) => data.attemptsHistogram[String(i)] || 0,
-                )
-              : [0, 0, 0, 0, 0, 0],
-            lastPlayedAt: data.lastPlayedAt,
-          };
-          // Sync with daily store when profile updates
-          this._syncWithDailyStore();
+          this._applyProfile(snapshot.data());
         } else {
           // Create profile document
           setDoc(
@@ -561,41 +579,43 @@ export const useWordleUnlimitedStore = defineStore("wordleUnlimited", {
       this.currentInput = "";
       this.currentGame.currentInput = "";
 
-      // Save progress to cloud in background
-      if (this.user) {
-        this._saveGameToCloud(true);
-      }
-
       // Check for completion
-      const isWin = mask.join("") === "GGGGG";
-      const isLoss = this.currentGame.rows.length >= 6 && !isWin;
+      const completionOutcome = deriveUnlimitedOutcome(mask, this.currentGame.rows.length);
 
-      if (isWin) {
+      if (completionOutcome === "win") {
         this.currentGame.status = "won";
         await this._submitCompletion("win");
-      } else if (isLoss) {
+      } else if (completionOutcome === "loss") {
         this.currentGame.status = "lost";
         await this._submitCompletion("loss");
+      } else if (this.user) {
+        this._saveGameToCloud(true);
       }
     },
 
     async _submitCompletion(outcome) {
-      if (!this.user || !this.currentGame) return;
+      if (!this.user || !this.currentGame || this._completionSubmitting) return;
 
+      this._completionSubmitting = true;
       try {
         const call = httpsCallable(
           functions(),
           "submitWordleUnlimitedCompletion",
         );
-        await call({
+        const { data } = await call({
           word: this.currentGame.word,
           outcome,
           attempts: this.currentGame.attempts,
           guesses: this.currentGame.rows.map((r) => r.guess),
           masks: this.currentGame.rows.map((r) => r.mask.join("")),
         });
+        this._applyProfile(data?.profile);
+        return data;
       } catch (error) {
         console.error("Error submitting completion:", error);
+        return null;
+      } finally {
+        this._completionSubmitting = false;
       }
     },
 
@@ -612,7 +632,7 @@ export const useWordleUnlimitedStore = defineStore("wordleUnlimited", {
         this.currentGame.status === "won"
           ? `${this.currentGame.rows.length}/6`
           : "X/6";
-      return `Wordle Unlimited #${this.profile.totalPlayed}\n${result}\n\n${lines.join("\n")}\n\nPlay at https://mxn.au/daily`;
+      return `Wordle Unlimited #${this.currentWordNumber}\n${result}\n\n${lines.join("\n")}\n\nPlay at https://mxn.au/daily`;
     },
 
     $dispose() {

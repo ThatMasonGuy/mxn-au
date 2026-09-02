@@ -208,7 +208,15 @@ export const submitWordleUnlimitedCompletion = onCall(
             if (!profileData.createdAt) profileData.createdAt = timestamp;
             profileData.lastPlayedAt = timestamp;
             profileData.updatedAt = timestamp;
-            updatedProfile = profileData;
+            updatedProfile = {
+                totalPlayed: profileData.totalPlayed,
+                wins: num(profileData.wins),
+                losses: num(profileData.losses),
+                currentStreak: num(profileData.currentStreak),
+                maxStreak: num(profileData.maxStreak),
+                attemptsHistogram: profileData.attemptsHistogram || {},
+                lastPlayedAt: new Date().toISOString(),
+            };
 
             // Per-word global stats (defensive defaults)
             const globalData = globalSnap.exists ? globalSnap.data() : { word: wordUpper };

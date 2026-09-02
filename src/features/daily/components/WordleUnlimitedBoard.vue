@@ -4,7 +4,7 @@
         <div class="text-center space-y-2">
             <h3 class="text-lg font-semibold text-white">Wordle Unlimited</h3>
             <p class="text-sm text-zinc-400">
-                Word #{{ store.currentWordIndex + 1 }}
+                Word #{{ store.currentWordNumber }}
                 <span v-if="store.totalWordsPlayed > 0" class="ml-2">
                     • {{ store.winPercentage }}% win rate
                 </span>
@@ -120,7 +120,7 @@
         <!-- Completion Overlay for Unlimited -->
         <WordleUnlimitedCompletionOverlay :show="showCompletionOverlay" :is-win="status === 'won'"
             :attempts="rows.length" :streak="store.currentStreak" :answer="store.currentAnswer" :emoji-grid="emojiGrid"
-            :word-number="store.currentWordIndex" :win-percentage="store.winPercentage" @close="closeCompletionOverlay"
+            :word-number="store.currentWordNumber" :win-percentage="store.winPercentage" @close="closeCompletionOverlay"
             @share="onShare" @new-game="onNewGame" />
 
         <!-- Next Puzzle CTA (always available after completion, even if overlay is closed) -->
