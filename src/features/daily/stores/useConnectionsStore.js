@@ -5,7 +5,11 @@ import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { firestore } from "@/firebase";
 import { doc, onSnapshot, getDoc } from "firebase/firestore";
 import { useDailyStore } from "./useDailyStore";
-import { recordLocalDailyResult } from "@/features/daily/utils/dailyGameProfiles";
+import {
+  recordLocalDailyResult,
+  resolveGuestProfileAfterAuthChange,
+  migrateLegacyGuestProfileStorage,
+} from "@/features/daily/utils/dailyGameProfiles";
 import { compareConnectionsProgress } from "@/features/daily/utils/dailyGameProgress";
 import {
   normaliseConnectionCategories,
@@ -14,6 +18,8 @@ import {
 
 const REGION = "australia-southeast2";
 const functions = () => getFunctions(undefined, REGION);
+
+migrateLegacyGuestProfileStorage("mxn:daily:connections");
 
 function dateStrUTC(d = new Date()) {
   const y = d.getUTCFullYear();
@@ -41,6 +47,7 @@ export const useConnectionsStore = defineStore("connections", {
     _lastLoadTime: null,
     _profileUnsubscribe: null,
     _authUnsubscribe: null,
+    _authUserId: null,
     _completionRepairing: false,
 
     // Cached puzzle data (persisted until rollover)
@@ -55,6 +62,7 @@ export const useConnectionsStore = defineStore("connections", {
 
     // User profile
     profile: null,
+    guestProfile: null,
 
     // Constants
     MAX_MISTAKES: 4,
@@ -158,6 +166,11 @@ export const useConnectionsStore = defineStore("connections", {
       this._syncWithDailyStore();
     },
 
+    _applyGuestProfile(data) {
+      this.guestProfile = data || null;
+      this._applyProfile(this.guestProfile);
+    },
+
     async _repairCompletedProfile() {
       const date = this.puzzleId?.replace("connections-", "");
       if (
@@ -226,6 +239,8 @@ export const useConnectionsStore = defineStore("connections", {
       }
 
       this._authUnsubscribe = onAuthStateChanged(auth, async (user) => {
+        const previousAuthenticatedUserId = this._authUserId;
+        this._authUserId = user?.uid || null;
         if (this._profileUnsubscribe) {
           this._profileUnsubscribe();
           this._profileUnsubscribe = null;
@@ -252,7 +267,11 @@ export const useConnectionsStore = defineStore("connections", {
             await this._reconcileCloudState(user.uid);
           }
         } else {
-          this.profile = null;
+          this._applyGuestProfile(resolveGuestProfileAfterAuthChange(
+            this.guestProfile,
+            this.profile,
+            previousAuthenticatedUserId,
+          ));
         }
       });
     },
@@ -675,7 +694,7 @@ export const useConnectionsStore = defineStore("connections", {
       } finally {
         if (isGuest) {
           const date = this.puzzleId?.replace("connections-", "") || dateStrUTC();
-          this._applyProfile(recordLocalDailyResult(this.profile, {
+          this._applyGuestProfile(recordLocalDailyResult(this.guestProfile || this.profile, {
             date,
             outcome: this.status === "won" ? "win" : "loss",
             mistakes: this.mistakes,
@@ -726,6 +745,7 @@ export const useConnectionsStore = defineStore("connections", {
       this.days = {};
       this.lastSeenDate = null;
       this.profile = null;
+      this.guestProfile = null;
       this.groups = null;
       this.puzzleId = null;
       this.rolloverAt = null;
@@ -748,10 +768,10 @@ export const useConnectionsStore = defineStore("connections", {
 
   persist: {
     key: "mxn:daily:connections",
-    paths: [
+    pick: [
       "days",
       "lastSeenDate",
-      "profile",
+      "guestProfile",
       "puzzleId",
       "groups",
       "categories",

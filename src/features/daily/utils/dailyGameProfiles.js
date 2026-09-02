@@ -61,3 +61,35 @@ export function recordLocalDailyResult(
 
   return next;
 }
+
+export function resolveGuestProfileAfterAuthChange(
+  guestProfile,
+  displayedProfile,
+  previousAuthenticatedUserId = null,
+) {
+  if (guestProfile) return guestProfile;
+  if (previousAuthenticatedUserId) return null;
+  return displayedProfile || null;
+}
+
+export function migrateLegacyGuestProfilePayload(payload, hasPersistedUser = false) {
+  if (!payload || typeof payload !== "object") return payload;
+  const migrated = { ...payload };
+  if (!migrated.guestProfile && migrated.profile && !hasPersistedUser) {
+    migrated.guestProfile = migrated.profile;
+  }
+  delete migrated.profile;
+  return migrated;
+}
+
+export function migrateLegacyGuestProfileStorage(storageKey) {
+  try {
+    const raw = localStorage.getItem(storageKey);
+    if (!raw) return;
+    const main = JSON.parse(localStorage.getItem("main") || "null");
+    const migrated = migrateLegacyGuestProfilePayload(JSON.parse(raw), Boolean(main?.user));
+    localStorage.setItem(storageKey, JSON.stringify(migrated));
+  } catch {
+    // Leave malformed persistence to the store's normal recovery path.
+  }
+}

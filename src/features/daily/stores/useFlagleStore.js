@@ -6,7 +6,11 @@ import { firestore } from "@/firebase";
 import { doc, onSnapshot } from "firebase/firestore";
 import { useDailyStore } from "./useDailyStore";
 import { prepareFlagleSubmission } from "@/features/daily/utils/flagleSubmission";
-import { recordLocalDailyResult } from "@/features/daily/utils/dailyGameProfiles";
+import {
+  recordLocalDailyResult,
+  resolveGuestProfileAfterAuthChange,
+  migrateLegacyGuestProfileStorage,
+} from "@/features/daily/utils/dailyGameProfiles";
 import { compareFlagleProgress } from "@/features/daily/utils/dailyGameProgress";
 import { getCountryHint } from "@/shared/utils/useDistanceBearing";
 import countries from "i18n-iso-countries";
@@ -16,6 +20,8 @@ countries.registerLocale(en);
 
 const REGION = "australia-southeast2";
 const functions = () => getFunctions(undefined, REGION);
+
+migrateLegacyGuestProfileStorage("mxn:daily:flagle");
 
 function dateStrUTC(d = new Date()) {
   const y = d.getUTCFullYear();
@@ -96,6 +102,7 @@ export const useFlagleStore = defineStore("flagle", {
     _lastLoadTime: null,
     _profileUnsubscribe: null,
     _authUnsubscribe: null,
+    _authUserId: null,
     _completionRepairing: false,
     guessSubmitting: false,
 
@@ -107,6 +114,7 @@ export const useFlagleStore = defineStore("flagle", {
     // Per-day play state
     days: {},
     profile: null,
+    guestProfile: null,
 
     // Current game state - these are derived from today's day state, not persisted
     currentFlagIndex: 0,
@@ -213,6 +221,11 @@ export const useFlagleStore = defineStore("flagle", {
       this._syncWithDailyStore();
     },
 
+    _applyGuestProfile(data) {
+      this.guestProfile = data || null;
+      this._applyProfile(this.guestProfile);
+    },
+
     async _repairCompletedProfile() {
       const date = this.puzzleId?.replace("flagle-", "");
       if (
@@ -285,6 +298,8 @@ export const useFlagleStore = defineStore("flagle", {
       }
 
       this._authUnsubscribe = onAuthStateChanged(auth, async (user) => {
+        const previousAuthenticatedUserId = this._authUserId;
+        this._authUserId = user?.uid || null;
         if (this._profileUnsubscribe) {
           this._profileUnsubscribe();
           this._profileUnsubscribe = null;
@@ -310,7 +325,11 @@ export const useFlagleStore = defineStore("flagle", {
             await this._reconcileCloudState(user.uid);
           }
         } else {
-          this.profile = null;
+          this._applyGuestProfile(resolveGuestProfileAfterAuthChange(
+            this.guestProfile,
+            this.profile,
+            previousAuthenticatedUserId,
+          ));
         }
       });
     },
@@ -627,7 +646,7 @@ export const useFlagleStore = defineStore("flagle", {
       const auth = getAuth();
       if (!auth.currentUser) {
         const date = this.puzzleId?.replace("flagle-", "") || dateStrUTC();
-        this._applyProfile(recordLocalDailyResult(this.profile, {
+        this._applyGuestProfile(recordLocalDailyResult(this.guestProfile || this.profile, {
           date,
           outcome: this.status === "won" ? "win" : "loss",
           score: this.score,
@@ -685,6 +704,7 @@ export const useFlagleStore = defineStore("flagle", {
       }
       this.days = {};
       this.profile = null;
+      this.guestProfile = null;
       this.countries = [];
       this.puzzleId = null;
       this.rolloverAt = null;
@@ -714,7 +734,7 @@ export const useFlagleStore = defineStore("flagle", {
 
   persist: {
     key: "mxn:daily:flagle",
-    paths: ["days", "profile", "puzzleId", "countries", "rolloverAt"],
+    pick: ["days", "guestProfile", "puzzleId", "countries", "rolloverAt"],
     storage: localStorage,
   },
 });

@@ -5,12 +5,18 @@ import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { firestore } from "@/firebase";
 import { doc, onSnapshot, getDoc } from "firebase/firestore";
 import { useDailyStore } from "./useDailyStore";
-import { recordLocalDailyResult } from "@/features/daily/utils/dailyGameProfiles";
+import {
+  recordLocalDailyResult,
+  resolveGuestProfileAfterAuthChange,
+  migrateLegacyGuestProfileStorage,
+} from "@/features/daily/utils/dailyGameProfiles";
 import { compareWordleProgress } from "@/features/daily/utils/dailyGameProgress";
 import { isAllowedFiveLetterGuess } from "@/features/daily/utils/wordList";
 
 const REGION = "australia-southeast2";
 const functions = () => getFunctions(undefined, REGION);
+
+migrateLegacyGuestProfileStorage("mxn:daily:wordle");
 
 function gradeGuess(guess, solution) {
   const g = guess.toUpperCase();
@@ -56,6 +62,7 @@ export const useWordleStore = defineStore("wordle", {
     _lastLoadTime: null,
     _profileUnsubscribe: null,
     _authUnsubscribe: null,
+    _authUserId: null,
     _completionRepairing: false,
 
     // Cached puzzle data (persisted until rollover)
@@ -67,6 +74,7 @@ export const useWordleStore = defineStore("wordle", {
     days: {},
     lastSeenDate: null,
     profile: null,
+    guestProfile: null,
 
     _allowedWords: null,
     wordListStatus: "loading",
@@ -159,6 +167,11 @@ export const useWordleStore = defineStore("wordle", {
       this._syncWithDailyStore();
     },
 
+    _applyGuestProfile(data) {
+      this.guestProfile = data || null;
+      this._applyProfile(this.guestProfile);
+    },
+
     async _repairCompletedProfile() {
       const date = this.puzzleId?.replace("wordle-", "");
       if (
@@ -189,6 +202,8 @@ export const useWordleStore = defineStore("wordle", {
       }
 
       this._authUnsubscribe = onAuthStateChanged(auth, async (user) => {
+        const previousAuthenticatedUserId = this._authUserId;
+        this._authUserId = user?.uid || null;
         if (this._profileUnsubscribe) {
           this._profileUnsubscribe();
           this._profileUnsubscribe = null;
@@ -215,7 +230,11 @@ export const useWordleStore = defineStore("wordle", {
             await this._reconcileCloudState(user.uid);
           }
         } else {
-          this.profile = null;
+          this._applyGuestProfile(resolveGuestProfileAfterAuthChange(
+            this.guestProfile,
+            this.profile,
+            previousAuthenticatedUserId,
+          ));
         }
       });
     },
@@ -456,7 +475,7 @@ export const useWordleStore = defineStore("wordle", {
       } finally {
         if (isGuest) {
           const date = this.puzzleId?.replace("wordle-", "") || dateStrUTC();
-          this._applyProfile(recordLocalDailyResult(this.profile, {
+          this._applyGuestProfile(recordLocalDailyResult(this.guestProfile || this.profile, {
             date,
             outcome: this.status === "won" ? "win" : "loss",
             attempts: this.rows.length,
@@ -497,6 +516,7 @@ export const useWordleStore = defineStore("wordle", {
       this.days = {};
       this.lastSeenDate = null;
       this.profile = null;
+      this.guestProfile = null;
       this.answer = null;
       this.puzzleId = null;
       this.rolloverAt = null;
@@ -522,10 +542,10 @@ export const useWordleStore = defineStore("wordle", {
 
   persist: {
     key: "mxn:daily:wordle",
-    paths: [
+    pick: [
       "days",
       "lastSeenDate",
-      "profile",
+      "guestProfile",
       "puzzleId",
       "answer",
       "rolloverAt",

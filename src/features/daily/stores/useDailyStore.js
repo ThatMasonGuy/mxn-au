@@ -328,7 +328,7 @@ export const useDailyStore = defineStore('daily', {
                         const stored = localStorage.getItem(storageKey)
                         if (stored) {
                             const data = JSON.parse(stored)
-                            const profile = data.profile
+                            const profile = data.guestProfile || data.profile
 
                             if (profile) {
                                 this.gameStats[gameId] = {
@@ -583,7 +583,7 @@ export const useDailyStore = defineStore('daily', {
 
     persist: {
         key: 'mxn:daily:combined',
-        paths: ['gameStats', 'dailyStatus', 'rolloverAt', 'lastUpdated', 'wordleUnlimitedStats'],
+        pick: ['gameStats', 'dailyStatus', 'rolloverAt', 'lastUpdated', 'wordleUnlimitedStats'],
         storage: localStorage
     }
 })

@@ -619,7 +619,7 @@ export const useWordleUnlimitedStore = defineStore("wordleUnlimited", {
 
   persist: {
     key: "mxn:wordle-unlimited",
-    paths: ["availableWords", "currentGame", "currentAnswer"],
+    pick: ["availableWords", "currentGame", "currentAnswer"],
     storage: localStorage,
   },
 });

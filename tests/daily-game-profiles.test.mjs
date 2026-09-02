@@ -1,7 +1,11 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import { recordLocalDailyResult } from '../src/features/daily/utils/dailyGameProfiles.js'
+import {
+  recordLocalDailyResult,
+  resolveGuestProfileAfterAuthChange,
+  migrateLegacyGuestProfilePayload,
+} from '../src/features/daily/utils/dailyGameProfiles.js'
 
 test('guest daily profiles keep independent wins, streaks and Wordle attempts', () => {
   const first = recordLocalDailyResult(null, {
@@ -55,4 +59,23 @@ test('Connections guest profiles retain mistake averages and perfect games', () 
   assert.equal(second.perfectGames, 1)
   assert.equal(second.averageMistakes, 2)
   assert.equal(second.currentStreak, 0)
+})
+
+test('guest profiles survive initial signed-out auth and stay separate after sign-out', () => {
+  const guest = { currentStreak: 3, wins: 5 }
+  const account = { currentStreak: 9, wins: 20 }
+
+  assert.deepEqual(resolveGuestProfileAfterAuthChange(null, guest, null), guest)
+  assert.deepEqual(resolveGuestProfileAfterAuthChange(guest, account, 'account-1'), guest)
+  assert.equal(resolveGuestProfileAfterAuthChange(null, account, 'account-1'), null)
+})
+
+test('legacy persistence migrates only signed-out profiles into guest history', () => {
+  const legacy = { days: {}, profile: { wins: 4, currentStreak: 2 } }
+
+  assert.deepEqual(migrateLegacyGuestProfilePayload(legacy, false), {
+    days: {},
+    guestProfile: legacy.profile,
+  })
+  assert.deepEqual(migrateLegacyGuestProfilePayload(legacy, true), { days: {} })
 })
