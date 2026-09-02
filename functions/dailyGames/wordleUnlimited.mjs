@@ -5,6 +5,7 @@ import { defineSecret } from 'firebase-functions/params';
 import OpenAI from 'openai';
 import { db } from '../config/firebase.mjs';
 import { validateUnlimitedCompletion } from './dailyGameValidation.mjs';
+import { isAllowedWordleAnswer } from './wordleQuality.mjs';
 
 const REGION = 'australia-southeast2';
 const OPENAI_API_KEY = defineSecret('OPENAI_API_KEY');
@@ -62,6 +63,7 @@ ${banSlice}`
     const approved = [];
     for (const w of candidates) {
         if (!/^[A-Z]{5}$/.test(w)) continue;
+        if (!isAllowedWordleAnswer(w)) continue;
         if (banSet.has(w)) continue;
         approved.push(w);
         if (approved.length >= need) break;
@@ -98,7 +100,11 @@ export const getWordleUnlimitedWords = onCall(
 
         const availableWords = [];
         solutionsSnap.forEach(doc => {
-            if (!playedWords.has(doc.id) && availableWords.length < requestCount) {
+            if (
+                isAllowedWordleAnswer(doc.id) &&
+                !playedWords.has(doc.id) &&
+                availableWords.length < requestCount
+            ) {
                 availableWords.push(doc.id);
             }
         });

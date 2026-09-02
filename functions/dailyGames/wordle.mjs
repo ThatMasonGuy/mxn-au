@@ -4,6 +4,7 @@ import { db } from '../config/firebase.mjs'
 import { calculateDailyStreak, hasRecordedDailyResult } from './dailyGameStats.mjs'
 import { validateCurrentPuzzleId, validateWordleCompletion } from './dailyGameValidation.mjs'
 import { nextMidnightUTCISO } from './dailyGameClock.mjs'
+import { isAllowedWordleAnswer, normaliseWordleAnswer } from './wordleQuality.mjs'
 
 const REGION = 'australia-southeast2';
 
@@ -40,12 +41,12 @@ async function ensureSolutionFor(date) {
         return FALLBACK;
     }
     const raw = snap.data();
-    const a = (raw?.answer || '').toUpperCase();
-    if (!/^[A-Z]{5}$/.test(a)) {
+    const a = normaliseWordleAnswer(raw?.answer);
+    if (!a || !isAllowedWordleAnswer(a)) {
         await ref.set({
             answer: FALLBACK,
             wasFallbackSeed: true,
-            seedReason: 'invalid_or_empty',
+            seedReason: 'invalid_or_unplayable',
             seededAt: nowISO
         }, { merge: true });
         return FALLBACK;

@@ -5,7 +5,7 @@ import { defineSecret } from 'firebase-functions/params'
 import { FieldValue } from 'firebase-admin/firestore'
 import OpenAI from 'openai'
 import { db } from '../config/firebase.mjs'
-import { storedWordleAnswer } from './wordleQuality.mjs'
+import { isAllowedWordleAnswer, storedWordleAnswer } from './wordleQuality.mjs'
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Secrets
@@ -134,6 +134,7 @@ ${banSlice}`
     const approved = []
     for (const w of candidates) {
         if (!isFiveLetters(w)) continue
+        if (!isAllowedWordleAnswer(w)) continue
         if (ban.has(w)) continue
         approved.push(w)
         if (approved.length >= need) break
