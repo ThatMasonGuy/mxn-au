@@ -3,7 +3,7 @@ import { defineStore } from "pinia";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { firestore } from "@/firebase";
-import { doc, onSnapshot, getDoc, setDoc } from "firebase/firestore";
+import { doc, onSnapshot, getDoc } from "firebase/firestore";
 import { useDailyStore } from "./useDailyStore";
 import { recordLocalDailyResult } from "@/features/daily/utils/dailyGameProfiles";
 import { compareConnectionsProgress } from "@/features/daily/utils/dailyGameProgress";
@@ -337,15 +337,6 @@ export const useConnectionsStore = defineStore("connections", {
         const dayState = this.days[date];
         if (!dayState) return;
 
-        const dayRef = doc(
-          firestore,
-          "users",
-          uid,
-          "dailyChallenges",
-          "connections",
-          "days",
-          date,
-        );
         const outcome =
           dayState.status === "won"
             ? "win"
@@ -375,17 +366,17 @@ export const useConnectionsStore = defineStore("connections", {
           });
         }
 
-        await setDoc(
-          dayRef,
-          {
+        const saveProgress = httpsCallable(functions(), "saveDailyGameProgress");
+        await saveProgress({
+          game: "connections",
+          date,
+          state: {
             foundGroups: foundGroupsClean,
             mistakes: dayState.mistakes || 0,
             attempts: attemptsMap,
             outcome,
-            updatedAt: new Date().toISOString(),
           },
-          { merge: true },
-        );
+        });
       } catch (error) {
         if (!isBackground) throw error;
         console.warn("Background save failed:", error);

@@ -30,6 +30,7 @@ export { getDailyConnections, submitConnectionsCompletion } from './dailyGames/c
 export { connectionsGenerateCron, connectionsGenerateNow } from './dailyGames/connectionsGenerate.mjs'
 export { getDailyFlagle, submitFlagleCompletion } from './dailyGames/flagle.mjs'
 export { flagleGenerateCron, flagleGenerateNow } from './dailyGames/flagleGenerate.mjs'
+export { saveDailyGameProgress } from './dailyGames/dailyGameProgress.mjs'
 
 // Reports
 export { generateRankingsReport } from './api/generateRankingsReport.mjs';

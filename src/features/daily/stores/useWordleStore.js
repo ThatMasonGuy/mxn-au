@@ -3,7 +3,7 @@ import { defineStore } from "pinia";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { firestore } from "@/firebase";
-import { doc, onSnapshot, getDoc, setDoc, updateDoc } from "firebase/firestore";
+import { doc, onSnapshot, getDoc } from "firebase/firestore";
 import { useDailyStore } from "./useDailyStore";
 import { recordLocalDailyResult } from "@/features/daily/utils/dailyGameProfiles";
 import { compareWordleProgress } from "@/features/daily/utils/dailyGameProgress";
@@ -274,15 +274,6 @@ export const useWordleStore = defineStore("wordle", {
         const dayState = this.days[date];
         if (!dayState) return;
 
-        const dayRef = doc(
-          firestore,
-          "users",
-          uid,
-          "dailyChallenges",
-          "wordle",
-          "days",
-          date,
-        );
         const guesses = dayState.rows.map((r) => r.guess);
         const outcome =
           dayState.status === "won"
@@ -291,15 +282,15 @@ export const useWordleStore = defineStore("wordle", {
               ? "loss"
               : "in_progress";
 
-        await setDoc(
-          dayRef,
-          {
+        const saveProgress = httpsCallable(functions(), "saveDailyGameProgress");
+        await saveProgress({
+          game: "wordle",
+          date,
+          state: {
             guesses,
             outcome,
-            updatedAt: new Date(),
           },
-          { merge: true },
-        );
+        });
       } catch (error) {
         if (!isBackground) throw error;
         console.warn("Background save failed:", error);

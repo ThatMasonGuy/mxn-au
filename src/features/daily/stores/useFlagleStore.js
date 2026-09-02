@@ -3,7 +3,7 @@ import { defineStore } from "pinia";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { firestore } from "@/firebase";
-import { doc, onSnapshot, setDoc } from "firebase/firestore";
+import { doc, onSnapshot } from "firebase/firestore";
 import { useDailyStore } from "./useDailyStore";
 import { prepareFlagleSubmission } from "@/features/daily/utils/flagleSubmission";
 import { recordLocalDailyResult } from "@/features/daily/utils/dailyGameProfiles";
@@ -385,15 +385,6 @@ export const useFlagleStore = defineStore("flagle", {
         const dayState = this.days[date];
         if (!dayState) return;
 
-        const dayRef = doc(
-          firestore,
-          "users",
-          uid,
-          "dailyChallenges",
-          "flag",
-          "days",
-          date,
-        );
         const outcome =
           dayState.status === "won"
             ? "win"
@@ -401,19 +392,19 @@ export const useFlagleStore = defineStore("flagle", {
               ? "loss"
               : "in_progress";
 
-        await setDoc(
-          dayRef,
-          {
+        const saveProgress = httpsCallable(functions(), "saveDailyGameProgress");
+        await saveProgress({
+          game: "flag",
+          date,
+          state: {
             answers: dayState.answers || [],
             score: dayState.score || 0,
             lives: dayState.lives !== undefined ? dayState.lives : 3,
             currentFlagIndex: dayState.currentFlagIndex || 0,
             allAttempts: dayState.allAttempts || [],
             outcome,
-            updatedAt: new Date(),
           },
-          { merge: true },
-        );
+        });
       } catch (error) {
         if (showErrors) {
           console.error("Failed to save to cloud:", error);

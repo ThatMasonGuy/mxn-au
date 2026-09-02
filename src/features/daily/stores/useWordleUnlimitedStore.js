@@ -6,7 +6,6 @@ import { firestore } from "@/firebase";
 import {
   doc,
   onSnapshot,
-  setDoc,
   collection,
   getDocs,
 } from "firebase/firestore";
@@ -361,16 +360,6 @@ export const useWordleUnlimitedStore = defineStore("wordleUnlimited", {
       if (!this.user || !this.currentGame) return;
 
       try {
-        const gameRef = doc(
-          firestore,
-          "users",
-          this.user.uid,
-          "dailyChallenges",
-          "wordle-unlimited",
-          "games",
-          this.currentGame.word,
-        );
-
         const guesses = this.currentGame.rows.map((r) => r.guess);
         const masks = this.currentGame.rows.map((r) => r.mask.join(""));
         const outcome =
@@ -380,18 +369,18 @@ export const useWordleUnlimitedStore = defineStore("wordleUnlimited", {
               ? "loss"
               : "in_progress";
 
-        await setDoc(
-          gameRef,
-          {
+        const saveProgress = httpsCallable(functions(), "saveDailyGameProgress");
+        await saveProgress({
+          game: "wordle-unlimited",
+          word: this.currentGame.word,
+          state: {
             word: this.currentGame.word,
             guesses,
             masks,
             outcome,
             attempts: this.currentGame.attempts || this.currentGame.rows.length,
-            updatedAt: new Date(),
           },
-          { merge: true },
-        );
+        });
       } catch (error) {
         if (!isBackground) throw error;
         console.warn("Background save failed:", error);
@@ -524,21 +513,6 @@ export const useWordleUnlimitedStore = defineStore("wordleUnlimited", {
       this._profileUnsubscribe = onSnapshot(profileRef, (snapshot) => {
         if (snapshot.exists()) {
           this._applyProfile(snapshot.data());
-        } else {
-          // Create profile document
-          setDoc(
-            profileRef,
-            {
-              totalPlayed: 0,
-              wins: 0,
-              losses: 0,
-              currentStreak: 0,
-              maxStreak: 0,
-              attemptsHistogram: {},
-              createdAt: new Date(),
-            },
-            { merge: true },
-          );
         }
       });
     },
