@@ -1,11 +1,15 @@
 // functions/src/wordleUnlimited.mjs - Simplified to 2 functions only
 import { onCall } from 'firebase-functions/v2/https';
-import { FieldValue } from 'firebase-admin/firestore';
+import { FieldPath, FieldValue } from 'firebase-admin/firestore';
 import { defineSecret } from 'firebase-functions/params';
 import OpenAI from 'openai';
 import { db } from '../config/firebase.mjs';
 import { validateUnlimitedCompletion } from './dailyGameValidation.mjs';
 import { isAllowedWordleAnswer } from './wordleQuality.mjs';
+import {
+    normaliseUnlimitedWordRequest,
+    selectUnplayedWordIds,
+} from './wordleUnlimitedPool.mjs';
 
 const REGION = 'australia-southeast2';
 const OPENAI_API_KEY = defineSecret('OPENAI_API_KEY');
@@ -83,44 +87,60 @@ export const getWordleUnlimitedWords = onCall(
         const uid = req.auth?.uid;
         if (!uid) throw new Error('Authentication required');
 
-        const { requestCount = 50, excludeWords = [] } = req.data || {};
-
-        // Get user's played words
-        const userPlaysSnap = await db.collection(`users/${uid}/dailyChallenges/wordle-unlimited/games`).get();
-        const playedWords = new Set();
-        userPlaysSnap.forEach(doc => playedWords.add(doc.id));
-
-        // Add excluded words
-        excludeWords.forEach(word => playedWords.add(word.toUpperCase()));
-
-        // Get available solutions from pool
-        const solutionsSnap = await db.collection('dailyChallenges/wordle-unlimited/solutions')
-            .limit(requestCount * 2) // Get extra to account for played words
+        const { requestCount, excludeWords } = normaliseUnlimitedWordRequest(req.data);
+        const scanLimit = Math.min(requestCount * 4, 400);
+        const solutions = db.collection('dailyChallenges/wordle-unlimited/solutions');
+        const startKey = `${String.fromCharCode(65 + Math.floor(Math.random() * 26))}AAAA`;
+        const firstSnap = await solutions
+            .orderBy(FieldPath.documentId())
+            .startAt(startKey)
+            .limit(scanLimit)
             .get();
+        const candidateIds = firstSnap.docs.map(doc => doc.id).filter(isAllowedWordleAnswer);
 
-        const availableWords = [];
-        solutionsSnap.forEach(doc => {
-            if (
-                isAllowedWordleAnswer(doc.id) &&
-                !playedWords.has(doc.id) &&
-                availableWords.length < requestCount
-            ) {
-                availableWords.push(doc.id);
-            }
-        });
+        if (candidateIds.length < scanLimit) {
+            const wrapSnap = await solutions
+                .orderBy(FieldPath.documentId())
+                .endBefore(startKey)
+                .limit(scanLimit - candidateIds.length)
+                .get();
+            candidateIds.push(...wrapSnap.docs.map(doc => doc.id).filter(isAllowedWordleAnswer));
+        }
+
+        const candidatePlayRefs = candidateIds.map(word =>
+            db.doc(`users/${uid}/dailyChallenges/wordle-unlimited/games/${word}`));
+        const candidatePlaySnaps = candidatePlayRefs.length
+            ? await db.getAll(...candidatePlayRefs)
+            : [];
+        const playedCandidateIds = candidatePlaySnaps
+            .filter(snapshot => snapshot.exists)
+            .map(snapshot => snapshot.id);
+        const availableWords = selectUnplayedWordIds(
+            candidateIds,
+            playedCandidateIds,
+            excludeWords,
+            requestCount,
+        );
 
         // If we don't have enough words, generate more
         if (availableWords.length < requestCount / 2) {
             console.log(`Low on words (${availableWords.length}/${requestCount}), generating more...`);
 
-            // Get all existing words to avoid duplicates
-            const allSolutionsSnap = await db.collection('dailyChallenges/wordle-unlimited/solutions').get();
-            const existingWords = [];
-            allSolutionsSnap.forEach(doc => existingWords.push(doc.id));
-
             // Generate new words
             const needed = Math.max(50, requestCount - availableWords.length);
-            const newWords = await generateWords(needed, [...existingWords, ...Array.from(playedWords)]);
+            const newWords = await generateWords(needed, [...candidateIds, ...excludeWords]);
+            const newPlayRefs = newWords.map(word =>
+                db.doc(`users/${uid}/dailyChallenges/wordle-unlimited/games/${word}`));
+            const newPlaySnaps = newPlayRefs.length ? await db.getAll(...newPlayRefs) : [];
+            const alreadyPlayedNewWords = newPlaySnaps
+                .filter(snapshot => snapshot.exists)
+                .map(snapshot => snapshot.id);
+            const unplayedNewWords = selectUnplayedWordIds(
+                newWords,
+                alreadyPlayedNewWords,
+                excludeWords,
+                requestCount - availableWords.length,
+            );
 
             // Store new words
             const batch = db.batch();
@@ -137,19 +157,19 @@ export const getWordleUnlimitedWords = onCall(
                 });
 
                 // Add to available list
-                if (!playedWords.has(word) && availableWords.length < requestCount) {
-                    availableWords.push(word);
-                }
             }
 
             await batch.commit();
+            availableWords.push(...unplayedNewWords);
             console.log(`Generated and stored ${newWords.length} new words`);
         }
+
+        const profileSnap = await db.doc(`users/${uid}/dailyChallenges/wordle-unlimited`).get();
 
         return {
             words: availableWords.slice(0, requestCount),
             totalAvailable: availableWords.length,
-            playedCount: playedWords.size
+            playedCount: Number(profileSnap.data()?.totalPlayed || 0)
         };
     }
 );

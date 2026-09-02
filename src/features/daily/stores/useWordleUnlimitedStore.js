@@ -8,12 +8,16 @@ import {
   onSnapshot,
   collection,
   getDocs,
+  limit,
+  query,
+  where,
 } from "firebase/firestore";
 import { useDailyStore } from "./useDailyStore";
 import { isAllowedFiveLetterGuess } from "@/features/daily/utils/wordList";
 import {
   deriveUnlimitedOutcome,
   resolveUnlimitedGameNumber,
+  shouldReconcileUnlimitedCloudGame,
 } from "@/features/daily/utils/wordleUnlimitedGame";
 
 const REGION = "australia-southeast2";
@@ -260,22 +264,6 @@ export const useWordleUnlimitedStore = defineStore("wordleUnlimited", {
       }
     },
 
-    async _loadPlayedWords(userId) {
-      this.loadingMessage = "Loading your progress...";
-      const playsRef = collection(
-        firestore,
-        "users",
-        userId,
-        "dailyChallenges",
-        "wordle-unlimited",
-        "games",
-      );
-      const playsSnapshot = await getDocs(playsRef);
-      this._ensurePlayedWordsSet();
-      this.playedWords.clear();
-      playsSnapshot.forEach((d) => this.playedWords.add(d.id));
-    },
-
     async _refreshWordPool() {
       this.loadingMessage = "Getting words...";
       try {
@@ -400,7 +388,11 @@ export const useWordleUnlimitedStore = defineStore("wordleUnlimited", {
           "wordle-unlimited",
           "games",
         );
-        const recentGames = await getDocs(gamesRef);
+        const recentGames = await getDocs(query(
+          gamesRef,
+          where("outcome", "==", "in_progress"),
+          limit(10),
+        ));
 
         let mostRecentInProgress = null;
         let mostRecentTime = 0;
@@ -464,10 +456,10 @@ export const useWordleUnlimitedStore = defineStore("wordleUnlimited", {
 
             this._ensurePlayedWordsSet();
             await this._setupUserListener(user.uid);
-            await this._loadPlayedWords(user.uid);
-
-            // Check for in-progress game in cloud first
-            const hasCloudGame = await this._reconcileCurrentGame(user.uid);
+            const shouldReconcile = shouldReconcileUnlimitedCloudGame(this.currentGame);
+            const hasCloudGame = shouldReconcile
+              ? await this._reconcileCurrentGame(user.uid)
+              : false;
 
             // Ensure words exist
             if (
@@ -482,7 +474,7 @@ export const useWordleUnlimitedStore = defineStore("wordleUnlimited", {
               await this.startNewGame({ force: true });
             }
 
-            if (this.currentGame && ["won", "lost"].includes(this.currentGame.status)) {
+            if (!shouldReconcile) {
               await this._submitCompletion(this.currentGame.status === "won" ? "win" : "loss");
             }
 

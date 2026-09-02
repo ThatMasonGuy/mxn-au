@@ -10,3 +10,7 @@ export function resolveUnlimitedGameNumber(currentGame, totalPlayed) {
   const completed = Number.isFinite(totalPlayed) ? Math.max(0, totalPlayed) : 0;
   return completed + 1;
 }
+
+export function shouldReconcileUnlimitedCloudGame(currentGame) {
+  return !currentGame || !['won', 'lost'].includes(currentGame.status);
+}
