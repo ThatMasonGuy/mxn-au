@@ -1,7 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { validateDailyGameProgress } from '../functions/dailyGames/dailyGameProgress.mjs';
+import {
+  shouldReplaceDailyGameProgress,
+  validateDailyGameProgress,
+} from '../functions/dailyGames/dailyGameProgress.mjs';
 
 test('daily progress accepts bounded state for every playable game', () => {
   const fixtures = [
@@ -99,4 +102,22 @@ test('daily progress rejects stale dates and unbounded Flagle hints', () => {
     },
   }, new Date('2026-09-02T12:00:00.000Z'));
   assert.deepEqual(result, { valid: false, reason: 'invalid_state' });
+});
+
+test('late progress writes cannot regress terminal or newer game state', () => {
+  assert.equal(shouldReplaceDailyGameProgress(
+    'wordle-unlimited',
+    { guesses: ['CRANE', 'CHAIR'], outcome: 'win' },
+    { guesses: ['CRANE'], outcome: 'in_progress' },
+  ), false);
+  assert.equal(shouldReplaceDailyGameProgress(
+    'connections',
+    { attempts: { attempt_1: [], attempt_2: [] }, outcome: 'in_progress' },
+    { attempts: { attempt_1: [] }, outcome: 'in_progress' },
+  ), false);
+  assert.equal(shouldReplaceDailyGameProgress(
+    'flag',
+    { allAttempts: [{}], outcome: 'in_progress' },
+    { allAttempts: [{}, {}], outcome: 'in_progress' },
+  ), true);
 });

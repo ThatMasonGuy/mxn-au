@@ -160,6 +160,20 @@ export function validateDailyGameProgress({ game, date, word, state } = {}, now 
   return { valid: true, path, state: cleanState };
 }
 
+function savedAttemptCount(game, state) {
+  if (!state) return 0;
+  if (game === 'connections') return Object.keys(state.attempts || {}).length;
+  if (game === 'flag') return Array.isArray(state.allAttempts) ? state.allAttempts.length : 0;
+  return Array.isArray(state.guesses) ? state.guesses.length : 0;
+}
+
+export function shouldReplaceDailyGameProgress(game, existingState, incomingState) {
+  if (!existingState) return true;
+  if (['win', 'loss'].includes(existingState.outcome)) return false;
+  if (['win', 'loss'].includes(incomingState?.outcome)) return true;
+  return savedAttemptCount(game, incomingState) >= savedAttemptCount(game, existingState);
+}
+
 export const saveDailyGameProgress = onCall(
   { region: REGION, maxInstances: 4 },
   async (request) => {
@@ -174,11 +188,23 @@ export const saveDailyGameProgress = onCall(
       if (!solution.exists) throw new HttpsError('invalid-argument', 'unknown_word');
     }
 
-    await db.doc(`users/${uid}/${validation.path}`).set({
-      ...validation.state,
-      updatedAt: FieldValue.serverTimestamp(),
-    }, { merge: true });
+    const progressRef = db.doc(`users/${uid}/${validation.path}`);
+    let updated = false;
+    await db.runTransaction(async (transaction) => {
+      const existing = await transaction.get(progressRef);
+      if (!shouldReplaceDailyGameProgress(
+        request.data.game,
+        existing.exists ? existing.data() : null,
+        validation.state,
+      )) return;
 
-    return { success: true };
+      transaction.set(progressRef, {
+        ...validation.state,
+        updatedAt: FieldValue.serverTimestamp(),
+      }, { merge: true });
+      updated = true;
+    });
+
+    return { success: true, updated };
   },
 );
