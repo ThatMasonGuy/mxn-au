@@ -3,7 +3,7 @@ import { defineStore } from "pinia";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { firestore } from "@/firebase";
-import { doc, onSnapshot, getDoc, setDoc } from "firebase/firestore";
+import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import { useDailyStore } from "./useDailyStore";
 import { prepareFlagleSubmission } from "@/features/daily/utils/flagleSubmission";
 import { recordLocalDailyResult } from "@/features/daily/utils/dailyGameProfiles";
@@ -627,73 +627,6 @@ export const useFlagleStore = defineStore("flagle", {
       }
     },
 
-    async _updateProfileStatsDirectly(uid) {
-      const profileRef = doc(
-        firestore,
-        "users",
-        uid,
-        "dailyChallenges",
-        "flag",
-      );
-      const profileSnap = await getDoc(profileRef);
-
-      const currentProfile = profileSnap.exists()
-        ? profileSnap.data()
-        : {
-            currentStreak: 0,
-            maxStreak: 0,
-            wins: 0,
-            losses: 0,
-            totalPlays: 0,
-            totalScore: 0,
-            averageScore: 0,
-            lastPlayedUTC: null,
-          };
-
-      const isWin = this.status === "won";
-      const today = dateStrUTC();
-
-      // Calculate new stats
-      const newTotalPlays = currentProfile.totalPlays + 1;
-      const newWins = currentProfile.wins + (isWin ? 1 : 0);
-      const newLosses = currentProfile.losses + (isWin ? 0 : 1);
-      const newTotalScore = currentProfile.totalScore + this.score;
-      const newAverageScore = Math.round(newTotalScore / newTotalPlays);
-
-      // Calculate streak
-      let newCurrentStreak = 0;
-      if (isWin) {
-        const lastPlayedDate = currentProfile.lastPlayedUTC;
-        const yesterday = new Date();
-        yesterday.setUTCDate(yesterday.getUTCDate() - 1);
-        const yesterdayStr = dateStrUTC(yesterday);
-
-        if (!lastPlayedDate || lastPlayedDate === yesterdayStr) {
-          // Continue streak
-          newCurrentStreak = currentProfile.currentStreak + 1;
-        } else {
-          // Start new streak
-          newCurrentStreak = 1;
-        }
-      }
-
-      const newMaxStreak = Math.max(currentProfile.maxStreak, newCurrentStreak);
-
-      const updatedProfile = {
-        currentStreak: newCurrentStreak,
-        maxStreak: newMaxStreak,
-        wins: newWins,
-        losses: newLosses,
-        totalPlays: newTotalPlays,
-        totalScore: newTotalScore,
-        averageScore: newAverageScore,
-        lastPlayedUTC: today,
-        updatedAt: new Date(),
-      };
-
-      await setDoc(profileRef, updatedProfile, { merge: true });
-    },
-
     async _submitCompletion() {
       const auth = getAuth();
       if (!auth.currentUser) {
@@ -706,31 +639,18 @@ export const useFlagleStore = defineStore("flagle", {
         return;
       }
 
-      const uid = auth.currentUser.uid;
-      let cloudFunctionWorked = false;
-
       try {
         const call = httpsCallable(functions(), "submitFlagleCompletion");
         const { data } = await call({
           puzzleId: this.puzzleId,
           answers: this.answers,
+          allAttempts: this.allAttempts,
           score: this.score,
           outcome: this.status === "won" ? "win" : "loss",
         });
         this._applyProfile(data?.profile);
-        cloudFunctionWorked = true;
       } catch (error) {
         console.error("Cloud function failed:", error);
-        cloudFunctionWorked = false;
-      }
-
-      // Fallback: Update profile stats directly if cloud function failed
-      if (!cloudFunctionWorked) {
-        try {
-          await this._updateProfileStatsDirectly(uid);
-        } catch (error) {
-          console.error("Direct profile update failed:", error);
-        }
       }
     },
 

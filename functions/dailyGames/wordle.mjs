@@ -2,6 +2,7 @@
 import { onCall } from 'firebase-functions/v2/https';
 import { db } from '../config/firebase.mjs'
 import { calculateDailyStreak, hasRecordedDailyResult } from './dailyGameStats.mjs'
+import { validateCurrentPuzzleId, validateWordleCompletion } from './dailyGameValidation.mjs'
 
 const REGION = 'australia-southeast2';
 
@@ -15,24 +16,6 @@ function dateStrUTC(d = new Date()) {
 function nextMidnightUTCISO(d = new Date()) {
     const next = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1, 0, 0, 1));
     return next.toISOString();
-}
-
-function gradeGuess(guess, solution) {
-    const g = guess.toUpperCase();
-    const s = solution.toUpperCase();
-    const res = Array(5).fill('B');
-    const remain = {};
-    for (let i = 0; i < 5; i++) {
-        if (g[i] === s[i]) res[i] = 'G';
-        else remain[s[i]] = (remain[s[i]] || 0) + 1;
-    }
-    for (let i = 0; i < 5; i++) {
-        if (res[i] !== 'G') {
-            const c = g[i];
-            if (remain[c] > 0) { res[i] = 'Y'; remain[c]--; }
-        }
-    }
-    return res;
 }
 
 const solDoc = (date) => `dailyChallenges/wordle/solutions/${date}`;
@@ -102,33 +85,22 @@ export const submitWordleCompletion = onCall(
         const uid = req.auth?.uid;
         const { puzzleId, guesses, outcome } = req.data || {};
 
-        if (!puzzleId || !Array.isArray(guesses) || !['win', 'loss'].includes(outcome)) {
-            throw new Error('Invalid parameters');
-        }
-
-        const date = puzzleId.replace('wordle-', '');
+        const puzzle = validateCurrentPuzzleId(puzzleId, 'wordle');
+        if (!puzzle.valid) throw new Error(puzzle.reason);
+        const date = puzzle.date;
         const answer = await ensureSolutionFor(date);
+        const validation = validateWordleCompletion({ puzzleId, guesses, outcome, answer });
+        if (!validation.valid) throw new Error(validation.reason);
+        const { solvedAt } = validation;
 
-        // Validate the outcome matches the guesses
-        let solvedAt = -1;
-        for (let i = 0; i < Math.min(6, guesses.length); i++) {
-            const g = (guesses[i] || '').toUpperCase();
-            if (!/^[A-Z]{5}$/.test(g)) break;
-            if (gradeGuess(g, answer).join('') === 'GGGGG') {
-                solvedAt = i + 1;
-                break;
-            }
-        }
-        const validOutcome = solvedAt > 0 ? 'win' : 'loss';
-
-        if (outcome !== validOutcome) {
-            throw new Error('Outcome does not match guesses');
+        if (!uid) {
+            return { success: true, outcome, solvedAt, profile: null };
         }
 
         // Update global stats only
         const dailyStatsRef = db.doc(`dailyChallenges/wordle/stats/${date}`);
         const allTimeRef = db.doc(`dailyChallenges/wordle`);
-        const profRef = uid ? db.doc(`users/${uid}/dailyChallenges/wordle`) : null;
+        const profRef = db.doc(`users/${uid}/dailyChallenges/wordle`);
         let updatedProfile = null;
 
         await db.runTransaction(async (tx) => {
@@ -136,7 +108,7 @@ export const submitWordleCompletion = onCall(
                 tx.get(dailyStatsRef),
                 tx.get(allTimeRef),
             ];
-            if (profRef) readPromises.push(tx.get(profRef));
+            readPromises.push(tx.get(profRef));
 
             // Firestore transactions require every read to finish before the first write.
             const [dSnap, aSnap, profSnap] = await Promise.all(readPromises);
@@ -170,7 +142,7 @@ export const submitWordleCompletion = onCall(
             tx.set(allTimeRef, a, { merge: true });
 
             // Update user profile only if logged in
-            if (profRef && profSnap) {
+            if (profSnap) {
                 const baseProf = profSnap.exists ? profSnap.data() : {
                     currentStreak: 0, maxStreak: 0, lastPlayedUTC: null,
                     totalPlays: 0, wins: 0, losses: 0, attemptsHistogram: {}

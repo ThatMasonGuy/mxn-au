@@ -1,7 +1,8 @@
 // functions/flagle.mjs - Fixed transaction version
 import { onCall } from 'firebase-functions/v2/https'
 import { db } from '../config/firebase.mjs'
-import { calculateDailyStreak, deriveFlagleOutcome, hasRecordedDailyResult } from './dailyGameStats.mjs'
+import { calculateDailyStreak, hasRecordedDailyResult } from './dailyGameStats.mjs'
+import { validateCurrentPuzzleId, validateFlagleCompletion } from './dailyGameValidation.mjs'
 
 const REGION = 'australia-southeast2'
 
@@ -82,23 +83,30 @@ export const submitFlagleCompletion = onCall(
     },
     async (req) => {
         const uid = req.auth?.uid
-        const { puzzleId, answers, score, outcome } = req.data || {}
+        const { puzzleId, answers, allAttempts, score, outcome } = req.data || {}
+        const puzzle = validateCurrentPuzzleId(puzzleId, 'flagle')
+        if (!puzzle.valid) throw new Error(puzzle.reason)
+        const date = puzzle.date
+        const countries = await ensureSolutionFor(date)
+        const validation = validateFlagleCompletion({
+            puzzleId,
+            answers,
+            allAttempts,
+            score,
+            outcome,
+            countries,
+        })
+        if (!validation.valid) throw new Error(validation.reason)
+        const { correctCount } = validation
 
-        if (!puzzleId || !Array.isArray(answers) || typeof score !== 'number' || !['win', 'loss'].includes(outcome)) {
-            throw new Error('Invalid parameters')
-        }
-
-        const date = puzzleId.replace('flagle-', '')
-        const { correctCount, outcome: validOutcome } = deriveFlagleOutcome(answers)
-
-        if (outcome !== validOutcome) {
-            throw new Error('Outcome does not match answers')
+        if (!uid) {
+            return { success: true, outcome, correctCount, score, profile: null }
         }
 
         // Update global stats and user profile
         const dailyStatsRef = db.doc(`dailyChallenges/flag/stats/${date}`)
         const allTimeRef = db.doc(`dailyChallenges/flag`)
-        const profRef = uid ? db.doc(`users/${uid}/dailyChallenges/flag`) : null
+        const profRef = db.doc(`users/${uid}/dailyChallenges/flag`)
         let updatedProfile = null
 
         await db.runTransaction(async (tx) => {
@@ -109,9 +117,7 @@ export const submitFlagleCompletion = onCall(
             ]
 
             // Add profile read if user is logged in
-            if (profRef) {
-                readPromises.push(tx.get(profRef))
-            }
+            readPromises.push(tx.get(profRef))
 
             const snapshots = await Promise.all(readPromises)
             const [dSnap, aSnap, profSnap] = snapshots
@@ -152,7 +158,7 @@ export const submitFlagleCompletion = onCall(
             tx.set(allTimeRef, a, { merge: true })
 
             // Update user profile if logged in
-            if (uid && profRef && profSnap) {
+            if (profSnap) {
                 const baseProf = profSnap.exists ? profSnap.data() : {
                     currentStreak: 0, maxStreak: 0, lastPlayedUTC: null,
                     totalPlays: 0, wins: 0, losses: 0, totalScore: 0, averageScore: 0

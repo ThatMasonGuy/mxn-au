@@ -6,6 +6,10 @@ import {
     CURATED_CONNECTIONS_FALLBACK,
     validateConnectionsPuzzle,
 } from './connectionsQuality.mjs';
+import {
+    validateConnectionsCompletion,
+    validateCurrentPuzzleId,
+} from './dailyGameValidation.mjs';
 
 const REGION = 'australia-southeast2';
 
@@ -93,22 +97,29 @@ export const submitConnectionsCompletion = onCall(
         const uid = req.auth?.uid;
         const { puzzleId, foundGroups, mistakes, attempts, outcome } = req.data || {};
 
-        if (!puzzleId || !Array.isArray(foundGroups) || typeof mistakes !== 'number' || !['win', 'loss'].includes(outcome)) {
-            throw new Error('Invalid parameters');
-        }
+        const puzzle = validateCurrentPuzzleId(puzzleId, 'connections');
+        if (!puzzle.valid) throw new Error(puzzle.reason);
+        const date = puzzle.date;
+        const solution = await ensureSolutionFor(date);
+        const validation = validateConnectionsCompletion({
+            puzzleId,
+            foundGroups,
+            mistakes,
+            attempts,
+            outcome,
+            answer: solution.answer,
+        });
+        if (!validation.valid) throw new Error(validation.reason);
+        const isPerfect = outcome === 'win' && mistakes === 0;
 
-        const date = puzzleId.replace('connections-', '');
-        const validOutcome = foundGroups?.length === 4 ? 'win' : 'loss';
-        const isPerfect = validOutcome === 'win' && mistakes === 0;
-
-        if (outcome !== validOutcome) {
-            throw new Error('Outcome does not match found groups');
+        if (!uid) {
+            return { success: true, outcome, mistakes, isPerfect, profile: null };
         }
 
         // Update global stats only
         const dailyStatsRef = db.doc(`dailyChallenges/connections/stats/${date}`);
         const allTimeRef = db.doc(`dailyChallenges/connections`);
-        const profRef = uid ? db.doc(`users/${uid}/dailyChallenges/connections`) : null;
+        const profRef = db.doc(`users/${uid}/dailyChallenges/connections`);
         let updatedProfile = null;
 
         await db.runTransaction(async (tx) => {
@@ -116,7 +127,7 @@ export const submitConnectionsCompletion = onCall(
                 tx.get(dailyStatsRef),
                 tx.get(allTimeRef),
             ];
-            if (profRef) readPromises.push(tx.get(profRef));
+            readPromises.push(tx.get(profRef));
 
             // Firestore transactions require every read to finish before the first write.
             const [dSnap, aSnap, profSnap] = await Promise.all(readPromises);
@@ -152,7 +163,7 @@ export const submitConnectionsCompletion = onCall(
             tx.set(allTimeRef, a, { merge: true });
 
             // Update user profile only if logged in
-            if (profRef && profSnap) {
+            if (profSnap) {
                 const baseProf = profSnap.exists ? profSnap.data() : {
                     currentStreak: 0, maxStreak: 0, lastPlayedUTC: null,
                     totalPlays: 0, wins: 0, losses: 0, perfectGames: 0, averageMistakes: 0

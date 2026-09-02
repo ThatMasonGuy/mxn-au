@@ -4,6 +4,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { defineSecret } from 'firebase-functions/params';
 import OpenAI from 'openai';
 import { db } from '../config/firebase.mjs';
+import { validateUnlimitedCompletion } from './dailyGameValidation.mjs';
 
 const REGION = 'australia-southeast2';
 const OPENAI_API_KEY = defineSecret('OPENAI_API_KEY');
@@ -159,32 +160,33 @@ export const submitWordleUnlimitedCompletion = onCall(
 
         const { word, outcome, attempts, guesses, masks } = req.data || {};
 
-        // Validate input
-        if (!word || typeof word !== 'string' || !/^[A-Z]{5}$/.test(word.toUpperCase())) {
-            throw new Error('Invalid word');
-        }
-        if (!['win', 'loss'].includes(outcome)) {
-            throw new Error('Invalid outcome');
-        }
-        if (!Array.isArray(guesses) || !Array.isArray(masks)) {
-            throw new Error('Invalid game data');
-        }
-        if (!Number.isInteger(attempts) || attempts < 1 || attempts > 6) {
-            throw new Error('Invalid attempts');
-        }
-
-        const wordUpper = word.toUpperCase();
+        const validation = validateUnlimitedCompletion({ word, outcome, attempts, guesses, masks });
+        if (!validation.valid) throw new Error(validation.reason);
+        const wordUpper = validation.word;
+        const solutionSnap = await db.doc(`dailyChallenges/wordle-unlimited/solutions/${wordUpper}`).get();
+        if (!solutionSnap.exists) throw new Error('Unknown solution');
         const timestamp = FieldValue.serverTimestamp();
 
         // Helper to coerce maybe-undefined values to finite numbers
         const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
 
+        let updatedProfile = null;
+        let alreadyRecorded = false;
         await db.runTransaction(async (tx) => {
             const profileRef = db.doc(`users/${uid}/dailyChallenges/wordle-unlimited`);
-            const profileSnap = await tx.get(profileRef);
-
             const globalStatsRef = db.doc(`dailyChallenges/wordle-unlimited/stats/${wordUpper}`);
-            const globalSnap = await tx.get(globalStatsRef);
+            const playRef = db.doc(`users/${uid}/dailyChallenges/wordle-unlimited/games/${wordUpper}`);
+            const [profileSnap, globalSnap, playSnap] = await Promise.all([
+                tx.get(profileRef),
+                tx.get(globalStatsRef),
+                tx.get(playRef),
+            ]);
+
+            if (playSnap.exists && ['win', 'loss'].includes(playSnap.data()?.outcome)) {
+                updatedProfile = profileSnap.exists ? profileSnap.data() : null;
+                alreadyRecorded = true;
+                return;
+            }
 
             // Profile stats (defensive defaults)
             const profileData = profileSnap.exists ? profileSnap.data() : {};
@@ -206,6 +208,7 @@ export const submitWordleUnlimitedCompletion = onCall(
             if (!profileData.createdAt) profileData.createdAt = timestamp;
             profileData.lastPlayedAt = timestamp;
             profileData.updatedAt = timestamp;
+            updatedProfile = profileData;
 
             // Per-word global stats (defensive defaults)
             const globalData = globalSnap.exists ? globalSnap.data() : { word: wordUpper };
@@ -227,11 +230,10 @@ export const submitWordleUnlimitedCompletion = onCall(
             tx.set(profileRef, profileData, { merge: true });
 
             // Final game record (this gets created by the store, but ensure it's marked complete)
-            const playRef = db.doc(`users/${uid}/dailyChallenges/wordle-unlimited/games/${wordUpper}`);
             tx.set(playRef, {
                 word: wordUpper,
-                guesses: guesses.map((g) => String(g).toUpperCase()),
-                masks,
+                guesses: validation.guesses,
+                masks: validation.masks,
                 outcome,
                 attempts,
                 completedAt: timestamp,
@@ -253,6 +255,6 @@ export const submitWordleUnlimitedCompletion = onCall(
             );
         });
 
-        return { success: true, outcome, attempts };
+        return { success: true, outcome, attempts, alreadyRecorded, profile: updatedProfile };
     }
 );
