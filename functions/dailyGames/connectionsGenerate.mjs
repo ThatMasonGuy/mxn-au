@@ -6,7 +6,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import OpenAI from "openai";
 import { db } from "../config/firebase.mjs";
 import { validateConnectionsPuzzle } from "./connectionsQuality.mjs";
-import { nextConnectionsPuzzleDateId } from "./connectionsSchedule.mjs";
+import { connectionsPuzzleBufferDateIds } from "./connectionsSchedule.mjs";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Secrets
@@ -250,12 +250,9 @@ async function runGenerationFor(dateId, { overwrite = false } = {}) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Scheduled shortly after midnight UTC to prepare tomorrow's puzzle. Generating
-// one day ahead prevents the public getter from seeding a fallback first.
-//
-// retryCount: 0  — this is a best-effort generation job. Retrying blindly on
-//                  failure would re-run the OpenAI call we just paid for.
-// timeoutSeconds: 120 — one puzzle does not need 9 business days.
+// Scheduled shortly after midnight UTC to maintain a seven-day puzzle buffer.
+// Successful dates are skipped on retry, so a failed date can be retried without
+// paying to regenerate the rest of the buffer.
 // ──────────────────────────────────────────────────────────────────────────────
 export const connectionsGenerateCron = onSchedule(
   {
@@ -263,15 +260,29 @@ export const connectionsGenerateCron = onSchedule(
     timeZone: "Etc/UTC",
     region: "australia-southeast1",
     secrets: [OPENAI_API_KEY],
-    retryCount: 0,
-    timeoutSeconds: 120,
+    retryCount: 2,
+    timeoutSeconds: 540,
     maxInstances: 1,
   },
   async () => {
-    const targetDateId = nextConnectionsPuzzleDateId();
-    const result = await runGenerationFor(targetDateId);
-    console.info("[connectionsGenerateCron] done", result);
-    return result;
+    const targetDateIds = connectionsPuzzleBufferDateIds();
+    const results = [];
+    for (const targetDateId of targetDateIds) {
+      results.push({ date: targetDateId, ...(await runGenerationFor(targetDateId)) });
+    }
+
+    const failedDates = results.filter((result) => result.failed).map((result) => result.date);
+    if (failedDates.length) {
+      throw new Error(`Connections generation failed for: ${failedDates.join(", ")}`);
+    }
+
+    const summary = {
+      filledCount: results.reduce((total, result) => total + result.filledCount, 0),
+      targetDateIds,
+      results,
+    };
+    console.info("[connectionsGenerateCron] done", summary);
+    return summary;
   },
 );
 
