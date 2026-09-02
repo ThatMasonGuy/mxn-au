@@ -5,6 +5,7 @@ import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { firestore } from "@/firebase";
 import { doc, onSnapshot, getDoc, setDoc } from "firebase/firestore";
 import { useDailyStore } from "./useDailyStore";
+import { recordLocalDailyResult } from "@/features/daily/utils/dailyGameProfiles";
 import {
   normaliseConnectionCategories,
   resolveConnectionCategoryTitle,
@@ -585,7 +586,11 @@ export const useConnectionsStore = defineStore("connections", {
       if (this.days[date].foundGroups.length === 4) {
         this.days[date].status = "won";
         await this._submitCompletion();
+      } else {
+        this.days[date].status = "in-progress";
       }
+
+      this._syncWithDailyStore();
 
       // Save to cloud in background
       const auth = getAuth();
@@ -612,8 +617,12 @@ export const useConnectionsStore = defineStore("connections", {
       if (this.days[date].mistakes >= this.MAX_MISTAKES) {
         this.days[date].status = "lost";
         await this._submitCompletion();
+        this._syncWithDailyStore();
         return { result: "lost" };
       }
+
+      this.days[date].status = "in-progress";
+      this._syncWithDailyStore();
 
       // Save to cloud in background
       const auth = getAuth();
@@ -652,6 +661,7 @@ export const useConnectionsStore = defineStore("connections", {
     },
 
     async _submitCompletion() {
+      const isGuest = !getAuth().currentUser;
       try {
         const call = httpsCallable(functions(), "submitConnectionsCompletion");
         const { data } = await call({
@@ -661,10 +671,19 @@ export const useConnectionsStore = defineStore("connections", {
           attempts: this.attempts,
           outcome: this.status === "won" ? "win" : "loss",
         });
-        this._applyProfile(data?.profile);
+        if (data?.profile) this._applyProfile(data.profile);
         return data;
       } catch (error) {
         console.error("Error submitting completion:", error);
+      } finally {
+        if (isGuest) {
+          const date = this.puzzleId?.replace("connections-", "") || dateStrUTC();
+          this._applyProfile(recordLocalDailyResult(this.profile, {
+            date,
+            outcome: this.status === "won" ? "win" : "loss",
+            mistakes: this.mistakes,
+          }));
+        }
       }
     },
 

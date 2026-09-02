@@ -6,6 +6,7 @@ import { firestore } from "@/firebase";
 import { doc, onSnapshot, getDoc, setDoc } from "firebase/firestore";
 import { useDailyStore } from "./useDailyStore";
 import { prepareFlagleSubmission } from "@/features/daily/utils/flagleSubmission";
+import { recordLocalDailyResult } from "@/features/daily/utils/dailyGameProfiles";
 import { getCountryHint } from "@/shared/utils/useDistanceBearing";
 import countries from "i18n-iso-countries";
 import en from "i18n-iso-countries/langs/en.json";
@@ -577,32 +578,8 @@ export const useFlagleStore = defineStore("flagle", {
           this.lives = Math.max(0, this.lives - 1);
         }
 
-        const today = dateStrUTC();
-        this.days[today] = {
-          answers: this.answers,
-          allAttempts: this.allAttempts,
-          score: this.score,
-          lives: this.lives,
-          currentFlagIndex: this.currentFlagIndex,
-          status: "idle",
-        };
-
-        // Save to cloud immediately with error handling
-        const auth = getAuth();
-        if (auth.currentUser) {
-          try {
-            await this._saveStateToCloud(auth.currentUser.uid, today);
-          } catch (error) {
-            console.error("Failed to save state:", error);
-            // Continue with game - local state is still updated
-          }
-        }
-
-        // Check end conditions
         const isGameOver = this.lives === 0 || this.currentFlagIndex >= 5;
-
         if (isGameOver) {
-          // If we ran out of lives, add final answer for current flag
           if (
             this.lives === 0 &&
             this.answers.length < this.currentFlagIndex + 1
@@ -614,21 +591,32 @@ export const useFlagleStore = defineStore("flagle", {
               skipped: false,
             };
             this.answers.push(finalAnswer);
-            this.days[today].answers = this.answers;
           }
+        }
 
-          const finalStatus = this.currentFlagIndex >= 5 ? "won" : "lost";
-          this.days[today].status = finalStatus;
+        const today = dateStrUTC();
+        this.days[today] = {
+          answers: this.answers,
+          allAttempts: this.allAttempts,
+          score: this.score,
+          lives: this.lives,
+          currentFlagIndex: this.currentFlagIndex,
+          status: isGameOver
+            ? (this.currentFlagIndex >= 5 ? "won" : "lost")
+            : "in-progress",
+        };
+        this._syncWithDailyStore();
 
-          // Save final state
-          if (auth.currentUser) {
-            try {
-              await this._saveStateToCloud(auth.currentUser.uid, today);
-            } catch (error) {
-              console.error("Failed to save final state:", error);
-            }
+        const auth = getAuth();
+        if (auth.currentUser) {
+          try {
+            await this._saveStateToCloud(auth.currentUser.uid, today);
+          } catch (error) {
+            console.error("Failed to save state:", error);
           }
+        }
 
+        if (isGameOver) {
           await this._submitCompletion();
         }
 
@@ -707,7 +695,15 @@ export const useFlagleStore = defineStore("flagle", {
 
     async _submitCompletion() {
       const auth = getAuth();
-      if (!auth.currentUser) return;
+      if (!auth.currentUser) {
+        const date = this.puzzleId?.replace("flagle-", "") || dateStrUTC();
+        this._applyProfile(recordLocalDailyResult(this.profile, {
+          date,
+          outcome: this.status === "won" ? "win" : "loss",
+          score: this.score,
+        }));
+        return;
+      }
 
       const uid = auth.currentUser.uid;
       let cloudFunctionWorked = false;

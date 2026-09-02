@@ -5,6 +5,7 @@ import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { firestore } from "@/firebase";
 import { doc, onSnapshot, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { useDailyStore } from "./useDailyStore";
+import { recordLocalDailyResult } from "@/features/daily/utils/dailyGameProfiles";
 
 const REGION = "australia-southeast2";
 const functions = () => getFunctions(undefined, REGION);
@@ -404,7 +405,11 @@ export const useWordleStore = defineStore("wordle", {
         this.days[date].status = "lost";
         this.days[date].currentInput = "";
         await this._submitCompletion();
+      } else {
+        this.days[date].status = "in-progress";
       }
+
+      this._syncWithDailyStore();
 
       // Save to cloud AFTER status is updated
       const auth = getAuth();
@@ -414,6 +419,7 @@ export const useWordleStore = defineStore("wordle", {
     },
 
     async _submitCompletion() {
+      const isGuest = !getAuth().currentUser;
       try {
         const call = httpsCallable(functions(), "submitWordleCompletion");
         const guesses = this.rows.map((r) => r.guess);
@@ -422,10 +428,19 @@ export const useWordleStore = defineStore("wordle", {
           guesses,
           outcome: this.status === "won" ? "win" : "loss",
         });
-        this._applyProfile(data?.profile);
+        if (data?.profile) this._applyProfile(data.profile);
         return data;
       } catch (error) {
         console.error("Error submitting completion:", error);
+      } finally {
+        if (isGuest) {
+          const date = this.puzzleId?.replace("wordle-", "") || dateStrUTC();
+          this._applyProfile(recordLocalDailyResult(this.profile, {
+            date,
+            outcome: this.status === "won" ? "win" : "loss",
+            attempts: this.rows.length,
+          }));
+        }
       }
     },
 
