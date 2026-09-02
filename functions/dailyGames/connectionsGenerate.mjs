@@ -131,7 +131,7 @@ async function generatePuzzle(ban) {
     4. NO word can appear in multiple groups
     5. At least 10 of the 16 words must feel like they could fit in more than one group (red herrings)
     6. Make the EXPERT group especially subtle, requiring other groups to fall into place first
-    7. Categories should be clever, elegant, and not just trivia lists
+    7. Categories should be clever, elegant, not just trivia lists, and no longer than 100 characters
     8. Do not use elementary lookup sets: colours, fruit, compass points or cardinal directions, Greek letters, planets, seasons, months, days, animals, or basic shapes
     9. Every group should use phrase completion, wordplay, semantic ambiguity, or another inferential link; a child should not be able to solve a group merely by naming its members
     

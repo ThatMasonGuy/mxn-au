@@ -1,6 +1,7 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { FieldValue } from 'firebase-admin/firestore';
 import { db } from '../config/firebase.mjs';
+import { CONNECTION_CATEGORY_TITLE_MAX_LENGTH } from './connectionsQuality.mjs';
 
 const REGION = 'australia-southeast2';
 const OUTCOMES = new Set(['in_progress', 'win', 'loss']);
@@ -43,7 +44,11 @@ function validateConnectionsState(state) {
   const foundGroups = state.foundGroups.map((group) => {
     if (!isPlainObject(group) || !CONNECTION_DIFFICULTIES.has(group.difficulty)) return null;
     if (!Array.isArray(group.words) || group.words.length !== 4 || !group.words.every(isWord)) return null;
-    if (typeof group.title !== 'string' || group.title.length < 1 || group.title.length > 100) return null;
+    if (
+      typeof group.title !== 'string'
+      || group.title.length < 1
+      || group.title.length > CONNECTION_CATEGORY_TITLE_MAX_LENGTH
+    ) return null;
     if (!Number.isFinite(group.foundAt)) return null;
     return {
       difficulty: group.difficulty,

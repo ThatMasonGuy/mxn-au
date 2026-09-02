@@ -1,4 +1,5 @@
 export const CONNECTION_DIFFICULTIES = ['easy', 'medium', 'hard', 'expert'];
+export const CONNECTION_CATEGORY_TITLE_MAX_LENGTH = 100;
 
 export const CURATED_CONNECTIONS_FALLBACK = Object.freeze({
   answer: Object.freeze({
@@ -103,6 +104,9 @@ export function validateConnectionsPuzzle(answer, categories, { bannedWords = []
     const categoryKey = category.toUpperCase();
     if (!category) {
       return { valid: false, reason: `missing_${difficulty}_category` };
+    }
+    if (category.length > CONNECTION_CATEGORY_TITLE_MAX_LENGTH) {
+      return { valid: false, reason: `long_${difficulty}_category` };
     }
     if (GENERIC_CATEGORY_TITLES.has(categoryKey)) {
       return { valid: false, reason: 'generic_category' };

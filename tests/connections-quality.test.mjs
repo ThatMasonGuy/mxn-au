@@ -72,3 +72,15 @@ test('previously used words are rejected', () => {
 
   assert.deepEqual(result, { valid: false, reason: 'reused_word' });
 });
+
+test('category titles fit the progress and result display contract', () => {
+  const categories = {
+    ...CURATED_CONNECTIONS_FALLBACK.categories,
+    easy: 'X'.repeat(101),
+  };
+
+  assert.deepEqual(
+    validateConnectionsPuzzle(CURATED_CONNECTIONS_FALLBACK.answer, categories),
+    { valid: false, reason: 'long_easy_category' },
+  );
+});
