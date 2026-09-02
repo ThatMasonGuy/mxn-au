@@ -6,6 +6,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import OpenAI from "openai";
 import { db } from "../config/firebase.mjs";
 import { validateConnectionsPuzzle } from "./connectionsQuality.mjs";
+import { nextConnectionsPuzzleDateId } from "./connectionsSchedule.mjs";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Secrets
@@ -212,7 +213,8 @@ async function runGenerationFor(dateId, { overwrite = false } = {}) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Scheduled: every midnight UTC
+// Scheduled shortly after midnight UTC to prepare tomorrow's puzzle. Generating
+// one day ahead prevents the public getter from seeding a fallback first.
 //
 // retryCount: 0  — this is a best-effort generation job. Retrying blindly on
 //                  failure would re-run the OpenAI call we just paid for.
@@ -229,8 +231,8 @@ export const connectionsGenerateCron = onSchedule(
     maxInstances: 1,
   },
   async () => {
-    const todayId = toDateId(new Date());
-    const result = await runGenerationFor(todayId);
+    const targetDateId = nextConnectionsPuzzleDateId();
+    const result = await runGenerationFor(targetDateId);
     console.info("[connectionsGenerateCron] done", result);
     return result;
   },
