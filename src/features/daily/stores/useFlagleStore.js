@@ -7,6 +7,7 @@ import { doc, onSnapshot, getDoc, setDoc } from "firebase/firestore";
 import { useDailyStore } from "./useDailyStore";
 import { prepareFlagleSubmission } from "@/features/daily/utils/flagleSubmission";
 import { recordLocalDailyResult } from "@/features/daily/utils/dailyGameProfiles";
+import { compareFlagleProgress } from "@/features/daily/utils/dailyGameProgress";
 import { getCountryHint } from "@/shared/utils/useDistanceBearing";
 import countries from "i18n-iso-countries";
 import en from "i18n-iso-countries/langs/en.json";
@@ -335,11 +336,9 @@ export const useFlagleStore = defineStore("flagle", {
 
         this._ensureDay(date);
         const localState = this.days[date];
-        const localProgress = localState.currentFlagIndex || 0;
-        const cloudProgress = cloudState.currentFlagIndex || 0;
+        const progressComparison = compareFlagleProgress(localState, cloudState);
 
-        // Take whichever has more progress
-        if (cloudProgress > localProgress) {
+        if (progressComparison < 0) {
           // Fully reconstruct day state from cloud
           this.days[date] = {
             answers: cloudState.answers || [],
@@ -348,16 +347,21 @@ export const useFlagleStore = defineStore("flagle", {
                 ? "won"
                 : cloudState.outcome === "loss"
                   ? "lost"
-                  : "idle",
+                  : (cloudState.allAttempts?.length ? "in-progress" : "idle"),
             score: cloudState.score || 0,
             lives: cloudState.lives !== undefined ? cloudState.lives : 3,
             currentFlagIndex: cloudState.currentFlagIndex || 0,
             allAttempts: cloudState.allAttempts || [],
           };
 
-          // Update current state variables from restored day state
-          this._syncCurrentStateFromDay(date);
+        } else if (progressComparison > 0) {
+          // Local is ahead - sync to cloud
+          await this._saveStateToCloud(uid, date);
+        }
 
+        this._syncCurrentStateFromDay(date);
+        this._syncWithDailyStore();
+        if (progressComparison < 0) {
           console.log("Restored game state from cloud:", {
             flagIndex: this.currentFlagIndex,
             lives: this.lives,
@@ -365,9 +369,6 @@ export const useFlagleStore = defineStore("flagle", {
             totalAttempts: this.allAttempts.length,
             currentFlagAttempts: this.currentFlagAttempts.length,
           });
-        } else if (localProgress > cloudProgress) {
-          // Local is ahead - sync to cloud
-          await this._saveStateToCloud(uid, date);
         }
       }
     },

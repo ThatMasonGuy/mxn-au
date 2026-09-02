@@ -6,6 +6,7 @@ import { firestore } from "@/firebase";
 import { doc, onSnapshot, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { useDailyStore } from "./useDailyStore";
 import { recordLocalDailyResult } from "@/features/daily/utils/dailyGameProfiles";
+import { compareWordleProgress } from "@/features/daily/utils/dailyGameProgress";
 
 const REGION = "australia-southeast2";
 const functions = () => getFunctions(undefined, REGION);
@@ -224,16 +225,23 @@ export const useWordleStore = defineStore("wordle", {
         this._ensureDay(date);
         const localRows = this.days[date].rows || [];
 
-        // Take whichever has more progress
-        if (cloudRows.length > localRows.length) {
+        const progressComparison = compareWordleProgress(
+          { ...this.days[date], rows: localRows },
+          cloudState,
+        );
+
+        if (progressComparison < 0) {
           this.days[date].rows = cloudRows;
           if (cloudState?.outcome === "win") this.days[date].status = "won";
           else if (cloudState?.outcome === "loss")
             this.days[date].status = "lost";
-        } else if (localRows.length > cloudRows.length) {
+          else if (cloudRows.length > 0) this.days[date].status = "in-progress";
+        } else if (progressComparison > 0) {
           // Local is ahead - sync to cloud in background
           this._saveStateToCloud(uid, date, true);
         }
+
+        this._syncWithDailyStore();
       }
     },
 

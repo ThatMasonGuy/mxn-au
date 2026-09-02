@@ -6,6 +6,7 @@ import { firestore } from "@/firebase";
 import { doc, onSnapshot, getDoc, setDoc } from "firebase/firestore";
 import { useDailyStore } from "./useDailyStore";
 import { recordLocalDailyResult } from "@/features/daily/utils/dailyGameProfiles";
+import { compareConnectionsProgress } from "@/features/daily/utils/dailyGameProgress";
 import {
   normaliseConnectionCategories,
   resolveConnectionCategoryTitle,
@@ -271,24 +272,22 @@ export const useConnectionsStore = defineStore("connections", {
 
         this._ensureDay(date);
         const localState = this.days[date];
-        const localProgress = localState.foundGroups?.length || 0;
-        const cloudProgress = cloudState.foundGroups?.length || 0;
+        let attemptsArray = [];
+        if (cloudState.attempts && typeof cloudState.attempts === "object") {
+          const attemptKeys = Object.keys(cloudState.attempts).sort((a, b) => {
+            const numA = parseInt(a.replace("attempt_", ""));
+            const numB = parseInt(b.replace("attempt_", ""));
+            return numA - numB;
+          });
+          attemptsArray = attemptKeys.map((key) => cloudState.attempts[key]);
+        }
 
-        // Take whichever has more progress
-        if (cloudProgress > localProgress) {
-          // Convert attempts map back to array format
-          let attemptsArray = [];
-          if (cloudState.attempts && typeof cloudState.attempts === "object") {
-            // Sort by attempt number and convert to array
-            const attemptKeys = Object.keys(cloudState.attempts).sort(
-              (a, b) => {
-                const numA = parseInt(a.replace("attempt_", ""));
-                const numB = parseInt(b.replace("attempt_", ""));
-                return numA - numB;
-              },
-            );
-            attemptsArray = attemptKeys.map((key) => cloudState.attempts[key]);
-          }
+        const progressComparison = compareConnectionsProgress(localState, {
+          ...cloudState,
+          attempts: attemptsArray,
+        });
+
+        if (progressComparison < 0) {
 
           // Ensure found groups have titles (add fallback if missing)
           const foundGroupsWithTitles = (cloudState.foundGroups || []).map(
@@ -314,13 +313,15 @@ export const useConnectionsStore = defineStore("connections", {
                 ? "won"
                 : cloudState.outcome === "loss"
                   ? "lost"
-                  : "idle",
+                  : (attemptsArray.length ? "in-progress" : "idle"),
             boardWords: localState.boardWords || [], // Keep existing board
           };
-        } else if (localProgress > cloudProgress) {
+        } else if (progressComparison > 0) {
           // Local is ahead - sync to cloud in background
           this._saveStateToCloud(uid, date, true);
         }
+
+        this._syncWithDailyStore();
       }
     },
 
