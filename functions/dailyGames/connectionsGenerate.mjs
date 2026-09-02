@@ -160,6 +160,43 @@ async function generatePuzzle(ban) {
     return null;
   }
 
+  const review = await client.chat.completions.create({
+    model: "gpt-4o",
+    response_format: { type: "json_object" },
+    messages: [
+      {
+        role: "system",
+        content: "You are a strict independent editor for an expert Connections-style puzzle. Reject merely valid but obvious, list-like, ambiguous-for-the-wrong-reason, or poorly tiered puzzles.",
+      },
+      {
+        role: "user",
+        content: `Review this puzzle without rewriting it:
+${JSON.stringify(validation)}
+
+Return JSON exactly as {"pass":true|false,"reasons":["..."]}.
+Pass only if:
+- no group is an elementary lookup set or simple member list;
+- every group requires inference, phrase completion, wordplay, or semantic ambiguity;
+- at least 10 words plausibly distract toward another group;
+- hard and expert are materially harder than easy and medium;
+- every intended connection is precise and defensible.
+When uncertain, reject it.`,
+      },
+    ],
+    temperature: 0,
+  });
+
+  let reviewed = null;
+  try {
+    reviewed = JSON.parse(review.choices?.[0]?.message?.content || "{}");
+  } catch {
+    reviewed = null;
+  }
+  if (reviewed?.pass !== true) {
+    console.warn("[connectionsGenerate] independent quality review rejected puzzle", reviewed?.reasons || []);
+    return null;
+  }
+
   return {
     answer: validation.answer,
     categories: validation.categories,

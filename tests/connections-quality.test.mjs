@@ -28,6 +28,18 @@ test('legacy trivial groups are rejected even when their category is disguised',
   assert.deepEqual(result, { valid: false, reason: 'legacy_trivial_group' });
 });
 
+test('elementary word sets are rejected even with new words and a disguised title', () => {
+  const result = validateConnectionsPuzzle({
+    ...CURATED_CONNECTIONS_FALLBACK.answer,
+    easy: ['PEAR', 'PEACH', 'MELON', 'PLUM'],
+  }, {
+    ...CURATED_CONNECTIONS_FALLBACK.categories,
+    easy: 'Things from an orchard',
+  });
+
+  assert.deepEqual(result, { valid: false, reason: 'elementary_word_set' });
+});
+
 test('elementary and generic category titles are rejected', () => {
   const elementary = validateConnectionsPuzzle(
     CURATED_CONNECTIONS_FALLBACK.answer,

@@ -48,6 +48,18 @@ const LEGACY_TRIVIAL_GROUPS = [
   ['ALPHA', 'BETA', 'DELTA', 'GAMMA'],
 ];
 
+const ELEMENTARY_WORD_SETS = [
+  new Set(['APPLE', 'APRICOT', 'BANANA', 'BERRY', 'CHERRY', 'GRAPE', 'GUAVA', 'KIWI', 'LEMON', 'LIME', 'MANGO', 'MELON', 'ORANGE', 'PEACH', 'PEAR', 'PLUM']),
+  new Set(['BLACK', 'BLUE', 'BROWN', 'CYAN', 'GOLD', 'GREEN', 'GREY', 'INDIGO', 'ORANGE', 'PINK', 'PURPLE', 'RED', 'SILVER', 'TEAL', 'VIOLET', 'WHITE', 'YELLOW']),
+  new Set(['EAST', 'NORTH', 'SOUTH', 'WEST']),
+  new Set(['ALPHA', 'BETA', 'GAMMA', 'DELTA', 'EPSILON', 'ZETA', 'THETA', 'IOTA', 'KAPPA', 'LAMBDA', 'SIGMA', 'OMEGA']),
+  new Set(['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']),
+  new Set(['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER']),
+  new Set(['SPRING', 'SUMMER', 'AUTUMN', 'WINTER']),
+  new Set(['MERCURY', 'VENUS', 'EARTH', 'MARS', 'JUPITER', 'SATURN', 'URANUS', 'NEPTUNE']),
+  new Set(['CIRCLE', 'OVAL', 'SQUARE', 'STAR', 'TRIANGLE', 'DIAMOND', 'CUBE', 'SPHERE']),
+];
+
 function groupSignature(words) {
   return [...words].sort().join('|');
 }
@@ -81,6 +93,9 @@ export function validateConnectionsPuzzle(answer, categories, { bannedWords = []
     if (LEGACY_TRIVIAL_SIGNATURES.has(groupSignature(normalisedWords))) {
       return { valid: false, reason: 'legacy_trivial_group' };
     }
+    if (ELEMENTARY_WORD_SETS.some((wordSet) => normalisedWords.every((word) => wordSet.has(word)))) {
+      return { valid: false, reason: 'elementary_word_set' };
+    }
 
     const category = typeof categories[difficulty] === 'string'
       ? categories[difficulty].trim()
@@ -105,6 +120,9 @@ export function validateConnectionsPuzzle(answer, categories, { bannedWords = []
   );
   if (new Set(allWords).size !== 16) {
     return { valid: false, reason: 'duplicate_words' };
+  }
+  if (new Set(Object.values(normalisedCategories).map((category) => category.toUpperCase())).size !== 4) {
+    return { valid: false, reason: 'duplicate_categories' };
   }
 
   return {
