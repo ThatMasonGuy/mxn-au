@@ -3,6 +3,7 @@ import { onCall } from 'firebase-functions/v2/https';
 import { db } from '../config/firebase.mjs'
 import { calculateDailyStreak, hasRecordedDailyResult } from './dailyGameStats.mjs'
 import { validateCurrentPuzzleId, validateWordleCompletion } from './dailyGameValidation.mjs'
+import { nextMidnightUTCISO } from './dailyGameClock.mjs'
 
 const REGION = 'australia-southeast2';
 
@@ -11,11 +12,6 @@ function dateStrUTC(d = new Date()) {
     const m = String(d.getUTCMonth() + 1).padStart(2, '0');
     const day = String(d.getUTCDate()).padStart(2, '0');
     return `${y}-${m}-${day}`;
-}
-
-function nextMidnightUTCISO(d = new Date()) {
-    const next = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1, 0, 0, 1));
-    return next.toISOString();
 }
 
 const solDoc = (date) => `dailyChallenges/wordle/solutions/${date}`;
