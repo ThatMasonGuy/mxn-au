@@ -5,7 +5,11 @@ import { defineSecret } from 'firebase-functions/params'
 import { FieldValue } from 'firebase-admin/firestore'
 import OpenAI from 'openai'
 import { db } from '../config/firebase.mjs'
-import { isAllowedWordleAnswer, storedWordleAnswer } from './wordleQuality.mjs'
+import {
+    isAllowedWordleAnswer,
+    pairWordleSolutions,
+    storedWordleAnswer,
+} from './wordleQuality.mjs'
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Secrets
@@ -253,44 +257,54 @@ export const wordleGenerateNow = onRequest(
                 dateIds.push(toDateId(d))
             }
 
+            const writableDateIds = []
+            for (const dateId of dateIds) {
+                if (overwrite || !(await SOLS_COL().doc(dateId).get()).exists) {
+                    writableDateIds.push(dateId)
+                }
+            }
+
             // Ban set from today
             const ban = await fetchBanSet(toDateId(today))
 
             // Generate words
-            let words = await generateWords(dateIds.length, ban)
-            if (words.length < dateIds.length) {
+            let words = writableDateIds.length
+                ? await generateWords(writableDateIds.length, ban)
+                : []
+            if (words.length < writableDateIds.length) {
                 for (const w of words) ban.add(w)
-                const more = await generateWords(dateIds.length - words.length, ban)
+                const more = await generateWords(writableDateIds.length - words.length, ban)
                 words = [...words, ...more]
             }
+            const solutions = pairWordleSolutions(writableDateIds, words)
 
             // Write to Firestore
-            const batch = db.batch()
-            for (let i = 0; i < dateIds.length; i++) {
-                const ref = SOLS_COL().doc(dateIds[i])
-                if (!overwrite) {
-                    const snap = await ref.get()
-                    if (snap.exists) continue
+            if (solutions.length) {
+                const batch = db.batch()
+                for (const solution of solutions) {
+                    batch.set(
+                        SOLS_COL().doc(solution.dateId),
+                        {
+                            answer: solution.answer,
+                            source: 'ai',
+                            model: 'gpt-4o',
+                            createdAt: FieldValue.serverTimestamp(),
+                            overwrite,
+                        },
+                        { merge: true }
+                    )
                 }
-                batch.set(
-                    ref,
-                    {
-                        answer: words[i],
-                        source: 'ai',
-                        model: 'gpt-4o',
-                        createdAt: FieldValue.serverTimestamp(),
-                        overwrite,
-                    },
-                    { merge: true }
-                )
+                await batch.commit()
             }
-            await batch.commit()
 
             res.status(200).json({
                 ok: true,
                 range: { start: toDateId(startDate), end: toDateId(endDate) },
-                count: dateIds.length,
-                words: words.slice(0, dateIds.length),
+                requestedCount: dateIds.length,
+                skippedCount: dateIds.length - writableDateIds.length,
+                count: solutions.length,
+                dates: solutions.map(solution => solution.dateId),
+                words: solutions.map(solution => solution.answer),
                 overwrite,
             })
         } catch (e) {

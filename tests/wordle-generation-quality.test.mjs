@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   isAllowedWordleAnswer,
+  pairWordleSolutions,
   storedWordleAnswer,
 } from '../functions/dailyGames/wordleQuality.mjs';
 
@@ -24,4 +25,14 @@ test('generated solutions are accepted by the same dictionary shipped to browser
   assert.deepEqual(serverDictionary, browserDictionary);
   assert.equal(isAllowedWordleAnswer('CHAIR'), true);
   assert.equal(isAllowedWordleAnswer('ZZZZZ'), false);
+});
+
+test('manual generation pairs only dates backed by usable returned words', () => {
+  assert.deepEqual(
+    pairWordleSolutions(
+      ['2026-09-03', '2026-09-04', '2026-09-05'],
+      ['chair', 'invalid-value'],
+    ),
+    [{ dateId: '2026-09-03', answer: 'CHAIR' }],
+  );
 });

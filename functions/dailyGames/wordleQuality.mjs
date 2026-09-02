@@ -20,3 +20,12 @@ export function isAllowedWordleAnswer(value) {
   const answer = normaliseWordleAnswer(value);
   return answer !== null && WORDLE_DICTIONARY.has(answer);
 }
+
+export function pairWordleSolutions(dateIds, words) {
+  const usableWords = Array.isArray(words)
+    ? words.map(normaliseWordleAnswer).filter(isAllowedWordleAnswer)
+    : [];
+  return (Array.isArray(dateIds) ? dateIds : [])
+    .slice(0, usableWords.length)
+    .map((dateId, index) => ({ dateId, answer: usableWords[index] }));
+}
