@@ -1,4 +1,5 @@
 import { nextTick, onUnmounted, watch } from 'vue';
+import { isolateModalBackground } from '@/features/daily/utils/modalIsolation';
 
 const FOCUSABLE_SELECTOR = [
   'a[href]',
@@ -12,6 +13,7 @@ const FOCUSABLE_SELECTOR = [
 export function useModalDialog(isOpen, dialogRef, closeDialog) {
   let previousFocus = null;
   let previousOverflow = '';
+  let restoreBackground = () => {};
 
   function focusDialog() {
     const dialog = dialogRef.value;
@@ -55,6 +57,8 @@ export function useModalDialog(isOpen, dialogRef, closeDialog) {
   function deactivate() {
     document.removeEventListener('keydown', handleKeydown);
     document.body.style.overflow = previousOverflow;
+    restoreBackground();
+    restoreBackground = () => {};
     if (previousFocus?.isConnected && typeof previousFocus.focus === 'function') {
       previousFocus.focus({ preventScroll: true });
     }
@@ -68,6 +72,7 @@ export function useModalDialog(isOpen, dialogRef, closeDialog) {
       document.body.style.overflow = 'hidden';
       document.addEventListener('keydown', handleKeydown);
       await nextTick();
+      restoreBackground = isolateModalBackground(document.body, dialogRef.value);
       focusDialog();
     } else {
       deactivate();
