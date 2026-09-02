@@ -1,60 +1,37 @@
 <template>
     <Teleport to="body">
         <Transition name="modal">
-            <div v-if="show" class="fixed inset-0 z-[200] flex items-center justify-center p-4"
-                @click.self="$emit('close')">
-                <!-- Backdrop -->
-                <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+            <div v-if="show" class="auth-modal" @keydown="onDialogKeydown">
+                <div class="auth-modal__backdrop" @click="$emit('close')"></div>
 
-                <!-- Modal Card -->
                 <Transition name="modal-card">
-                    <div v-if="showCard"
-                        class="relative w-full max-w-md rounded-2xl border border-zinc-700/80 bg-gradient-to-br from-zinc-800/95 to-zinc-900/95 backdrop-blur-sm shadow-2xl">
-                        <!-- Gradient overlay -->
-                        <div
-                            class="absolute inset-0 rounded-2xl bg-gradient-to-br from-violet-600/10 via-transparent to-fuchsia-600/10">
-                        </div>
-
-                        <!-- Content -->
-                        <div class="relative p-6">
-                            <!-- Icon -->
-                            <div class="mb-4 flex justify-center">
-                                <div
-                                    class="h-16 w-16 rounded-2xl bg-gradient-to-br from-violet-600/20 to-fuchsia-600/20 ring-1 ring-violet-500/30 flex items-center justify-center">
-                                    <component :is="icon" class="h-8 w-8 text-violet-300" />
+                    <div v-if="showCard" ref="dialogRef" class="auth-modal__dialog" role="dialog" aria-modal="true"
+                        aria-labelledby="auth-modal-title" aria-describedby="auth-modal-message" tabindex="-1">
+                        <div class="auth-modal__content">
+                            <div class="auth-modal__heading">
+                                <span class="auth-modal__icon"><component :is="icon" aria-hidden="true" /></span>
+                                <div>
+                                    <p class="auth-modal__eyebrow">Wordle Unlimited</p>
+                                    <h2 id="auth-modal-title">{{ title }}</h2>
                                 </div>
                             </div>
 
-                            <!-- Title -->
-                            <h2 class="mb-2 text-center text-2xl font-bold text-white">
-                                {{ title }}
-                            </h2>
+                            <p id="auth-modal-message" class="auth-modal__message">{{ message }}</p>
 
-                            <!-- Message -->
-                            <p class="mb-6 text-center text-sm text-zinc-300">
-                                {{ message }}
-                            </p>
+                            <p v-if="extraInfo" class="auth-modal__extra">{{ extraInfo }}</p>
 
-                            <!-- Extra info (optional) -->
-                            <div v-if="extraInfo"
-                                class="mb-6 rounded-xl bg-violet-600/10 border border-violet-500/20 p-4 text-center">
-                                <p class="text-xs text-violet-200">{{ extraInfo }}</p>
-                            </div>
-
-                            <!-- Actions -->
-                            <div class="flex flex-col gap-3">
-                                <button v-if="showPrimaryAction" @click="onPrimaryAction"
-                                    class="w-full rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-500/20 transition-all hover:from-violet-500 hover:to-fuchsia-500">
+                            <div class="auth-modal__actions">
+                                <button v-if="showPrimaryAction" ref="primaryButtonRef" type="button" class="auth-modal__primary"
+                                    @click="onPrimaryAction">
                                     {{ primaryActionText }}
                                 </button>
 
-                                <button v-if="showSecondaryAction" @click="onSecondaryAction"
-                                    class="w-full rounded-xl bg-white/10 px-4 py-3 text-sm font-semibold text-white backdrop-blur transition-all hover:bg-white/20">
+                                <button v-if="showSecondaryAction" type="button" class="auth-modal__secondary" @click="onSecondaryAction">
                                     {{ secondaryActionText }}
                                 </button>
 
-                                <button v-if="showClose" @click="$emit('close')"
-                                    class="w-full rounded-xl border border-zinc-700/50 bg-zinc-900/50 px-4 py-3 text-sm font-semibold text-zinc-300 transition-all hover:bg-zinc-800/70">
+                                <button v-if="showClose" ref="primaryButtonRef" type="button" class="auth-modal__secondary"
+                                    @click="$emit('close')">
                                     Close
                                 </button>
                             </div>
@@ -86,6 +63,9 @@ const props = defineProps({
 const emit = defineEmits(['close', 'sign-in', 'play-daily', 'primary-action'])
 
 const showCard = ref(false)
+const dialogRef = ref(null)
+const primaryButtonRef = ref(null)
+let previousActiveElement = null
 
 // Computed properties for dynamic content
 const icon = computed(() => {
@@ -106,13 +86,13 @@ const title = computed(() => {
     if (props.customTitle) return props.customTitle
     switch (props.type) {
         case 'auth-required':
-            return 'Sign In Required'
+            return 'Sign in to play'
         case 'daily-required':
-            return 'Complete Daily First'
+            return 'Finish today\'s Wordle first'
         case 'error':
-            return 'Oops!'
+            return 'Couldn\'t open this game'
         default:
-            return 'Access Restricted'
+            return 'This game is unavailable'
     }
 })
 
@@ -120,11 +100,11 @@ const message = computed(() => {
     if (props.customMessage) return props.customMessage
     switch (props.type) {
         case 'auth-required':
-            return 'You need to be signed in with your TempestID to play Wordle Unlimited.'
+            return 'Use your TempestID to unlock Wordle Unlimited.'
         case 'daily-required':
-            return 'Complete today\'s daily Wordle puzzle first to unlock unlimited play!'
+            return 'Play today\'s Wordle, then come back for as many extra puzzles as you like.'
         case 'error':
-            return 'Something went wrong. Please try again.'
+            return 'The game did not load. Close this message and try again.'
         default:
             return 'This feature is currently unavailable.'
     }
@@ -134,9 +114,9 @@ const extraInfo = computed(() => {
     if (props.customExtraInfo) return props.customExtraInfo
     switch (props.type) {
         case 'auth-required':
-            return 'Sign in is required to prevent API abuse and track your unlimited progress.'
+            return 'Your account keeps your unlimited progress together across visits.'
         case 'daily-required':
-            return 'This helps us maintain fair play and ensures everyone tries the daily challenge.'
+            return 'The daily puzzle still counts as your one Wordle for today.'
         default:
             return null
     }
@@ -149,9 +129,9 @@ const showPrimaryAction = computed(() => {
 const primaryActionText = computed(() => {
     switch (props.type) {
         case 'auth-required':
-            return 'Sign In / Create Account'
+            return 'Sign in with TempestID'
         case 'daily-required':
-            return 'Play Daily Wordle'
+            return 'Play today\'s Wordle'
         default:
             return 'Continue'
     }
@@ -162,7 +142,7 @@ const showSecondaryAction = computed(() => {
 })
 
 const secondaryActionText = computed(() => {
-    return 'Back to Games'
+    return 'Not now'
 })
 
 const showClose = computed(() => {
@@ -187,27 +167,190 @@ function onSecondaryAction() {
     emit('close')
 }
 
+function onDialogKeydown(event) {
+    if (event.key === 'Escape') {
+        event.preventDefault()
+        emit('close')
+        return
+    }
+
+    if (event.key !== 'Tab' || !dialogRef.value) return
+
+    const focusable = [...dialogRef.value.querySelectorAll('button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])')]
+    if (!focusable.length) {
+        event.preventDefault()
+        dialogRef.value.focus()
+        return
+    }
+
+    const first = focusable[0]
+    const last = focusable[focusable.length - 1]
+
+    if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+    } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+    }
+}
+
 // Animation control
 watch(
     () => props.show,
     async (newVal) => {
         if (newVal) {
+            previousActiveElement = document.activeElement
             await nextTick()
-            setTimeout(() => {
-                showCard.value = true
-            }, 50)
+            showCard.value = true
+            await nextTick()
+            primaryButtonRef.value?.focus()
         } else {
             showCard.value = false
+            await nextTick()
+            previousActiveElement?.focus?.()
+            previousActiveElement = null
         }
     }
 )
 </script>
 
 <style scoped>
-/* Modal backdrop transition */
+.auth-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+    font-family: var(--font-body);
+}
+
+.auth-modal__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgb(4 3 6 / 82%);
+    backdrop-filter: blur(8px);
+}
+
+.auth-modal__dialog {
+    position: relative;
+    width: min(100%, 25rem);
+    overflow: hidden;
+    border: 1px solid #39333f;
+    border-radius: 0.85rem;
+    color: #f7f2f6;
+    background: #121018;
+    box-shadow: 0 24px 80px rgb(0 0 0 / 55%);
+}
+
+.auth-modal__dialog:focus {
+    outline: none;
+}
+
+.auth-modal__content {
+    padding: 1.35rem;
+}
+
+.auth-modal__heading {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+}
+
+.auth-modal__icon {
+    display: grid;
+    width: 2.7rem;
+    height: 2.7rem;
+    flex: 0 0 auto;
+    place-items: center;
+    border: 1px solid #753469;
+    border-radius: 0.65rem;
+    color: #f0a5df;
+    background: #281225;
+}
+
+.auth-modal__icon svg {
+    width: 1.2rem;
+}
+
+.auth-modal__eyebrow {
+    margin: 0 0 0.2rem;
+    color: #f0a5df;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+}
+
+.auth-modal h2 {
+    margin: 0;
+    font-family: var(--font-heading);
+    font-size: 1.45rem;
+    line-height: 1.1;
+}
+
+.auth-modal__message {
+    margin: 1rem 0 0;
+    color: #c4bbc8;
+    font-size: 0.82rem;
+    line-height: 1.55;
+}
+
+.auth-modal__extra {
+    margin: 0.8rem 0 0;
+    padding-left: 0.75rem;
+    border-left: 2px solid #753469;
+    color: #928996;
+    font-size: 0.7rem;
+    line-height: 1.45;
+}
+
+.auth-modal__actions {
+    display: flex;
+    gap: 0.55rem;
+    margin-top: 1.25rem;
+}
+
+.auth-modal__actions button {
+    min-height: 2.65rem;
+    flex: 1;
+    padding: 0.55rem 0.8rem;
+    border-radius: 0.55rem;
+    font: inherit;
+    font-size: 0.72rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.auth-modal__actions button:focus-visible {
+    outline: 2px solid #f0a5df;
+    outline-offset: 2px;
+}
+
+.auth-modal__primary {
+    border: 1px solid #91427f;
+    color: white;
+    background: #7b2169;
+}
+
+.auth-modal__primary:hover {
+    background: #92277e;
+}
+
+.auth-modal__secondary {
+    border: 1px solid #3a3445;
+    color: #d9d0dd;
+    background: #1a1720;
+}
+
+.auth-modal__secondary:hover {
+    background: #211d28;
+}
+
 .modal-enter-active,
 .modal-leave-active {
-    transition: opacity 0.3s ease;
+    transition: opacity 0.18s ease;
 }
 
 .modal-enter-from,
@@ -215,22 +358,36 @@ watch(
     opacity: 0;
 }
 
-/* Card transition */
 .modal-card-enter-active {
-    transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    transition: opacity 0.18s ease, transform 0.18s ease;
 }
 
 .modal-card-leave-active {
-    transition: all 0.2s ease;
+    transition: opacity 0.14s ease, transform 0.14s ease;
 }
 
 .modal-card-enter-from {
     opacity: 0;
-    transform: scale(0.8) translateY(20px);
+    transform: translateY(0.75rem);
 }
 
 .modal-card-leave-to {
     opacity: 0;
-    transform: scale(0.95);
+    transform: translateY(0.35rem);
+}
+
+@media (max-width: 420px) {
+    .auth-modal__actions {
+        flex-direction: column;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .modal-enter-active,
+    .modal-leave-active,
+    .modal-card-enter-active,
+    .modal-card-leave-active {
+        transition: none;
+    }
 }
 </style>

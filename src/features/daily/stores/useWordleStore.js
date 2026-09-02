@@ -52,6 +52,7 @@ export const useWordleStore = defineStore("wordle", {
     _loadPromise: null,
     _lastLoadTime: null,
     _profileUnsubscribe: null,
+    _completionRepairing: false,
 
     // Cached puzzle data (persisted until rollover)
     puzzleId: null,
@@ -116,6 +117,46 @@ export const useWordleStore = defineStore("wordle", {
       return this._allowedWords.has(word.toLowerCase());
     },
 
+    _applyProfile(data) {
+      if (!data) return;
+      this.profile = {
+        currentStreak: data.currentStreak || 0,
+        maxStreak: data.maxStreak || 0,
+        wins: data.wins || 0,
+        losses: data.losses || 0,
+        totalPlays: data.totalPlays || 0,
+        winPercentage: data.totalPlays
+          ? Math.round((data.wins / data.totalPlays) * 100)
+          : 0,
+        gamesPlayed: data.totalPlays || 0,
+        lastPlayedUTC: data.lastPlayedUTC || null,
+        histogram: data.attemptsHistogram
+          ? [1, 2, 3, 4, 5, 6].map(
+              (i) => data.attemptsHistogram[String(i)] || 0,
+            )
+          : [0, 0, 0, 0, 0, 0],
+      };
+      this._syncWithDailyStore();
+    },
+
+    async _repairCompletedProfile() {
+      const date = this.puzzleId?.replace("wordle-", "");
+      if (
+        !getAuth().currentUser ||
+        !date ||
+        !this.isComplete ||
+        this.profile?.lastPlayedUTC === date ||
+        this._completionRepairing
+      ) return;
+
+      this._completionRepairing = true;
+      try {
+        await this._submitCompletion();
+      } finally {
+        this._completionRepairing = false;
+      }
+    },
+
     initAuthListener() {
       const auth = getAuth();
       if (this._profileUnsubscribe) {
@@ -140,26 +181,9 @@ export const useWordleStore = defineStore("wordle", {
           );
           this._profileUnsubscribe = onSnapshot(profileRef, (snapshot) => {
             if (snapshot.exists()) {
-              const data = snapshot.data();
-              this.profile = {
-                currentStreak: data.currentStreak || 0,
-                maxStreak: data.maxStreak || 0,
-                wins: data.wins || 0,
-                losses: data.losses || 0,
-                totalPlays: data.totalPlays || 0,
-                winPercentage: data.totalPlays
-                  ? Math.round((data.wins / data.totalPlays) * 100)
-                  : 0,
-                gamesPlayed: data.totalPlays || 0,
-                lastPlayedUTC: data.lastPlayedUTC || null,
-                histogram: data.attemptsHistogram
-                  ? [1, 2, 3, 4, 5, 6].map(
-                      (i) => data.attemptsHistogram[String(i)] || 0,
-                    )
-                  : [0, 0, 0, 0, 0, 0],
-              };
-              this._syncWithDailyStore();
+              this._applyProfile(snapshot.data());
             }
+            this._repairCompletedProfile();
           });
 
           // Reconcile state with cloud if we have today's answer
@@ -316,6 +340,7 @@ export const useWordleStore = defineStore("wordle", {
         const auth = getAuth();
         if (auth.currentUser) {
           await this._reconcileCloudState(auth.currentUser.uid);
+          await this._repairCompletedProfile();
         }
 
         this.days[date].currentInput = clamp5(this.days[date].currentInput);
@@ -392,11 +417,13 @@ export const useWordleStore = defineStore("wordle", {
       try {
         const call = httpsCallable(functions(), "submitWordleCompletion");
         const guesses = this.rows.map((r) => r.guess);
-        await call({
+        const { data } = await call({
           puzzleId: this.puzzleId,
           guesses,
           outcome: this.status === "won" ? "win" : "loss",
         });
+        this._applyProfile(data?.profile);
+        return data;
       } catch (error) {
         console.error("Error submitting completion:", error);
       }

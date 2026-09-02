@@ -107,6 +107,7 @@
         <!-- Completion overlay -->
         <ConnectionsCompletionOverlay :show="showCompletionOverlay" :is-win="store.status === 'won'"
             :found-groups="store.foundGroups" :mistakes="store.mistakes" :all-groups="store.groups"
+            :categories="store.categories"
             :rollover-at="store.rolloverAt" @close="showCompletionOverlay = false" @share="onShare" />
     </div>
 </template>
@@ -125,10 +126,9 @@ const feedbackType = ref('info')
 const showCompletionOverlay = ref(false)
 const animatingCorrect = ref(false)
 
-// Show debug in dev mode or with ?dev param
+// Keep debugging opt-in so the local UI matches the production layout.
 const showDebug = computed(() => {
-    try { if (import.meta.env.DEV) return true } catch { }
-    return new URLSearchParams(location.search).has('dev')
+    return new URLSearchParams(location.search).get('dev') === 'true'
 })
 
 const submitText = computed(() => {

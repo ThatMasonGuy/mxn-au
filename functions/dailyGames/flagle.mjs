@@ -1,6 +1,7 @@
 // functions/flagle.mjs - Fixed transaction version
 import { onCall } from 'firebase-functions/v2/https'
 import { db } from '../config/firebase.mjs'
+import { calculateDailyStreak, deriveFlagleOutcome, hasRecordedDailyResult } from './dailyGameStats.mjs'
 
 const REGION = 'australia-southeast2'
 
@@ -14,12 +15,6 @@ function dateStrUTC(d = new Date()) {
 function nextMidnightUTCISO(d = new Date()) {
     const next = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1, 0, 0, 1))
     return next.toISOString()
-}
-
-function yesterdayUTCStr(dateYYYYMMDD) {
-    const [Y, M, D] = dateYYYYMMDD.split('-').map(Number)
-    const yest = new Date(Date.UTC(Y, M - 1, D - 1))
-    return dateStrUTC(yest)
 }
 
 const solDoc = (date) => `dailyChallenges/flag/solutions/${date}`
@@ -94,17 +89,17 @@ export const submitFlagleCompletion = onCall(
         }
 
         const date = puzzleId.replace('flagle-', '')
-        const correctCount = answers.filter(a => a.correct).length
-        const validOutcome = score >= 150 ? 'win' : 'loss'
+        const { correctCount, outcome: validOutcome } = deriveFlagleOutcome(answers)
 
         if (outcome !== validOutcome) {
-            throw new Error('Outcome does not match score')
+            throw new Error('Outcome does not match answers')
         }
 
         // Update global stats and user profile
         const dailyStatsRef = db.doc(`dailyChallenges/flag/stats/${date}`)
         const allTimeRef = db.doc(`dailyChallenges/flag`)
         const profRef = uid ? db.doc(`users/${uid}/dailyChallenges/flag`) : null
+        let updatedProfile = null
 
         await db.runTransaction(async (tx) => {
             // FIXED: Do ALL reads first, before any writes
@@ -120,6 +115,11 @@ export const submitFlagleCompletion = onCall(
 
             const snapshots = await Promise.all(readPromises)
             const [dSnap, aSnap, profSnap] = snapshots
+
+            if (profSnap?.exists && hasRecordedDailyResult(profSnap.data(), date)) {
+                updatedProfile = profSnap.data()
+                return
+            }
 
             // Process daily and all-time stats
             const d = dSnap.exists ? dSnap.data() : {
@@ -158,10 +158,7 @@ export const submitFlagleCompletion = onCall(
                     totalPlays: 0, wins: 0, losses: 0, totalScore: 0, averageScore: 0
                 }
 
-                const continued = baseProf.lastPlayedUTC === yesterdayUTCStr(date)
-                const currentStreak = (outcome === 'win')
-                    ? (continued ? (baseProf.currentStreak || 0) + 1 : 1)
-                    : 0
+                const currentStreak = calculateDailyStreak(baseProf, outcome, date)
                 const maxStreak = Math.max(baseProf.maxStreak || 0, currentStreak)
                 const wins = (baseProf.wins || 0) + (outcome === 'win' ? 1 : 0)
                 const losses = (baseProf.losses || 0) + (outcome === 'loss' ? 1 : 0)
@@ -169,7 +166,7 @@ export const submitFlagleCompletion = onCall(
                 const totalScore = (baseProf.totalScore || 0) + score
                 const averageScore = Math.round(totalScore / totalPlays)
 
-                const updatedProfile = {
+                updatedProfile = {
                     currentStreak,
                     maxStreak,
                     wins,
@@ -188,7 +185,8 @@ export const submitFlagleCompletion = onCall(
             success: true,
             outcome,
             correctCount,
-            score
+            score,
+            profile: updatedProfile,
         }
     }
 )

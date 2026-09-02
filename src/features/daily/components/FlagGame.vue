@@ -189,7 +189,7 @@ function getDirectionIcon(iconName) {
 }
 
 // Dev mode
-const isDevMode = computed(() => import.meta.env.DEV || new URLSearchParams(location.search).get('dev') === 'true')
+const isDevMode = computed(() => new URLSearchParams(location.search).get('dev') === 'true')
 
 async function devResetToday() {
     try {
@@ -323,7 +323,7 @@ function highlightMatch(name) {
 
 async function onKeydown(e) {
     if (!showList.value || suggestions.value.length === 0) {
-        if (e.key === 'Enter') await submitGuess()
+        if (e.key === 'Enter') { e.preventDefault(); await submitGuess() }
         return
     }
     if (e.key === 'ArrowDown') { e.preventDefault(); activeIndex.value = (activeIndex.value + 1) % suggestions.value.length }

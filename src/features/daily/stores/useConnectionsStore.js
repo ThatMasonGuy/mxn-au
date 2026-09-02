@@ -5,6 +5,10 @@ import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { firestore } from "@/firebase";
 import { doc, onSnapshot, getDoc, setDoc } from "firebase/firestore";
 import { useDailyStore } from "./useDailyStore";
+import {
+  normaliseConnectionCategories,
+  resolveConnectionCategoryTitle,
+} from "@/features/daily/utils/connectionsCategories";
 
 const REGION = "australia-southeast2";
 const functions = () => getFunctions(undefined, REGION);
@@ -34,6 +38,7 @@ export const useConnectionsStore = defineStore("connections", {
     _loadPromise: null,
     _lastLoadTime: null,
     _profileUnsubscribe: null,
+    _completionRepairing: false,
 
     // Cached puzzle data (persisted until rollover)
     puzzleId: null,
@@ -131,6 +136,43 @@ export const useConnectionsStore = defineStore("connections", {
   },
 
   actions: {
+    _applyProfile(data) {
+      if (!data) return;
+      this.profile = {
+        currentStreak: data.currentStreak || 0,
+        maxStreak: data.maxStreak || 0,
+        wins: data.wins || 0,
+        losses: data.losses || 0,
+        totalPlays: data.totalPlays || 0,
+        winPercentage: data.totalPlays
+          ? Math.round((data.wins / data.totalPlays) * 100)
+          : 0,
+        gamesPlayed: data.totalPlays || 0,
+        lastPlayedUTC: data.lastPlayedUTC || null,
+        perfectGames: data.perfectGames || 0,
+        averageMistakes: data.averageMistakes || 0,
+      };
+      this._syncWithDailyStore();
+    },
+
+    async _repairCompletedProfile() {
+      const date = this.puzzleId?.replace("connections-", "");
+      if (
+        !getAuth().currentUser ||
+        !date ||
+        !this.isComplete ||
+        this.profile?.lastPlayedUTC === date ||
+        this._completionRepairing
+      ) return;
+
+      this._completionRepairing = true;
+      try {
+        await this._submitCompletion();
+      } finally {
+        this._completionRepairing = false;
+      }
+    },
+
     _ensureDay(dateStr) {
       if (!this.days[dateStr]) {
         this.days[dateStr] = {
@@ -143,6 +185,29 @@ export const useConnectionsStore = defineStore("connections", {
         };
       }
       if (this.lastSeenDate !== dateStr) this.lastSeenDate = dateStr;
+    },
+
+    _categoryTitle(difficulty, words, storedTitle = "") {
+      return resolveConnectionCategoryTitle({
+        difficulty,
+        words,
+        categories: this.categories,
+        storedTitle,
+      });
+    },
+
+    _repairFoundGroupTitles(date) {
+      const day = this.days[date];
+      if (!day?.foundGroups?.length) return;
+
+      day.foundGroups = day.foundGroups.map((group) => ({
+        ...group,
+        title: this._categoryTitle(
+          group.difficulty,
+          group.words || this.groups?.[group.difficulty],
+          group.title,
+        ),
+      }));
     },
 
     initAuthListener() {
@@ -170,23 +235,9 @@ export const useConnectionsStore = defineStore("connections", {
           );
           this._profileUnsubscribe = onSnapshot(profileRef, (snapshot) => {
             if (snapshot.exists()) {
-              const data = snapshot.data();
-              this.profile = {
-                currentStreak: data.currentStreak || 0,
-                maxStreak: data.maxStreak || 0,
-                wins: data.wins || 0,
-                losses: data.losses || 0,
-                totalPlays: data.totalPlays || 0,
-                winPercentage: data.totalPlays
-                  ? Math.round((data.wins / data.totalPlays) * 100)
-                  : 0,
-                gamesPlayed: data.totalPlays || 0,
-                lastPlayedUTC: data.lastPlayedUTC || null,
-                perfectGames: data.perfectGames || 0,
-                averageMistakes: data.averageMistakes || 0,
-              };
-              this._syncWithDailyStore();
+              this._applyProfile(snapshot.data());
             }
+            this._repairCompletedProfile();
           });
 
           // Reconcile state with cloud if we have today's groups
@@ -243,7 +294,11 @@ export const useConnectionsStore = defineStore("connections", {
             (group) => ({
               difficulty: group.difficulty,
               words: group.words,
-              title: group.title || this._getDefaultTitle(group.difficulty),
+              title: this._categoryTitle(
+                group.difficulty,
+                group.words || this.groups?.[group.difficulty],
+                group.title,
+              ),
               foundAt: group.foundAt || Date.now(),
             }),
           );
@@ -295,7 +350,11 @@ export const useConnectionsStore = defineStore("connections", {
         const foundGroupsClean = (dayState.foundGroups || []).map((group) => ({
           difficulty: group.difficulty,
           words: group.words,
-          title: group.title || this._getDefaultTitle(group.difficulty),
+          title: this._categoryTitle(
+            group.difficulty,
+            group.words || this.groups?.[group.difficulty],
+            group.title,
+          ),
           foundAt: group.foundAt || Date.now(),
         }));
 
@@ -353,6 +412,9 @@ export const useConnectionsStore = defineStore("connections", {
         !preferServer;
 
       if (cacheValid) {
+        this.categories = normaliseConnectionCategories(this.groups, this.categories);
+        const date = this.puzzleId.replace("connections-", "");
+        this._repairFoundGroupTitles(date);
         this.loading = false;
         return;
       }
@@ -379,7 +441,10 @@ export const useConnectionsStore = defineStore("connections", {
 
         this.puzzleId = data.puzzleId;
         this.groups = data.answer || null;
-        this.categories = data.categories || null;
+        this.categories = normaliseConnectionCategories(
+          this.groups,
+          data.categories,
+        );
         this.rolloverAt = data.rolloverAt;
         this.isLocked = data.rolloverAt
           ? Date.now() >= Date.parse(data.rolloverAt)
@@ -388,6 +453,7 @@ export const useConnectionsStore = defineStore("connections", {
 
         const date = this.puzzleId.replace("connections-", "");
         this._ensureDay(date);
+        this._repairFoundGroupTitles(date);
 
         // Create shuffled board of all words if not exists
         if (
@@ -408,6 +474,7 @@ export const useConnectionsStore = defineStore("connections", {
         const auth = getAuth();
         if (auth.currentUser) {
           await this._reconcileCloudState(auth.currentUser.uid);
+          await this._repairCompletedProfile();
         }
 
         this._syncWithDailyStore();
@@ -473,7 +540,7 @@ export const useConnectionsStore = defineStore("connections", {
         if (guess.join(",") === group.join(",")) {
           // Correct! Get the actual category title
           const actualTitle =
-            this.categories?.[difficulty] || this._getDefaultTitle(difficulty);
+            this._categoryTitle(difficulty, this.groups[difficulty]);
 
           return {
             result: "correct",
@@ -584,26 +651,18 @@ export const useConnectionsStore = defineStore("connections", {
       }
     },
 
-    _getDefaultTitle(difficulty) {
-      const titles = {
-        easy: "STRAIGHTFORWARD",
-        medium: "CATEGORIES",
-        hard: "WORDPLAY",
-        expert: "TRICKY",
-      };
-      return titles[difficulty] || difficulty.toUpperCase();
-    },
-
     async _submitCompletion() {
       try {
         const call = httpsCallable(functions(), "submitConnectionsCompletion");
-        await call({
+        const { data } = await call({
           puzzleId: this.puzzleId,
           foundGroups: this.foundGroups,
           mistakes: this.mistakes,
           attempts: this.attempts,
           outcome: this.status === "won" ? "win" : "loss",
         });
+        this._applyProfile(data?.profile);
+        return data;
       } catch (error) {
         console.error("Error submitting completion:", error);
       }

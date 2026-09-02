@@ -73,7 +73,7 @@
                                     class="rounded-lg p-3 border backdrop-blur-sm text-left"
                                     :class="getGroupClasses(difficulty)">
                                     <div class="text-xs uppercase tracking-wider opacity-75 mb-1">
-                                        {{ difficulty }}
+                                        {{ getGroupTitle(difficulty) }}
                                     </div>
                                     <div class="text-sm font-semibold flex flex-wrap gap-2">
                                         <span v-for="word in getGroupWords(difficulty)" :key="word">
@@ -119,6 +119,7 @@ const props = defineProps({
     foundGroups: Array,
     mistakes: Number,
     allGroups: Object,
+    categories: Object,
     rolloverAt: String
 })
 
@@ -194,6 +195,11 @@ function getGroupClasses(difficulty) {
 
 function getGroupWords(difficulty) {
     return props.allGroups?.[difficulty] || []
+}
+
+function getGroupTitle(difficulty) {
+    const foundGroup = props.foundGroups?.find(group => group.difficulty === difficulty)
+    return foundGroup?.title || props.categories?.[difficulty] || 'CATEGORY'
 }
 
 // Confetti animation (using color scheme matching game)

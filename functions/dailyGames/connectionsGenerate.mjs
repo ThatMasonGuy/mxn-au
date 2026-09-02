@@ -84,6 +84,16 @@ async function fetchExistingGroups(todayId) {
 // Generate Connections puzzle using GPT-4o
 // ──────────────────────────────────────────────────────────────────────────────
 async function generatePuzzle(ban) {
+  const genericCategoryTitles = new Set([
+    "EASY",
+    "MEDIUM",
+    "HARD",
+    "EXPERT",
+    "STRAIGHTFORWARD",
+    "CATEGORIES",
+    "WORDPLAY",
+    "TRICKY",
+  ]);
   const client = openai();
 
   const banList = Array.from(ban).slice(0, 500).join(", ");
@@ -171,6 +181,16 @@ async function generatePuzzle(ban) {
     if (parsed.answer[level].some((w) => ban.has(w))) {
       return null;
     }
+
+    const category = parsed.categories?.[level];
+    if (
+      typeof category !== "string" ||
+      !category.trim() ||
+      genericCategoryTitles.has(category.trim().toUpperCase())
+    ) {
+      return null;
+    }
+    parsed.categories[level] = category.trim();
   }
 
   const allWords = [
@@ -185,7 +205,7 @@ async function generatePuzzle(ban) {
 
   return {
     answer: parsed.answer,
-    categories: parsed.categories || {},
+    categories: parsed.categories,
   };
 }
 

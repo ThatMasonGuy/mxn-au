@@ -5,6 +5,7 @@ import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { firestore } from "@/firebase";
 import { doc, onSnapshot, getDoc, setDoc } from "firebase/firestore";
 import { useDailyStore } from "./useDailyStore";
+import { prepareFlagleSubmission } from "@/features/daily/utils/flagleSubmission";
 import { getCountryHint } from "@/shared/utils/useDistanceBearing";
 import countries from "i18n-iso-countries";
 import en from "i18n-iso-countries/langs/en.json";
@@ -92,6 +93,8 @@ export const useFlagleStore = defineStore("flagle", {
     _loadPromise: null,
     _lastLoadTime: null,
     _profileUnsubscribe: null,
+    _completionRepairing: false,
+    guessSubmitting: false,
 
     // Cached puzzle data (persisted until rollover)
     puzzleId: null,
@@ -135,7 +138,11 @@ export const useFlagleStore = defineStore("flagle", {
     },
     canType() {
       return (
-        !this.loading && !this.isLocked && !this.isComplete && this.lives > 0
+        !this.loading &&
+        !this.isLocked &&
+        !this.isComplete &&
+        !this.guessSubmitting &&
+        this.lives > 0
       );
     },
     currentCountry() {
@@ -184,6 +191,44 @@ export const useFlagleStore = defineStore("flagle", {
   },
 
   actions: {
+    _applyProfile(data) {
+      if (!data) return;
+      this.profile = {
+        currentStreak: data.currentStreak || 0,
+        maxStreak: data.maxStreak || 0,
+        wins: data.wins || 0,
+        losses: data.losses || 0,
+        totalPlays: data.totalPlays || 0,
+        winPercentage: data.totalPlays
+          ? Math.round((data.wins / data.totalPlays) * 100)
+          : 0,
+        gamesPlayed: data.totalPlays || 0,
+        lastPlayedUTC: data.lastPlayedUTC || null,
+        totalScore: data.totalScore || 0,
+        averageScore: data.averageScore || 0,
+      };
+      this._syncWithDailyStore();
+    },
+
+    async _repairCompletedProfile() {
+      const date = this.puzzleId?.replace("flagle-", "");
+      if (
+        !getAuth().currentUser ||
+        !date ||
+        !this.isComplete ||
+        this.profile?.lastPlayedUTC === date ||
+        this._completionRepairing
+      ) return;
+
+      this._syncCurrentStateFromDay(date);
+      this._completionRepairing = true;
+      try {
+        await this._submitCompletion();
+      } finally {
+        this._completionRepairing = false;
+      }
+    },
+
     _ensureDay(dateStr) {
       if (!this.days[dateStr]) {
         this.days[dateStr] = {
@@ -248,23 +293,9 @@ export const useFlagleStore = defineStore("flagle", {
           );
           this._profileUnsubscribe = onSnapshot(profileRef, (snapshot) => {
             if (snapshot.exists()) {
-              const data = snapshot.data();
-              this.profile = {
-                currentStreak: data.currentStreak || 0,
-                maxStreak: data.maxStreak || 0,
-                wins: data.wins || 0,
-                losses: data.losses || 0,
-                totalPlays: data.totalPlays || 0,
-                winPercentage: data.totalPlays
-                  ? Math.round((data.wins / data.totalPlays) * 100)
-                  : 0,
-                gamesPlayed: data.totalPlays || 0,
-                lastPlayedUTC: data.lastPlayedUTC || null,
-                totalScore: data.totalScore || 0,
-                averageScore: data.averageScore || 0,
-              };
-              this._syncWithDailyStore();
+              this._applyProfile(snapshot.data());
             }
+            this._repairCompletedProfile();
           });
 
           // Reconcile state with cloud if we have today's countries
@@ -466,6 +497,7 @@ export const useFlagleStore = defineStore("flagle", {
         const auth = getAuth();
         if (auth.currentUser) {
           await this._reconcileCloudState(auth.currentUser.uid);
+          await this._repairCompletedProfile();
         } else {
           // No user - sync current state from local day state
           this._syncCurrentStateFromDay(date);
@@ -493,108 +525,117 @@ export const useFlagleStore = defineStore("flagle", {
     },
 
     async submitGuess() {
-      if (!this.canType || !this.currentInput.trim()) return;
+      const submission = prepareFlagleSubmission({
+        input: this.currentInput,
+        canSubmit: this.canType,
+        submitting: this.guessSubmitting,
+      });
+      if (!submission) return;
 
-      const guess = this.currentInput.trim();
+      const { guess } = submission;
+      this.guessSubmitting = submission.nextSubmitting;
+      this.currentInput = submission.nextInput;
       const currentCountry = this.countries[this.currentFlagIndex];
 
-      const variants = getCountryVariants(currentCountry);
-      const correct = variants.includes(normalizeCountry(guess));
+      try {
+        const variants = getCountryVariants(currentCountry);
+        const correct = variants.includes(normalizeCountry(guess));
 
-      // Calculate hint for wrong guesses
-      let hint = null;
-      if (!correct) {
-        try {
-          hint = await getCountryHint(guess, currentCountry);
-        } catch (error) {
-          console.warn("Failed to calculate hint:", error);
+        // Calculate hint for wrong guesses
+        let hint = null;
+        if (!correct) {
+          try {
+            hint = await getCountryHint(guess, currentCountry);
+          } catch (error) {
+            console.warn("Failed to calculate hint:", error);
+          }
         }
-      }
 
-      // Store EVERY attempt for state reconstruction
-      const attempt = {
-        flagIndex: this.currentFlagIndex,
-        country: currentCountry,
-        guess,
-        correct,
-        hint,
-        timestamp: Date.now(),
-      };
-      this.allAttempts.push(attempt);
-
-      if (correct) {
-        // Only add to answers when moving to next flag
-        const answer = {
+        // Store EVERY attempt for state reconstruction
+        const attempt = {
+          flagIndex: this.currentFlagIndex,
           country: currentCountry,
           guess,
-          correct: true,
-          skipped: false,
+          correct,
+          hint,
+          timestamp: Date.now(),
         };
-        this.answers.push(answer);
-        this.score += this.lives * 20;
-        this.currentFlagIndex++;
-      } else {
-        this.lives = Math.max(0, this.lives - 1);
-      }
+        this.allAttempts.push(attempt);
 
-      const today = dateStrUTC();
-      this.days[today] = {
-        answers: this.answers,
-        allAttempts: this.allAttempts,
-        score: this.score,
-        lives: this.lives,
-        currentFlagIndex: this.currentFlagIndex,
-        status: "idle",
-      };
-
-      // Save to cloud immediately with error handling
-      const auth = getAuth();
-      if (auth.currentUser) {
-        try {
-          await this._saveStateToCloud(auth.currentUser.uid, today);
-        } catch (error) {
-          console.error("Failed to save state:", error);
-          // Continue with game - local state is still updated
-        }
-      }
-
-      this.currentInput = "";
-
-      // Check end conditions
-      const isGameOver = this.lives === 0 || this.currentFlagIndex >= 5;
-
-      if (isGameOver) {
-        // If we ran out of lives, add final answer for current flag
-        if (
-          this.lives === 0 &&
-          this.answers.length < this.currentFlagIndex + 1
-        ) {
-          const finalAnswer = {
+        if (correct) {
+          // Only add to answers when moving to next flag
+          const answer = {
             country: currentCountry,
             guess,
-            correct: false,
+            correct: true,
             skipped: false,
           };
-          this.answers.push(finalAnswer);
-          this.days[today].answers = this.answers;
+          this.answers.push(answer);
+          this.score += this.lives * 20;
+          this.currentFlagIndex++;
+        } else {
+          this.lives = Math.max(0, this.lives - 1);
         }
 
-        const finalStatus = this.currentFlagIndex >= 5 ? "won" : "lost";
-        this.days[today].status = finalStatus;
+        const today = dateStrUTC();
+        this.days[today] = {
+          answers: this.answers,
+          allAttempts: this.allAttempts,
+          score: this.score,
+          lives: this.lives,
+          currentFlagIndex: this.currentFlagIndex,
+          status: "idle",
+        };
 
-        // Save final state
+        // Save to cloud immediately with error handling
+        const auth = getAuth();
         if (auth.currentUser) {
           try {
             await this._saveStateToCloud(auth.currentUser.uid, today);
           } catch (error) {
-            console.error("Failed to save final state:", error);
+            console.error("Failed to save state:", error);
+            // Continue with game - local state is still updated
           }
         }
 
-        await this._submitCompletion();
-      }
+        // Check end conditions
+        const isGameOver = this.lives === 0 || this.currentFlagIndex >= 5;
 
-      return { correct, answer: currentCountry };
+        if (isGameOver) {
+          // If we ran out of lives, add final answer for current flag
+          if (
+            this.lives === 0 &&
+            this.answers.length < this.currentFlagIndex + 1
+          ) {
+            const finalAnswer = {
+              country: currentCountry,
+              guess,
+              correct: false,
+              skipped: false,
+            };
+            this.answers.push(finalAnswer);
+            this.days[today].answers = this.answers;
+          }
+
+          const finalStatus = this.currentFlagIndex >= 5 ? "won" : "lost";
+          this.days[today].status = finalStatus;
+
+          // Save final state
+          if (auth.currentUser) {
+            try {
+              await this._saveStateToCloud(auth.currentUser.uid, today);
+            } catch (error) {
+              console.error("Failed to save final state:", error);
+            }
+          }
+
+          await this._submitCompletion();
+        }
+
+        return { correct, answer: currentCountry };
+      } finally {
+        this.guessSubmitting = false;
+      }
     },
 
     async _updateProfileStatsDirectly(uid) {
@@ -673,12 +714,13 @@ export const useFlagleStore = defineStore("flagle", {
 
       try {
         const call = httpsCallable(functions(), "submitFlagleCompletion");
-        await call({
+        const { data } = await call({
           puzzleId: this.puzzleId,
           answers: this.answers,
           score: this.score,
           outcome: this.status === "won" ? "win" : "loss",
         });
+        this._applyProfile(data?.profile);
         cloudFunctionWorked = true;
       } catch (error) {
         console.error("Cloud function failed:", error);
@@ -738,6 +780,7 @@ export const useFlagleStore = defineStore("flagle", {
       this._loadPromise = null;
       this.currentFlagIndex = 0;
       this.currentInput = "";
+      this.guessSubmitting = false;
       this.lives = 3;
       this.score = 0;
       this.answers = [];

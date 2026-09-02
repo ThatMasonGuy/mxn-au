@@ -122,7 +122,7 @@ export default [
             drawerRanking: null,
             drawerVisible: false,
             layout: 'default',
-            description: 'Page under construction.',
+            description: 'Play MXN\'s daily Wordle, Flagle and Connections puzzles.',
             badge: '',
             requiresOverlay: false,
         },
