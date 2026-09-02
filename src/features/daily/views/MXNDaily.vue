@@ -185,6 +185,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, defineAsyncComponent, shallowRef, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
+import { getAuth, signOut as firebaseSignOut } from 'firebase/auth'
 import { useWordleStore } from '@/features/daily/stores/useWordleStore'
 import { useWordleUnlimitedStore } from '@/features/daily/stores/useWordleUnlimitedStore'
 import { useDailyStore } from '@/features/daily/stores/useDailyStore'
@@ -192,6 +193,7 @@ import { useMainStore } from '@/shared/stores/useMainStore'
 import WordleBoard from '@/features/daily/components/WordleBoard.vue'
 import WordleUnlimitedBoard from '@/features/daily/components/WordleUnlimitedBoard.vue'
 import AuthRequiredModal from '@/features/daily/components/components/AuthRequiredModal.vue'
+import { completeDailySignOut } from '@/features/daily/utils/dailyAuth'
 import {
   Trophy, Clock, Share2, Trash2, Flame,
   Type, Link as LinkIcon, Flag, HelpCircle, ListOrdered, Brain, Lock, Infinity, Home
@@ -252,8 +254,10 @@ function goToLogin() {
 }
 
 async function signOut() {
-  mainStore.clearAuth()
-  location.reload()
+  await completeDailySignOut(
+    () => firebaseSignOut(getAuth()),
+    () => mainStore.clearAuth(),
+  )
 }
 
 // Countdown (UTC)
