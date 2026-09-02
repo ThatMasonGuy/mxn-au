@@ -521,7 +521,7 @@ export const useFlagleStore = defineStore("flagle", {
       this.currentInput = text;
     },
 
-    async submitGuess() {
+    submitGuess() {
       const submission = prepareFlagleSubmission({
         input: this.currentInput,
         canSubmit: this.canType,
@@ -538,23 +538,13 @@ export const useFlagleStore = defineStore("flagle", {
         const variants = getCountryVariants(currentCountry);
         const correct = variants.includes(normalizeFlagleCountry(guess));
 
-        // Calculate hint for wrong guesses
-        let hint = null;
-        if (!correct) {
-          try {
-            hint = await getCountryHint(guess, currentCountry);
-          } catch (error) {
-            console.warn("Failed to calculate hint:", error);
-          }
-        }
-
         // Store EVERY attempt for state reconstruction
         const attempt = {
           flagIndex: this.currentFlagIndex,
           country: currentCountry,
           guess,
           correct,
-          hint,
+          hint: null,
           timestamp: Date.now(),
         };
         this.allAttempts.push(attempt);
@@ -603,22 +593,52 @@ export const useFlagleStore = defineStore("flagle", {
         };
         this._syncWithDailyStore();
 
-        const auth = getAuth();
-        if (auth.currentUser) {
-          try {
-            await this._saveStateToCloud(auth.currentUser.uid, today);
-          } catch (error) {
-            console.error("Failed to save state:", error);
-          }
-        }
-
-        if (isGameOver) {
-          await this._submitCompletion();
-        }
+        void this._finishGuessInBackground({
+          attemptTimestamp: attempt.timestamp,
+          correct,
+          currentCountry,
+          guess,
+          isGameOver,
+          today,
+        });
 
         return { correct, answer: currentCountry };
       } finally {
         this.guessSubmitting = false;
+      }
+    },
+
+    async _finishGuessInBackground({
+      attemptTimestamp,
+      correct,
+      currentCountry,
+      guess,
+      isGameOver,
+      today,
+    }) {
+      if (!correct) {
+        try {
+          const hint = await getCountryHint(guess, currentCountry);
+          const attempt = this.allAttempts.find(
+            (item) => item.timestamp === attemptTimestamp,
+          );
+          if (attempt) attempt.hint = hint;
+        } catch (error) {
+          console.warn("Failed to calculate hint:", error);
+        }
+      }
+
+      const auth = getAuth();
+      if (auth.currentUser) {
+        try {
+          await this._saveStateToCloud(auth.currentUser.uid, today);
+        } catch (error) {
+          console.error("Failed to save state:", error);
+        }
+      }
+
+      if (isGameOver) {
+        await this._submitCompletion();
       }
     },
 

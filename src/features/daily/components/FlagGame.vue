@@ -285,12 +285,10 @@ function getFlagProgressClass(index) {
     return 'bg-zinc-700'
 }
 
-async function submitGuess() {
+function submitGuess() {
     if (!store.canType || !store.currentInput.trim() || showingResult.value) return
 
-    const guessText = store.currentInput.trim()
-    const currentCountry = store.currentCountry // snapshot for history
-    const result = await store.submitGuess()
+    const result = store.submitGuess()
     if (!result) return
 
     // Show visual feedback
