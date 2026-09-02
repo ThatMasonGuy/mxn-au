@@ -3,6 +3,10 @@ import { defineStore } from 'pinia'
 import { getAuth, onAuthStateChanged } from 'firebase/auth'
 import { firestore } from '@/firebase'
 import { doc, onSnapshot, getDoc } from 'firebase/firestore'
+import {
+    ACTIVE_DAILY_GAME_IDS,
+    dailyStatusFromDayData,
+} from '@/features/daily/utils/dailyGameStatus'
 
 function dateStrUTC(d = new Date()) {
     const y = d.getUTCFullYear();
@@ -171,11 +175,6 @@ export const useDailyStore = defineStore('daily', {
         _setupGameListener(userId, gameId) {
             const profileRef = doc(firestore, 'users', userId, 'dailyChallenges', gameId)
             const unsubProfile = onSnapshot(profileRef, (snapshot) => {
-                if (this._dayUnsubscribers[gameId]) {
-                    this._dayUnsubscribers[gameId]()
-                    delete this._dayUnsubscribers[gameId]
-                }
-
                 if (snapshot.exists()) {
                     const data = snapshot.data()
 
@@ -204,33 +203,29 @@ export const useDailyStore = defineStore('daily', {
                         this.gameStats[gameId].averageScore = data.averageScore || 0
                     }
 
-                    // Update today's status based on last played date
-                    const today = dateStrUTC()
-                    if (data.lastPlayedUTC === today) {
-                        // Check today's game document for actual status
-                        const todayRef = doc(firestore, 'users', userId, 'dailyChallenges', gameId, 'days', today)
-                        const unsubToday = onSnapshot(todayRef, (todaySnap) => {
-                            if (todaySnap.exists()) {
-                                const todayData = todaySnap.data()
-                                if (todayData.outcome === 'win') {
-                                    this.dailyStatus[gameId] = 'won'
-                                } else if (todayData.outcome === 'loss') {
-                                    this.dailyStatus[gameId] = 'lost'
-                                } else if (todayData.outcome === 'in_progress') {
-                                    this.dailyStatus[gameId] = 'in-progress'
-                                }
-                            }
-                        })
-                        this._dayUnsubscribers[gameId] = unsubToday
-                    } else {
-                        this.dailyStatus[gameId] = 'not-started'
-                    }
-
                     this.lastUpdated = Date.now()
                 }
             })
 
             this._unsubscribers.push(unsubProfile)
+
+            if (ACTIVE_DAILY_GAME_IDS.includes(gameId)) {
+                const todayRef = doc(
+                    firestore,
+                    'users',
+                    userId,
+                    'dailyChallenges',
+                    gameId,
+                    'days',
+                    dateStrUTC(),
+                )
+                this._dayUnsubscribers[gameId] = onSnapshot(todayRef, (snapshot) => {
+                    this.dailyStatus[gameId] = dailyStatusFromDayData(
+                        snapshot.exists() ? snapshot.data() : null,
+                    )
+                    this.lastUpdated = Date.now()
+                })
+            }
         },
 
         // Set up listener for Wordle Unlimited (different structure)
@@ -281,27 +276,39 @@ export const useDailyStore = defineStore('daily', {
                 this._authUnsubscribe()
                 this._authUnsubscribe = null
             }
+            let resolveInitialAuth
+            const initialAuthReady = new Promise((resolve) => { resolveInitialAuth = resolve })
+            let awaitingInitialAuth = true
+            const finishInitialAuth = () => {
+                if (!awaitingInitialAuth) return
+                awaitingInitialAuth = false
+                resolveInitialAuth()
+            }
+
             this._authUnsubscribe = onAuthStateChanged(auth, async (user) => {
-                this.user = user
+                try {
+                    this.user = user
 
-                // Clean up old listeners when auth changes
-                this._cleanupListeners()
+                    // Clean up old listeners when auth changes
+                    this._cleanupListeners()
 
-                if (user) {
-                    // Read all game stats directly from Firestore
-                    await this.loadAllGameStats(user.uid)
+                    if (user) {
+                        await this.loadAllGameStats(user.uid)
 
-                    // Set up real-time listeners for updates (optional - for live updates)
-                    const gameIds = ['wordle', 'connections', 'flag', 'trivia', 'sequence', 'memory']
-                    gameIds.forEach(gameId => {
-                        this._setupGameListener(user.uid, gameId)
-                    })
-                    this._setupWordleUnlimitedListener(user.uid)
-                } else {
-                    // Guest user - no Firestore access
-                    await this.loadGuestStats()
+                        const gameIds = ['wordle', 'connections', 'flag', 'trivia', 'sequence', 'memory']
+                        gameIds.forEach(gameId => {
+                            this._setupGameListener(user.uid, gameId)
+                        })
+                        this._setupWordleUnlimitedListener(user.uid)
+                    } else {
+                        await this.loadGuestStats()
+                    }
+                } finally {
+                    finishInitialAuth()
                 }
-            })
+            }, () => finishInitialAuth())
+
+            await initialAuthReady
 
             // Set up rollover time to next midnight
             const tomorrow = new Date()
@@ -417,7 +424,20 @@ export const useDailyStore = defineStore('daily', {
                     return { gameId: 'wordle-unlimited', data: profileSnap.exists() ? profileSnap.data() : null }
                 })()
 
-                const results = await Promise.all([...profilePromises, wordleUnlimitedPromise])
+                const today = dateStrUTC()
+                const dayPromises = ACTIVE_DAILY_GAME_IDS.map(async (gameId) => {
+                    const dayRef = doc(firestore, 'users', userId, 'dailyChallenges', gameId, 'days', today)
+                    const daySnap = await getDoc(dayRef)
+                    return { gameId, data: daySnap.exists() ? daySnap.data() : null }
+                })
+                const [results, dayResults] = await Promise.all([
+                    Promise.all([...profilePromises, wordleUnlimitedPromise]),
+                    Promise.all(dayPromises),
+                ])
+
+                dayResults.forEach(({ gameId, data }) => {
+                    this.dailyStatus[gameId] = dailyStatusFromDayData(data)
+                })
 
                 // Process results
                 results.forEach(({ gameId, data }) => {
@@ -462,28 +482,6 @@ export const useDailyStore = defineStore('daily', {
                             this.gameStats[gameId].averageScore = data.averageScore || 0
                         }
 
-                        // Check today's status
-                        const today = dateStrUTC()
-                        if (data.lastPlayedUTC === today) {
-                            // Read today's game document to get actual status
-                            const todayRef = doc(firestore, 'users', userId, 'dailyChallenges', gameId, 'days', today)
-                            getDoc(todayRef).then(todaySnap => {
-                                if (todaySnap.exists()) {
-                                    const todayData = todaySnap.data()
-                                    if (todayData.outcome === 'win') {
-                                        this.dailyStatus[gameId] = 'won'
-                                    } else if (todayData.outcome === 'loss') {
-                                        this.dailyStatus[gameId] = 'lost'
-                                    } else if (todayData.outcome === 'in_progress') {
-                                        this.dailyStatus[gameId] = 'in-progress'
-                                    }
-                                }
-                            }).catch(() => {
-                                // Ignore errors, keep default status
-                            })
-                        } else {
-                            this.dailyStatus[gameId] = 'not-started'
-                        }
                     }
                 })
 
