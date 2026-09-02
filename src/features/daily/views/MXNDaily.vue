@@ -138,7 +138,16 @@
           </section>
 
           <section v-else class="game-stage" :data-game="openGame">
-            <div v-if="openGame === 'wordle' && !loadingGame">
+            <div v-if="gameLoadError" class="game-load-error" role="alert">
+              <h2>{{ currentGameData?.name || 'This game' }} couldn’t load</h2>
+              <p>Your other games are still available. Try this one again when you’re ready.</p>
+              <div>
+                <button type="button" class="game-primary-action" @click="retryOpenGame">Retry game</button>
+                <button type="button" class="game-secondary-action" @click="closeGame">All games</button>
+              </div>
+            </div>
+
+            <div v-else-if="openGame === 'wordle' && !loadingGame">
               <div v-if="wordleStore.loading" class="game-inline-loading" role="status">Loading Wordle…</div>
               <div v-else>
                 <WordleBoard />
@@ -251,6 +260,22 @@ async function signOut() {
 const countdown = ref('00:00:00')
 const countdownKey = ref(0)
 let timer = null
+let rolloverRefreshPromise = null
+
+function refreshLoadedDailyGames() {
+  if (rolloverRefreshPromise) return rolloverRefreshPromise
+
+  rolloverRefreshPromise = (async () => {
+    await dailyStore.checkRollover()
+    const stores = [wordleStore, flagleStore, connectionsStore]
+    await Promise.allSettled(stores.map(store => store.refreshIfRolledOver?.()))
+  })().finally(() => {
+    rolloverRefreshPromise = null
+  })
+
+  return rolloverRefreshPromise
+}
+
 function tick() {
   try {
     const iso = dailyStore.rolloverAt || wordleStore.rolloverAt
@@ -258,8 +283,7 @@ function tick() {
     const ms = Date.parse(iso) - Date.now()
     if (isNaN(ms) || ms <= 0) {
       countdown.value = '00:00:00'
-      dailyStore.checkRollover()
-      wordleStore.refreshIfRolledOver?.()
+      refreshLoadedDailyGames()
       return
     }
     const total = Math.floor(ms / 1000)
@@ -319,45 +343,49 @@ async function onShare() {
 const gameComponents = {
   connections: defineAsyncComponent(() => import('@/features/daily/components/ConnectionsGame.vue')),
   flag: defineAsyncComponent(() => import('@/features/daily/components/FlagGame.vue')),
-  trivia: defineAsyncComponent(() => import('@/features/daily/components/TriviaGame.vue')),
-  sequence: defineAsyncComponent(() => import('@/features/daily/components/SequenceGame.vue')),
-  memory: defineAsyncComponent(() => import('@/features/daily/components/MemoryGame.vue')),
 }
 
 import { useFlagleStore } from '@/features/daily/stores/useFlagleStore'
+import { useConnectionsStore } from '@/features/daily/stores/useConnectionsStore'
 
 const flagleStore = useFlagleStore()
+const connectionsStore = useConnectionsStore()
 
-async function selectGame(gameId) {
+async function activateGame(gameId, { historyMode = 'push' } = {}) {
   const game = availableGames.value.find(g => g.id === gameId)
-  if (game?.comingSoon) return
+  if (!game || game.comingSoon) return
 
-  const url = new URL(window.location)
-  url.searchParams.set('game', gameId)
-  window.history.replaceState({}, '', url)
+  if (historyMode !== 'none') {
+    const url = new URL(window.location)
+    url.searchParams.set('game', gameId)
+    if (historyMode === 'replace') window.history.replaceState({}, '', url)
+    else if (new URLSearchParams(window.location.search).get('game') !== gameId) {
+      window.history.pushState({}, '', url)
+    }
+  }
 
   loadingGame.value = true
+  gameLoadError.value = null
   openGame.value = gameId
+  currentGameComponent.value = null
 
   try {
     if (gameId === 'wordle') {
-      if (!wordleStore.puzzleId) {
-        await wordleStore.loadDaily(true)
-      }
+      await wordleStore.loadDaily(!wordleStore.puzzleId)
     } else if (gameId === 'wordle-unlimited') {
       if (!wordleUnlimitedStore.initialized) {
         await wordleUnlimitedStore.initialize()
       }
     } else if (gameId === 'flag') {
-      if (!flagleStore.puzzleId) {
-        await flagleStore.loadDaily(true)
-      }
+      await flagleStore.loadDaily(!flagleStore.puzzleId)
       currentGameComponent.value = gameComponents.flag
-    } else {
-      currentGameComponent.value = gameComponents[gameId] || null
+    } else if (gameId === 'connections') {
+      await connectionsStore.loadDaily(!connectionsStore.puzzleId)
+      currentGameComponent.value = gameComponents.connections
     }
   } catch (error) {
     console.error('Error loading game:', error)
+    gameLoadError.value = error
   } finally {
     loadingGame.value = false
     window.scrollTo(0, 0)
@@ -441,6 +469,7 @@ const openGame = ref(null)
 const currentGameComponent = shallowRef(null)
 const currentGameData = computed(() => availableGames.value.find(g => g.id === openGame.value))
 const loadingGame = ref(false)
+const gameLoadError = ref(null)
 
 // Handle game card clicks with modal checks
 function handleGameClick(game) {
@@ -474,10 +503,11 @@ function goToWordleUnlimited() {
 function closeGame() {
   const url = new URL(window.location)
   url.searchParams.delete('game')
-  window.history.replaceState({}, '', url)
+  window.history.pushState({}, '', url)
 
   openGame.value = null
   currentGameComponent.value = null
+  gameLoadError.value = null
   window.scrollTo(0, 0)
   nextTick(() => hubTitleRef.value?.focus())
 }
@@ -511,6 +541,15 @@ function gameStatusText(game) {
     case 'in-progress': return 'In progress'
     default: return 'Not started'
   }
+}
+
+function selectGame(gameId) {
+  return activateGame(gameId)
+}
+
+function retryOpenGame() {
+  if (!openGame.value) return
+  return activateGame(openGame.value, { historyMode: 'none' })
 }
 
 function ctaText(gameId) {
@@ -577,22 +616,17 @@ function onGameCompleted(result) {
 }
 
 // Handle browser back/forward buttons
-function handlePopState() {
+async function handlePopState() {
   const params = new URLSearchParams(window.location.search)
   const gameParam = params.get('game')
-  if (gameParam && availableGames.value.some(g => g.id === gameParam)) {
-    openGame.value = gameParam
-    if (!['wordle', 'wordle-unlimited'].includes(gameParam)) {
-      loadingGame.value = true
-      try {
-        currentGameComponent.value = gameComponents[gameParam] || null
-      } finally {
-        loadingGame.value = false
-      }
-    }
+  if (gameParam && availableGames.value.some(g => g.id === gameParam && !g.comingSoon)) {
+    await activateGame(gameParam, { historyMode: 'none' })
   } else {
     openGame.value = null
     currentGameComponent.value = null
+    gameLoadError.value = null
+    await nextTick()
+    hubTitleRef.value?.focus()
   }
 }
 
@@ -609,12 +643,10 @@ onMounted(async () => {
       initialLoading.value = true
     }
 
-    // Initialize stores FIRST and wait for completion
+    // Initialise listeners independently; a puzzle outage must not block the hub.
     wordleStore.initAuthListener()
-    await wordleStore.loadDaily(true)
-
     flagleStore.initAuthListener()
-
+    connectionsStore.initAuthListener()
     await dailyStore.initializeGames()
 
     // THEN handle URL params after stores are ready
@@ -626,8 +658,7 @@ onMounted(async () => {
         openGame.value = gameParam
         initialLoading.value = false
       } else {
-        // Use selectGame instead of manually setting values
-        await selectGame(gameParam)
+        await activateGame(gameParam, { historyMode: 'none' })
         initialLoading.value = false
       }
     } else {
@@ -1293,6 +1324,31 @@ button:focus-visible {
   padding: 4rem 1rem;
   color: var(--games-muted);
   text-align: center;
+}
+
+.game-load-error {
+  display: grid;
+  min-height: 16rem;
+  place-content: center;
+  justify-items: center;
+  text-align: center;
+}
+
+.game-load-error h2 {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 1.35rem;
+}
+
+.game-load-error p {
+  max-width: 28rem;
+  margin: 0.55rem 0 1.2rem;
+  color: var(--games-muted);
+}
+
+.game-load-error > div {
+  display: flex;
+  gap: 0.55rem;
 }
 
 .game-complete-action {
