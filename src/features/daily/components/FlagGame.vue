@@ -183,6 +183,7 @@ function getDirectionIcon(iconName) {
 
 const showingResult = ref(false)
 const lastResult = ref({ correct: false })
+let feedbackTimeoutId = null
 
 // Latch the completed state so if the store refreshes we keep the end grid visible
 const hasCompleted = ref(false)
@@ -302,7 +303,12 @@ function submitGuess() {
 function showFeedback(correct) {
     lastResult.value = { correct }
     showingResult.value = true
-    setTimeout(() => { showingResult.value = false }, 1000)
+    clearTimeout(feedbackTimeoutId)
+    feedbackTimeoutId = setTimeout(async () => {
+        showingResult.value = false
+        await nextTick()
+        if (store.canType) inputRef.value?.focus({ preventScroll: true })
+    }, 1000)
 }
 
 function flashWrong() { justWrong.value = true; setTimeout(() => { justWrong.value = false }, 350) }
@@ -347,7 +353,10 @@ onMounted(async () => {
     if (store.isComplete) hasCompleted.value = true;
 })
 
-onUnmounted(() => { document.removeEventListener('mousedown', onDocClick) })
+onUnmounted(() => {
+    document.removeEventListener('mousedown', onDocClick)
+    clearTimeout(feedbackTimeoutId)
+})
 </script>
 
 <style scoped>
