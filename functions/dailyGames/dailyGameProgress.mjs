@@ -11,6 +11,22 @@ const isWord = (value) => typeof value === 'string' && /^[A-Z]{3,10}$/.test(valu
 const isGuess = (value) => typeof value === 'string' && /^[A-Z]{5}$/.test(value);
 const isOutcome = (value) => OUTCOMES.has(value);
 const isBoundedInteger = (value, min, max) => Number.isInteger(value) && value >= min && value <= max;
+const dateStrUTC = (date) => date.toISOString().slice(0, 10);
+
+function validateFlagleHint(hint) {
+  if (hint === null || hint === undefined) return null;
+  if (!isPlainObject(hint) || !Number.isFinite(hint.distance) || !Number.isFinite(hint.bearing)) return undefined;
+  if (typeof hint.distanceText !== 'string' || hint.distanceText.length > 40) return undefined;
+  if (!isPlainObject(hint.direction)) return undefined;
+  if (typeof hint.direction.name !== 'string' || hint.direction.name.length > 20) return undefined;
+  if (typeof hint.direction.iconName !== 'string' || hint.direction.iconName.length > 30) return undefined;
+  return {
+    distance: hint.distance,
+    distanceText: hint.distanceText,
+    direction: { name: hint.direction.name, iconName: hint.direction.iconName },
+    bearing: hint.bearing,
+  };
+}
 
 function validateWordleState(state) {
   if (!isPlainObject(state) || !isOutcome(state.outcome)) return null;
@@ -79,8 +95,8 @@ function validateFlagleState(state) {
     if (typeof attempt.country !== 'string' || attempt.country.length > 80) return null;
     if (typeof attempt.guess !== 'string' || attempt.guess.length > 80) return null;
     if (typeof attempt.correct !== 'boolean' || !Number.isFinite(attempt.timestamp)) return null;
-    const hint = attempt.hint === null || attempt.hint === undefined ? null : attempt.hint;
-    if (hint !== null && !isPlainObject(hint)) return null;
+    const hint = validateFlagleHint(attempt.hint);
+    if (hint === undefined) return null;
     return {
       flagIndex: attempt.flagIndex,
       country: attempt.country,
@@ -117,7 +133,7 @@ function validateUnlimitedState(state, word) {
   };
 }
 
-export function validateDailyGameProgress({ game, date, word, state } = {}) {
+export function validateDailyGameProgress({ game, date, word, state } = {}, now = new Date()) {
   if (!['wordle', 'connections', 'flag', 'wordle-unlimited'].includes(game)) {
     return { valid: false, reason: 'invalid_game' };
   }
@@ -133,6 +149,7 @@ export function validateDailyGameProgress({ game, date, word, state } = {}) {
     if (typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       return { valid: false, reason: 'invalid_date' };
     }
+    if (date !== dateStrUTC(now)) return { valid: false, reason: 'stale_date' };
     path = `dailyChallenges/${game}/days/${date}`;
     if (game === 'wordle') cleanState = validateWordleState(state);
     if (game === 'connections') cleanState = validateConnectionsState(state);
@@ -151,6 +168,11 @@ export const saveDailyGameProgress = onCall(
 
     const validation = validateDailyGameProgress(request.data);
     if (!validation.valid) throw new HttpsError('invalid-argument', validation.reason);
+
+    if (request.data?.game === 'wordle-unlimited') {
+      const solution = await db.doc(`dailyChallenges/wordle-unlimited/solutions/${validation.state.word}`).get();
+      if (!solution.exists) throw new HttpsError('invalid-argument', 'unknown_word');
+    }
 
     await db.doc(`users/${uid}/${validation.path}`).set({
       ...validation.state,
