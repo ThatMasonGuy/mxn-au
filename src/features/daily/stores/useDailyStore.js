@@ -16,7 +16,9 @@ export const useDailyStore = defineStore('daily', {
         loading: false,
         initialized: false,
         user: null,
+        _authUnsubscribe: null,
         _unsubscribers: [], // Store all listener unsubscribers
+        _dayUnsubscribers: {},
 
         // Combined game stats (populated by individual game stores)
         gameStats: {
@@ -159,12 +161,21 @@ export const useDailyStore = defineStore('daily', {
                 if (typeof unsub === 'function') unsub()
             })
             this._unsubscribers = []
+            Object.values(this._dayUnsubscribers).forEach(unsub => {
+                if (typeof unsub === 'function') unsub()
+            })
+            this._dayUnsubscribers = {}
         },
 
         // Set up Firebase listeners for a specific game
         _setupGameListener(userId, gameId) {
             const profileRef = doc(firestore, 'users', userId, 'dailyChallenges', gameId)
             const unsubProfile = onSnapshot(profileRef, (snapshot) => {
+                if (this._dayUnsubscribers[gameId]) {
+                    this._dayUnsubscribers[gameId]()
+                    delete this._dayUnsubscribers[gameId]
+                }
+
                 if (snapshot.exists()) {
                     const data = snapshot.data()
 
@@ -210,7 +221,7 @@ export const useDailyStore = defineStore('daily', {
                                 }
                             }
                         })
-                        this._unsubscribers.push(unsubToday)
+                        this._dayUnsubscribers[gameId] = unsubToday
                     } else {
                         this.dailyStatus[gameId] = 'not-started'
                     }
@@ -266,7 +277,11 @@ export const useDailyStore = defineStore('daily', {
 
             // Set up auth listener
             const auth = getAuth()
-            onAuthStateChanged(auth, async (user) => {
+            if (this._authUnsubscribe) {
+                this._authUnsubscribe()
+                this._authUnsubscribe = null
+            }
+            this._authUnsubscribe = onAuthStateChanged(auth, async (user) => {
                 this.user = user
 
                 // Clean up old listeners when auth changes
@@ -558,6 +573,10 @@ export const useDailyStore = defineStore('daily', {
 
         // Clean up when store is destroyed
         $dispose() {
+            if (this._authUnsubscribe) {
+                this._authUnsubscribe()
+                this._authUnsubscribe = null
+            }
             this._cleanupListeners()
         }
     },

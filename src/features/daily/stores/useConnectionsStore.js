@@ -40,6 +40,7 @@ export const useConnectionsStore = defineStore("connections", {
     _loadPromise: null,
     _lastLoadTime: null,
     _profileUnsubscribe: null,
+    _authUnsubscribe: null,
     _completionRepairing: false,
 
     // Cached puzzle data (persisted until rollover)
@@ -214,13 +215,17 @@ export const useConnectionsStore = defineStore("connections", {
 
     initAuthListener() {
       const auth = getAuth();
+      if (this._authUnsubscribe) {
+        this._authUnsubscribe();
+        this._authUnsubscribe = null;
+      }
 
       if (this._profileUnsubscribe) {
         this._profileUnsubscribe();
         this._profileUnsubscribe = null;
       }
 
-      onAuthStateChanged(auth, async (user) => {
+      this._authUnsubscribe = onAuthStateChanged(auth, async (user) => {
         if (this._profileUnsubscribe) {
           this._profileUnsubscribe();
           this._profileUnsubscribe = null;
@@ -739,6 +744,10 @@ export const useConnectionsStore = defineStore("connections", {
     },
 
     $dispose() {
+      if (this._authUnsubscribe) {
+        this._authUnsubscribe();
+        this._authUnsubscribe = null;
+      }
       if (this._profileUnsubscribe) {
         this._profileUnsubscribe();
         this._profileUnsubscribe = null;
