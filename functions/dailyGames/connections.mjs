@@ -2,6 +2,10 @@
 import { onCall } from 'firebase-functions/v2/https';
 import { db } from '../config/firebase.mjs';
 import { calculateDailyStreak, hasRecordedDailyResult } from './dailyGameStats.mjs';
+import {
+    CURATED_CONNECTIONS_FALLBACK,
+    validateConnectionsPuzzle,
+} from './connectionsQuality.mjs';
 
 const REGION = 'australia-southeast2';
 
@@ -30,68 +34,36 @@ async function createIfMissing(refPath, seed) {
 
 async function ensureSolutionFor(date) {
     const ref = db.doc(solDoc(date));
-    const FALLBACK = {
-        easy: ['APPLE', 'BANANA', 'ORANGE', 'GRAPE'],
-        medium: ['RED', 'BLUE', 'GREEN', 'YELLOW'],
-        hard: ['NORTH', 'SOUTH', 'EAST', 'WEST'],
-        expert: ['ALPHA', 'BETA', 'GAMMA', 'DELTA']
-    };
-    const FALLBACK_CATEGORIES = {
-        easy: 'FRUIT',
-        medium: 'COLOURS',
-        hard: 'CARDINAL DIRECTIONS',
-        expert: 'GREEK LETTERS'
-    };
     const nowISO = new Date().toISOString();
 
     const snap = await ref.get();
     if (!snap.exists) {
         await createIfMissing(ref.path, {
-            answer: FALLBACK,
-            categories: FALLBACK_CATEGORIES,
+            answer: CURATED_CONNECTIONS_FALLBACK.answer,
+            categories: CURATED_CONNECTIONS_FALLBACK.categories,
             wasFallbackSeed: true,
-            seededAt: nowISO
+            seedReason: 'missing_puzzle',
+            seededAt: nowISO,
         });
-        return { answer: FALLBACK, categories: FALLBACK_CATEGORIES };
+        return CURATED_CONNECTIONS_FALLBACK;
     }
 
     const raw = snap.data();
-    const answer = raw?.answer;
-    const categories = raw?.categories;
-
-    if (!answer || !answer.easy || !answer.medium || !answer.hard || !answer.expert) {
+    const validation = validateConnectionsPuzzle(raw?.answer, raw?.categories);
+    if (!validation.valid) {
         await ref.set({
-            answer: FALLBACK,
-            categories: categories || FALLBACK_CATEGORIES,
+            answer: CURATED_CONNECTIONS_FALLBACK.answer,
+            categories: CURATED_CONNECTIONS_FALLBACK.categories,
             wasFallbackSeed: true,
-            seedReason: 'invalid_structure',
-            seededAt: nowISO
+            seedReason: validation.reason,
+            qualityRepairAt: nowISO,
         }, { merge: true });
-        return { answer: FALLBACK, categories: categories || FALLBACK_CATEGORIES };
-    }
-
-    const isFallbackAnswer = Object.entries(FALLBACK).every(([difficulty, words]) => {
-        const actual = answer[difficulty];
-        return Array.isArray(actual) && actual.join('|') === words.join('|');
-    });
-
-    if (isFallbackAnswer) {
-        const categoriesNeedRepair = Object.entries(FALLBACK_CATEGORIES)
-            .some(([difficulty, title]) => categories?.[difficulty] !== title);
-
-        if (categoriesNeedRepair) {
-            await ref.set({
-                categories: FALLBACK_CATEGORIES,
-                categoryRepairAt: nowISO,
-            }, { merge: true });
-        }
-
-        return { answer, categories: FALLBACK_CATEGORIES };
+        return CURATED_CONNECTIONS_FALLBACK;
     }
 
     return {
-        answer,
-        categories: categories || FALLBACK_CATEGORIES
+        answer: validation.answer,
+        categories: validation.categories,
     };
 }
 

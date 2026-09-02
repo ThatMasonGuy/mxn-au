@@ -5,6 +5,7 @@ import { defineSecret } from "firebase-functions/params";
 import { FieldValue } from "firebase-admin/firestore";
 import OpenAI from "openai";
 import { db } from "../config/firebase.mjs";
+import { validateConnectionsPuzzle } from "./connectionsQuality.mjs";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Secrets
@@ -84,16 +85,6 @@ async function fetchExistingGroups(todayId) {
 // Generate Connections puzzle using GPT-4o
 // ──────────────────────────────────────────────────────────────────────────────
 async function generatePuzzle(ban) {
-  const genericCategoryTitles = new Set([
-    "EASY",
-    "MEDIUM",
-    "HARD",
-    "EXPERT",
-    "STRAIGHTFORWARD",
-    "CATEGORIES",
-    "WORDPLAY",
-    "TRICKY",
-  ]);
   const client = openai();
 
   const banList = Array.from(ban).slice(0, 500).join(", ");
@@ -127,7 +118,7 @@ async function generatePuzzle(ban) {
         content: `Create a Connections puzzle with these requirements:
     
     DIFFICULTY LEVELS:
-    - EASY: Approachable but not trivial. Avoid childish sets like colors, animals, days, chess pieces. Choose categories that are familiar yet not obvious.
+    - EASY: Approachable but not trivial. It must still require a moment of inference rather than simple recall.
     - MEDIUM: Require reasoning or conceptual links (e.g., cooking techniques, word roots, things tied to classical elements).
     - HARD: Ambiguous with heavy overlap. Use homonyms, multiple-meaning words, or subtle linguistic patterns. At least half the words here should look like they belong elsewhere.
     - EXPERT: Devious and abstract. Categories should be indirect (suffix patterns, words with shifting meanings, thematic or hidden connections). Solvable only after identifying easier groups.
@@ -140,6 +131,8 @@ async function generatePuzzle(ban) {
     5. At least 10 of the 16 words must feel like they could fit in more than one group (red herrings)
     6. Make the EXPERT group especially subtle, requiring other groups to fall into place first
     7. Categories should be clever, elegant, and not just trivia lists
+    8. Do not use elementary lookup sets: colours, fruit, compass points or cardinal directions, Greek letters, planets, seasons, months, days, animals, or basic shapes
+    9. Every group should use phrase completion, wordplay, semantic ambiguity, or another inferential link; a child should not be able to solve a group merely by naming its members
     
     EXCLUDE these already-used words:
     ${banList}
@@ -158,54 +151,17 @@ async function generatePuzzle(ban) {
     return null;
   }
 
-  if (
-    !parsed.answer ||
-    !parsed.answer.easy ||
-    !parsed.answer.medium ||
-    !parsed.answer.hard ||
-    !parsed.answer.expert
-  ) {
-    return null;
-  }
-
-  for (const level of ["easy", "medium", "hard", "expert"]) {
-    if (
-      !Array.isArray(parsed.answer[level]) ||
-      parsed.answer[level].length !== 4
-    ) {
-      return null;
-    }
-    parsed.answer[level] = parsed.answer[level].map((w) =>
-      w.toUpperCase().trim(),
-    );
-    if (parsed.answer[level].some((w) => ban.has(w))) {
-      return null;
-    }
-
-    const category = parsed.categories?.[level];
-    if (
-      typeof category !== "string" ||
-      !category.trim() ||
-      genericCategoryTitles.has(category.trim().toUpperCase())
-    ) {
-      return null;
-    }
-    parsed.categories[level] = category.trim();
-  }
-
-  const allWords = [
-    ...parsed.answer.easy,
-    ...parsed.answer.medium,
-    ...parsed.answer.hard,
-    ...parsed.answer.expert,
-  ];
-  if (new Set(allWords).size !== 16) {
+  const validation = validateConnectionsPuzzle(parsed.answer, parsed.categories, {
+    bannedWords: ban,
+  });
+  if (!validation.valid) {
+    console.warn(`[connectionsGenerate] rejected generated puzzle: ${validation.reason}`);
     return null;
   }
 
   return {
-    answer: parsed.answer,
-    categories: parsed.categories,
+    answer: validation.answer,
+    categories: validation.categories,
   };
 }
 
