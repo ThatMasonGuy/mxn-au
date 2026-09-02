@@ -12,8 +12,10 @@
 
                 <!-- Content Card -->
                 <Transition name="card" @enter="onCardEnter">
-                    <div v-if="showCard" class="relative w-full max-w-md rounded-2xl overflow-hidden shadow-2xl border flex flex-col
-                     max-h-[calc(100svh-1.5rem)] sm:max-h-[calc(100svh-2rem)]" :class="cardClasses">
+                    <div v-if="showCard" ref="dialogRef" role="dialog" aria-modal="true"
+                        aria-labelledby="wordle-completion-title" aria-describedby="wordle-completion-description"
+                        tabindex="-1" class="relative w-full max-w-md rounded-2xl overflow-hidden shadow-2xl border flex flex-col
+                     max-h-[calc(100svh-1.5rem)] sm:max-h-[calc(100svh-2rem)] focus:outline-none" :class="cardClasses">
                         <!-- Animated background gradient -->
                         <div class="absolute inset-0" :class="bgGradientClasses"></div>
 
@@ -46,14 +48,14 @@
                             </div>
 
                             <!-- Main message -->
-                            <h2 class="text-xl sm:text-2xl font-bold mb-1 sm:mb-2" :class="titleClasses">
+                            <h2 id="wordle-completion-title" class="text-xl sm:text-2xl font-bold mb-1 sm:mb-2" :class="titleClasses">
                                 {{ title }}
                                 <span v-if="wordNumber > 0"
                                     class="ml-1 sm:ml-2 text-base sm:text-lg font-normal text-white/70">#{{ wordNumber }}</span>
                             </h2>
 
                             <!-- Sub message -->
-                            <p class="text-sm sm:text-base mb-4 sm:mb-6 opacity-90">
+                            <p id="wordle-completion-description" class="text-sm sm:text-base mb-4 sm:mb-6 opacity-90">
                                 {{ subtitle }}
                             </p>
 
@@ -130,6 +132,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { Trophy, Target, Share2, Sparkles, Square, ArrowRightCircle } from '@lucide/vue'
+import { useModalDialog } from '@/features/daily/composables/useModalDialog'
 
 const props = defineProps({
     show: Boolean,
@@ -147,12 +150,15 @@ const emit = defineEmits(['close', 'share', 'new-game'])
 
 const showCard = ref(false)
 const confettiCanvas = ref(null)
+const dialogRef = ref(null)
 const timeUntilNext = ref('00:00:00')
 const shareCopied = ref(false)
 let timer = null
 let confettiAnimation = null
 
 const showNewGame = computed(() => props.wordNumber > 0)
+const dialogOpen = computed(() => props.show && showCard.value)
+useModalDialog(dialogOpen, dialogRef, () => emit('close'))
 
 const gridRows = computed(() => {
     if (!props.emojiGrid) return []
@@ -270,9 +276,9 @@ function createConfetti() {
 }
 
 function generateVisualShareText() {
-    const isUnlimited = props.wordNumber >= 0
+    const isUnlimited = props.wordNumber > 0
     const gameName = isUnlimited ? 'Wordle Unlimited' : 'MXN Daily — Wordle'
-    const gameNumber = isUnlimited ? ` #${props.wordNumber + 1}` : ` ${new Date().toISOString().split('T')[0]}`
+    const gameNumber = isUnlimited ? ` #${props.wordNumber}` : ` ${new Date().toISOString().split('T')[0]}`
     const result = props.isWin ? `${props.attempts}/6` : 'X/6'
 
     const visualGrid = props.emojiGrid || ''

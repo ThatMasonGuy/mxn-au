@@ -12,8 +12,10 @@
 
                 <!-- Content Card -->
                 <Transition name="card" @enter="onCardEnter">
-                    <div v-if="showCard" class="relative w-full max-w-md rounded-2xl overflow-hidden shadow-2xl border flex flex-col
-             max-h-[calc(100svh-1.5rem)] sm:max-h-[calc(100svh-2rem)]" :class="cardClasses">
+                    <div v-if="showCard" ref="dialogRef" role="dialog" aria-modal="true"
+                        aria-labelledby="flagle-completion-title" aria-describedby="flagle-completion-description"
+                        tabindex="-1" class="relative w-full max-w-md rounded-2xl overflow-hidden shadow-2xl border flex flex-col
+             max-h-[calc(100svh-1.5rem)] sm:max-h-[calc(100svh-2rem)] focus:outline-none" :class="cardClasses">
                         <!-- Animated background gradient -->
                         <div class="absolute inset-0" :class="bgGradientClasses"></div>
 
@@ -46,12 +48,12 @@
                             </div>
 
                             <!-- Main message -->
-                            <h2 class="text-xl sm:text-2xl font-bold mb-1 sm:mb-2" :class="titleClasses">
+                            <h2 id="flagle-completion-title" class="text-xl sm:text-2xl font-bold mb-1 sm:mb-2" :class="titleClasses">
                                 {{ title }}
                             </h2>
 
                             <!-- Sub message -->
-                            <p class="text-sm sm:text-base mb-4 sm:mb-6 opacity-90">
+                            <p id="flagle-completion-description" class="text-sm sm:text-base mb-4 sm:mb-6 opacity-90">
                                 {{ subtitle }}
                             </p>
 
@@ -127,6 +129,7 @@
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { Trophy, Flag, Share2, Sparkles, CheckCircle2, XCircle, Minus } from '@lucide/vue'
 import { useFlagIcon } from '@/shared/utils/useFlagIcon'
+import { useModalDialog } from '@/features/daily/composables/useModalDialog'
 
 const props = defineProps({
     show: Boolean,
@@ -141,12 +144,15 @@ const emit = defineEmits(['close', 'share'])
 
 const showCard = ref(false)
 const confettiCanvas = ref(null)
+const dialogRef = ref(null)
 const timeUntilNext = ref('00:00:00')
 const shareCopied = ref(false)
 let timer = null
 let confettiAnimation = null
 
 const isHighScore = computed(() => props.score >= 200)
+const dialogOpen = computed(() => props.show && showCard.value)
+useModalDialog(dialogOpen, dialogRef, () => emit('close'))
 
 function getFlagIcon(countryName) {
     return useFlagIcon(countryName)

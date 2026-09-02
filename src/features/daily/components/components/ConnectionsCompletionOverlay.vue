@@ -11,7 +11,10 @@
 
                 <!-- Content Card -->
                 <Transition name="card" @enter="onCardEnter">
-                    <div v-if="showCard" class="relative max-w-md w-full rounded-2xl overflow-hidden shadow-2xl border"
+                    <div v-if="showCard" ref="dialogRef" role="dialog" aria-modal="true"
+                        aria-labelledby="connections-completion-title" aria-describedby="connections-completion-description"
+                        tabindex="-1" class="relative max-w-md w-full rounded-2xl overflow-hidden shadow-2xl border focus:outline-none flex flex-col
+                        max-h-[calc(100svh-1.5rem)] sm:max-h-[calc(100svh-2rem)]"
                         :class="cardClasses">
 
                         <!-- Animated background gradient -->
@@ -25,7 +28,8 @@
                         </div>
 
                         <!-- Content -->
-                        <div class="relative p-8 text-center text-white">
+                        <div class="relative p-5 sm:p-8 text-center text-white overflow-y-auto overscroll-contain
+                            pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]">
                             <!-- Icon -->
                             <div class="mb-6 flex justify-center">
                                 <div class="relative">
@@ -46,12 +50,12 @@
                             </div>
 
                             <!-- Main message -->
-                            <h2 class="text-3xl font-bold mb-2" :class="titleClasses">
+                            <h2 id="connections-completion-title" class="text-3xl font-bold mb-2" :class="titleClasses">
                                 {{ title }}
                             </h2>
 
                             <!-- Sub message -->
-                            <p class="text-lg mb-6 opacity-90">
+                            <p id="connections-completion-description" class="text-lg mb-6 opacity-90">
                                 {{ subtitle }}
                             </p>
 
@@ -112,6 +116,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { Grid3x3, Puzzle, Share2, Sparkles } from '@lucide/vue'
+import { useModalDialog } from '@/features/daily/composables/useModalDialog'
 
 const props = defineProps({
     show: Boolean,
@@ -127,6 +132,7 @@ const emit = defineEmits(['close', 'share'])
 
 const showCard = ref(false)
 const confettiCanvas = ref(null)
+const dialogRef = ref(null)
 const timeUntilNext = ref('00:00:00')
 let timer = null
 let confettiAnimation = null
@@ -196,6 +202,9 @@ function getGroupClasses(difficulty) {
 function getGroupWords(difficulty) {
     return props.allGroups?.[difficulty] || []
 }
+
+const dialogOpen = computed(() => props.show && showCard.value)
+useModalDialog(dialogOpen, dialogRef, () => emit('close'))
 
 function getGroupTitle(difficulty) {
     const foundGroup = props.foundGroups?.find(group => group.difficulty === difficulty)
