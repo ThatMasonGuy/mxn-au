@@ -4,6 +4,10 @@ import { onRequest } from 'firebase-functions/v2/https'
 import { defineSecret } from 'firebase-functions/params'
 import { FieldValue } from 'firebase-admin/firestore'
 import { db } from '../config/firebase.mjs'
+import {
+    FLAGLE_COUNTRY_POOL,
+    FLAGLE_DIFFICULTY_TIERS,
+} from './flagleCountryTiers.mjs'
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Secrets
@@ -14,80 +18,6 @@ const ADMIN_API_KEY = defineSecret('ADMIN_API_KEY')
 // Constants & helpers
 // ──────────────────────────────────────────────────────────────────────────────
 const REGION = 'australia-southeast2'
-
-// All countries with recognizable flags (curated list)
-const COUNTRY_POOL = [
-    // Americas
-    'United States', 'Canada', 'Mexico', 'Brazil', 'Argentina', 'Chile', 'Colombia',
-    'Peru', 'Venezuela', 'Ecuador', 'Bolivia', 'Paraguay', 'Uruguay', 'Jamaica',
-    'Cuba', 'Dominican Republic', 'Haiti', 'Costa Rica', 'Panama', 'Guatemala',
-    'Honduras', 'El Salvador', 'Nicaragua', 'Barbados', 'Trinidad and Tobago',
-
-    // Europe
-    'United Kingdom', 'France', 'Germany', 'Italy', 'Spain', 'Portugal', 'Netherlands',
-    'Belgium', 'Switzerland', 'Austria', 'Sweden', 'Norway', 'Denmark', 'Finland',
-    'Iceland', 'Ireland', 'Poland', 'Czech Republic', 'Slovakia', 'Hungary', 'Romania',
-    'Bulgaria', 'Greece', 'Croatia', 'Serbia', 'Bosnia and Herzegovina', 'Albania',
-    'North Macedonia', 'Montenegro', 'Slovenia', 'Estonia', 'Latvia', 'Lithuania',
-    'Belarus', 'Ukraine', 'Moldova', 'Luxembourg', 'Monaco', 'Vatican City',
-    'San Marino', 'Andorra', 'Malta', 'Cyprus',
-
-    // Asia
-    'China', 'Japan', 'South Korea', 'North Korea', 'India', 'Pakistan', 'Bangladesh',
-    'Sri Lanka', 'Nepal', 'Bhutan', 'Afghanistan', 'Thailand', 'Vietnam', 'Cambodia',
-    'Laos', 'Myanmar', 'Malaysia', 'Singapore', 'Indonesia', 'Philippines', 'Taiwan',
-    'Mongolia', 'Kazakhstan', 'Uzbekistan', 'Turkmenistan', 'Kyrgyzstan', 'Tajikistan',
-
-    // Middle East
-    'Turkey', 'Iran', 'Iraq', 'Saudi Arabia', 'Yemen', 'Syria', 'Jordan', 'Lebanon',
-    'Israel', 'Palestine', 'United Arab Emirates', 'Qatar', 'Kuwait', 'Bahrain', 'Oman',
-    'Georgia', 'Armenia', 'Azerbaijan',
-
-    // Africa
-    'Egypt', 'Libya', 'Tunisia', 'Algeria', 'Morocco', 'Sudan', 'Ethiopia', 'Kenya',
-    'Tanzania', 'Uganda', 'Rwanda', 'Burundi', 'Somalia', 'Nigeria', 'Ghana',
-    'Ivory Coast', 'Senegal', 'Mali', 'Burkina Faso', 'Niger', 'Chad', 'Cameroon',
-    'Central African Republic', 'Democratic Republic of the Congo', 'Republic of the Congo',
-    'Gabon', 'Equatorial Guinea', 'Angola', 'Zambia', 'Zimbabwe', 'Botswana',
-    'Namibia', 'South Africa', 'Lesotho', 'Eswatini', 'Mozambique', 'Madagascar',
-    'Mauritius', 'Seychelles', 'Comoros', 'Cape Verde', 'Guinea', 'Guinea-Bissau',
-    'Liberia', 'Sierra Leone', 'Togo', 'Benin', 'Mauritania', 'Gambia', 'Malawi',
-    'Eritrea', 'Djibouti', 'South Sudan',
-
-    // Oceania
-    'Australia', 'New Zealand', 'Papua New Guinea', 'Fiji', 'Solomon Islands',
-    'Vanuatu', 'Samoa', 'Tonga', 'Kiribati', 'Tuvalu', 'Nauru', 'Palau',
-    'Marshall Islands', 'Micronesia'
-]
-
-// Difficulty tiers (for balanced selection)
-const DIFFICULTY_TIERS = {
-    easy: [
-        'United States', 'Canada', 'United Kingdom', 'France', 'Germany', 'Italy',
-        'Spain', 'Japan', 'China', 'Brazil', 'Mexico', 'Australia', 'India',
-        'Russia', 'South Korea', 'Argentina', 'Netherlands', 'Switzerland',
-        'Sweden', 'Norway', 'Belgium', 'Portugal', 'Greece', 'Turkey', 'Egypt',
-        'South Africa', 'Israel', 'Saudi Arabia', 'New Zealand', 'Ireland'
-    ],
-    medium: [
-        'Poland', 'Czech Republic', 'Austria', 'Denmark', 'Finland', 'Iceland',
-        'Ukraine', 'Romania', 'Hungary', 'Chile', 'Colombia', 'Peru', 'Venezuela',
-        'Thailand', 'Vietnam', 'Indonesia', 'Philippines', 'Malaysia', 'Singapore',
-        'Pakistan', 'Bangladesh', 'Nigeria', 'Kenya', 'Morocco', 'Algeria',
-        'Cuba', 'Jamaica', 'Croatia', 'Serbia', 'Bulgaria', 'Lithuania', 'Latvia',
-        'Estonia', 'Lebanon', 'Jordan', 'United Arab Emirates', 'Qatar', 'Kuwait'
-    ],
-    hard: [
-        'Bosnia and Herzegovina', 'North Macedonia', 'Montenegro', 'Slovenia',
-        'Moldova', 'Belarus', 'Georgia', 'Armenia', 'Azerbaijan', 'Kazakhstan',
-        'Uzbekistan', 'Kyrgyzstan', 'Tajikistan', 'Turkmenistan', 'Mongolia',
-        'Myanmar', 'Laos', 'Cambodia', 'Sri Lanka', 'Nepal', 'Bhutan',
-        'Mauritius', 'Seychelles', 'Fiji', 'Papua New Guinea', 'Vanuatu',
-        'Bahrain', 'Oman', 'Yemen', 'Libya', 'Tunisia', 'Sudan', 'Ethiopia',
-        'Tanzania', 'Uganda', 'Rwanda', 'Ghana', 'Ivory Coast', 'Senegal',
-        'Cameroon', 'Angola', 'Zimbabwe', 'Botswana', 'Namibia', 'Mozambique'
-    ]
-}
 
 // Firestore paths
 const SOLS_COL = () => db.collection('dailyChallenges').doc('flag').collection('solutions')
@@ -128,9 +58,9 @@ async function fetchRecentCountries(todayId, daysBack = 30) {
 // Select balanced set of countries
 // ──────────────────────────────────────────────────────────────────────────────
 function selectCountries(exclude = new Set()) {
-    const availableEasy = DIFFICULTY_TIERS.easy.filter(c => !exclude.has(c))
-    const availableMedium = DIFFICULTY_TIERS.medium.filter(c => !exclude.has(c))
-    const availableHard = DIFFICULTY_TIERS.hard.filter(c => !exclude.has(c))
+    const availableEasy = FLAGLE_DIFFICULTY_TIERS.easy.filter(c => !exclude.has(c))
+    const availableMedium = FLAGLE_DIFFICULTY_TIERS.medium.filter(c => !exclude.has(c))
+    const availableHard = FLAGLE_DIFFICULTY_TIERS.hard.filter(c => !exclude.has(c))
 
     const selected = []
 
@@ -151,7 +81,7 @@ function selectCountries(exclude = new Set()) {
 
     // If we don't have enough, fill from the general pool
     if (selected.length < 5) {
-        const allAvailable = COUNTRY_POOL.filter(c =>
+        const allAvailable = FLAGLE_COUNTRY_POOL.filter(c =>
             !exclude.has(c) && !selected.includes(c)
         )
         selected.push(...pickRandom(allAvailable, 5 - selected.length))

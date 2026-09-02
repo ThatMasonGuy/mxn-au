@@ -150,6 +150,11 @@
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useFlagleStore } from '@/features/daily/stores/useFlagleStore'
 import { useFlagIcon } from '@/shared/utils/useFlagIcon'
+import countryCatalog from '@/shared/data/countries.json'
+import {
+    buildFlagleCountryOptions,
+    normalizeFlagleCountry,
+} from '@/features/daily/utils/flagleCountryOptions'
 import {
     Heart,
     CheckCircle2,
@@ -252,40 +257,8 @@ const submitBtnRef = ref(null)
 const showList = ref(false)
 const activeIndex = ref(0)
 
-const COUNTRY_POOL = [
-    'United States', 'Canada', 'Mexico', 'Brazil', 'Argentina', 'Chile', 'Colombia',
-    'Peru', 'Venezuela', 'Ecuador', 'Bolivia', 'Paraguay', 'Uruguay', 'Jamaica',
-    'Cuba', 'Dominican Republic', 'Haiti', 'Costa Rica', 'Panama', 'Guatemala',
-    'Honduras', 'El Salvador', 'Nicaragua', 'Barbados', 'Trinidad and Tobago',
-    'United Kingdom', 'France', 'Germany', 'Italy', 'Spain', 'Portugal', 'Netherlands',
-    'Belgium', 'Switzerland', 'Austria', 'Sweden', 'Norway', 'Denmark', 'Finland',
-    'Iceland', 'Ireland', 'Poland', 'Czech Republic', 'Slovakia', 'Hungary', 'Romania',
-    'Bulgaria', 'Greece', 'Croatia', 'Serbia', 'Bosnia and Herzegovina', 'Albania',
-    'North Macedonia', 'Montenegro', 'Slovenia', 'Estonia', 'Latvia', 'Lithuania',
-    'Belarus', 'Ukraine', 'Moldova', 'Luxembourg', 'Monaco', 'Vatican City',
-    'San Marino', 'Andorra', 'Malta', 'Cyprus',
-    'China', 'Japan', 'South Korea', 'North Korea', 'India', 'Pakistan', 'Bangladesh',
-    'Sri Lanka', 'Nepal', 'Bhutan', 'Afghanistan', 'Thailand', 'Vietnam', 'Cambodia',
-    'Laos', 'Myanmar', 'Malaysia', 'Singapore', 'Indonesia', 'Philippines', 'Taiwan',
-    'Mongolia', 'Kazakhstan', 'Uzbekistan', 'Turkmenistan', 'Kyrgyzstan', 'Tajikistan',
-    'Turkey', 'Iran', 'Iraq', 'Saudi Arabia', 'Yemen', 'Syria', 'Jordan', 'Lebanon',
-    'Israel', 'Palestine', 'United Arab Emirates', 'Qatar', 'Kuwait', 'Bahrain', 'Oman',
-    'Georgia', 'Armenia', 'Azerbaijan',
-    'Egypt', 'Libya', 'Tunisia', 'Algeria', 'Morocco', 'Sudan', 'Ethiopia', 'Kenya',
-    'Tanzania', 'Uganda', 'Rwanda', 'Burundi', 'Somalia', 'Nigeria', 'Ghana',
-    'Ivory Coast', 'Senegal', 'Mali', 'Burkina Faso', 'Niger', 'Chad', 'Cameroon',
-    'Central African Republic', 'Democratic Republic of the Congo', 'Republic of the Congo',
-    'Gabon', 'Equatorial Guinea', 'Angola', 'Zambia', 'Zimbabwe', 'Botswana',
-    'Namibia', 'South Africa', 'Lesotho', 'Eswatini', 'Mozambique', 'Madagascar',
-    'Mauritius', 'Seychelles', 'Comoros', 'Cape Verde', 'Guinea', 'Guinea-Bissau',
-    'Liberia', 'Sierra Leone', 'Togo', 'Benin', 'Mauritania', 'Gambia', 'Malawi',
-    'Eritrea', 'Djibouti', 'South Sudan',
-    'Australia', 'New Zealand', 'Papua New Guinea', 'Fiji', 'Solomon Islands',
-    'Vanuatu', 'Samoa', 'Tonga', 'Kiribati', 'Tuvalu', 'Nauru', 'Palau',
-    'Marshall Islands', 'Micronesia'
-]
-
-const normalize = (s) => (s ?? '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+const COUNTRY_POOL = buildFlagleCountryOptions(countryCatalog)
+const normalize = normalizeFlagleCountry
 
 const suggestions = computed(() => {
     const q = normalize(store.currentInput).trim()

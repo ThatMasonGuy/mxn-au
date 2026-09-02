@@ -156,7 +156,12 @@ const FLAGLE_ALIASES = new Map([
 ]);
 
 function normaliseCountry(value) {
-  return String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '').replace(/^the/, '');
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '')
+    .replace(/^the/, '');
 }
 
 function isCountryGuess(guess, country) {

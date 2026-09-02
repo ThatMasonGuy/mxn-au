@@ -13,6 +13,10 @@ import {
 } from "@/features/daily/utils/dailyGameProfiles";
 import { compareFlagleProgress } from "@/features/daily/utils/dailyGameProgress";
 import { getCountryHint } from "@/shared/utils/useDistanceBearing";
+import {
+  FLAGLE_COUNTRY_ALIASES,
+  normalizeFlagleCountry,
+} from "@/features/daily/utils/flagleCountryOptions";
 import countries from "i18n-iso-countries";
 import en from "i18n-iso-countries/langs/en.json";
 
@@ -30,21 +34,12 @@ function dateStrUTC(d = new Date()) {
   return `${y}-${m}-${day}`;
 }
 
-// Normalize country names for matching
-function normalizeCountry(name) {
-  if (!name) return "";
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, "")
-    .replace(/^the/, "");
-}
-
 // Get all valid names for a country
 function getCountryVariants(countryName) {
   const variants = new Set();
 
   // Add the main name
-  variants.add(normalizeCountry(countryName));
+  variants.add(normalizeFlagleCountry(countryName));
 
   // Try to get ISO code
   const code = countries.getAlpha2Code(countryName, "en");
@@ -53,39 +48,24 @@ function getCountryVariants(countryName) {
     const names = countries.getNames("en");
     for (const [isoCode, name] of Object.entries(names)) {
       if (isoCode === code) {
-        variants.add(normalizeCountry(name));
+        variants.add(normalizeFlagleCountry(name));
         // Add common variations
         if (name.includes(",")) {
           const parts = name.split(",");
-          parts.forEach((part) => variants.add(normalizeCountry(part.trim())));
+          parts.forEach((part) => variants.add(normalizeFlagleCountry(part.trim())));
         }
       }
     }
   }
 
-  // Add common aliases manually
-  const aliases = {
-    "United States": ["USA", "United States of America", "America", "US"],
-    "United Kingdom": ["UK", "Great Britain", "Britain", "GB"],
-    Netherlands: ["Holland"],
-    "Russian Federation": ["Russia"],
-    "Korea, Republic of": ["South Korea", "Korea"],
-    "Korea, Democratic People's Republic of": ["North Korea", "DPRK"],
-    "Czech Republic": ["Czechia"],
-    "Ivory Coast": ["Cote d'Ivoire"],
-    "Palestine, State of": ["Palestine"],
-    China: ["People's Republic of China", "PRC"],
-    "Taiwan, Province of China": ["Taiwan", "Republic of China", "ROC"],
-  };
-
-  for (const [official, aliasList] of Object.entries(aliases)) {
-    if (normalizeCountry(official) === normalizeCountry(countryName)) {
-      aliasList.forEach((alias) => variants.add(normalizeCountry(alias)));
+  for (const [official, aliasList] of Object.entries(FLAGLE_COUNTRY_ALIASES)) {
+    if (normalizeFlagleCountry(official) === normalizeFlagleCountry(countryName)) {
+      aliasList.forEach((alias) => variants.add(normalizeFlagleCountry(alias)));
     }
     aliasList.forEach((alias) => {
-      if (normalizeCountry(alias) === normalizeCountry(countryName)) {
-        variants.add(normalizeCountry(official));
-        aliasList.forEach((a) => variants.add(normalizeCountry(a)));
+      if (normalizeFlagleCountry(alias) === normalizeFlagleCountry(countryName)) {
+        variants.add(normalizeFlagleCountry(official));
+        aliasList.forEach((a) => variants.add(normalizeFlagleCountry(a)));
       }
     });
   }
@@ -556,7 +536,7 @@ export const useFlagleStore = defineStore("flagle", {
 
       try {
         const variants = getCountryVariants(currentCountry);
-        const correct = variants.includes(normalizeCountry(guess));
+        const correct = variants.includes(normalizeFlagleCountry(guess));
 
         // Calculate hint for wrong guesses
         let hint = null;
