@@ -11,6 +11,7 @@ import {
   getDocs,
 } from "firebase/firestore";
 import { useDailyStore } from "./useDailyStore";
+import { isAllowedFiveLetterGuess } from "@/features/daily/utils/wordList";
 
 const REGION = "australia-southeast2";
 const functions = () => getFunctions(undefined, REGION);
@@ -125,12 +126,15 @@ export const useWordleUnlimitedStore = defineStore("wordleUnlimited", {
 
     // Word validation
     _allowedWords: null,
+    wordListStatus: "loading",
+    wordListError: null,
   }),
 
   getters: {
     canType() {
       return (
         !this.loading &&
+        this.wordListStatus === "ready" &&
         this.currentGame &&
         this.currentGame.status === "idle" &&
         this.currentGame.rows.length < 6
@@ -170,13 +174,28 @@ export const useWordleUnlimitedStore = defineStore("wordleUnlimited", {
 
   actions: {
     setAllowedWords(set) {
+      if (!(set instanceof Set) || set.size === 0) {
+        this.setWordListError();
+        return;
+      }
       this._allowedWords = set;
+      this.wordListStatus = "ready";
+      this.wordListError = null;
+    },
+
+    beginWordListLoad() {
+      this.wordListStatus = "loading";
+      this.wordListError = null;
+    },
+
+    setWordListError() {
+      this._allowedWords = null;
+      this.wordListStatus = "error";
+      this.wordListError = "Word checks are unavailable.";
     },
 
     _isValidWord(word) {
-      if (!word || word.length !== 5) return false;
-      if (!this._allowedWords) return true;
-      return this._allowedWords.has(word.toLowerCase());
+      return isAllowedFiveLetterGuess(word, this._allowedWords);
     },
 
     _syncWithDailyStore() {

@@ -75,6 +75,13 @@
             </div>
         </transition>
 
+        <div v-if="store.wordListStatus === 'error'" role="alert"
+            class="w-full max-w-md rounded-lg border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-center">
+            <p class="text-sm text-amber-100">Guesses can’t be checked right now.</p>
+            <button type="button" class="mt-2 text-sm font-semibold text-amber-300 underline underline-offset-4"
+                @click="loadAllowedWords">Retry word checks</button>
+        </div>
+
         <!-- KEYBOARD -->
         <div v-if="!store.loading" class="w-full max-w-[min(96vw,30rem)] md:max-w-[38rem] lg:max-w-[42rem]"
             :class="{ 'opacity-70 pointer-events-none': !canTypeOnKeyboard }">
@@ -180,6 +187,7 @@ import { useWordleUnlimitedStore } from '@/features/daily/stores/useWordleUnlimi
 import KeyButton from './components/KeyButton.vue'
 import WordleUnlimitedCompletionOverlay from './components/WordleCompletionOverlay.vue'
 import { CornerDownLeft, Delete, ArrowRightCircle, Gamepad2, Flame } from '@lucide/vue'
+import { parseAllowedFiveLetterWords } from '@/features/daily/utils/wordList'
 
 const store = useWordleUnlimitedStore()
 
@@ -207,33 +215,26 @@ const streakIconClass = computed(() => {
 })
 
 async function loadAllowedWords() {
+    store.beginWordListLoad()
     try {
         const response = await fetch('/data/words.json')
         if (!response.ok) throw new Error('Failed to load words package')
         const mod = await response.json()
         
-        let raw = mod.default ?? mod.words ?? mod.list ?? mod
-        let arr
-        if (Array.isArray(raw)) arr = raw
-        else if (raw && typeof raw === 'object') arr = Object.keys(raw)
-        else arr = []
-        const five = arr
-            .filter((w) => typeof w === 'string' && /^[a-z]{5}$/.test(w))
-            .map((w) => w.toLowerCase())
-        store.setAllowedWords(new Set(five))
+        store.setAllowedWords(parseAllowedFiveLetterWords(mod))
     } catch {
-        /* stay permissive */
+        store.setWordListError()
     }
 }
 
 onMounted(async () => {
-    loadAllowedWords()
     window.addEventListener('keydown', onKeydown)
 
     // Initialize if not already done
-    if (!store.initialized) {
-        await store.initialize()
-    }
+    await Promise.all([
+        loadAllowedWords(),
+        store.initialized ? Promise.resolve() : store.initialize(),
+    ])
 })
 
 onUnmounted(() => window.removeEventListener('keydown', onKeydown))

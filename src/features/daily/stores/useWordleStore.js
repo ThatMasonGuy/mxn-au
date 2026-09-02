@@ -7,6 +7,7 @@ import { doc, onSnapshot, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { useDailyStore } from "./useDailyStore";
 import { recordLocalDailyResult } from "@/features/daily/utils/dailyGameProfiles";
 import { compareWordleProgress } from "@/features/daily/utils/dailyGameProgress";
+import { isAllowedFiveLetterGuess } from "@/features/daily/utils/wordList";
 
 const REGION = "australia-southeast2";
 const functions = () => getFunctions(undefined, REGION);
@@ -67,6 +68,8 @@ export const useWordleStore = defineStore("wordle", {
     profile: null,
 
     _allowedWords: null,
+    wordListStatus: "loading",
+    wordListError: null,
   }),
 
   getters: {
@@ -95,6 +98,7 @@ export const useWordleStore = defineStore("wordle", {
     canType() {
       return (
         !this.loading &&
+        this.wordListStatus === "ready" &&
         !this.isLocked &&
         !this.isComplete &&
         this.guessesCount < 6
@@ -111,12 +115,25 @@ export const useWordleStore = defineStore("wordle", {
     },
 
     setAllowedWords(set) {
+      if (!(set instanceof Set) || set.size === 0) {
+        this.setWordListError();
+        return;
+      }
       this._allowedWords = set;
+      this.wordListStatus = "ready";
+      this.wordListError = null;
+    },
+    beginWordListLoad() {
+      this.wordListStatus = "loading";
+      this.wordListError = null;
+    },
+    setWordListError() {
+      this._allowedWords = null;
+      this.wordListStatus = "error";
+      this.wordListError = "Word checks are unavailable.";
     },
     _isValidWord(word) {
-      if (!word || word.length !== 5) return false;
-      if (!this._allowedWords) return true;
-      return this._allowedWords.has(word.toLowerCase());
+      return isAllowedFiveLetterGuess(word, this._allowedWords);
     },
 
     _applyProfile(data) {
@@ -490,6 +507,9 @@ export const useWordleStore = defineStore("wordle", {
       this.isLocked = false;
       this._lastLoadTime = null;
       this._loadPromise = null;
+      this._allowedWords = null;
+      this.wordListStatus = "loading";
+      this.wordListError = null;
     },
 
     $dispose() {

@@ -32,6 +32,13 @@
             </div>
         </transition>
 
+        <div v-if="store.wordListStatus === 'error'" role="alert"
+            class="w-full max-w-md rounded-lg border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-center">
+            <p class="text-sm text-amber-100">Guesses can’t be checked right now.</p>
+            <button type="button" class="mt-2 text-sm font-semibold text-amber-300 underline underline-offset-4"
+                @click="loadAllowedWords">Retry word checks</button>
+        </div>
+
         <!-- KEYBOARD -->
         <div class="w-full max-w-[min(96vw,30rem)] md:max-w-[38rem] lg:max-w-[42rem]" :class="{ 'opacity-70 pointer-events-none': !store.canType }">
             <div class="flex flex-col gap-1">
@@ -79,6 +86,7 @@ import { useWordleStore } from '@/features/daily/stores/useWordleStore';
 import KeyButton from './components/KeyButton.vue';
 import WordleCompletionOverlay from './components/WordleCompletionOverlay.vue';
 import { CornerDownLeft, Delete } from '@lucide/vue';
+import { parseAllowedFiveLetterWords } from '@/features/daily/utils/wordList';
 
 const store = useWordleStore();
 
@@ -91,19 +99,15 @@ const row2 = 'ASDFGHJKL'.split('');
 const row3 = 'ZXCVBNM'.split('');
 
 async function loadAllowedWords() {
+    store.beginWordListLoad();
     try {
         const response = await fetch('/data/words.json');
         if (!response.ok) throw new Error('Failed to load words module');
         const mod = await response.json();
-        
-        let raw = mod.default ?? mod.words ?? mod.list ?? mod;
-        let arr;
-        if (Array.isArray(raw)) arr = raw;
-        else if (raw && typeof raw === 'object') arr = Object.keys(raw);
-        else arr = [];
-        const five = arr.filter(w => typeof w === 'string' && /^[a-z]{5}$/.test(w)).map(w => w.toLowerCase());
-        store.setAllowedWords(new Set(five));
-    } catch { /* stay permissive; server still validates */ }
+        store.setAllowedWords(parseAllowedFiveLetterWords(mod));
+    } catch {
+        store.setWordListError();
+    }
 }
 
 onMounted(() => {
