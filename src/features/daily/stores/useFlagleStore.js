@@ -3,7 +3,7 @@ import { defineStore } from "pinia";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { firestore } from "@/firebase";
-import { doc, onSnapshot } from "firebase/firestore";
+import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import { useDailyStore } from "./useDailyStore";
 import { prepareFlagleSubmission } from "@/features/daily/utils/flagleSubmission";
 import {
