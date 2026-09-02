@@ -24,7 +24,7 @@ const { startLoading, stopLoading } = useLoadingScreen()
 let lastLoggedPath = null
 let pageViewDebounce = null
 
-router.beforeEach(async (to, from, next) => {
+router.beforeEach(async (to) => {
     document.title = to.meta.title ? `${to.meta.title} | MXN.au` : 'MXN.au'
 
     // Start the debounced loading screen
@@ -34,9 +34,8 @@ router.beforeEach(async (to, from, next) => {
     const accessCheck = checkRouteAccess(to)
     if (accessCheck.blocked) {
         stopLoading()
-        return next(accessCheck.redirect)
+        return accessCheck.redirect
     }
-    next()
 })
 
 router.afterEach((to, from) => {
