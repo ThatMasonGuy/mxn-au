@@ -677,6 +677,16 @@ export const useFlagleStore = defineStore("flagle", {
       return `${header}\n${result}\n${grid}\n\nPlay at https://mxn.au/daily?game=flag`;
     },
 
+    resetTodayLocal() {
+      const date = this.puzzleId?.replace("flagle-", "") || dateStrUTC();
+      delete this.days[date];
+      this._ensureDay(date);
+      this._syncCurrentStateFromDay(date);
+      this.currentInput = "";
+      this.guessSubmitting = false;
+      this._syncWithDailyStore();
+    },
+
     hardResetLocal() {
       if (this._profileUnsubscribe) {
         this._profileUnsubscribe();

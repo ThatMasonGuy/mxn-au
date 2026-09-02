@@ -737,6 +737,14 @@ export const useConnectionsStore = defineStore("connections", {
       return `${header}\n${result}\n\n${grid}\n\nPlay at https://mxn.au/daily?game=connections`;
     },
 
+    resetTodayLocal() {
+      const date = this.puzzleId?.replace("connections-", "") || dateStrUTC();
+      delete this.days[date];
+      this.lastSeenDate = date;
+      this._ensureDay(date);
+      this._syncWithDailyStore();
+    },
+
     hardResetLocal() {
       if (this._profileUnsubscribe) {
         this._profileUnsubscribe();

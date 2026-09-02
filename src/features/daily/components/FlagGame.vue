@@ -1,14 +1,5 @@
 <template>
     <div class="flex flex-col items-center gap-6 prevent-zoom" ref="containerRef">
-        <!-- Dev tools -->
-        <div v-if="isDevMode" class="w-full max-w-2xl mx-auto mt-2">
-            <div class="flex items-center justify-end">
-                <button @click="devResetToday"
-                    class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-600/20 text-amber-300 border border-amber-600/40 hover:bg-amber-600/30 transition">Reset
-                    Today (Dev)</button>
-            </div>
-        </div>
-
         <!-- Loading State -->
         <div v-if="store.loading"
             class="w-full mx-auto max-w-[min(92vw,24rem)] md:max-w-[30rem] lg:max-w-[36rem] xl:max-w-[40rem]">
@@ -169,9 +160,6 @@ import {
     ArrowUpLeft,
     Target
 } from '@lucide/vue'
-import { getAuth } from 'firebase/auth'
-import { firestore } from '@/firebase'
-import { doc, deleteDoc } from 'firebase/firestore'
 import FancyLoader from './components/Loader.vue'
 
 const store = useFlagleStore()
@@ -191,25 +179,6 @@ const directionIcons = {
 
 function getDirectionIcon(iconName) {
     return directionIcons[iconName] || Target
-}
-
-// Dev mode
-const isDevMode = computed(() => new URLSearchParams(location.search).get('dev') === 'true')
-
-async function devResetToday() {
-    try {
-        store.hardResetLocal() // nuke local
-        // attempt remote day delete if logged in
-        const auth = getAuth()
-        const user = auth.currentUser
-        if (user && store.puzzleId) {
-            const date = store.puzzleId.replace('flagle-', '')
-            const dayRef = doc(firestore, 'users', user.uid, 'dailyChallenges', 'flag', 'days', date)
-            await deleteDoc(dayRef).catch(() => { })
-        }
-    } finally {
-        location.reload()
-    }
 }
 
 const showingResult = ref(false)

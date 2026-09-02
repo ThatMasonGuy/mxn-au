@@ -117,8 +117,9 @@
                 <Share2 aria-hidden="true" />
                 {{ shareBusy ? 'Copying…' : 'Share result' }}
               </button>
-              <button v-if="showDevReset && openGame === 'wordle'" type="button" class="game-dev" @click="devReset">
-                <Trash2 aria-hidden="true" /> Reset local game
+              <button v-if="showDevReset && resettableDailyGames.has(openGame)" type="button" class="game-dev"
+                :disabled="devResetBusy" @click="devReset">
+                <Trash2 aria-hidden="true" /> {{ devResetBusy ? 'Resetting…' : 'Reset today' }}
               </button>
               <span v-if="copyMsg" class="game-copy-status" role="status">{{ copyMsg }}</span>
             </div>
@@ -186,6 +187,7 @@
 import { ref, computed, onMounted, onUnmounted, defineAsyncComponent, shallowRef, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { getAuth, signOut as firebaseSignOut } from 'firebase/auth'
+import { getFunctions, httpsCallable } from 'firebase/functions'
 import { useWordleStore } from '@/features/daily/stores/useWordleStore'
 import { useWordleUnlimitedStore } from '@/features/daily/stores/useWordleUnlimitedStore'
 import { useDailyStore } from '@/features/daily/stores/useDailyStore'
@@ -220,6 +222,7 @@ const initialLoading = ref(false)
 /* Wordle specific state */
 const shareBusy = ref(false)
 const copyMsg = ref('')
+const devResetBusy = ref(false)
 const profile = computed(() => dailyStore.wordleStats)
 const hubTitleRef = ref(null)
 const gameTitleRef = ref(null)
@@ -234,14 +237,48 @@ const canPlayWordleUnlimited = computed(() => {
   return isAuthenticated.value && isWordleUnlimitedUnlocked.value
 })
 
-// DEV reset (local only)
+const resettableDailyGames = new Set(['wordle', 'connections', 'flag'])
+
+// Reset today's play state without erasing the game's profile or history.
 async function devReset() {
+  if (!resettableDailyGames.has(openGame.value) || devResetBusy.value) return
+
+  devResetBusy.value = true
   try {
-    localStorage.removeItem('mxn:daily:wordle')
-    wordleStore.hardResetLocal?.()
-    copyMsg.value = 'Local state cleared'
-    setTimeout(() => location.reload(), 350)
-  } catch { /* ignore */ }
+    const gameId = openGame.value
+    const stores = {
+      wordle: wordleStore,
+      connections: connectionsStore,
+      flag: flagleStore,
+    }
+    const puzzlePrefixes = {
+      wordle: 'wordle-',
+      connections: 'connections-',
+      flag: 'flagle-',
+    }
+    const gameStore = stores[gameId]
+    const date = gameStore?.puzzleId?.replace(puzzlePrefixes[gameId], '')
+      || new Date().toISOString().slice(0, 10)
+
+    if (getAuth().currentUser) {
+      const resetProgress = httpsCallable(
+        getFunctions(undefined, 'australia-southeast2'),
+        'resetDailyGameProgress',
+      )
+      await resetProgress({ game: gameId, date })
+    }
+
+    gameStore?.resetTodayLocal?.()
+    dailyStore.updateGameStatus(gameId, 'not-started')
+    copyMsg.value = 'Today reset'
+    setTimeout(() => location.reload(), 150)
+  } catch (error) {
+    console.error('Daily dev reset failed:', error)
+    copyMsg.value = 'Reset failed'
+    setTimeout(() => (copyMsg.value = ''), 2500)
+  } finally {
+    devResetBusy.value = false
+  }
 }
 
 // Navigation

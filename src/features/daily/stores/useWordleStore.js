@@ -508,6 +508,14 @@ export const useWordleStore = defineStore("wordle", {
       return `${header}\n${result}\n\n${lines.join("\n")}\n\nPlay at https://mxn.au/daily?game=wordle`;
     },
 
+    resetTodayLocal() {
+      const date = this.puzzleId?.replace("wordle-", "") || dateStrUTC();
+      delete this.days[date];
+      this.lastSeenDate = date;
+      this._ensureDay(date);
+      this._syncWithDailyStore();
+    },
+
     hardResetLocal() {
       if (this._profileUnsubscribe) {
         this._profileUnsubscribe();
