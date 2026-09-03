@@ -1,6 +1,6 @@
 # Connections generation
 
-The generator and independent editor both use `gpt-5.6-terra` through the OpenAI Responses API with strict JSON schemas. The generator receives the complete recent/future word exclusion list and the last rejected draft with actionable editor feedback. A puzzle is published only after structural validation and independent editorial approval.
+The generator and independent editor both use `gpt-5.6-terra` with medium reasoning through the OpenAI Responses API with strict JSON schemas. The generator receives the complete recent/future word exclusion list and the last rejected draft with actionable editor feedback. A puzzle is published only after structural validation and independent editorial approval. Red herrings can form misleading partial groups; ambiguity means more than one complete four-group solution, not an individual word fitting two categories.
 
 ## Recovery and limits
 

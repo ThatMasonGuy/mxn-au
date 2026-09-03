@@ -7,7 +7,7 @@ import OpenAI from 'openai';
 import { db } from '../config/firebase.mjs';
 import { connectionsGenerationDateIds } from './connectionsSchedule.mjs';
 import {
-  CONNECTIONS_MODEL, CONNECTIONS_REVIEW_MODEL, generateConnectionsPuzzle, shouldGenerateConnectionsPuzzle,
+  CONNECTIONS_MODEL, CONNECTIONS_REVIEW_MODEL, CONNECTIONS_REASONING_EFFORT, generateConnectionsPuzzle, shouldGenerateConnectionsPuzzle,
   saveConnectionsPuzzle, withConnectionsGenerationLease,
   claimConnectionsGenerationBudget,
 } from './connectionsGeneration.mjs';
@@ -19,7 +19,7 @@ const leaseRef = () => db.doc('dailyChallenges/connections/maintenance/generatio
 const dateIdUTC = (date = new Date()) => date.toISOString().slice(0, 10);
 let client;
 function openai() {
-  client ||= new OpenAI({ apiKey: OPENAI_API_KEY.value(), timeout: 180000, maxRetries: 0 });
+  client ||= new OpenAI({ apiKey: OPENAI_API_KEY.value(), timeout: 300000, maxRetries: 0 });
   return client;
 }
 
@@ -64,6 +64,7 @@ async function runGenerationFor(dateId, { overwrite = false } = {}) {
     data: {
       ...result.puzzle, source: 'ai', model: CONNECTIONS_MODEL,
       qualityReviewed: true, reviewModel: CONNECTIONS_REVIEW_MODEL, generationVersion: 2,
+      reasoningEffort: CONNECTIONS_REASONING_EFFORT,
       createdAt: FieldValue.serverTimestamp(), generationAttempts: result.attempts,
     },
   });

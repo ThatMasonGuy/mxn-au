@@ -2,12 +2,13 @@ import { CONNECTION_DIFFICULTIES, validateConnectionsPuzzle } from './connection
 
 export const CONNECTIONS_MODEL = 'gpt-5.6-terra';
 export const CONNECTIONS_REVIEW_MODEL = 'gpt-5.6-terra';
+export const CONNECTIONS_REASONING_EFFORT = 'medium';
 const objectSchema = (properties) => ({
   type: 'object', properties, required: Object.keys(properties), additionalProperties: false,
 });
 const puzzleSchema = objectSchema({
   answer: objectSchema(Object.fromEntries(CONNECTION_DIFFICULTIES.map(level => [level, {
-    type: 'array', items: { type: 'string' }, minItems: 4, maxItems: 4,
+    type: 'array', items: { type: 'string', pattern: '^[A-Z]{3,10}$' }, minItems: 4, maxItems: 4,
   }]))),
   categories: objectSchema(Object.fromEntries(CONNECTION_DIFFICULTIES.map(level => [level, { type: 'string' }]))),
 });
@@ -22,7 +23,7 @@ EASY is approachable inference; MEDIUM is a less obvious connection; HARD and EX
 At least 10 distinct words must participate in plausible cross-group red-herring clusters on THIS board. A lure can be a tempting partial set of two or three words drawn from different intended groups; it need not fit another final category label. An unrelated secondary dictionary meaning alone is not a distraction.
 All 16 words are unique, single English words of 3-10 ASCII letters, uppercase. Four words per group. Category titles must be precise and no longer than 100 characters.
 Check the exact phrase or linguistic operation for every member. Reject forced phrases and alternative COMPLETE four-group partitions. Individual words may fit more than one category: that is a valid red herring, not proof of multiple solutions. For an ambiguity rejection, demonstrate a full alternative partition using all 16 words exactly once.
-Judge difficulty from the shuffled words BEFORE revealing the category titles. A short explanation can conceal a subtle connection; do not mistake simplicity after the reveal for ease of discovery.`;
+Judge difficulty from the shuffled words BEFORE revealing the category titles. A short explanation can conceal a subtle connection; do not mistake simplicity after the reveal for ease of discovery. Solving the last group by elimination is a normal game mechanic, not a reason to reject an otherwise defensible puzzle.`;
 
 function parseCompletion(completion) {
   if (completion?.status !== 'completed') return null;
@@ -47,7 +48,7 @@ ${JSON.stringify([...ban].sort())}` },
     signal?.throwIfAborted();
     const completion = await client.responses.create({
       model: CONNECTIONS_MODEL, input: structuredClone(messages), store: false,
-      reasoning: { effort: 'low' }, max_output_tokens: 8000,
+      reasoning: { effort: CONNECTIONS_REASONING_EFFORT }, max_output_tokens: 16000,
       text: { format: { type: 'json_schema', name: 'connections_puzzle', strict: true, schema: puzzleSchema } },
     }, { signal });
     const draft = parseCompletion(completion);
