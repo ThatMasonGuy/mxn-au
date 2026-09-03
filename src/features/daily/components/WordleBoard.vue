@@ -187,7 +187,7 @@ function backMaskClass(r, c) {
 }
 
 function frontChar(r, c) {
-    if (status.value === 'idle' && r === rows.value.length) return (store.currentInput[c] || '').toUpperCase();
+    if (!store.isComplete && r === rows.value.length) return (store.currentInput[c] || '').toUpperCase();
     if (isRevealingRow(r)) return rows.value[r]?.guess[c] ?? '';
     return '';
 }

@@ -385,7 +385,7 @@ export const useWordleStore = defineStore("wordle", {
         }
 
         this.days[date].currentInput = clamp5(this.days[date].currentInput);
-        if (this.status !== "idle") this.days[date].currentInput = "";
+        if (this.isComplete) this.days[date].currentInput = "";
         this._syncWithDailyStore();
       } catch (error) {
         console.error("Error loading daily wordle:", error);
