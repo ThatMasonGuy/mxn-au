@@ -20,7 +20,7 @@ const reviewSchema = objectSchema({
 const qualityRequirements = `Every group must have a precise, defensible inferential connection: phrase completion, wordplay, or semantic ambiguity.
 No elementary lookup sets, simple member lists, or vague thematic associations. Do not use lists of colours, fruit, directions, Greek letters, planets, seasons, months, days, animals, shapes, professions or equipment.
 EASY is approachable inference; MEDIUM is a less obvious connection; HARD and EXPERT must be materially harder, with subtle wordplay or multiple meanings.
-At least 10 distinct words must participate in plausible cross-group red-herring clusters on THIS board. A lure can be a tempting partial set of two or three words drawn from different intended groups; it need not fit another final category label. An unrelated secondary dictionary meaning alone is not a distraction.
+Include at least two convincing red-herring clusters spanning different intended groups, with some HARD or EXPERT entries participating. A lure can be a tempting partial set of two or three words; it need not fit another final category label. Familiar semantic sets are valid distractions even though the intended solutions must require inference. Do not impose a quota on the number of multiply connected words or force weak associations just to increase a count.
 All 16 words are unique, single English words of 3-10 ASCII letters, uppercase. Four words per group. Category titles must be precise and no longer than 100 characters.
 Check the exact phrase or linguistic operation for every member. Reject forced phrases and alternative COMPLETE four-group partitions. Individual words may fit more than one category: that is a valid red herring, not proof of multiple solutions. For an ambiguity rejection, demonstrate a full alternative partition using all 16 words exactly once.
 Judge difficulty from the shuffled words BEFORE revealing the category titles. A short explanation can conceal a subtle connection; do not mistake simplicity after the reveal for ease of discovery. Solving the last group by elimination is a normal game mechanic, not a reason to reject an otherwise defensible puzzle.`;
@@ -36,7 +36,7 @@ export async function generateConnectionsPuzzle({ client, bannedWords = [], maxA
   const messages = [
     { role: 'system', content: `Design an original, expert Connections puzzle. ${qualityRequirements}
 Build interlocking categories together, not four independent lists. Before returning the board, verify all phrases and plausible cross-group distractions.
-Start from overlapping everyday meanings and familiar expressions. Mix category mechanisms; do not make every category an arbitrary letter addition or removal. Internally map at least 10 distinct entries to a specific misleading group or competing cluster on the board, then check that the intended partition remains unique.
+Start from overlapping everyday meanings and familiar expressions. Mix category mechanisms; do not make every category an arbitrary letter addition or removal. Design convincing competing clusters involving words from different intended groups, then check that the intended partition remains unique.
 When an editor rejects a draft, revise that draft using the specific feedback. Replace whole categories if needed; do not repeat the rejected design.` },
     { role: 'user', content: `Return answer and categories keyed by easy, medium, hard, expert.
 NONE of these previously used words may appear (this is the COMPLETE exclusion list):
