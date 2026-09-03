@@ -2,10 +2,7 @@
 import { onCall } from 'firebase-functions/v2/https';
 import { db } from '../config/firebase.mjs';
 import { calculateDailyStreak, hasRecordedDailyResult } from './dailyGameStats.mjs';
-import {
-    CURATED_CONNECTIONS_FALLBACK,
-    validateConnectionsPuzzle,
-} from './connectionsQuality.mjs';
+import { readOrSeedConnectionsSolution } from './connectionsSolution.mjs';
 import {
     validateConnectionsCompletion,
     validateCurrentPuzzleId,
@@ -23,48 +20,8 @@ function dateStrUTC(d = new Date()) {
 
 const solDoc = (date) => `dailyChallenges/connections/solutions/${date}`;
 
-async function createIfMissing(refPath, seed) {
-    const ref = db.doc(refPath);
-    try {
-        await ref.create(seed);
-    } catch (e) {
-        if (!(e && (e.code === 6 || e.message?.includes('ALREADY_EXISTS')))) throw e;
-    }
-}
-
 async function ensureSolutionFor(date) {
-    const ref = db.doc(solDoc(date));
-    const nowISO = new Date().toISOString();
-
-    const snap = await ref.get();
-    if (!snap.exists) {
-        await createIfMissing(ref.path, {
-            answer: CURATED_CONNECTIONS_FALLBACK.answer,
-            categories: CURATED_CONNECTIONS_FALLBACK.categories,
-            wasFallbackSeed: true,
-            seedReason: 'missing_puzzle',
-            seededAt: nowISO,
-        });
-        return CURATED_CONNECTIONS_FALLBACK;
-    }
-
-    const raw = snap.data();
-    const validation = validateConnectionsPuzzle(raw?.answer, raw?.categories);
-    if (!validation.valid) {
-        await ref.set({
-            answer: CURATED_CONNECTIONS_FALLBACK.answer,
-            categories: CURATED_CONNECTIONS_FALLBACK.categories,
-            wasFallbackSeed: true,
-            seedReason: validation.reason,
-            qualityRepairAt: nowISO,
-        }, { merge: true });
-        return CURATED_CONNECTIONS_FALLBACK;
-    }
-
-    return {
-        answer: validation.answer,
-        categories: validation.categories,
-    };
+    return readOrSeedConnectionsSolution({ db, ref: db.doc(solDoc(date)) });
 }
 
 // ---------- 1) GET PUZZLE DATA ONLY ----------

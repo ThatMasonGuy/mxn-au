@@ -13,3 +13,7 @@ export function connectionsPuzzleBufferDateIds(now = new Date(), days = 7) {
 export function nextConnectionsPuzzleDateId(now = new Date()) {
   return connectionsPuzzleBufferDateIds(now, 1)[0];
 }
+
+export function connectionsGenerationDateIds(now = new Date(), days = 7) {
+  return [now.toISOString().slice(0, 10), ...connectionsPuzzleBufferDateIds(now, days)];
+}

@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
   connectionsPuzzleBufferDateIds,
   nextConnectionsPuzzleDateId,
+  connectionsGenerationDateIds,
 } from '../functions/dailyGames/connectionsSchedule.mjs';
 
 test('Connections generation prepares the next UTC puzzle before players request it', () => {
@@ -15,6 +16,14 @@ test('Connections generation prepares the next UTC puzzle before players request
     nextConnectionsPuzzleDateId(new Date('2026-12-31T23:59:59.000Z')),
     '2027-01-01',
   );
+});
+
+test('recovery includes today without losing the next seven days', () => {
+  const dates = connectionsGenerationDateIds(new Date('2026-12-31T23:59:59Z'));
+  assert.equal(dates.length, 8);
+  assert.equal(dates[0], '2026-12-31');
+  assert.equal(dates[1], '2027-01-01');
+  assert.equal(dates.at(-1), '2027-01-07');
 });
 
 test('Connections generation maintains a bounded seven-day UTC buffer', () => {
