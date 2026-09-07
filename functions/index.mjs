@@ -16,7 +16,7 @@ export { processTranslationStats } from './api/processTranslationStats.mjs';
 export { processTranslationErrors } from './api/processTranslationErrors.mjs';
 
 // Journal & Destiny API functions
-// export { handleJournalChat } from './api/handleJournalChat.mjs';
+// Journal chat is retired; no callable backend is exported.
 // export { startBungieOAuth, bungieOAuthCallback } from './api/oauth.mjs';
 // export { getChallenges } from './api/getChallenges.mjs';
 // export { aiSuggest } from './api/aiSuggest.mjs';

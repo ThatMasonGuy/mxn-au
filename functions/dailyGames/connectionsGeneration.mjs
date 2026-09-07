@@ -1,7 +1,7 @@
 import { CONNECTION_DIFFICULTIES, validateConnectionsPuzzle } from './connectionsQuality.mjs';
 
-export const CONNECTIONS_MODEL = 'gpt-5.6-terra';
-export const CONNECTIONS_REVIEW_MODEL = 'gpt-5.6-terra';
+export const CONNECTIONS_MODEL = 'gpt-5.6-luna';
+export const CONNECTIONS_REVIEW_MODEL = 'gpt-5.6-luna';
 export const CONNECTIONS_REASONING_EFFORT = 'medium';
 const objectSchema = (properties) => ({
   type: 'object', properties, required: Object.keys(properties), additionalProperties: false,

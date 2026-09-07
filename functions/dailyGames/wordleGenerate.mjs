@@ -1,3 +1,4 @@
+import { WORD_GENERATION_MODEL, requestWordCandidates } from './wordGeneration.mjs';
 // functions/src/wordleGenerate.mjs
 import { onSchedule } from 'firebase-functions/v2/scheduler'
 import { onRequest } from 'firebase-functions/v2/https'
@@ -96,7 +97,7 @@ async function checkMissingDates(todayId) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// LLM generation (GPT-4o via chat.completions with JSON output)
+// LLM generation (Luna via Responses with structured output)
 // ──────────────────────────────────────────────────────────────────────────────
 async function generateWords(need, ban) {
     // ask for a few extra to survive filtering collisions
@@ -105,10 +106,7 @@ async function generateWords(need, ban) {
 
     const banSlice = Array.from(ban).slice(0, 800).join(', ')
 
-    const comp = await client.chat.completions.create({
-        model: 'gpt-4o',
-        response_format: { type: 'json_object' },
-        messages: [
+    const words = await requestWordCandidates(client, [
             {
                 role: 'system',
                 content:
@@ -126,13 +124,9 @@ Rules:
 - EXCLUDE any in this ban list:
 ${banSlice}`
             }
-        ],
-        temperature: 0.4,
-    })
+        ]);
 
-    let parsed = {}
-    try { parsed = JSON.parse(comp.choices?.[0]?.message?.content || '{}') } catch { }
-    const candidates = Array.from(new Set((parsed.words || []).map((w) => String(w).toUpperCase().trim())))
+    const candidates = Array.from(new Set(words.map((w) => String(w).toUpperCase().trim())))
 
     // local filters
     const approved = []
@@ -161,7 +155,7 @@ async function upsertSolutions(dateIds, words) {
             {
                 answer,
                 source: 'ai',
-                model: 'gpt-4o',
+                model: WORD_GENERATION_MODEL,
                 createdAt: FieldValue.serverTimestamp(),
             },
             { merge: true }
@@ -287,7 +281,7 @@ export const wordleGenerateNow = onRequest(
                         {
                             answer: solution.answer,
                             source: 'ai',
-                            model: 'gpt-4o',
+                            model: WORD_GENERATION_MODEL,
                             createdAt: FieldValue.serverTimestamp(),
                             overwrite,
                         },

@@ -205,8 +205,8 @@ const activeTools = [
         badges: ['New!'],
     },
     {
-        title: 'AI Journal',
-        desc: 'Context-aware journalling with AI-generated prompts. Or just write, old-school. The AI is there when you want it.',
+        title: 'AI Journal (Retired)',
+        desc: 'The AI journal has been retired. New chats and AI summaries are no longer available.',
         link: '/personal/journal',
         icon: BookOpen,
         accent: 'violet',
@@ -330,7 +330,7 @@ const gnawFeatures = [
     'Mood & mental wellness',
     'Movement & exercise',
     'Habit & goal tracking',
-    'AI-powered journalling',
+    'Personal notes',
 ]
 </script>
 

@@ -39,7 +39,7 @@ test('reused words receive specific revision feedback before independent review'
   assert.deepEqual(result.puzzle, revised);
   assert.equal(result.attempts, 2);
   assert.equal(requests.length, 3);
-  assert.ok(requests.every(request => request.model === 'gpt-5.6-terra'));
+  assert.ok(requests.every(request => request.model === 'gpt-5.6-luna'));
   assert.ok(requests[1].input.at(-1).content.includes('reused_word'));
   assert.ok(requests[1].input.at(-1).content.includes('SCORE'));
   assert.deepEqual(JSON.parse(requests[1].input.at(-2).content), fixture);

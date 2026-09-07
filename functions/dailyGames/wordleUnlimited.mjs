@@ -1,3 +1,4 @@
+import { WORD_GENERATION_MODEL, requestWordCandidates } from './wordGeneration.mjs';
 // functions/src/wordleUnlimited.mjs - Simplified to 2 functions only
 import { onCall } from 'firebase-functions/v2/https';
 import { FieldPath, FieldValue } from 'firebase-admin/firestore';
@@ -27,10 +28,7 @@ async function generateWords(need, existingWords) {
     const banSet = new Set(existingWords.map(w => w.toUpperCase()));
     const banSlice = Array.from(banSet).slice(0, 1000).join(', ');
 
-    const comp = await client.chat.completions.create({
-        model: 'gpt-4o',
-        response_format: { type: 'json_object' },
-        messages: [
+    const words = await requestWordCandidates(client, [
             {
                 role: 'system',
                 content: 'You are a word curator for Wordle Unlimited. Generate diverse, interesting 5-letter words for players to solve.'
@@ -50,19 +48,9 @@ Selection criteria:
 EXCLUDE any words in this list:
 ${banSlice}`
             }
-        ],
-        temperature: 0.7,
-    });
+        ]);
 
-    let parsed = {};
-    try {
-        parsed = JSON.parse(comp.choices?.[0]?.message?.content || '{}');
-    } catch (e) {
-        console.error('Failed to parse OpenAI response:', e);
-        return [];
-    }
-
-    const candidates = Array.from(new Set((parsed.words || []).map(w => String(w).toUpperCase().trim())));
+    const candidates = Array.from(new Set(words.map(w => String(w).toUpperCase().trim())));
 
     const approved = [];
     for (const w of candidates) {
@@ -151,7 +139,7 @@ export const getWordleUnlimitedWords = onCall(
                 batch.set(docRef, {
                     word: word,
                     source: 'ai',
-                    model: 'gpt-4o',
+                    model: WORD_GENERATION_MODEL,
                     difficulty: 'medium',
                     createdAt: timestamp
                 });
