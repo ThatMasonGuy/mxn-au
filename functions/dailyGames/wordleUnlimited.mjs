@@ -12,7 +12,7 @@ import {
 } from './wordleUnlimitedPool.mjs';
 
 const REGION = 'australia-southeast2';
-const OPENAI_API_KEY = defineSecret('OPENAI_API_KEY');
+const OPENAI_API_KEY = defineSecret('DAILY_GAMES_OPENAI_API_KEY');
 
 let _openai = null;
 function openai() {

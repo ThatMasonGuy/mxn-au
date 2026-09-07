@@ -26,7 +26,7 @@ The following values had no exact variable-name consumer in tracked application 
 | Removed variable | Archive secret | Related backend use / status |
 | --- | --- | --- |
 | `VITE_RESEND_API_KEY` | `ARCHIVED_FRONTEND_RESEND_API_KEY` | Everhomes report/email functions already bind `RESEND_API_KEY` |
-| `VITE_OPENAI_API_KEY` | `ARCHIVED_FRONTEND_OPENAI_API_KEY` | Daily games use separate `OPENAI_API_KEY`; journal/AI-suggestion exports are disabled |
+| `VITE_OPENAI_API_KEY` | `ARCHIVED_FRONTEND_OPENAI_API_KEY` | Exact value matches active `OPENAI_API_KEY` used by daily games; journal/AI-suggestion exports are disabled |
 | `VITE_OPENAI_API_KEY_TRANSLATION_MASON` | `ARCHIVED_FRONTEND_OPENAI_API_KEY_TRANSLATION_MASON` | No current frontend consumer |
 | `VITE_DEEPL_API_KEY` | `ARCHIVED_FRONTEND_DEEPL_API_KEY` | Translation functions already bind separate `DEEPL_API_KEY` |
 | `VITE_BUNGIE_API_KEY` | `ARCHIVED_FRONTEND_BUNGIE_API_KEY` | Destiny function modules bind `BUNGIE_API_KEY`, but their index exports are commented out |
@@ -66,3 +66,15 @@ The regression tests in `tests/translation-secrets.test.mjs` exercise authorizat
 - Existing anonymous cache-feedback and client-fed usage logging remain separate known integrity/efficiency issues. They cannot bypass the new provider authorization or server-only daily budget counters, but website usage statistics are not authoritative provider billing evidence.
 
 Hosting was published successfully after the backend deployments. `https://mxn.au/translate` returns HTTP 200. The live `useTranslateStore-CpHCGhde.js`, `ServerDashboard-BHtS9fjv.js`, and `MXNHome-XbP1W7zi.js` each match the verified local build byte-for-byte. OpenAI translation remains intentionally blocked by the credit balance, per the owner.
+
+### Project separation, 2026-09-07
+
+A replacement `translation-key` was created in Tempest Studios / Translation (`proj_CoNV7myVjtklQg84NCVhFbBM`) and transferred to `TRANSLATION_OPENAI_API_KEY` version 2 with exact read-back verification. The approved temporary transfer file and private transfer key were deleted. The owner is handling revocation of the preceding Default-project key. The preceding quota diagnostic applies to that old key; no provider request has been made with this replacement.
+
+The translation redeployment completed successfully; live Functions metadata confirms `aiTranslate` is ACTIVE and binds `TRANSLATION_OPENAI_API_KEY` version 2. The owner selected a separate Daily Games key for the five game consumers; provisioning and their cutover are next.
+
+The `daily-games-key` was created in the picker-selected Tempest Studios / MXN.au project (`proj_6fXEcJk0bkkSpwlm1SqkUp9q`). It is stored as `DAILY_GAMES_OPENAI_API_KEY` version 1, with exact read-back verified and the approved temporary file/private transfer key deleted. All three game implementation modules now bind this dedicated secret. The build passed all 127 tests and schema validation. No paid provider test was requested or performed.
+
+All five game functions subsequently deployed successfully. Live metadata confirms each is ACTIVE with `DAILY_GAMES_OPENAI_API_KEY` version 1, while translation retains its own version 2. No listed deployed function still binds the old `OPENAI_API_KEY`. Journal provisioning remains pending; journal and Destiny AI suggestion source still refer to the old secret but neither is exported for deployment.
+
+An in-memory comparison confirmed that `ARCHIVED_FRONTEND_OPENAI_API_KEY` and active `OPENAI_API_KEY` contain the same value. Live Functions inventory shows five active consumers: `wordleGenerateCron`, `connectionsGenerateCron`, `getWordleUnlimitedWords`, `connectionsGenerateNow`, and `wordleGenerateNow`. No journal function is deployed. Source schedules run Wordle daily and check Connections hourly, so key traffic alone does not establish compromise. The Platform label `mxn-au-journal` has not yet been independently matched to this shared value. The owner selected a dedicated key for daily games, followed by a separate journal credential.
