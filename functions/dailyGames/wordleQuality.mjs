@@ -29,3 +29,22 @@ export function pairWordleSolutions(dateIds, words) {
     .slice(0, usableWords.length)
     .map((dateId, index) => ({ dateId, answer: usableWords[index] }));
 }
+
+// Audit only unpublished dates; live puzzles must keep their original answer.
+export function wordleDatesNeedingGeneration(todayId, solutions, days = 15) {
+  const dayMs = 86400000;
+  const today = Date.parse(`${todayId}T00:00:00Z`);
+  const byDate = new Map(solutions.map(solution => [solution.dateId, solution]));
+  const pending = [];
+  for (let offset = 1; offset <= days; offset++) {
+    const timestamp = today + offset * dayMs;
+    const dateId = new Date(timestamp).toISOString().slice(0, 10);
+    const answer = storedWordleAnswer(byDate.get(dateId));
+    const start = new Date(timestamp - 60 * dayMs).toISOString().slice(0, 10);
+    const repeated = answer && solutions.some(solution =>
+      solution.dateId >= start && solution.dateId < dateId &&
+      storedWordleAnswer(solution) === answer);
+    if (!isAllowedWordleAnswer(answer) || repeated) pending.push(dateId);
+  }
+  return pending;
+}

@@ -6,6 +6,7 @@ import {
   isAllowedWordleAnswer,
   pairWordleSolutions,
   storedWordleAnswer,
+  wordleDatesNeedingGeneration,
 } from '../functions/dailyGames/wordleQuality.mjs';
 
 test('the Wordle repeat ban reads the answer field used by stored solutions', () => {
@@ -35,4 +36,24 @@ test('manual generation pairs only dates backed by usable returned words', () =>
     ),
     [{ dateId: '2026-09-03', answer: 'CHAIR' }],
   );
+});
+
+test('queued repeats and invalid answers are repaired without changing live or valid puzzles', () => {
+  assert.deepEqual(wordleDatesNeedingGeneration('2026-09-07', [
+    { dateId: '2026-09-06', answer: 'BRAVE' },
+    { dateId: '2026-09-07', answer: 'BRAVE' },
+    { dateId: '2026-09-08', answer: ' brave ' },
+    { dateId: '2026-09-09', answer: 'CHAIR' },
+    { dateId: '2026-09-10', answer: 'CHAIR' },
+    { dateId: '2026-09-11', answer: 'ZZZZZ' },
+  ], 5), ['2026-09-08', '2026-09-10', '2026-09-11', '2026-09-12']);
+});
+
+test('repeat detection uses the 60 days before each queued puzzle', () => {
+  assert.deepEqual(wordleDatesNeedingGeneration('2026-09-07', [
+    { dateId: '2026-07-10', answer: 'BRAVE' },
+    { dateId: '2026-09-08', answer: 'BRAVE' },
+    { dateId: '2026-07-09', answer: 'CHAIR' },
+    { dateId: '2026-09-09', answer: 'CHAIR' },
+  ], 2), ['2026-09-08']);
 });

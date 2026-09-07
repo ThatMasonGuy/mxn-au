@@ -10,6 +10,7 @@ import {
     isAllowedWordleAnswer,
     pairWordleSolutions,
     storedWordleAnswer,
+    wordleDatesNeedingGeneration,
 } from './wordleQuality.mjs'
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -41,7 +42,6 @@ const parseDateIdUTC = (id) => {
 const addDaysUTC = (date, n) =>
     atUTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + n)
 
-const range = (n) => Array.from({ length: n }, (_, i) => i)
 const isFiveLetters = (s) => /^[A-Z]{5}$/.test(s)
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -83,17 +83,13 @@ async function fetchBanSet(todayId) {
 async function checkMissingDates(todayId) {
     const today = parseDateIdUTC(todayId)
 
-    // next 14 days must exist; also ensure day 15 is prepared
-    const next14 = range(14).map((i) => toDateId(addDaysUTC(today, i + 1)))
-    const day15 = toDateId(addDaysUTC(today, 15))
-
-    const snaps = await Promise.all(next14.map((id) => SOLS_COL().doc(id).get()))
-    const missing = next14.filter((id, idx) => !snaps[idx].exists)
-
-    const day15Snap = await SOLS_COL().doc(day15).get()
-    const need15 = !day15Snap.exists
-
-    return { missing, day15, need15 }
+    const snapshot = await SOLS_COL()
+        .where('__name__', '>=', toDateId(addDaysUTC(today, -60)))
+        .where('__name__', '<=', toDateId(addDaysUTC(today, 15)))
+        .get()
+    const snapshots = new Map(snapshot.docs.map(doc => [doc.id, doc]))
+    const solutions = snapshot.docs.map(doc => ({ ...doc.data(), dateId: doc.id }))
+    return { dateIds: wordleDatesNeedingGeneration(todayId, solutions), snapshots }
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -141,25 +137,28 @@ ${banSlice}`
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-async function upsertSolutions(dateIds, words) {
-    // write only missing; do not overwrite existing
+async function upsertSolutions(dateIds, words, snapshots) {
     const batch = db.batch()
-    for (let i = 0; i < dateIds.length; i++) {
-        const id = dateIds[i]
-        const answer = words[i]
-        const ref = SOLS_COL().doc(id)
-        const snap = await ref.get()
-        if (snap.exists) continue
-        batch.set(
-            ref,
-            {
-                answer,
-                source: 'ai',
-                model: WORD_GENERATION_MODEL,
-                createdAt: FieldValue.serverTimestamp(),
-            },
-            { merge: true }
-        )
+    for (const { dateId, answer } of pairWordleSolutions(dateIds, words)) {
+        const ref = SOLS_COL().doc(dateId)
+        const snapshot = snapshots.get(dateId)
+        const data = {
+            answer,
+            source: 'ai',
+            model: WORD_GENERATION_MODEL,
+            createdAt: FieldValue.serverTimestamp(),
+        }
+        // Preconditions prevent replacing a puzzle changed by another generator.
+        if (snapshot) {
+            batch.update(ref, {
+                ...data,
+                previousAnswer: storedWordleAnswer(snapshot.data()),
+                repairReason: 'invalid_or_repeated_answer',
+                repairedAt: FieldValue.serverTimestamp(),
+            }, { lastUpdateTime: snapshot.updateTime })
+        } else {
+            batch.create(ref, data)
+        }
     }
     await batch.commit()
 }
@@ -167,9 +166,7 @@ async function upsertSolutions(dateIds, words) {
 // Core routine used by cron + admin trigger
 async function runGenerationFor(todayId) {
     const ban = await fetchBanSet(todayId)
-    const { missing, day15, need15 } = await checkMissingDates(todayId)
-
-    const dateIds = [...missing, ...(need15 ? [day15] : [])]
+    const { dateIds, snapshots } = await checkMissingDates(todayId)
     if (dateIds.length === 0) {
         return { filledCount: 0, dates: [], words: [] }
     }
@@ -184,7 +181,7 @@ async function runGenerationFor(todayId) {
 
     // partial fill is okay; trim dateIds to words we have
     const trimmedDateIds = dateIds.slice(0, words.length)
-    await upsertSolutions(trimmedDateIds, words.slice(0, trimmedDateIds.length))
+    await upsertSolutions(trimmedDateIds, words.slice(0, trimmedDateIds.length), snapshots)
 
     return { filledCount: trimmedDateIds.length, dates: trimmedDateIds, words: words.slice(0, trimmedDateIds.length) }
 }
