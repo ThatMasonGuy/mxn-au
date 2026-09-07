@@ -7,6 +7,7 @@ setGlobalOptions({
 });
 
 // Translation API functions
+export { encryptServerCredential } from './api/encryptServerCredential.mjs';
 export { aiTranslate } from './api/aiTranslate.mjs';
 export { markTranslationBad } from './api/markTranslationBad.mjs';
 export { logTranslation } from './api/logTranslation.mjs';

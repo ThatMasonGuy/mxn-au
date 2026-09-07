@@ -1,11 +1,14 @@
 import path from "path";
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
+import { assertPublicFrontendEnv } from './scripts/frontend-env-policy.mjs';
 import vue from '@vitejs/plugin-vue';
 // import { visualizer } from 'rollup-plugin-visualizer';
 
 import tailwindcss from "@tailwindcss/vite";
 
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  assertPublicFrontendEnv(loadEnv(mode, process.cwd(), 'VITE_'));
+  return {
   server: {
     proxy: {
       '/api': {
@@ -180,4 +183,5 @@ export default defineConfig({
       },
     },
   },
+  };
 });

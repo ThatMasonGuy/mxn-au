@@ -2,7 +2,6 @@
 import { collection, addDoc, updateDoc, deleteDoc, doc, getDocs, query, orderBy } from 'firebase/firestore'
 import { firestore } from '@/firebase'
 import { useMainStore } from '@/shared/stores/useMainStore'
-import { encryptCredential, decryptCredential } from '@/shared/utils/crypto'
 
 export const useServers = () => {
     const mainStore = useMainStore()
@@ -48,23 +47,10 @@ export const useServers = () => {
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
     }
 
-    const getDecryptedCredentials = async (server) => {
-        if (server.authMethod === 'password') {
-            return {
-                password: await decryptCredential(server.encryptedPassword)
-            }
-        } else {
-            return {
-                privateKey: await decryptCredential(server.encryptedKey)
-            }
-        }
-    }
-
     return {
         addServer,
         updateServer,
         deleteServer,
-        getServers,
-        getDecryptedCredentials
+        getServers
     }
 }

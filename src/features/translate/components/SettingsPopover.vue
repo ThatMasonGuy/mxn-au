@@ -65,9 +65,9 @@
                         <p class="text-xs text-white/70 leading-relaxed">
                             This lets translations run against <span class="text-white/90 font-medium">your own OpenAI
                                 account</span> so usage is billed to you.
-                            The key is stored <span class="text-white/90 font-medium">locally in your browser</span> and
+                            The key stays in <span class="text-white/90 font-medium">this browser session</span> and
                             you can remove it anytime.
-                            If your deployment uses a server key instead, you can leave this blank.
+                            Leave this blank to use shared translation while signed in. Daily limits apply.
                         </p>
                     </div>
 
@@ -89,8 +89,8 @@
                     <!-- Safety note -->
                     <div class="flex items-start gap-3 text-xs text-white/60">
                         <ShieldCheck class="w-4 h-4 mt-0.5" />
-                        <p>We don’t send your key to our servers. It’s only used for translation requests. Change this
-                            copy if your policy differs.</p>
+                        <p>Your key is sent securely to our translation backend, which forwards requests to OpenAI.
+                            It is not saved in your browser or returned by the backend.</p>
                     </div>
                 </section>
 

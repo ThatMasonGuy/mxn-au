@@ -346,15 +346,15 @@ export const useTranslateStore = defineStore('translate', () => {
         const inputText = isLeftToRight ? leftText.value : rightText.value
         const fromLang = isLeftToRight ? fromLanguage.value : selectedLanguage.value
         const toLang = isLeftToRight ? selectedLanguage.value : fromLanguage.value
-        const finalKey = apiKey.value?.trim() || import.meta.env.VITE_OPENAI_API_KEY_TRANSLATION_GENERIC
+        const finalKey = apiKey.value?.trim() || ''
 
         if (!inputText?.trim()) {
             showToast('error', 'Please enter text to translate')
             return { ok: false, error: 'Missing input text', apiTimeMs: 0 }
         }
 
-        if (!finalKey) {
-            showToast('error', 'API key required for translation')
+        if ((!finalKey || selectedModel.value === 'deepl') && !mainStore.user) {
+            showToast('error', 'Sign in to use shared translation, or enter your own OpenAI key')
             return { ok: false, error: 'Missing API key', apiTimeMs: 0 }
         }
 
@@ -373,54 +373,8 @@ export const useTranslateStore = defineStore('translate', () => {
 
         // Actual translation promise
         const translationPromise = (async () => {
-            let apiTimeMs = 0
-            let serverTimeMs = null
-            let openAiTimeMs = null
-            let triedWithAuth = false
-            let triedWithoutAuth = false
-
-            // Try with auth first if user is logged in
-            if (mainStore.user && !triedWithAuth) {
-                try {
-                    console.log('Attempting translation with authentication...')
-                    const result = await attemptTranslation(inputText, fromLang, toLang, finalKey, true)
-                    if (result.success) {
-                        return handleSuccessfulTranslation(result, isLeftToRight, PERF_START)
-                    }
-                    triedWithAuth = true
-                    console.log('Auth translation failed, trying without auth...')
-                } catch (error) {
-                    console.log('Auth translation error:', error.message)
-                    triedWithAuth = true
-                }
-            }
-
-            // Try without auth
-            if (!triedWithoutAuth) {
-                try {
-                    console.log('Attempting translation without authentication...')
-                    const result = await attemptTranslation(inputText, fromLang, toLang, finalKey, false)
-                    if (result.success) {
-                        return handleSuccessfulTranslation(result, isLeftToRight, PERF_START)
-                    }
-                    triedWithoutAuth = true
-                } catch (error) {
-                    console.log('Non-auth translation error:', error.message)
-                    triedWithoutAuth = true
-                }
-            }
-
-            // If both attempts failed, show user feedback
-            const errorMsg = 'Translation failed. Please check your connection and try again.'
-            showToast('error', errorMsg)
-
-            // Clean up on failure
-            retranslatedText.value = ''
-            lastOriginalText.value = ''
-            accuracy.value = null
-            accuracyRating.value = null
-
-            return { ok: false, apiTimeMs, serverTimeMs, openAiTimeMs, error: errorMsg }
+            const result = await attemptTranslation(inputText, fromLang, toLang, finalKey, Boolean(mainStore.user))
+            return handleSuccessfulTranslation(result, isLeftToRight, PERF_START)
         })()
 
         try {
@@ -453,15 +407,15 @@ export const useTranslateStore = defineStore('translate', () => {
     const attemptTranslation = async (inputText, fromLang, toLang, apiKey, useAuth = false) => {
         const headers = {
             'Content-Type': 'application/json',
-            'x-openai-key': apiKey
+            ...(apiKey ? { 'x-openai-key': apiKey } : {})
         }
 
         // Only add auth header if explicitly requested and we can get a valid token
         if (useAuth && mainStore.user) {
-            const token = await getValidToken()
+            const token = await getValidToken().catch(() => null)
             if (token) {
                 headers['Authorization'] = `Bearer ${token}`
-            } else {
+            } else if (!apiKey || selectedModel.value !== 'openai') {
                 throw new Error('Could not get valid authentication token')
             }
         }
@@ -547,9 +501,11 @@ export const useTranslateStore = defineStore('translate', () => {
             console.log('⏱️  Initial Response Time:', `${initialResponseTime}ms`)
 
             // Fire async retranslation request
-            fetch('/retranslate/post', {
+            getValidToken().then(token => {
+                if (!token) throw new Error('Sign in again for retranslation')
+                return fetch('/retranslate/post', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                 body: JSON.stringify({
                     translatedText: data.translated,
                     fromLang: data.sourceLang,
@@ -557,8 +513,13 @@ export const useTranslateStore = defineStore('translate', () => {
                     originalText: data.inputText,
                     cacheId: lastCacheId.value // Include for cache update
                 })
+                })
             })
-                .then(resp => resp.json())
+                .then(async resp => {
+                    const result = await resp.json()
+                    if (!resp.ok) throw new Error(result.error || 'Retranslation failed')
+                    return result
+                })
                 .then(retranslateResult => {
                     const retranslateTime = Math.round(performance.now() - retranslateStartTime)
 
