@@ -14,7 +14,7 @@ import {
 
 const RESEND_API_KEY = defineSecret('RESEND_API_KEY')
 const ADMIN_EMAIL = 'admin@everhomes.com.au'
-const FROM_ADDRESS = 'Everhomes <reports@everhomes.com.au>'
+const FROM_ADDRESS = 'Everhomes <inspections@mxn.au>'
 const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024
 
 function escapeHtml(value) {
@@ -176,6 +176,7 @@ export const resendReport = onRequest(
         resend.emails.send({
           from: FROM_ADDRESS,
           to: email,
+          replyTo: ADMIN_EMAIL,
           subject: `[Resent] ${typeLabel} — ${subjectAddress} — ${dateLabel}`,
           html,
           attachments,
