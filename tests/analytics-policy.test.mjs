@@ -55,7 +55,7 @@ test('legacy choices are honored and invalid or stale records require a new choi
   staleStorage.setItem('mxn_optional_analytics_v1', JSON.stringify({
     status: 'enabled',
     policyVersion: ANALYTICS_POLICY_VERSION + 1,
-    decidedAt: new Date().toISOString(),
+    decidedAt: '2026-09-01T00:00:00.000Z',
   }))
   assert.equal(readOptionalAnalyticsPreference(staleStorage), null)
   assert.equal(isOptionalAnalyticsEnabled(staleStorage), false)

@@ -6,6 +6,7 @@ import {
   resolveEverhomesTool,
 } from '../src/features/everhomes/utils/toolUsage.js'
 import {
+  EVERHOMES_USAGE_TOOLS,
   ToolUsageRequestError,
   brisbaneDateKey,
   normaliseEverhomesUsageEvent,
@@ -63,7 +64,7 @@ test('server accepts declared tool actions and derives trusted tool names', () =
     amount: 123456,
   })
 
-  assert.equal(result.toolName, 'Participant SDA Funding')
+  assert.equal(result.toolName, EVERHOMES_USAGE_TOOLS['participant-sda-funding'].name)
   assert.equal(result.meaningfulUse, true)
   assert.equal(result.device, 'mobile')
   assert.equal(Object.hasOwn(result, 'participantName'), false)

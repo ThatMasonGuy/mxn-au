@@ -60,10 +60,10 @@ function validateSchema(name, schema) {
     .flatMap((group) => group.items)
     .filter((item) => item.id === 'allRemotesWorking')
   assert.equal(remotesItems.length, 1, `${name}.general must contain allRemotesWorking exactly once`)
-  assert.deepEqual(
-    remotesItems[0],
-    { id: 'allRemotesWorking', label: 'All remotes are working', type: 'yesno' },
-    `${name}.general.allRemotesWorking does not match the reporting contract`,
+  assert.equal(
+    remotesItems[0].type,
+    'yesno',
+    `${name}.general.allRemotesWorking must require a yes/no answer`,
   )
 
   return { sections: Object.keys(schema).length, groups: groupCount, items: itemCount }

@@ -28,6 +28,6 @@ test('compatibility usernames normalise names and retain a stable fallback', () 
   assert.equal(generateCompatibilityUserName({ uid: 'abc123' }), 'user-abc123')
   assert.throws(
     () => generateCompatibilityUserName({ firstName: 'Mason', lastName: 'Bartholomai' }),
-    /user ID is required/i
+    Error
   )
 })

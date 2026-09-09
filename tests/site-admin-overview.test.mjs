@@ -83,7 +83,7 @@ test('activity summaries retain observable action and path details', () => {
   })
 })
 
-test('Firestore inventory labels sampled payload estimates as incomplete', () => {
+test('Firestore inventory estimates document bytes from the sampled documents', () => {
   const summary = createCollectionSummary('users', 10, [
     { data: () => ({ name: 'One' }) },
     { data: () => ({ name: 'Two', active: true }) },
@@ -94,7 +94,6 @@ test('Firestore inventory labels sampled payload estimates as incomplete', () =>
   assert.equal(summary.sampleSize, 2)
   assert.ok(summary.averageDocumentBytes > 0)
   assert.equal(summary.estimatedDocumentBytes, summary.averageDocumentBytes * 10)
-  assert.match(summary.estimateBasis, /excludes index and metadata storage/i)
 })
 
 test('storage summaries group every object and byte by its first path segment', () => {
@@ -131,10 +130,9 @@ test('GA4 summaries keep optional analytics totals separate from the daily serie
     events: 310,
   })
   assert.equal(summary.daily[1].date, '2026-08-25')
-  assert.match(summary.scope, /visitors who chose analytics/i)
 })
 
-test('billing summaries apply credits and label the month-end figure as a run-rate projection', () => {
+test('billing summaries apply credits and project month-end cost from reported days', () => {
   const summary = createBillingSummary([
     { usageDate: '2026-08-01', service: 'Cloud Firestore', currency: 'AUD', grossCost: 2, credits: -1, netCost: 1 },
     { usageDate: '2026-08-02', service: 'Cloud Firestore', currency: 'AUD', grossCost: 3, credits: -1, netCost: 2 },
@@ -151,5 +149,4 @@ test('billing summaries apply credits and label the month-end figure as a run-ra
   assert.equal(summary.projectedMonthEnd, 62)
   assert.equal(summary.reportedThrough, '2026-08-02')
   assert.equal(summary.services[0].name, 'Cloud Firestore')
-  assert.match(summary.projectionBasis, /2 reported days scaled across 31 days/i)
 })

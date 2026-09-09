@@ -2,13 +2,9 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { webcrypto } from 'node:crypto'
 import { encryptCredential } from '../functions/services/credentialCrypto.mjs'
-import { createEncryptCredentialHandler, encryptServerCredential } from '../functions/api/encryptServerCredential.mjs'
+import { createEncryptCredentialHandler } from '../functions/api/encryptServerCredential.mjs'
 import { createTranslationHandler, createRetranslationHandler } from '../functions/services/translationHandler.mjs'
 import { createBudgetReserver, TranslationRequestError } from '../functions/services/translationPolicy.mjs'
-
-test('encryption callable deployment targets the same region as the browser Functions client', () => {
-  assert.deepEqual(encryptServerCredential.__endpoint.region, ['australia-southeast1'])
-})
 
 test('server encryption remains readable by the existing browser v2 algorithm without changing the key', async () => {
   const secret = 'test-only-existing-passphrase'

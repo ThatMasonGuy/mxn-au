@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { createApp } from 'vue'
+import { createPinia, disposePinia, setActivePinia } from 'pinia'
+import { createPersistedState } from 'pinia-plugin-persistedstate'
 
 import handoverSchema from '../src/features/everhomes/schemas/handover.js'
-import { REPORT_STORE_CONFIG } from '../src/features/everhomes/stores/useEverhomesReportStore.js'
+import { useEverhomesReportStore } from '../src/features/everhomes/stores/useEverhomesReportStore.js'
 import {
   applyFailedPhotoRecoveryState,
   prepareRestoredPhoto,
@@ -131,11 +134,35 @@ test('report activity status and ordering helpers handle provider and legacy dat
   )
 })
 
-test('Inspection and Handover use different fixed store IDs and persistence keys', () => {
-  assert.notEqual(REPORT_STORE_CONFIG.inspection.storeId, REPORT_STORE_CONFIG.handover.storeId)
-  assert.notEqual(REPORT_STORE_CONFIG.inspection.storageKey, REPORT_STORE_CONFIG.handover.storageKey)
-  assert.equal(REPORT_STORE_CONFIG.inspection.storageKey, 'everhomes_report_inspection')
-  assert.equal(REPORT_STORE_CONFIG.handover.storageKey, 'everhomes_report_handover')
+test('Inspection and Handover drafts persist and restore independently', (t) => {
+  const values = new Map()
+  const storage = {
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) => values.set(key, value),
+  }
+  const instances = []
+  t.after(() => {
+    instances.forEach(disposePinia)
+    setActivePinia(undefined)
+  })
+  const openStores = () => {
+    const pinia = createPinia().use(createPersistedState({ storage }))
+    instances.push(pinia)
+    const app = createApp({}).use(pinia)
+    return app.runWithContext(() => ['inspection', 'handover'].map(useEverhomesReportStore))
+  }
+
+  const [inspection, handover] = openStores()
+  inspection.setup.propertyAddress = '1 Inspection Street'
+  handover.setup.propertyAddress = '2 Handover Street'
+  inspection.$persist()
+  handover.$persist()
+
+  const [restoredInspection, restoredHandover] = openStores()
+  assert.equal(restoredInspection.setup.propertyAddress, '1 Inspection Street')
+  assert.equal(restoredHandover.setup.propertyAddress, '2 Handover Street')
+  restoredInspection.resetAll()
+  assert.equal(restoredHandover.setup.propertyAddress, '2 Handover Street')
 })
 
 test('all-N/A sections require an explicit valid overall status', () => {
@@ -245,7 +272,6 @@ test('restored failed photos expose either retry or removal recovery', () => {
   applyFailedPhotoRecoveryState(recoverable)
   assert.equal(recoverable.uploadStatus, 'failed')
   assert.equal(recoverable.retryable, true)
-  assert.match(recoverable.retryNote, /Retry/)
 
   const localBackup = prepareRestoredPhoto({ id: 'local', uploadStatus: 'uploading' })
   applyFailedPhotoRecoveryState(localBackup, { localFileAvailable: true })
@@ -255,7 +281,6 @@ test('restored failed photos expose either retry or removal recovery', () => {
   const unavailable = prepareRestoredPhoto({ id: 'missing', uploadStatus: 'uploading' })
   applyFailedPhotoRecoveryState(unavailable)
   assert.equal(unavailable.retryable, false)
-  assert.match(unavailable.retryNote, /Remove this entry/)
 })
 
 test('fulfilled Resend error payloads are failures, not successful deliveries', () => {

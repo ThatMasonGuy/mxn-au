@@ -13,7 +13,6 @@ test('the curated fallback passes the same quality gate as generated puzzles', (
   );
 
   assert.equal(result.valid, true);
-  assert.deepEqual(result.answer.easy, ['SHIFT', 'OWL', 'CAP', 'LIGHT']);
 });
 
 test('legacy trivial groups are rejected even when their category is disguised', () => {

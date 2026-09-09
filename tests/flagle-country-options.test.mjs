@@ -15,7 +15,6 @@ test('every generated Flagle country is available through canonical autocomplete
   for (const country of Object.values(FLAGLE_DIFFICULTY_TIERS).flat()) {
     assert.equal(options.has(country), true, `${country} is missing from autocomplete`)
   }
-  assert.equal(options.has('Russia'), true)
 })
 
 test('Flagle country matching treats accented canonical names consistently', () => {

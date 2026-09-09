@@ -39,5 +39,5 @@ test('Connections generation maintains a bounded seven-day UTC buffer', () => {
       '2027-01-04',
     ],
   );
-  assert.equal(connectionsPuzzleBufferDateIds(new Date(), 100).length, 14);
+  assert.equal(connectionsPuzzleBufferDateIds(new Date('2026-12-28T23:59:59Z'), 100).length, 14);
 });

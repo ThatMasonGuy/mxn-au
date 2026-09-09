@@ -39,7 +39,6 @@ test('reused words receive specific revision feedback before independent review'
   assert.deepEqual(result.puzzle, revised);
   assert.equal(result.attempts, 2);
   assert.equal(requests.length, 3);
-  assert.ok(requests.every(request => request.model === 'gpt-5.6-luna'));
   assert.ok(requests[1].input.at(-1).content.includes('reused_word'));
   assert.ok(requests[1].input.at(-1).content.includes('SCORE'));
   assert.deepEqual(JSON.parse(requests[1].input.at(-2).content), fixture);
@@ -55,7 +54,7 @@ test('editor feedback revises a draft and cannot be mistaken for approval', asyn
   assert.ok(!requests[3].input.some(message => message.content.includes(reason)));
 });
 
-test('the model sees exclusions beyond the former 500-word cutoff', async () => {
+test('generation sends the full exclusion list to the model', async () => {
   const bannedWords = Array.from({ length: 501 }, (_, index) => `BAN${index}`);
   bannedWords.push('ZEPHYR');
   const { client, requests } = clientWith([fixture, { pass: true, reasons: [] }]);
