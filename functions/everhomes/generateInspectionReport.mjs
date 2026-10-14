@@ -9,6 +9,7 @@ import { fileURLToPath } from "url";
 import { randomUUID } from "node:crypto";
 import { Readable } from "node:stream";
 import { writeReportZip } from "./reportZip.mjs";
+import { downloadMarketingPhotos, runConcurrent } from "./reportAssetDownloads.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -450,19 +451,6 @@ export const generateInspectionReport = onRequest(
         downloadedImageBytes += buffer.length;
       };
 
-      async function runConcurrent(tasks) {
-        const results = [];
-        let idx = 0;
-        async function worker() {
-          while (idx < tasks.length) {
-            const i = idx++;
-            results[i] = await tasks[i]();
-          }
-        }
-        await Promise.all(Array.from({ length: Math.min(CONCURRENCY, tasks.length) }, worker));
-        return results;
-      }
-
       // Build flat task list for all room photos
       const photoTasks = rooms.flatMap((room) =>
         (room.photos ?? []).map((photo, i) => async () => {
@@ -493,7 +481,7 @@ export const generateInspectionReport = onRequest(
         }),
       );
 
-      const photoResults = await runConcurrent(photoTasks);
+      const photoResults = await runConcurrent(photoTasks, CONCURRENCY);
       const zipAssets = photoResults.filter(Boolean).map((r) => r.zip);
       const photoAssets = photoResults.filter(Boolean).map((r) => r.pdf);
       if (photoAssets.length !== photoTasks.length) {
@@ -566,27 +554,12 @@ export const generateInspectionReport = onRequest(
           )
         : [];
 
-      const marketingResults = await runConcurrent(
-        marketingEntries.map(async ({ slotKey, mp, i }) => {
-          try {
-            if (!mp?.url && !mp?.storagePath) return { status: "fulfilled", value: null };
-            const raw = await loadReportAsset(mp);
-            trackImageBytes(raw);
-            const safeSlotKey = safeArchiveKey(slotKey, "marketing");
-            return {
-              status: "fulfilled",
-              value: {
-                filename: `${safeSlotKey}_${i + 1}.${originalImageExtension(mp)}`,
-                slotKey,
-                storagePath: mp.storagePath ?? null,
-                url: mp.url ?? null,
-              },
-            };
-          } catch (reason) {
-            return { status: "rejected", reason };
-          }
-        }),
-      );
+      const marketingResults = await downloadMarketingPhotos(marketingEntries, {
+        loadAsset: loadReportAsset,
+        trackImageBytes,
+        originalImageExtension,
+        concurrency: CONCURRENCY,
+      });
 
       const marketingAssets = marketingResults
         .map((r, idx) => {
