@@ -1,3 +1,5 @@
+import { renderIdSightingEmail } from './idSightingEmail.mjs'
+
 export const ID_TYPES = Object.freeze([
   'Australian driver licence', 'Passport', 'Proof of age card',
   'Birth certificate', 'Medicare card', 'Other',
@@ -66,12 +68,14 @@ export function idSightingFilename(record) {
 }
 
 export function buildIdSightingEmail(record, pdf) {
+  const { html, text, dateLabel } = renderIdSightingEmail(record)
   return {
-    from: 'Everhomes <inspections@mxn.au>',
+    from: 'Everhomes Tools <inspections@mxn.au>',
     to: record.staffEmail,
     replyTo: 'admin@everhomes.com.au',
-    subject: `Everhomes ID sighting record - ${record.sightedDate}`,
-    text: 'Your completed Everhomes ID sighting record is attached as a PDF. Keep it with the relevant rental application. This supporting record can accompany RTA Form 22b or Form R22b and does not replace either application form.\n\nEverhomes Pty Ltd\nadmin@everhomes.com.au',
+    subject: `Everhomes ID sighting record - ${dateLabel}`,
+    html,
+    text,
     attachments: [{ filename: idSightingFilename(record), content: pdf }],
   }
 }

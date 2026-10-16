@@ -115,3 +115,24 @@ test('completed ID sighting email attaches the exact PDF and only targets the re
   assert.ok(email.attachments[0].filename.endsWith('.pdf'))
   assert.ok(email.text.includes('Form 22b or Form R22b'))
 })
+
+test('ID sighting email includes the saved record and both sighted documents in HTML and plain text', () => {
+  const record = { ...normalise({ ...details(), documents: [{ type: 'Passport', sighted: true }, { type: 'Other', description: 'Citizenship certificate', sighted: true }] }), id: 'a'.repeat(32) }
+  const email = buildIdSightingEmail(record, Buffer.from('PDF fixture'))
+  for (const value of [record.staffName, record.applicantName, '16 October 2026', 'Passport', 'Citizenship certificate', 'Sighted', record.id, 'PDF', 'Form 22b or Form R22b', 'admin@everhomes.com.au']) {
+    assert.ok(email.html.includes(value), `HTML email is missing ${value}`)
+    assert.ok(email.text.includes(value), `Plain text email is missing ${value}`)
+  }
+  assert.ok(email.subject.includes('16 October 2026'))
+  assert.equal(email.replyTo, 'admin@everhomes.com.au')
+})
+
+test('ID sighting email treats names and custom ID descriptions as text rather than HTML or links', () => {
+  const unsafe = '<a href="https://fake.example">Open</a> & "Name"'
+  const record = { ...normalise({ ...details(), staffName: unsafe, applicantName: unsafe, documents: [{ type: 'Other', description: unsafe, sighted: true }] }), id: 'a'.repeat(32) }
+  const email = buildIdSightingEmail(record, Buffer.from('PDF fixture'))
+  assert.ok(!email.html.includes('<a href="https://fake.example">'))
+  assert.ok(email.html.includes('&lt;a href=&quot;https://fake.example&quot;&gt;Open&lt;/a&gt; &amp; &quot;Name&quot;'))
+  assert.ok(email.text.includes(unsafe))
+  assert.equal(email.to, record.staffEmail)
+})
