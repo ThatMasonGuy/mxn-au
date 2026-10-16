@@ -1,111 +1,121 @@
 <template>
-  <LayoutComponent :background="false" bg-style="#0b1525">
-    <div class="mx-auto max-w-3xl px-4 pb-28 pt-20 sm:px-6 sm:pb-20 sm:pt-28">
-      <RouterLink to="/everhomes" class="back-link"><ArrowLeft :size="16" aria-hidden="true" /> All tools</RouterLink>
-      <header class="mb-5 mt-3 sm:mb-7 sm:mt-6">
-        <p class="eyebrow">Rental application support · RTA Forms 22b &amp; R22b</p>
-        <h1 class="mt-2 text-3xl font-bold tracking-tight text-white sm:text-4xl">ID sighting record</h1>
-        <p class="mt-3 max-w-xl text-sm leading-6 text-slate-300">Record the ID you have sighted, then save a branded PDF and email a copy to the Everhomes staff member.</p>
+  <LayoutComponent :background="false" bg-style="#0b1525" class="sighting-page">
+    <div class="sighting-workspace">
+      <header class="page-heading">
+        <div class="title-icon" aria-hidden="true"><ContactRound :size="24" :stroke-width="1.6" /></div>
+        <div>
+          <p class="eyebrow">RTA Forms 22b &amp; R22b</p>
+          <h1>ID sighting record</h1>
+          <p class="page-description">Record sighted ID and email a PDF copy.</p>
+        </div>
       </header>
 
-      <section v-if="receipt" class="record-sheet" aria-labelledby="saved-title">
-        <div class="flex items-start gap-3">
-          <CheckCircle2 class="mt-1 shrink-0 text-teal-700" aria-hidden="true" />
-          <div class="min-w-0">
-            <h2 id="saved-title" class="text-xl font-bold">ID sighting record saved</h2>
-            <p class="mt-2 text-sm leading-6">The PDF for <strong>{{ savedRecord.applicantName }}</strong> is ready to download.</p>
-            <p class="mt-2 break-words text-sm leading-6" role="status">{{ receipt.emailStatus === 'sent' ? `Email accepted for sending to ${receipt.staffEmail}.` : `Your record is saved, but the email to ${receipt.staffEmail} could not be sent. You can retry below.` }}</p>
+      <section v-if="receipt" class="record-sheet saved-sheet" aria-labelledby="saved-title">
+        <div class="saved-heading">
+          <div class="saved-icon"><CheckCircle2 :size="25" aria-hidden="true" /></div>
+          <div>
+            <p class="eyebrow">Record complete</p>
+            <h2 id="saved-title" tabindex="-1">Your PDF is ready</h2>
           </div>
         </div>
-        <dl class="mt-6 grid gap-4 border-y border-slate-200 py-5 text-sm sm:grid-cols-2">
-          <div><dt class="text-slate-600">Sighted by</dt><dd class="mt-1 break-words font-semibold">{{ savedRecord.staffName }}</dd></div>
-          <div><dt class="text-slate-600">Date sighted</dt><dd class="mt-1 font-semibold">{{ displayDate }}</dd></div>
-          <div class="sm:col-span-2"><dt class="text-slate-600">ID sighted</dt><dd v-for="(item, index) in savedRecord.documents" :key="index" class="mt-1 break-words font-semibold">{{ item.type === 'Other' ? item.description : item.type }} · Sighted</dd></div>
+        <p class="saved-applicant">{{ savedRecord.applicantName }}</p>
+        <div class="delivery-note" :class="{ 'delivery-warning': receipt.emailStatus !== 'sent' }" role="status">
+          <Mail :size="18" aria-hidden="true" />
+          <p v-if="receipt.emailStatus === 'sent'">Email accepted for sending to <strong>{{ receipt.staffEmail }}</strong>.</p>
+          <p v-else>The record is saved, but the email to <strong>{{ receipt.staffEmail }}</strong> could not be sent. You can retry below.</p>
+        </div>
+        <dl class="record-summary">
+          <div><dt>Sighted by</dt><dd>{{ savedRecord.staffName }}</dd></div>
+          <div><dt>Date sighted</dt><dd>{{ displayDate }}</dd></div>
+          <div class="summary-documents"><dt>ID sighted</dt><dd v-for="(item, index) in savedRecord.documents" :key="index"><Check :size="15" aria-hidden="true" />{{ item.type === 'Other' ? item.description : item.type }}</dd></div>
         </dl>
-        <div class="mt-6 flex flex-wrap gap-3">
+        <div class="saved-actions">
           <button type="button" class="primary" :disabled="!!busy" @click="download"><Download :size="17" aria-hidden="true" /> {{ busy === 'download' ? 'Preparing PDF…' : 'Download PDF' }}</button>
           <button v-if="receipt.emailStatus !== 'sent'" type="button" class="secondary" :disabled="!!busy" @click="retryEmail">{{ busy === 'retry' ? 'Retrying email…' : 'Retry email' }}</button>
-          <button type="button" class="secondary" :disabled="!!busy" @click="startNew">New record</button>
+          <button type="button" class="secondary" :disabled="!!busy" @click="startNew"><Plus :size="16" aria-hidden="true" /> New record</button>
         </div>
-        <p class="mt-5 text-xs leading-5 text-slate-600">This record is also available in Everhomes Admin under ID sightings. Download your copy before leaving this page.</p>
+        <p class="saved-footnote">Saved in Everhomes Admin under ID sightings. Download your copy before leaving this page.</p>
       </section>
 
       <form v-else id="id-sighting-form" class="record-sheet" novalidate :aria-busy="!!busy" @submit.prevent="submit">
-        <p class="mb-6 text-sm leading-6 text-slate-600">All fields are required unless marked optional. Record ID types only; do not enter document numbers or upload copies.</p>
-        <fieldset :disabled="!!busy || attempted" class="space-y-6">
-          <legend class="section-title mb-5">Staff member</legend>
-          <div class="grid gap-5 sm:grid-cols-2">
-            <div>
-              <label for="staff-name">Everhomes staff member</label>
-              <input id="staff-name" v-model="form.staffName" autocomplete="name" maxlength="160" required :aria-invalid="!!errors.staffName" :aria-describedby="errors.staffName ? 'staff-name-error' : undefined" />
-              <p v-if="errors.staffName" id="staff-name-error" class="field-error">{{ errors.staffName }}</p>
+        <div class="form-intro"><span>New record</span><span>All fields required unless optional</span></div>
+        <fieldset :disabled="!!busy || attempted" class="form-fields">
+          <legend class="sr-only">ID sighting details</legend>
+          <fieldset class="form-section" aria-labelledby="staff-section-title">
+            <legend id="staff-section-title" class="section-title"><span aria-hidden="true">01</span> Staff member</legend>
+            <div class="field-grid">
+              <div class="field">
+                <label for="staff-name">Staff name</label>
+                <input id="staff-name" v-model="form.staffName" autocomplete="name" placeholder="Full name" maxlength="160" required :aria-invalid="!!errors.staffName" :aria-describedby="errors.staffName ? 'staff-name-error' : undefined" />
+                <p v-if="errors.staffName" id="staff-name-error" class="field-error">{{ errors.staffName }}</p>
+              </div>
+              <div class="field">
+                <label for="staff-email">Everhomes email</label>
+                <input id="staff-email" v-model="form.staffEmail" type="email" autocomplete="email" autocapitalize="off" :spellcheck="false" placeholder="name@everhomes.com.au" maxlength="254" required :aria-invalid="!!errors.staffEmail" :aria-describedby="errors.staffEmail ? 'staff-email-error' : 'staff-email-help'" />
+                <p v-if="errors.staffEmail" id="staff-email-error" class="field-error">{{ errors.staffEmail }}</p>
+                <p v-else id="staff-email-help" class="help">The PDF will be sent to this address.</p>
+              </div>
             </div>
-            <div>
-              <label for="staff-email">Everhomes staff member email</label>
-              <input id="staff-email" v-model="form.staffEmail" type="email" autocomplete="email" autocapitalize="off" :spellcheck="false" maxlength="254" required :aria-invalid="!!errors.staffEmail" aria-describedby="staff-email-help staff-email-error" />
-              <p id="staff-email-help" class="help">Use your @everhomes.com.au email.</p>
-              <p id="staff-email-error" class="field-error">{{ errors.staffEmail }}</p>
-            </div>
-          </div>
-          <div class="border-t border-slate-200 pt-5">
-            <h2 class="section-title mb-5">Person &amp; date</h2>
-            <div class="grid gap-5 sm:grid-cols-[minmax(0,1fr)_190px]">
-              <div>
-                <label for="applicant-name">Whose ID is being sighted?</label>
-                <input id="applicant-name" v-model="form.applicantName" autocomplete="off" maxlength="160" required :aria-invalid="!!errors.applicantName" :aria-describedby="errors.applicantName ? 'applicant-error' : undefined" />
-                <p class="help">Enter the person's full name.</p>
+          </fieldset>
+          <fieldset class="form-section" aria-labelledby="person-section-title">
+            <legend id="person-section-title" class="section-title"><span aria-hidden="true">02</span> Person &amp; date</legend>
+            <div class="field-grid person-grid">
+              <div class="field">
+                <label for="applicant-name">Person whose ID is sighted</label>
+                <input id="applicant-name" v-model="form.applicantName" autocomplete="off" placeholder="Full name" maxlength="160" required :aria-invalid="!!errors.applicantName" :aria-describedby="errors.applicantName ? 'applicant-error' : undefined" />
                 <p v-if="errors.applicantName" id="applicant-error" class="field-error">{{ errors.applicantName }}</p>
               </div>
-              <div class="min-w-0">
+              <div class="field">
                 <label for="sighted-date">Date sighted</label>
                 <input id="sighted-date" v-model="form.sightedDate" type="date" :max="today" min="1900-01-01" required :aria-invalid="!!errors.sightedDate" :aria-describedby="errors.sightedDate ? 'date-error' : undefined" />
                 <p v-if="errors.sightedDate" id="date-error" class="field-error">{{ errors.sightedDate }}</p>
               </div>
             </div>
-          </div>
-          <fieldset class="border-t border-slate-200 pt-5">
-            <legend class="section-title px-0 pt-5">Identity documents</legend>
-            <div v-for="(item, index) in form.documents" :key="index" class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
-              <div class="flex items-center justify-between gap-3">
-                <label :for="`id-type-${index}`">Form of ID {{ index + 1 }}{{ index === 1 ? ' (optional)' : '' }}</label>
-                <button v-if="index === 1" type="button" class="remove" @click="form.documents.pop()">Remove ID 2</button>
+          </fieldset>
+          <fieldset class="form-section document-section" aria-labelledby="documents-section-title">
+            <legend id="documents-section-title" class="section-title"><span aria-hidden="true">03</span> Identity documents</legend>
+            <p class="document-guidance"><ShieldCheck :size="16" aria-hidden="true" />ID types only. No document numbers or copies.</p>
+            <div v-for="(item, index) in form.documents" :key="index" class="document-entry">
+              <div class="document-heading">
+                <label :for="`id-type-${index}`">Form of ID {{ index + 1 }} <span v-if="index === 1" class="optional-label">Optional</span></label>
+                <button v-if="index === 1" type="button" class="remove" aria-label="Remove ID 2" @click="removeSecondDocument"><X :size="16" aria-hidden="true" /> Remove</button>
               </div>
-              <select :id="`id-type-${index}`" v-model="item.type" required :aria-invalid="!!errors.documents" :aria-describedby="errors.documents ? 'documents-error' : undefined">
-                <option value="" disabled>Select a form of ID</option>
+              <select :id="`id-type-${index}`" v-model="item.type" required :aria-invalid="!!errors.documents && !item.type" :aria-describedby="errors.documents ? 'documents-error' : undefined">
+                <option value="" disabled>Select ID type</option>
                 <option v-for="type in ID_TYPES" :key="type" :value="type">{{ type }}</option>
               </select>
-              <div v-if="item.type === 'Other'" class="mt-4">
+              <div v-if="item.type === 'Other'" class="other-id-field">
                 <label :for="`id-description-${index}`">Other ID type</label>
-                <input :id="`id-description-${index}`" v-model="item.description" maxlength="100" required :aria-describedby="`id-description-help-${index}`" />
-                <p :id="`id-description-help-${index}`" class="help">Document type only. Leave out numbers and other document details.</p>
+                <input :id="`id-description-${index}`" v-model="item.description" placeholder="Document type" maxlength="100" required :aria-invalid="!!errors.documents && !item.description.trim()" :aria-describedby="errors.documents ? `id-description-help-${index} documents-error` : `id-description-help-${index}`" />
+                <p :id="`id-description-help-${index}`" class="help">Enter the type only, without document details.</p>
               </div>
-              <label class="checkbox-row mt-3" :for="`sighted-${index}`">
-                <input :id="`sighted-${index}`" v-model="item.sighted" type="checkbox" required :aria-invalid="!!errors.documents" :aria-describedby="errors.documents ? 'documents-error' : undefined" />
-                <span>I have sighted this form of ID.</span>
+              <label class="checkbox-row" :class="{ 'is-sighted': item.sighted, 'is-invalid': errors.documents && !item.sighted }" :for="`sighted-${index}`">
+                <input :id="`sighted-${index}`" v-model="item.sighted" type="checkbox" required :aria-invalid="!!errors.documents && !item.sighted" :aria-describedby="errors.documents ? 'documents-error' : undefined" />
+                <span>I have sighted this ID</span>
+                <Check v-if="item.sighted" class="sighted-mark" :size="16" aria-hidden="true" />
               </label>
             </div>
             <p v-if="errors.documents" id="documents-error" class="field-error">{{ errors.documents }}</p>
-            <button v-if="form.documents.length === 1" type="button" class="secondary mt-4" @click="form.documents.push(emptyDocument())"><Plus :size="16" aria-hidden="true" /> Add a second form of ID (optional)</button>
+            <button v-if="form.documents.length === 1" id="add-id" type="button" class="add-document" @click="addSecondDocument"><Plus :size="17" aria-hidden="true" /><span>Add a second ID <span class="optional-label">Optional</span></span></button>
           </fieldset>
         </fieldset>
-        <div class="mt-7 border-t border-slate-200 pt-5">
-          <p class="mb-4 text-xs leading-5 text-slate-600">Saving creates an admin record and emails the PDF to the staff member above. This supporting record can accompany RTA Form 22b or Form R22b and does not replace either application form.</p>
-          <p v-if="attempted && !busy" class="mb-4 text-sm leading-6 text-slate-700">Your save could not be confirmed. Retry with these details to recover the same record.</p>
-          <div class="hidden sm:block"><button type="submit" class="primary" :disabled="!!busy"><Loader2 v-if="busy" class="animate-spin" :size="17" aria-hidden="true" /><Mail v-else :size="17" aria-hidden="true" /> {{ busy ? 'Saving record & emailing PDF…' : attempted ? 'Retry saving record' : 'Save record & email PDF' }}</button></div>
+        <div class="form-actions">
+          <p v-if="attempted && !busy" class="recovery-note">Your save could not be confirmed. Retry to recover the same record.</p>
+          <div class="submit-row">
+            <p class="submit-explanation"><FileText :size="18" aria-hidden="true" /><span>Creates an admin record<br />and emails a PDF copy.</span></p>
+            <button type="submit" class="primary" :disabled="!!busy"><Loader2 v-if="busy" class="animate-spin" :size="18" aria-hidden="true" /><Mail v-else :size="18" aria-hidden="true" /> {{ busy ? 'Saving & emailing…' : attempted ? 'Retry saving record' : 'Save & email PDF' }}<ArrowRight v-if="!busy" :size="17" aria-hidden="true" /></button>
+          </div>
         </div>
       </form>
-      <p v-if="error" ref="errorEl" tabindex="-1" role="alert" class="mt-4 rounded-lg border border-rose-300 bg-rose-50 p-4 text-sm leading-6 text-rose-900">{{ error }}</p>
-    </div>
-    <div v-if="!receipt" class="mobile-save-bar">
-      <button type="submit" form="id-sighting-form" class="primary w-full" :disabled="!!busy"><Loader2 v-if="busy" class="animate-spin" :size="18" aria-hidden="true" /><Mail v-else :size="18" aria-hidden="true" /> {{ busy ? 'Saving record & emailing PDF…' : attempted ? 'Retry saving record' : 'Save record & email PDF' }}</button>
+      <div v-if="error" ref="errorEl" tabindex="-1" role="alert" class="service-error"><AlertCircle :size="20" aria-hidden="true" /><p>{{ error }}</p></div>
+      <p class="supporting-note">Supporting record for RTA Form 22b or Form R22b. It does not replace either application form.</p>
     </div>
   </LayoutComponent>
 </template>
 
 <script setup>
 import { ref, reactive, computed, nextTick, watch } from 'vue'
-import { RouterLink } from 'vue-router'
-import { ArrowLeft, Plus, Mail, Download, Loader2, CheckCircle2 } from '@lucide/vue'
+import { ArrowRight, Plus, X, Check, Mail, Download, Loader2, CheckCircle2, ContactRound, ShieldCheck, FileText, AlertCircle } from '@lucide/vue'
 import LayoutComponent from '@/features/everhomes/components/layouts/LayoutComponent.vue'
 import { createIdSightingCredentials, idSightingRequest, downloadIdSighting } from '@/features/everhomes/utils/idSightingApi'
 import { ID_TYPES, brisbaneToday, normaliseIdSighting } from '../../../../../functions/everhomes/idSightingCore.mjs'
@@ -148,7 +158,6 @@ async function submit() {
     receipt.value = await idSightingRequest({ action: 'submit', ...credentials, record: savedRecord.value })
     void trackEverhomesToolUsage({ toolId: 'id-sighting', action: 'record_saved', once: false })
     await nextTick()
-    document.getElementById('saved-title')?.setAttribute('tabindex', '-1')
     document.getElementById('saved-title')?.focus()
   } catch (err) {
     if (err.status === 400 || err.status === 429) attempted.value = false
@@ -169,35 +178,124 @@ function startNew() {
   receipt.value = null; savedRecord.value = null; attempted.value = false; error.value = ''; errors.value = {}
   nextTick(() => document.getElementById('applicant-name')?.focus())
 }
+async function addSecondDocument() {
+  form.documents.push(emptyDocument())
+  await nextTick()
+  document.getElementById('id-type-1')?.focus()
+}
+async function removeSecondDocument() {
+  form.documents.pop()
+  await nextTick()
+  document.getElementById('add-id')?.focus()
+}
 </script>
 
 <style scoped>
-.back-link { display: inline-flex; align-items: center; gap: .5rem; min-height: 44px; color: #99f6e4; font-size: .875rem; }
-.eyebrow { color: #99f6e4; font-size: .75rem; font-weight: 600; letter-spacing: .06em; }
-h1 { overflow-wrap: anywhere; }
-.record-sheet { background: white; color: #1e293b; border-radius: 1rem; padding: 1.5rem; border-top: 4px solid #0d9488; box-shadow: 0 16px 40px #0002; }
-.section-title { font-size: 1rem; font-weight: 700; color: #115e59; }
-label { display: block; font-size: .875rem; font-weight: 600; }
-input:not([type=checkbox]), select { display: block; width: 100%; min-width: 0; min-height: 46px; margin-top: .5rem; padding: .65rem .75rem; background: white; border: 1px solid #94a3b8; color: #0f172a; border-radius: .5rem; font-size: 1rem; scroll-margin-top: 100px; scroll-margin-bottom: 110px; }
-input[aria-invalid=true], select[aria-invalid=true] { border-color: #be123c; }
-input[type=checkbox] { width: 20px; height: 20px; flex-shrink: 0; accent-color: #0f766e; }
-.checkbox-row { display: flex; align-items: center; gap: .75rem; min-height: 44px; font-weight: 400; }
-.help { margin-top: .5rem; font-size: .75rem; line-height: 1.5; color: #475569; }
-.field-error { margin-top: .5rem; font-size: .8125rem; color: #be123c; }
-.field-error:empty { display: none; }
-.primary, .secondary { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; max-width: 100%; min-height: 44px; padding: .65rem 1rem; border-radius: .5rem; font-size: .875rem; font-weight: 600; overflow-wrap: anywhere; cursor: pointer; }
-.primary { background: #0f766e; color: white; }
-.primary:hover { background: #115e59; }
-.secondary { background: white; border: 1px solid #94a3b8; color: #334155; }
-.secondary:hover { background: #f1f5f9; }
-.remove { min-height: 44px; font-size: .75rem; color: #9f1239; text-decoration: underline; }
-:is(button, input, select, a):focus-visible { outline: 3px solid #0d9488; outline-offset: 3px; }
+.sighting-page { --sighting-line: #304153; --sighting-muted: #a8b8c9; }
+:deep(header.fixed) { position: sticky; }
+.sighting-workspace { width: min(100%, 808px); margin: 0 auto; padding: 36px 24px 40px; color: #e8eff5; }
+.page-heading { display: flex; align-items: center; gap: 17px; margin-bottom: 25px; }
+.title-icon { width: 50px; height: 50px; display: grid; place-items: center; flex: 0 0 auto; border: 1px solid #2c6465; border-radius: 13px; color: #86e0ce; background: #123236; }
+.eyebrow { margin: 0 0 5px; color: var(--sighting-muted); font-size: .75rem; line-height: 1.5; font-weight: 500; letter-spacing: .035em; }
+h1 { margin: 0; color: #f5f8fa; font-size: 2rem; line-height: 1.2; font-weight: 600; letter-spacing: -.035em; overflow-wrap: anywhere; }
+.page-description { margin: 8px 0 0; font-size: .9375rem; line-height: 1.5; color: var(--sighting-muted); }
+.record-sheet { background: #111f30; color: #e8eff5; border: 1px solid var(--sighting-line); border-radius: 16px; overflow: hidden; }
+.form-intro { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 16px; padding: 16px 28px; border-bottom: 1px solid var(--sighting-line); font-size: .75rem; line-height: 1.5; color: var(--sighting-muted); }
+.form-intro > span:first-child { color: #e8eff5; font-weight: 600; }
+.form-fields { min-width: 0; border: 0; padding: 0 28px; }
+.form-section { min-width: 0; width: 100%; margin: 0; padding: 23px 0 24px; border: 0; }
+.form-section + .form-section { border-top: 1px solid var(--sighting-line); }
+.section-title { float: left; width: 100%; display: flex; align-items: center; gap: 12px; padding: 0; margin: 0 0 17px; color: #f1f5f9; font-family: var(--font-body); font-size: 1rem; line-height: 1.5; font-weight: 600; }
+.section-title > span { color: #7bcdbf; font-size: .75rem; font-weight: 500; font-variant-numeric: tabular-nums; }
+.section-title + * { clear: both; }
+.field-grid { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 18px; }
+.person-grid { grid-template-columns: minmax(0,1fr) 195px; }
+.field { min-width: 0; }
+label { display: block; font-size: .875rem; line-height: 1.5; font-weight: 500; color: #dce7ef; }
+input:not([type=checkbox]), select { display: block; width: 100%; min-width: 0; min-height: 48px; margin-top: 7px; padding: 11px 13px; border: 1px solid #647b91; border-radius: 8px; background: #0b1828; color: #f1f5f9; font-family: inherit; font-size: 1rem; line-height: 1.5; color-scheme: dark; scroll-margin-top: 6rem; transition: border-color 120ms, background-color 120ms; }
+input::placeholder { color: #8e9eaf; opacity: 1; }
+input:not([type=checkbox]):hover, select:hover { border-color: #7992a8; }
+input:not([type=checkbox]):focus, select:focus { border-color: #7bcdbf; background: #102334; }
+input[aria-invalid=true], select[aria-invalid=true] { border-color: #fb8d9f; }
+.help { margin-top: 7px; color: var(--sighting-muted); font-size: .8125rem; line-height: 1.5; }
+.field-error { margin-top: 8px; color: #ffafbc; font-size: .8125rem; line-height: 1.5; }
+.document-guidance { display: flex; align-items: center; gap: 8px; margin: -2px 0 17px; color: var(--sighting-muted); font-size: .8125rem; line-height: 1.5; }
+.document-guidance svg { flex-shrink: 0; color: #7bcdbf; }
+.document-entry { padding: 16px; border: 1px solid var(--sighting-line); border-radius: 10px; background: #142536; }
+.document-entry + .document-entry { margin-top: 14px; }
+.document-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; min-height: 24px; }
+.optional-label { color: var(--sighting-muted); font-weight: 400; font-size: .75rem; margin-left: 7px; }
+.other-id-field { margin-top: 16px; }
+.checkbox-row { display: flex; align-items: center; gap: 11px; min-height: 48px; margin-top: 13px; padding: 11px 12px; border: 1px solid #647b91; border-radius: 7px; background: #0f1d2c; font-weight: 400; cursor: pointer; }
+input[type=checkbox] { flex: 0 0 auto; width: 19px; height: 19px; margin: 0; accent-color: #81d9c4; color-scheme: dark; cursor: pointer; }
+.checkbox-row.is-sighted { color: #c8f5e9; border-color: #559d91; background: #123733; }
+.checkbox-row.is-invalid { border-color: #fb8d9f; }
+.sighted-mark { margin-left: auto; flex-shrink: 0; color: #8ee3ce; }
+.add-document { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 46px; margin-top: 13px; padding: 10px 12px; border: 1px dashed #647b91; border-radius: 8px; color: #b5eade; background: transparent; font-size: .875rem; line-height: 1.5; font-weight: 500; cursor: pointer; }
+.add-document:hover { background: #193335; border-color: #7bcdbf; }
+.remove { display: flex; align-items: center; gap: 5px; min-height: 44px; padding: 0 5px; margin-block: -10px; color: #c2cfdc; background: transparent; font-size: .75rem; cursor: pointer; }
+.remove:hover { color: #ffafbc; }
+.form-actions { border-top: 1px solid var(--sighting-line); padding: 22px 28px; background: #122333; }
+.submit-row { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
+.submit-explanation { display: flex; align-items: center; gap: 10px; color: var(--sighting-muted); font-size: .8125rem; line-height: 1.5; }
+.submit-explanation svg { flex-shrink: 0; color: #7bcdbf; }
+.primary, .secondary { display: inline-flex; align-items: center; justify-content: center; gap: 9px; max-width: 100%; min-height: 48px; padding: 12px 18px; border: 1px solid transparent; border-radius: 8px; font-size: .9375rem; line-height: 1.4; font-weight: 600; cursor: pointer; overflow-wrap: anywhere; }
+.primary { background: #81d9c4; color: #092d2a; }
+.primary:hover { background: #a2e6d5; }
+.primary svg, .secondary svg { flex-shrink: 0; }
+.secondary { background: transparent; border-color: #60798c; color: #dce7ef; }
+.secondary:hover { background: #1d3546; }
+.recovery-note { margin-bottom: 15px; color: #f3d89e; font-size: .875rem; line-height: 1.5; }
+.supporting-note { max-width: 650px; margin: 17px auto 0; color: var(--sighting-muted); font-size: .75rem; line-height: 1.6; text-align: center; }
+.service-error { display: flex; align-items: flex-start; gap: 10px; margin-top: 17px; padding: 16px; border: 1px solid #ac6270; border-radius: 10px; background: #38212c; color: #ffd2da; font-size: .875rem; line-height: 1.6; }
+.service-error svg { flex-shrink: 0; margin-top: 2px; }
+.saved-sheet { padding: 30px; }
+.saved-heading { display: flex; align-items: center; gap: 14px; }
+.saved-icon { width: 50px; height: 50px; flex-shrink: 0; display: grid; place-items: center; background: #153e36; border: 1px solid #438a80; border-radius: 50%; color: #91e4cc; }
+.saved-heading h2 { margin: 0; color: #f1f5f9; font-size: 1.5rem; font-weight: 500; line-height: 1.3; letter-spacing: -.025em; }
+#saved-title, .service-error { scroll-margin-top: 6rem; }
+.saved-applicant { margin-top: 25px; font-size: 1.125rem; line-height: 1.5; font-weight: 600; overflow-wrap: anywhere; }
+.delivery-note { display: flex; gap: 10px; margin-top: 16px; color: #b5eade; font-size: .875rem; line-height: 1.6; }
+.delivery-note svg { flex: 0 0 auto; margin-top: 3px; }
+.delivery-note p { overflow-wrap: anywhere; min-width: 0; }
+.delivery-note strong { font-weight: 500; }
+.delivery-warning { padding: 13px; border: 1px solid #8a724a; background: #332d21; color: #f3d89e; border-radius: 8px; }
+.record-summary { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 20px; margin: 25px 0; padding-block: 23px; border-block: 1px solid var(--sighting-line); font-size: .875rem; line-height: 1.6; }
+.record-summary dt { color: var(--sighting-muted); margin-bottom: 5px; font-size: .8125rem; }
+.record-summary dd { overflow-wrap: anywhere; }
+.summary-documents { grid-column: 1 / -1; }
+.summary-documents dd { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.summary-documents svg { flex-shrink: 0; color: #91e4cc; }
+.saved-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.saved-footnote { margin-top: 19px; color: var(--sighting-muted); font-size: .8125rem; line-height: 1.6; }
+:is(button, input, select, a, [tabindex]):focus-visible { outline: 2px solid #a2e6d5; outline-offset: 4px; }
 button:disabled { opacity: .65; cursor: wait; }
-fieldset:disabled { opacity: .8; }
-.mobile-save-bar { position: fixed; z-index: 40; bottom: 0; left: 0; right: 0; padding: 12px 16px max(12px, env(safe-area-inset-bottom)); background: #0b1525; border-top: 1px solid #334155; box-shadow: 0 -6px 20px #0002; }
-.mobile-save-bar .primary { min-height: 50px; }
-@media (min-width: 640px) { .mobile-save-bar { display: none; } }
-@media (max-width: 639px) { :deep(footer) { padding-bottom: 100px; } }
-@media (max-width: 420px) { .record-sheet { padding: 1.15rem; } }
+.form-fields:disabled { opacity: .65; }
+@media (max-width: 639px) {
+  .sighting-workspace { padding: 24px 16px; }
+  .page-heading { gap: 13px; margin-bottom: 22px; align-items: flex-start; }
+  .title-icon { width: 40px; height: 40px; border-radius: 10px; margin-top: 24px; }
+  h1 { font-size: 1.625rem; line-height: 1.25; }
+  .page-description { margin-top: 7px; font-size: .875rem; }
+  .form-intro { padding: 14px 19px; font-size: .75rem; }
+  .form-fields { padding: 0 19px; }
+  .form-section { padding: 21px 0; }
+  .field-grid { grid-template-columns: minmax(0,1fr); gap: 17px; }
+  .section-title { margin-bottom: 15px; }
+  .document-guidance { align-items: flex-start; font-size: .8125rem; }
+  .document-guidance svg { margin-top: 2px; }
+  .document-entry { padding: 13px; }
+  .form-actions { padding: 18px 19px; }
+  .submit-row { flex-direction: column; align-items: stretch; gap: 16px; }
+  .submit-explanation { font-size: .8125rem; }
+  .primary { width: 100%; min-height: 50px; }
+  .record-sheet { border-radius: 13px; }
+  .saved-sheet { padding: 22px 19px; }
+  .saved-actions .secondary { flex: 1; }
+  .saved-heading h2 { font-size: 1.375rem; }
+  .record-summary { gap: 18px; }
+  .supporting-note { text-align: left; }
+}
+@media (max-width: 359px) { .sighting-workspace { padding-inline: 12px; } .title-icon { display: none; } .form-intro { padding-inline: 16px; } .form-fields { padding-inline: 16px; } .optional-label { display: block; margin-left: 0; } .record-summary { grid-template-columns: minmax(0,1fr); } }
 @media (prefers-reduced-motion: reduce) { .animate-spin { animation: none; } }
 </style>
