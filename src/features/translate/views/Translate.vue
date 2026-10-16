@@ -1,141 +1,58 @@
 <template>
-  <!-- Main Content Wrapper -->
-  <div
-    class="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 font-sans flex justify-center p-4">
-    <div class="flex flex-col w-full xl:max-w-[80%] xl:py-12">
-
-      <!-- Grid Layout -->
-      <div class="relative z-10 w-full grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
-        <TranslationPanel />
-
-        <!-- Right-hand column (fixed height, inner scrolls) -->
-        <div class="lg:col-span-1 flex flex-col xl:max-h-[83dvh] max-h-[95dvh] space-y-2">
-          <UsagePanel @expand-usage="showUsageAnalytics = true" />
-          <!-- I need this to only take up the remaining space in the height locked sidepanel -->
-          <div class="flex-1 overflow-hidden">
-            <HistoryPanel />
-          </div>
-        </div>
-
-      </div>
-
+  <main class="translate-page">
+    <div class="translate-wrap">
+      <header class="page-nav">
+        <RouterLink to="/" class="wordmark"><Languages :size="21" /> MXN <span>/ translate</span></RouterLink>
+        <nav aria-label="Translation navigation">
+          <RouterLink to="/translate/usage">Usage</RouterLink>
+          <SettingsPopover />
+        </nav>
+      </header>
+      <section class="page-intro">
+        <p class="eyebrow">LESS LOST IN TRANSLATION</p>
+        <h1>Say it your way.<br /><span>In another language.</span></h1>
+        <p>A little more context. A lot less guesswork.</p>
+      </section>
+      <TranslationPanel />
+      <details class="history-section">
+        <summary><History :size="16" /> Recent translations <span>{{ store.history.length }}</span><ChevronDown :size="16" class="history-chevron" /></summary>
+        <div class="history-content"><HistoryPanel /></div>
+      </details>
+      <footer>Built by Mason <span>Context across languages.</span></footer>
     </div>
-    <!-- Fullscreen Usage Analytics -->
-    <div v-if="showUsageAnalytics"
-      class="fixed inset-0 z-[70] bg-gradient-to-br from-slate-950/90 via-slate-900/90 to-slate-950/90 backdrop-blur-sm">
-      <div
-        class="absolute inset-4 md:inset-10 bg-slate-900/95 border border-white/10 rounded-3xl overflow-hidden flex flex-col shadow-2xl">
-        <div class="p-4 border-b border-white/10 flex items-center gap-3">
-          <h3 class="text-white font-semibold text-lg">Usage Analytics</h3>
-          <button class="ml-auto text-white/70 hover:text-white hover:bg-white/10 px-3 py-1.5 rounded-lg"
-            @click="showUsageAnalytics = false">Close</button>
-        </div>
-
-        <div class="flex-1 overflow-auto p-6 space-y-4">
-          <!-- Example stats; tweak as you like -->
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div class="bg-white/5 border border-white/10 rounded-2xl p-4">
-              <div class="text-xs text-white/60">Total translations</div>
-              <div class="text-2xl font-bold text-white">{{ locale(store.appStats?.totalTranslations) }}</div>
-            </div>
-            <div class="bg-white/5 border border-white/10 rounded-2xl p-4">
-              <div class="text-xs text-white/60">Total words</div>
-              <div class="text-2xl font-bold text-white">{{ locale(store.appStats?.totalWords) }}</div>
-            </div>
-            <div class="bg-white/5 border border-white/10 rounded-2xl p-4">
-              <div class="text-xs text-white/60">Estimated API cost</div>
-              <div class="text-2xl font-bold text-white">{{ store.formattedApiCost }}</div>
-            </div>
-          </div>
-
-          <div v-if="store.topLanguages?.length" class="bg-white/5 border border-white/10 rounded-2xl p-4">
-            <div class="text-sm font-medium text-white/80 mb-2">Top languages</div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-              <div v-for="lang in store.topLanguages" :key="lang.code"
-                class="flex items-center justify-between bg-white/5 rounded-lg p-2">
-                <div class="flex items-center gap-2">
-                  <i :class="lang.flag" class="w-4 h-3 rounded-sm"></i>
-                  <span>{{ lang.name }}</span>
-                </div>
-                <span class="text-white/70">{{ locale(lang.count) }} ({{ lang.percentage }}%)</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+  </main>
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, ref } from 'vue'
+import { Languages, History, ChevronDown } from '@lucide/vue'
 import { useTranslateStore } from '@/features/translate/stores/useTranslateStore'
-
 import TranslationPanel from '@/features/translate/components/TranslationPanel.vue'
-import UsagePanel from '@/features/translate/components/UsagePanel.vue'
+import SettingsPopover from '@/features/translate/components/SettingsPopover.vue'
 import HistoryPanel from '@/features/translate/components/HistoryPanel.vue'
-
 const store = useTranslateStore()
-
-const showUsageAnalytics = ref(false)
-const locale = (n) => (typeof n === 'number' ? n.toLocaleString() : (n || 0).toLocaleString?.() || '0')
-
-// --- Lifecycle Hooks ---
-onMounted(() => {
-  store.initializeAllListeners()
-})
-
-onUnmounted(() => {
-  store.cleanupAllListeners()
-})
 </script>
 
 <style scoped>
-@keyframes pulse {
-
-  0%,
-  100% {
-    opacity: 1;
-  }
-
-  50% {
-    opacity: 0.5;
-  }
-}
-
-@keyframes ping {
-
-  75%,
-  100% {
-    transform: scale(2);
-    opacity: 0;
-  }
-}
-
-.animate-pulse {
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-.animate-ping {
-  animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
-}
-
-/* Custom scrollbar for WebKit browsers */
-.custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 10px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 10px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.4);
-}
+.translate-page { background: #111715; color: #edf2ee; min-height: 100vh; font-family: inherit; }
+.translate-wrap { width: min(1120px, 100% - 64px); margin: auto; }
+.page-nav { display:flex; align-items:center; justify-content:space-between; padding:28px 0; border-bottom:1px solid #ffffff12; }
+.wordmark { display:flex; align-items:center; gap:10px; font-size:15px; font-weight:750; letter-spacing:.04em; text-decoration:none; color:#edf2ee; }
+.wordmark svg { color:#c6e5af; }
+.wordmark span { color:#8b9a91; font-weight:400; letter-spacing:0; }
+nav { display:flex; align-items:center; gap:24px; font-size:13px; color:#aab7af; }
+nav a:hover { color:#edf2ee; }
+.page-intro { padding:58px 0 32px; }
+.eyebrow { font-size:10px; letter-spacing:.2em; color:#c6e5af; font-weight:650; margin:0 0 20px; }
+h1 { font-size:clamp(32px,4.2vw,51px); line-height:1.12; letter-spacing:-.045em; font-weight:600; margin:0; }
+h1 span { color:#a3b3a9; }
+.page-intro > p:last-child { color:#9aaba0; font-size:14px; margin:20px 0 0; }
+.history-section { margin-top:26px; border:1px solid #ffffff15; border-radius:14px; background:#161e1a; }
+summary { list-style:none; display:flex; align-items:center; gap:10px; padding:18px 22px; cursor:pointer; font-size:13px; color:#c0cdc3; }
+summary::-webkit-details-marker { display:none; }
+summary span { font-size:11px; color:#8fa196; }
+.history-chevron { margin-left:auto; }
+details[open] .history-chevron { transform:rotate(180deg); }
+.history-content { padding:0 20px 20px; max-height:480px; overflow:auto; }
+footer { display:flex; justify-content:space-between; padding:25px 0 35px; color:#6e8275; font-size:11px; }
+@media(max-width:600px) { .translate-wrap { width:calc(100% - 32px); } .page-nav { padding:20px 0; } nav { gap:16px; } .page-intro { padding:36px 0 26px; } footer span { display:none; } }
 </style>

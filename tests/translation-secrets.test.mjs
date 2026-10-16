@@ -56,6 +56,22 @@ function setup(overrides = {}) {
   return { calls, handler: createTranslationHandler(deps), retranslate: createRetranslationHandler(deps) }
 }
 
+test('OpenAI cache entries from older models are refreshed while Luna results remain reusable', async () => {
+  for (const modelUsed of ['gpt-4o-mini', 'gpt-6-luna']) {
+    let saved = 0
+    const { calls, handler } = setup({ cache: {
+      get: async () => ({ id: 'existing', modelUsed, translated: 'Cached text' }),
+      save: async () => { saved++; return 'new-entry' },
+    } })
+    const res = response()
+    await handler({ method: 'POST', headers: { authorization: 'Bearer valid' }, body: input }, res)
+    assert.equal(res.body.cached, modelUsed === 'gpt-6-luna')
+    assert.equal(res.body.translated, modelUsed === 'gpt-6-luna' ? 'Cached text' : 'Hola')
+    assert.equal(saved, modelUsed === 'gpt-6-luna' ? 0 : 1)
+    assert.equal(calls.some(call => call[0] === 'openai'), modelUsed !== 'gpt-6-luna')
+  }
+})
+
 test('shared translation rejects anonymous, spoofed Discord and invalid Firebase identity before provider work', async () => {
   const { calls, handler } = setup()
   for (const req of [

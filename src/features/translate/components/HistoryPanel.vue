@@ -196,18 +196,7 @@ const deleteHistoryItem = (id) => store.deleteHistoryItem?.(id, null)
 const openExplorer = () => { showExplorer.value = true }
 
 const restore = (item) => {
-    // Restore visible fields
-    store.fromLanguage = item.sourceLang
-    store.selectedLanguage = item.targetLang
-    store.leftText = item.inputText || ''
-    store.rightText = item.translated || ''
-
-    // Populate round-trip directly from Firestore (no recompute)
-    store.lastOriginalText = item.inputText || ''
-    store.lastTranslationDirection = 'left'
-    store.retranslatedText = item.retranslated || ''
-    store.accuracy = typeof item.accuracy === 'number' ? item.accuracy : null
-    store.accuracyRating = item.accuracyRating || null
+    store.restoreHistoryItem(item)
 }
 
 // Explorer state

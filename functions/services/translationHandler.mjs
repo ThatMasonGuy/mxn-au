@@ -1,4 +1,5 @@
 import { authorizeTranslation, validateTranslationInput, TranslationRequestError } from './translationPolicy.mjs'
+import { OPENAI_MODEL } from './openaiService.mjs'
 
 const deeplLanguages = new Set(['en', 'es', 'fr', 'de', 'it', 'pt', 'ja', 'ko', 'zh', 'ru', 'tr', 'nl', 'sv', 'no', 'da', 'fi', 'pl', 'cs', 'hu'])
 
@@ -14,6 +15,7 @@ export function createTranslationHandler({ verifyIdToken, reserveBudget, cache, 
       // Reserve before cache/provider work; failed calls still count so retries cannot bypass limits.
       if (actor.shared) await reserveBudget(actor.uid, input.content.length)
       let result = await cache.get(input.content, input.fromLang, input.targetLang, model)
+      if (model === 'openai' && result?.modelUsed !== OPENAI_MODEL) result = null
       const cached = Boolean(result)
       if (!result) {
         const service = model === 'deepl' ? deepl(getDeeplKey()) : openai(actor.apiKey || getOpenAIKey())

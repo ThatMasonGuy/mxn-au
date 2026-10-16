@@ -1,6 +1,6 @@
 import fetch from "node-fetch";
 
-const OPENAI_MODEL = "gpt-4o-mini";
+export const OPENAI_MODEL = "gpt-6-luna";
 
 const languageNames = {
     es: "Spanish",
@@ -29,8 +29,9 @@ const languageNames = {
 };
 
 export class OpenAIService {
-    constructor(apiKey) {
+    constructor(apiKey, { fetchImpl = fetch } = {}) {
         this.apiKey = apiKey;
+        this.fetch = fetchImpl;
     }
 
     async translate(content, fromLang, targetLang) {
@@ -55,8 +56,9 @@ Output rules:
 
         const startTime = Date.now();
 
-        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        const response = await this.fetch("https://api.openai.com/v1/chat/completions", {
             method: "POST",
+            signal: AbortSignal.timeout(45000),
             headers: {
                 Authorization: `Bearer ${this.apiKey}`,
                 "Content-Type": "application/json",
@@ -68,8 +70,8 @@ Output rules:
                     { role: "user", content: content },
                 ],
                 response_format: { type: "json_object" },
-                max_tokens: 4000,
-                temperature: 0.3,
+                max_completion_tokens: 4000,
+                reasoning_effort: "none",
             }),
         });
 
@@ -79,9 +81,13 @@ Output rules:
         }
 
         const data = await response.json();
+        if (data.choices?.[0]?.finish_reason !== 'stop') {
+            throw new Error('Translation did not complete');
+        }
         const parsed = JSON.parse(data.choices[0].message.content);
 
-        if (!parsed.translated || !parsed.retranslated) {
+        if (typeof parsed.translated !== 'string' || !parsed.translated.trim() ||
+            typeof parsed.retranslated !== 'string' || !parsed.retranslated.trim()) {
             throw new Error("Invalid response from OpenAI");
         }
 
@@ -127,31 +133,31 @@ Output rules:
     }
 
     levenshteinDistance(a, b) {
-        const matrix = [];
         const alen = a.length;
         const blen = b.length;
 
         if (alen === 0) return blen;
         if (blen === 0) return alen;
 
-        for (let i = 0; i <= blen; i++) matrix[i] = [i];
-        for (let j = 0; j <= alen; j++) matrix[0][j] = j;
-
+        let previous = Array.from({ length: alen + 1 }, (_, index) => index);
+        let current = new Array(alen + 1);
         for (let i = 1; i <= blen; i++) {
+            current[0] = i;
             for (let j = 1; j <= alen; j++) {
                 if (b.charAt(i - 1) === a.charAt(j - 1)) {
-                    matrix[i][j] = matrix[i - 1][j - 1];
+                    current[j] = previous[j - 1];
                 } else {
-                    matrix[i][j] = Math.min(
-                        matrix[i - 1][j - 1] + 1,
-                        matrix[i][j - 1] + 1,
-                        matrix[i - 1][j] + 1
+                    current[j] = Math.min(
+                        previous[j - 1] + 1,
+                        current[j - 1] + 1,
+                        previous[j] + 1
                     );
                 }
             }
+            [previous, current] = [current, previous];
         }
 
-        return matrix[blen][alen];
+        return previous[alen];
     }
 
     getAccuracyRating(similarity) {

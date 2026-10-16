@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { requestTranslation } from '../services/translationRequest.mjs'
 import { ref, computed, watch } from 'vue'
 import {
     doc,
@@ -24,6 +25,9 @@ export const useTranslateStore = defineStore('translate', () => {
     const settingsOpen = ref(false)
     const showApiKey = ref(false)
     const isTranslating = ref(false)
+    const translationError = ref('')
+    let activeController = null
+    let translationRun = 0
 
     // --- Translation Result State ---
     const accuracy = ref(null)
@@ -349,12 +353,14 @@ export const useTranslateStore = defineStore('translate', () => {
         const finalKey = apiKey.value?.trim() || ''
 
         if (!inputText?.trim()) {
-            showToast('error', 'Please enter text to translate')
+            translationError.value = 'Please enter text to translate'
+            showToast('error', translationError.value)
             return { ok: false, error: 'Missing input text', apiTimeMs: 0 }
         }
 
         if ((!finalKey || selectedModel.value === 'deepl') && !mainStore.user) {
-            showToast('error', 'Sign in to use shared translation, or enter your own OpenAI key')
+            translationError.value = 'Sign in to use shared translation, or add your own OpenAI key in settings.'
+            showToast('error', translationError.value)
             return { ok: false, error: 'Missing API key', apiTimeMs: 0 }
         }
 
@@ -366,28 +372,27 @@ export const useTranslateStore = defineStore('translate', () => {
         lastOriginalText.value = inputText
         lastTranslationDirection.value = fromSide
 
-        // Timeout promise (30 seconds)
-        const timeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => reject(new Error('Translation timed out after 30 seconds')), 30000)
-        })
-
-        // Actual translation promise
-        const translationPromise = (async () => {
-            const result = await attemptTranslation(inputText, fromLang, toLang, finalKey, Boolean(mainStore.user))
-            return handleSuccessfulTranslation(result, isLeftToRight, PERF_START)
-        })()
-
+        translationError.value = ''
+        retranslatedText.value = ''
+        accuracy.value = null
+        accuracyRating.value = null
+        lastCacheId.value = null
+        isRetranslating.value = false
+        translationRun++
+        const controller = new AbortController()
+        activeController = controller
         try {
-            // Race the translation against the timeout
-            return await Promise.race([translationPromise, timeoutPromise])
+            const result = await attemptTranslation(inputText, fromLang, toLang, finalKey, Boolean(mainStore.user), controller.signal)
+            controller.signal.throwIfAborted()
+            return handleSuccessfulTranslation(result, isLeftToRight, PERF_START)
         } catch (error) {
             console.error('Translation error:', error)
 
-            // Handle timeout specifically
-            if (error.message.includes('timed out')) {
-                showToast('error', 'Translation timed out. Use the reset button in settings if stuck.', { duration: 5000 })
-            } else {
-                showToast('error', error.message || 'Translation failed')
+            if (error.name !== 'AbortError') {
+                translationError.value = error.name === 'TimeoutError'
+                    ? 'Translation took too long. Please try again.'
+                    : error.message || 'Translation failed. Please try again.'
+                showToast('error', translationError.value)
             }
 
             // Clean up on error
@@ -398,13 +403,13 @@ export const useTranslateStore = defineStore('translate', () => {
 
             return { ok: false, error: error.message, apiTimeMs: 0 }
         } finally {
-            // CRITICAL: Always reset isTranslating, no matter what
+            activeController = null
             isTranslating.value = false
         }
     }
 
     // Helper function to attempt translation with or without auth
-    const attemptTranslation = async (inputText, fromLang, toLang, apiKey, useAuth = false) => {
+    const attemptTranslation = async (inputText, fromLang, toLang, apiKey, useAuth = false, signal) => {
         const headers = {
             'Content-Type': 'application/json',
             ...(apiKey ? { 'x-openai-key': apiKey } : {})
@@ -421,25 +426,12 @@ export const useTranslateStore = defineStore('translate', () => {
         }
 
         const apiStart = performance.now()
-        const resp = await fetch('/translate/post', {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({
-                content: inputText,
-                fromLang,
-                targetLang: toLang,
-                model: selectedModel.value // Use direct ref, not store.selectedModel
-            })
+        const data = await requestTranslation({
+            headers, signal,
+            body: { content: inputText, fromLang, targetLang: toLang, model: selectedModel.value },
         })
         const apiTimeMs = Math.round(performance.now() - apiStart)
 
-        if (!resp.ok) {
-            const err = await resp.json().catch(() => ({}))
-            const errorMessage = err?.error || `HTTP ${resp.status}: ${resp.statusText}`
-            throw new Error(errorMessage)
-        }
-
-        const data = await resp.json()
         return {
             success: true,
             data,
@@ -452,6 +444,7 @@ export const useTranslateStore = defineStore('translate', () => {
     // Helper function to handle successful translation
     const handleSuccessfulTranslation = (result, isLeftToRight, perfStart) => {
         const { data, apiTimeMs, serverTimeMs, openAiTimeMs } = result
+        const run = translationRun
 
         const outputText = data.translated || data.outputText || ''
         accuracy.value = typeof data.accuracy === 'number' ? data.accuracy : null
@@ -511,7 +504,7 @@ export const useTranslateStore = defineStore('translate', () => {
                     fromLang: data.sourceLang,
                     targetLang: data.targetLang,
                     originalText: data.inputText,
-                    cacheId: lastCacheId.value // Include for cache update
+                    cacheId: data.cacheId
                 })
                 })
             })
@@ -523,6 +516,7 @@ export const useTranslateStore = defineStore('translate', () => {
                 .then(retranslateResult => {
                     const retranslateTime = Math.round(performance.now() - retranslateStartTime)
 
+                    if (run !== translationRun) return
                     // Update accuracy metrics
                     retranslatedText.value = retranslateResult.retranslated || ''
                     accuracy.value = retranslateResult.accuracy
@@ -542,6 +536,7 @@ export const useTranslateStore = defineStore('translate', () => {
                     console.log('⏱️  Failed after:', `${retranslateTime}ms`)
                     console.groupEnd()
 
+                    if (run !== translationRun) return
                     isRetranslating.value = false
                     // Set default values on failure
                     accuracy.value = null
@@ -608,8 +603,6 @@ export const useTranslateStore = defineStore('translate', () => {
 
         connectionRetries.value = 0
 
-        // Show success feedback
-        showToast('success', 'Translation completed!', { duration: 1500 })
 
         return {
             ok: true,
@@ -1013,14 +1006,34 @@ export const useTranslateStore = defineStore('translate', () => {
     const toggleSettings = () => { settingsOpen.value = !settingsOpen.value }
     const toggleShowApiKey = () => { showApiKey.value = !showApiKey.value }
 
-    // Force reset the translator state (emergency escape hatch)
+    // Cancelling leaves the pending request in charge of releasing its loading state.
     const forceResetTranslator = () => {
-        isTranslating.value = false
+        activeController?.abort()
+        translationRun++
+        isRetranslating.value = false
+        translationError.value = ''
         retranslatedText.value = ''
         lastOriginalText.value = ''
         accuracy.value = null
         accuracyRating.value = null
-        showToast('success', 'Translator state has been reset')
+        showToast('info', 'Translation cancelled')
+    }
+
+    const restoreHistoryItem = (item) => {
+        if (isTranslating.value) return
+        translationRun++
+        isRetranslating.value = false
+        translationError.value = ''
+        fromLanguage.value = item.sourceLang
+        selectedLanguage.value = item.targetLang
+        leftText.value = item.inputText || ''
+        rightText.value = item.translated || ''
+        lastOriginalText.value = item.inputText || ''
+        lastTranslationDirection.value = 'left'
+        lastCacheId.value = item.cacheId || null
+        retranslatedText.value = item.retranslated || ''
+        accuracy.value = typeof item.accuracy === 'number' ? item.accuracy : null
+        accuracyRating.value = item.accuracyRating || null
     }
 
     const markTranslationBad = async () => {
@@ -1063,7 +1076,7 @@ export const useTranslateStore = defineStore('translate', () => {
 
     return {
         // State
-        settingsOpen, showApiKey, isTranslating, isRetranslating, accuracy, accuracyRating,
+        settingsOpen, showApiKey, isTranslating, isRetranslating, translationError, accuracy, accuracyRating,
         lastOriginalText, lastTranslationDirection, leftText, rightText, retranslatedText, lastCacheId,
         apiKey, selectedLanguage, fromLanguage, autoCopy, syncHistory, selectedModel,
         recentTranslations, userHistory, history, discordChannelsByGuild,
@@ -1093,7 +1106,7 @@ export const useTranslateStore = defineStore('translate', () => {
 
         // Methods
         flagClass, highlightDifferences, translate, copyToClipboard,
-        clearHistory, deleteHistoryItem, formatTimeAgo,
+        clearHistory, deleteHistoryItem, restoreHistoryItem, formatTimeAgo,
         initializeAllListeners, cleanupAllListeners,
         toggleSettings, toggleShowApiKey, forceResetTranslator, markTranslationBad,
 
