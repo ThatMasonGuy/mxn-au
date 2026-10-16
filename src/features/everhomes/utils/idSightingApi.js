@@ -26,7 +26,9 @@ export async function idSightingRequest(payload, { admin = false } = {}) {
     }
     return body
   } catch (error) {
-    if (error.name === 'TimeoutError' || error.name === 'AbortError') throw new Error('The record service took too long. Retry with the same details to recover your record.')
+    if (error.name === 'TimeoutError' || error.name === 'AbortError') throw new Error(payload.action === 'delete'
+      ? 'Deletion took too long. Refresh records before trying to delete it again.'
+      : 'The record service took too long. Retry with the same details to recover your record.')
     throw error
   }
 }

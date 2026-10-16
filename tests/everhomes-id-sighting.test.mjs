@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { normaliseIdSighting, validateIdSightingCredentials, requireIdSightingAccess, brisbaneToday, buildIdSightingEmail, completeIdSighting } from '../functions/everhomes/idSightingCore.mjs'
+import { normaliseIdSighting, validateIdSightingCredentials, requireIdSightingAccess, brisbaneToday, buildIdSightingEmail, completeIdSighting, deleteIdSighting } from '../functions/everhomes/idSightingCore.mjs'
 
 const today = '2026-10-16'
 const details = () => ({
@@ -55,6 +55,55 @@ test('ID sighting access requires a valid capability or verified administrator',
   for (const [item, hash, admin] of [[record, 'wrong-hash', false], [record, null, false], [null, 'correct-hash', false], [null, null, true]]) {
     assert.throws(() => requireIdSightingAccess(item, hash, admin), { status: 404 })
   }
+})
+
+test('a record awaiting deletion cannot be downloaded or claimed again, even by its owner or an admin', () => {
+  const record = { accessHash: 'correct-hash', status: 'deleting' }
+  assert.throws(() => requireIdSightingAccess(record, 'correct-hash'), { status: 409 })
+  assert.throws(() => requireIdSightingAccess(record, null, true), { status: 409 })
+  assert.throws(() => requireIdSightingAccess(record, 'wrong-hash'), { status: 404 })
+})
+
+test('deleting a sighting removes its PDF before the record and treats an absent record as already deleted', async () => {
+  let record = { status: 'complete' }, pdf = Buffer.from('private PDF'), locked = false
+  const deps = {
+    claim: async () => { if (!record) return false; locked = true; record.status = 'deleting'; return true },
+    deletePdf: async () => { assert.equal(locked, true); pdf = null },
+    deleteRecord: async () => { assert.equal(pdf, null); record = null },
+    release: async () => { locked = false },
+  }
+  assert.deepEqual(await deleteIdSighting(deps), { success: true })
+  assert.equal(record, null)
+  assert.equal(pdf, null)
+  assert.equal(locked, false)
+  assert.deepEqual(await deleteIdSighting(deps), { success: true })
+})
+
+test('failed deletion preserves the record for retry and releases the operation lock', async () => {
+  for (const failure of ['pdf', 'record']) {
+    let record = { status: 'complete' }, pdf = Buffer.from('private PDF'), locked = false, shouldFail = true
+    const deps = {
+      claim: async () => { locked = true; record.status = 'deleting'; return true },
+      deletePdf: async () => { if (failure === 'pdf' && shouldFail) throw new Error('Storage unavailable'); pdf = null },
+      deleteRecord: async () => { if (shouldFail) throw new Error('Database unavailable'); record = null },
+      release: async () => { locked = false },
+    }
+    await assert.rejects(deleteIdSighting(deps), /unavailable/)
+    assert.equal(record.status, 'deleting')
+    assert.equal(locked, false)
+    shouldFail = false
+    await deleteIdSighting(deps)
+    assert.equal(record, null)
+    assert.equal(pdf, null)
+  }
+})
+
+test('a rejected deletion claim never touches the PDF or record', async () => {
+  const untouched = async () => assert.fail('An active record must not be changed')
+  await assert.rejects(deleteIdSighting({
+    claim: async () => { throw Object.assign(new Error('Record in use'), { status: 409 }) },
+    deletePdf: untouched, deleteRecord: untouched, release: untouched,
+  }), { status: 409 })
 })
 
 function workflow({ existing = {}, send = async () => ({ data: { id: 'provider-1' } }), generate = async () => Buffer.from('PDF fixture') } = {}) {

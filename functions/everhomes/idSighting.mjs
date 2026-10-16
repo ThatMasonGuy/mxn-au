@@ -4,7 +4,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import { firebaseAdmin, db } from '../config/firebase.mjs'
 import { requireEverhomesAdmin } from './requireEverhomesAdmin.mjs'
 import { generateIdSightingPdf } from './idSightingPdf.mjs'
-import { IdSightingError, normaliseIdSighting, validateIdSightingCredentials, brisbaneToday, buildIdSightingEmail, completeIdSighting, idSightingFilename, requireIdSightingAccess } from './idSightingCore.mjs'
+import { IdSightingError, normaliseIdSighting, validateIdSightingCredentials, brisbaneToday, buildIdSightingEmail, completeIdSighting, deleteIdSighting, idSightingFilename, requireIdSightingAccess } from './idSightingCore.mjs'
 
 const RESEND_API_KEY = defineSecret('RESEND_API_KEY')
 const records = db.collection('everhomesIdSightings')
@@ -18,9 +18,9 @@ export const everhomesIdSighting = onRequest({ region: 'australia-southeast1', c
   const body = req.body ?? {}
   const action = body.action ?? 'submit'
   try {
-    if (!['submit', 'download', 'retryEmail'].includes(action)) throw new IdSightingError(400, 'Unsupported record action.')
+    if (!['submit', 'download', 'retryEmail', 'delete'].includes(action)) throw new IdSightingError(400, 'Unsupported record action.')
     let admin = null
-    if (req.get('authorization')) admin = await requireEverhomesAdmin(req)
+    if (action === 'delete' || req.get('authorization')) admin = await requireEverhomesAdmin(req)
     let credentials
     if (admin && action !== 'submit') {
       if (!/^[a-f0-9]{32}$/.test(body.recordId ?? '')) throw new IdSightingError(400, 'Invalid record reference.')
@@ -29,6 +29,31 @@ export const everhomesIdSighting = onRequest({ region: 'australia-southeast1', c
     const ref = records.doc(credentials.recordId)
     const accessHash = credentials.accessKey ? hash(credentials.accessKey) : null
     const bucket = firebaseAdmin.storage().bucket()
+    if (action === 'delete') {
+      const leaseId = randomUUID()
+      const result = await deleteIdSighting({
+        claim: () => db.runTransaction(async (tx) => {
+          const snap = await tx.get(ref)
+          if (!snap.exists) return false
+          if (snap.data().leaseUntil > Date.now()) throw new IdSightingError(409, 'This record is being saved, emailed or deleted. Wait a moment and try again.')
+          tx.update(ref, { status: 'deleting', leaseId, leaseUntil: Date.now() + 150_000, updatedAt: stamp() })
+          return true
+        }),
+        deletePdf: () => bucket.file(pathFor(ref.id)).delete({ ignoreNotFound: true }),
+        deleteRecord: () => db.runTransaction(async (tx) => {
+          const snap = await tx.get(ref)
+          if (!snap.exists) return
+          if (snap.data().leaseId !== leaseId) throw new IdSightingError(409, 'Deletion is already in progress. Refresh records and try again.')
+          tx.delete(ref)
+        }),
+        release: () => db.runTransaction(async (tx) => {
+          const snap = await tx.get(ref)
+          if (snap.data()?.leaseId === leaseId) tx.update(ref, { leaseId: null, leaseUntil: 0 })
+        }),
+      })
+      console.info(JSON.stringify({ event: 'everhomes_admin_id_sighting_deleted', recordId: ref.id, administratorUid: admin.uid }))
+      return res.json(result)
+    }
     if (action === 'download') {
       const snap = await ref.get()
       requireIdSightingAccess(snap.data(), accessHash, !!admin)
@@ -82,6 +107,6 @@ export const everhomesIdSighting = onRequest({ region: 'australia-southeast1', c
   } catch (error) {
     const status = error.status ?? 500
     if (status >= 500) console.error('ID sighting operation failed', { action, code: error.code ?? 'internal' })
-    return res.status(status).json({ error: status >= 500 ? 'The record service could not finish. Retry with the same details to recover your record.' : error.message })
+    return res.status(status).json({ error: status >= 500 ? action === 'delete' ? 'Deletion could not finish. Refresh records and retry deleting this record.' : 'The record service could not finish. Retry with the same details to recover your record.' : error.message })
   }
 })

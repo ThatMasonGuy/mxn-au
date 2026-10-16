@@ -55,6 +55,18 @@ export function requireIdSightingAccess(record, accessHash, isAdmin = false) {
   if (!record || (!isAdmin && (!accessHash || record.accessHash !== accessHash))) {
     throw new IdSightingError(404, 'Record not found.')
   }
+  if (record.status === 'deleting') throw new IdSightingError(409, 'This record is being deleted. An administrator can retry deletion if it did not finish.')
+}
+
+export async function deleteIdSighting({ claim, deletePdf, deleteRecord, release }) {
+  if (!await claim()) return { success: true }
+  try {
+    await deletePdf()
+    await deleteRecord()
+    return { success: true }
+  } finally {
+    await release()
+  }
 }
 
 export function brisbaneToday(now = new Date()) {
