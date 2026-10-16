@@ -99,7 +99,7 @@
 
                 <!-- Tabs -->
                 <section class="mb-6 border-b border-white/10">
-                    <div class="flex w-full sm:w-fit">
+                    <div class="flex w-full flex-wrap sm:w-fit">
                         <button
                             v-for="tab in tabs"
                             :key="tab.id"
@@ -122,6 +122,8 @@
                         </button>
                     </div>
                 </section>
+
+                <IdSightingRecords v-if="activeTab === 'id-sightings'" />
 
                 <!-- Submissions tab -->
                 <section v-if="activeTab === 'submissions'" class="rounded-lg border border-white/10 bg-white/[0.035] p-4 sm:p-5">
@@ -976,6 +978,7 @@ import * as XLSX from 'xlsx'
 
 import LayoutComponent from '@/features/everhomes/components/layouts/LayoutComponent.vue'
 import ToolUsageDashboard from '@/features/everhomes/components/admin/ToolUsageDashboard.vue'
+import IdSightingRecords from '@/features/everhomes/components/admin/IdSightingRecords.vue'
 import { useSdaPriceStore } from '@/features/everhomes/stores/useSdaPriceStore'
 import { useMainStore } from '@/shared/stores/useMainStore'
 import { extractSdaPricingData } from '@/features/everhomes/utils/sdaPriceExtractor'
@@ -1038,6 +1041,7 @@ const mainStore = useMainStore()
 const activeTab = ref('submissions')
 const tabs = [
     { id: 'submissions', label: 'Submissions', icon: ClipboardCheck },
+    { id: 'id-sightings', label: 'ID sightings', icon: FileText },
     { id: 'usage',       label: 'Tool Usage',  icon: Activity },
     { id: 'sda',         label: 'SDA Dataset',  icon: Database },
 ]

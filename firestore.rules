@@ -313,6 +313,11 @@ service cloud.firestore {
       }
     }
 
+    match /everhomesIdSightings/{recordId} {
+      allow read: if _isEverhomesAdmin();
+      allow write: if false;
+    }
+
     match /everhomesSdaPricing/{docId} {
       allow read: if true;
       allow write: if _isEverhomesAdmin();

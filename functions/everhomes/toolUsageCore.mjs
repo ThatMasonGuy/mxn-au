@@ -1,4 +1,8 @@
 export const EVERHOMES_USAGE_TOOLS = Object.freeze({
+  'id-sighting': {
+    name: 'ID Sighting Record',
+    events: { opened: [], record_saved: [] },
+  },
   'water-bills': {
     name: 'Water Bills',
     events: { opened: [], calculation_completed: ['easy', 'advanced'] },

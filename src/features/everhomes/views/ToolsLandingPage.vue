@@ -453,6 +453,16 @@ const QuickToolCard = defineComponent({
 
 const tools = [
     {
+        id: 'id-sighting',
+        title: 'ID Sighting Record',
+        byline: 'Record sighted ID for RTA Forms 22b and R22b and email a branded PDF',
+        link: '/everhomes/id-sighting',
+        icon: ClipboardCheck,
+        colorHex: '#14b8a6',
+        badges: [{ label: 'New', type: 'new' }],
+        category: 'inspection'
+    },
+    {
         id: 'water',
         title: 'Water Bills',
         byline: 'Split SDA water bills by participant and date',

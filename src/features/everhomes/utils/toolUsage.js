@@ -7,6 +7,7 @@ export const EVERHOMES_TOOL_CATALOGUE = Object.freeze([
     { id: 'qr-code', name: 'QR Code Generator' },
     { id: 'inspection-report', name: 'Inspection Report' },
     { id: 'handover-report', name: 'Handover Report' },
+    { id: 'id-sighting', name: 'ID Sighting Record' },
 ])
 
 const PRODUCTION_HOSTS = new Set([
@@ -49,6 +50,7 @@ export function isEverhomesUsageHost(hostname) {
 
 export function resolveEverhomesTool(route = {}) {
     const path = String(route.path ?? '').replace(/\/+$/, '') || '/'
+    if (path === '/everhomes/id-sighting') return EVERHOMES_TOOL_CATALOGUE[6]
     if (path === '/everhomes/water-bill' || path === '/everhomes/water-bills') return EVERHOMES_TOOL_CATALOGUE[0]
     if (['/everhomes/placement-fee', '/everhomes/placement-fees', '/everhomes/placement'].includes(path)) return EVERHOMES_TOOL_CATALOGUE[1]
     if (path === '/everhomes/sda-returns' || path === '/everhomes/sda-return') return EVERHOMES_TOOL_CATALOGUE[2]

@@ -3,6 +3,19 @@ import { ROLES } from '@/shared/constants/roles'
 
 export default [
     {
+        path: '/everhomes/id-sighting',
+        name: 'Everhomes | ID Sighting',
+        component: () => import('@/features/everhomes/views/tools/IdSighting.vue'),
+        meta: {
+            requiresAuth: false,
+            title: 'Everhomes | ID Sighting',
+            layout: 'default',
+            drawerVisible: false,
+            description: 'Record identity documents sighted for an SDA rental application.',
+            requiresOverlay: false,
+        },
+    },
+    {
         path: '/everhomes/admin',
         name: 'Everhomes | Admin',
         component: () => import('@/features/everhomes/views/admin/EverhomesAdminPage.vue'),

@@ -48,6 +48,7 @@ export { createAutoTranslatePair } from './api/createAutoTranslatePair.mjs';
 export { botApiProxy } from './api/botApiProxy.mjs';
 
 // Everhomes Functions
+export { everhomesIdSighting } from './everhomes/idSighting.mjs';
 export { generateInspectionReport } from './everhomes/generateInspectionReport.mjs';
 export {
     syncEverhomesDraft,

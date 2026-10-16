@@ -21,6 +21,7 @@ test('every public Everhomes tool route resolves to a stable analytics ID', () =
     ['/everhomes/placement-fees', {}, 'placement-fees'],
     ['/everhomes/sda-returns', {}, 'participant-sda-funding'],
     ['/everhomes/qr-code', {}, 'qr-code'],
+    ['/everhomes/id-sighting', {}, 'id-sighting'],
     ['/everhomes/report/inspection', { reportType: 'inspection' }, 'inspection-report'],
     ['/everhomes/report/handover', { reportType: 'handover' }, 'handover-report'],
   ]
