@@ -1,5 +1,5 @@
 <template>
-  <LayoutComponent :background="false" bg-style="#eef3f5" class="sighting-page">
+  <LayoutComponent class="sighting-page">
     <div class="sighting-workspace">
       <header class="page-heading">
         <div class="title-icon" aria-hidden="true"><ContactRound :size="24" :stroke-width="1.6" /></div>
@@ -196,10 +196,11 @@ async function removeSecondDocument() {
 :deep(header.fixed) { position: sticky; }
 .sighting-workspace { width: min(100%, 1120px); margin: 0 auto; padding: 36px 24px 40px; color: #1b2d3d; }
 .page-heading { display: flex; align-items: center; gap: 17px; margin-bottom: 25px; }
+.page-heading .eyebrow { color: #a5e7d8; }
 .title-icon { width: 50px; height: 50px; display: grid; place-items: center; flex: 0 0 auto; border: 1px solid #a0cfc3; border-radius: 13px; color: #087f78; background: #e0f2ec; }
 .eyebrow { margin: 0 0 5px; color: #066d66; font-size: .75rem; line-height: 1.5; font-weight: 500; letter-spacing: .035em; }
-h1 { margin: 0; color: #1b2d3d; font-size: 2rem; line-height: 1.2; font-weight: 600; letter-spacing: -.035em; overflow-wrap: anywhere; }
-.page-description { margin: 8px 0 0; font-size: .9375rem; line-height: 1.5; color: var(--sighting-muted); }
+h1 { margin: 0; color: #f5f8fa; font-size: 2rem; line-height: 1.2; font-weight: 600; letter-spacing: -.035em; overflow-wrap: anywhere; }
+.page-description { margin: 8px 0 0; font-size: .9375rem; line-height: 1.5; color: #cbd5e1; }
 .record-sheet { background: #fff; color: #1b2d3d; border: 1px solid var(--sighting-line); border-radius: 16px; box-shadow: 0 8px 30px #1b2d3d0a; }
 .form-intro { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 16px; padding: 16px 28px; border-top: 3px solid #087f78; border-bottom: 1px solid var(--sighting-line); border-radius: 15px 15px 0 0; background: #f1f8f6; font-size: .75rem; line-height: 1.5; color: var(--sighting-muted); }
 .form-intro > span:first-child { color: #16685f; font-weight: 600; }
@@ -255,7 +256,7 @@ input[type=checkbox] { flex: 0 0 auto; width: 19px; height: 19px; margin: 0; acc
 .secondary { background: #fff; border-color: #7b909f; color: #293f50; }
 .secondary:hover { background: #f1f8f6; }
 .recovery-note { margin-bottom: 15px; color: #7a4a12; font-size: .875rem; line-height: 1.5; }
-.supporting-note { max-width: 650px; margin: 17px auto 0; color: var(--sighting-muted); font-size: .75rem; line-height: 1.6; text-align: center; }
+.supporting-note { max-width: 650px; margin: 17px auto 0; color: #cbd5e1; font-size: .75rem; line-height: 1.6; text-align: center; }
 .service-error { display: flex; align-items: flex-start; gap: 10px; margin-top: 17px; padding: 16px; border: 1px solid #df9bab; border-radius: 10px; background: #fff1f3; color: #9f1239; font-size: .875rem; line-height: 1.6; }
 .service-error svg { flex-shrink: 0; margin-top: 2px; }
 .saved-sheet { padding: 30px; }
