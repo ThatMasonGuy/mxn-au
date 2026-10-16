@@ -1,9 +1,9 @@
-import PDFDocument from 'pdfkit'
-import sharp from 'sharp'
 import { fileURLToPath } from 'node:url'
 
 let logoPromise
 export async function generateIdSightingPdf(record) {
+  // Functions share an entrypoint; load PDF dependencies only for PDF requests.
+  const [{ default: PDFDocument }, { default: sharp }] = await Promise.all([import('pdfkit'), import('sharp')])
   logoPromise ??= sharp(fileURLToPath(new URL('../assets/everhomes-logo.png', import.meta.url))).trim().png().toBuffer()
   const logo = await logoPromise
   return new Promise((resolve, reject) => {

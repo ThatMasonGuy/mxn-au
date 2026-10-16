@@ -1,7 +1,6 @@
 import { onRequest } from 'firebase-functions/v2/https'
 import { defineSecret } from 'firebase-functions/params'
 import { createHash, randomUUID } from 'node:crypto'
-import { Resend } from 'resend'
 import { firebaseAdmin, db } from '../config/firebase.mjs'
 import { requireEverhomesAdmin } from './requireEverhomesAdmin.mjs'
 import { generateIdSightingPdf } from './idSightingPdf.mjs'
@@ -13,7 +12,7 @@ const hash = (value) => createHash('sha256').update(value).digest('hex')
 const pathFor = (id) => `everhomesIdSightings/${id}/record.pdf`
 const stamp = () => firebaseAdmin.firestore.FieldValue.serverTimestamp()
 
-export const everhomesIdSighting = onRequest({ region: 'australia-southeast1', cors: true, timeoutSeconds: 120, memory: '256MiB', maxInstances: 5, secrets: [RESEND_API_KEY] }, async (req, res) => {
+export const everhomesIdSighting = onRequest({ region: 'australia-southeast1', cors: true, timeoutSeconds: 120, memory: '512MiB', concurrency: 10, maxInstances: 5, secrets: [RESEND_API_KEY] }, async (req, res) => {
   res.set('Cache-Control', 'no-store')
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' })
   const body = req.body ?? {}
@@ -70,6 +69,7 @@ export const everhomesIdSighting = onRequest({ region: 'australia-southeast1', c
       },
       update,
       sendEmail: async (record, pdf) => {
+        const { Resend } = await import('resend')
         pdf ??= (await bucket.file(pathFor(record.id)).download())[0]
         return new Resend(RESEND_API_KEY.value()).emails.send(buildIdSightingEmail(record, pdf), { idempotencyKey: `everhomes-id-sighting/${record.id}` })
       },
