@@ -76,7 +76,7 @@ export function buildIdSightingEmail(record, pdf) {
     subject: `Everhomes ID sighting record - ${dateLabel}`,
     html,
     text,
-    attachments: [{ filename: idSightingFilename(record), content: pdf }],
+    attachments: [{ filename: idSightingFilename(record), content: pdf, contentType: 'application/pdf' }],
   }
 }
 

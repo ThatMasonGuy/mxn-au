@@ -112,6 +112,7 @@ test('completed ID sighting email attaches the exact PDF and only targets the re
   assert.equal(email.cc, undefined)
   assert.equal(email.bcc, undefined)
   assert.equal(email.attachments[0].content, pdf)
+  assert.equal(email.attachments[0].contentType, 'application/pdf')
   assert.ok(email.attachments[0].filename.endsWith('.pdf'))
   assert.ok(email.text.includes('Form 22b or Form R22b'))
 })
