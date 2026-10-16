@@ -201,8 +201,9 @@ async function removeSecondDocument() {
 .eyebrow { margin: 0 0 5px; color: #066d66; font-size: .75rem; line-height: 1.5; font-weight: 500; letter-spacing: .035em; }
 h1 { margin: 0; color: #f5f8fa; font-size: 2rem; line-height: 1.2; font-weight: 600; letter-spacing: -.035em; overflow-wrap: anywhere; }
 .page-description { margin: 8px 0 0; font-size: .9375rem; line-height: 1.5; color: #cbd5e1; }
-.record-sheet { background: #fff; color: #1b2d3d; border: 1px solid var(--sighting-line); border-radius: 16px; box-shadow: 0 8px 30px #1b2d3d0a; }
-.form-intro { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 16px; padding: 16px 28px; border-top: 3px solid #087f78; border-bottom: 1px solid var(--sighting-line); border-radius: 15px 15px 0 0; background: #f1f8f6; font-size: .75rem; line-height: 1.5; color: var(--sighting-muted); }
+.record-sheet { --sheet-radius: 16px; background: #fff; color: #1b2d3d; border: 1px solid var(--sighting-line); border-radius: var(--sheet-radius); box-shadow: 0 8px 30px #1b2d3d0a; }
+#id-sighting-form { padding: 0; border-top: 3px solid #087f78; }
+.form-intro { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 16px; padding: 16px 28px; border-bottom: 1px solid var(--sighting-line); border-radius: calc(var(--sheet-radius) - 3px) calc(var(--sheet-radius) - 3px) 0 0; background: #f1f8f6; font-size: .75rem; line-height: 1.5; color: var(--sighting-muted); }
 .form-intro > span:first-child { color: #16685f; font-weight: 600; }
 .form-fields { min-width: 0; border: 0; padding: 0 28px; }
 .form-section { min-width: 0; width: 100%; margin: 0; padding: 23px 0 24px; border: 0; }
@@ -245,7 +246,7 @@ input[type=checkbox] { flex: 0 0 auto; width: 19px; height: 19px; margin: 0; acc
 .add-document:hover { color: #065f59; text-decoration: underline; }
 .remove { display: flex; align-items: center; gap: 5px; min-height: 44px; padding: 0 5px; margin-block: -10px; color: #526575; background: transparent; font-size: .75rem; cursor: pointer; }
 .remove:hover { color: #b42342; }
-.form-actions { border-top: 1px solid var(--sighting-line); padding: 22px 28px; background: #f6f9fa; border-radius: 0 0 15px 15px; }
+.form-actions { border-top: 1px solid var(--sighting-line); padding: 22px 28px; background: #f6f9fa; border-radius: 0 0 calc(var(--sheet-radius) - 1px) calc(var(--sheet-radius) - 1px); }
 .submit-row { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
 .submit-explanation { display: flex; align-items: center; gap: 10px; color: var(--sighting-muted); font-size: .8125rem; line-height: 1.5; }
 .submit-explanation svg { flex-shrink: 0; color: #087f78; }
@@ -298,7 +299,7 @@ button:disabled { opacity: .65; cursor: wait; }
   .submit-row { flex-direction: column; align-items: stretch; gap: 16px; }
   .submit-explanation { font-size: .8125rem; }
   .primary { width: 100%; min-height: 50px; }
-  .record-sheet { border-radius: 13px; }
+  .record-sheet { --sheet-radius: 13px; }
   .saved-sheet { padding: 22px 19px; }
   .saved-actions .secondary { flex: 1; }
   .saved-heading h2 { font-size: 1.375rem; }
