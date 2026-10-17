@@ -64,7 +64,7 @@
     "pinia": "^4.0.2",
     "pinia-plugin-persistedstate": "^4.2.0",
     "qr-code-styling": "^1.9.2",
-    "qs": "^6.15.3",
+    "qs": "^6.16.0",
     "radix-vue": "^1.7.3",
     "reka-ui": "^2.10.1",
     "signature_pad": "^5.1.4",
