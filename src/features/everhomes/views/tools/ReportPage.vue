@@ -27,87 +27,86 @@
       </div>
     </div>
 
-    <!-- ── Setup hero + card ────────────────────────────────────────── -->
-    <div>
-      <div
-        class="px-4 sm:px-6 lg:px-8 pt-8 pb-10"
-        :class="heroBgClass"
-      >
-        <div class="max-w-4xl mx-auto">
-          <h1 class="text-2xl sm:text-3xl font-black text-white tracking-tight uppercase">
-            {{ schema.title }}
+    <div v-if="reportState.resumeRequested" class="mx-auto max-w-4xl px-4 py-10 sm:px-6 lg:px-8">
+      <div class="rounded-2xl border border-slate-600 bg-slate-900 px-5 py-8" :aria-busy="reportState.draftSync.status === 'restoring'">
+        <div role="status" aria-live="polite" aria-atomic="true">
+          <h1 class="flex items-center gap-3 text-xl font-bold text-white">
+            <LoaderCircle v-if="reportState.draftSync.status === 'restoring'" aria-hidden="true" class="h-6 w-6 shrink-0 animate-spin motion-reduce:animate-none" />
+            {{ reportState.draftSync.status === 'restoring' ? 'Restoring your saved report…' : 'Could not restore this report' }}
           </h1>
-          <p class="text-sm mt-1 font-medium" :class="heroSubtitleClass">
-            {{ schema.subtitle }}
+          <p class="mt-3 text-sm leading-6 text-slate-300">{{ reportState.draftSync.status === 'restoring' ? 'Loading your checklist, answers and saved photos. Please wait before making changes.' : reportState.draftSync.restoreError }}</p>
+        </div>
+        <div v-if="reportState.draftSync.status !== 'restoring'" class="mt-5 flex flex-wrap gap-3">
+          <button type="button" @click="reportState.restoreDraftFromLocation()" class="rounded-xl bg-teal-600 px-4 py-3 text-sm font-bold text-white hover:bg-teal-500">Try restoring again</button>
+          <button type="button" @click="reportState.useLocalDraft()" class="rounded-xl border border-slate-500 px-4 py-3 text-sm font-bold text-slate-200 hover:bg-slate-800">{{ reportState.hasChecklistStarted ? 'Use draft on this device' : 'Start a new report' }}</button>
+        </div>
+        <p v-if="reportState.draftSync.status !== 'restoring'" class="mt-3 text-xs leading-5 text-slate-400">Your existing draft on this device has been kept.</p>
+      </div>
+    </div>
+
+    <template v-else>
+      <!-- ── Setup hero + card ────────────────────────────────────────── -->
+      <div>
+        <div
+          class="px-4 sm:px-6 lg:px-8 pt-8 pb-10"
+          :class="heroBgClass"
+        >
+          <div class="max-w-4xl mx-auto">
+            <h1 class="text-2xl sm:text-3xl font-black text-white tracking-tight uppercase">
+              {{ schema.title }}
+            </h1>
+            <p class="text-sm mt-1 font-medium" :class="heroSubtitleClass">
+              {{ schema.subtitle }}
+            </p>
+          </div>
+        </div>
+
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 -mt-5 pb-8">
+          <ReportSetup
+            :schema="schema"
+            :reportState="reportState"
+            @started="onStarted"
+          />
+        </div>
+      </div>
+
+      <!-- ── Checklist zone ───────────────────────────────────────────── -->
+      <div data-checklist class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pb-24">
+
+        <!-- Empty state -->
+        <div
+          v-if="!reportState.hasChecklistStarted"
+          class="flex flex-col items-center gap-3 py-16 text-center"
+        >
+          <div class="w-14 h-14 rounded-2xl flex items-center justify-center" :class="emptyIconBgClass">
+            <ClipboardCheck class="w-7 h-7" :class="emptyIconClass" />
+          </div>
+          <p class="text-sm font-semibold text-slate-400">
+            Configure your {{ schema.title.toLowerCase() }} above<br />
+            <span class="text-slate-500 font-normal">then hit Start.</span>
           </p>
         </div>
-      </div>
 
-      <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 -mt-5 pb-8">
-        <ReportSetup
-          :schema="schema"
-          :reportState="reportState"
-          @started="onStarted"
-        />
-        <div
-          v-if="reportState.draftSync.restoreError"
-          class="mt-3 rounded-2xl border border-rose-400/25 bg-rose-500/10 px-4 py-3 text-sm text-rose-100"
-        >
-          {{ reportState.draftSync.restoreError }}
-        </div>
-      </div>
-    </div>
+        <!-- Active checklist -->
+        <template v-else>
+          <DraftRecoveryPanel :reportState="reportState" />
 
-    <!-- ── Checklist zone ───────────────────────────────────────────── -->
-    <div data-checklist class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pb-24">
+          <SectionAccordion
+            ref="accordionRef"
+            :reportState="reportState"
+            :schema="schema"
+            @open-submit="openSubmit"
+            @clear="clearConfirm.open = true"
+            @go-to="goToIssue"
+          />
 
-      <!-- Empty state -->
-      <div
-        v-if="!reportState.hasChecklistStarted"
-        class="flex flex-col items-center gap-3 py-16 text-center"
-      >
-        <div class="w-14 h-14 rounded-2xl flex items-center justify-center" :class="emptyIconBgClass">
-          <ClipboardCheck class="w-7 h-7" :class="emptyIconClass" />
-        </div>
-        <p class="text-sm font-semibold text-slate-400">
-          Configure your {{ schema.title.toLowerCase() }} above<br />
-          <span class="text-slate-500 font-normal">then hit Start.</span>
-        </p>
-      </div>
-
-      <!-- Active checklist -->
-      <template v-else>
-        <div
-          class="mb-4 flex flex-col gap-3 rounded-2xl border px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
-          :class="draftBackupClass"
-        >
-          <div class="min-w-0">
-            <p class="text-xs font-black uppercase tracking-wide">Report recovery backup</p>
-            <p class="mt-0.5 text-xs leading-5 opacity-85">{{ draftBackupMessage }}</p>
+          <!-- Marketing photos -->
+          <div v-if="showMarketing" id="report-marketing" tabindex="-1" class="scroll-mt-24 focus-visible:outline-2 focus-visible:outline-rose-300">
+            <MarketingPhotoPanel :schema="schema" :reportState="reportState" />
           </div>
-          <button
-            type="button"
-            :disabled="!reportState.resumeLink"
-            @click="copyResumeLink"
-            class="shrink-0 rounded-xl border border-current/25 bg-black/10 px-3 py-2 text-xs font-bold transition hover:bg-black/20 disabled:cursor-not-allowed disabled:opacity-40"
-          >{{ resumeCopied ? 'Resume link copied' : 'Copy resume link' }}</button>
-        </div>
-
-        <SectionAccordion
-          :reportState="reportState"
-          :schema="schema"
-          @open-submit="submitModal.open = true"
-          @clear="clearConfirm.open = true"
-        />
-
-        <!-- Marketing photos -->
-        <MarketingPhotoPanel
-          v-if="showMarketing"
-          :schema="schema"
-          :reportState="reportState"
-        />
-      </template>
-    </div>
+        </template>
+      </div>
+    </template>
 
     <!-- ── Submit modal ─────────────────────────────────────────────── -->
     <SubmitModal
@@ -116,6 +115,7 @@
       :reportState="reportState"
       @close="submitModal.open = false"
       @submitted="onSubmitted"
+      @go-to="goToIssue"
     />
 
     <ErrorLogModal
@@ -139,8 +139,8 @@
           v-if="clearConfirm.open"
           class="fixed inset-0 z-50 flex items-center justify-center px-4"
         >
-          <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" @click="clearConfirm.open = false" />
-          <div class="relative z-10 w-full max-w-sm bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-6">
+          <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" @click="!clearConfirm.loading && (clearConfirm.open = false)" />
+          <div :aria-busy="clearConfirm.loading" class="relative z-10 w-full max-w-sm bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-6">
             <h3 class="text-white font-black text-base mb-1">Clear Checklist?</h3>
             <p class="text-slate-400 text-sm mb-5">
               This removes the local report, recovery backup, and uploaded draft photos. This cannot be undone.
@@ -148,6 +148,7 @@
             <div class="flex gap-3">
               <button
                 @click="clearConfirm.open = false"
+                :disabled="clearConfirm.loading"
                 class="flex-1 py-2.5 rounded-xl border-2 border-slate-700 text-slate-400 text-sm font-bold transition-colors hover:border-slate-600"
               >Cancel</button>
               <button
@@ -167,7 +168,7 @@
 <script setup>
 import { computed, reactive, ref, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
-import { ClipboardCheck } from '@lucide/vue'
+import { ClipboardCheck, LoaderCircle } from '@lucide/vue'
 
 import LayoutComponent     from '@/features/everhomes/components/layouts/LayoutComponent.vue'
 import ReportSetup         from '@/features/everhomes/components/ReportSetup.vue'
@@ -175,6 +176,7 @@ import SectionAccordion    from '@/features/everhomes/components/SectionAccordio
 import MarketingPhotoPanel from '@/features/everhomes/components/MarketingPhotoPanel.vue'
 import SubmitModal         from '@/features/everhomes/components/SubmitModal.vue'
 import ErrorLogModal       from '@/features/everhomes/components/ErrorLogModal.vue'
+import DraftRecoveryPanel from '@/features/everhomes/components/DraftRecoveryPanel.vue'
 
 import { useReportState }  from '@/features/everhomes/composables/useReportState'
 import { trackEverhomesToolUsage } from '@/features/everhomes/utils/toolUsage'
@@ -208,32 +210,25 @@ const reportState = useReportState(schema.value)
 // ─── Local UI state ───────────────────────────────────────────────────────────
 const submitModal = reactive({ open: false })
 const clearConfirm = reactive({ open: false, loading: false })
-const resumeCopied = ref(false)
+const accordionRef = ref(null)
 
-const draftBackupMessage = computed(() => {
-  const sync = reportState.draftSync
-  if (sync.status === 'saved') {
-    return sync.lastSyncedAt
-      ? `Backed up to the recovery service at ${new Date(sync.lastSyncedAt).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' })}.`
-      : 'Backed up to the recovery service.'
+function openSubmit() {
+  reportState.validationVisible = true
+  submitModal.open = true
+}
+
+async function goToIssue(issue) {
+  submitModal.open = false
+  reportState.validationVisible = true
+  if (issue.kind === 'marketing') reportState.setup.showMarketing = true
+  await nextTick()
+  if (issue.kind === 'marketing') {
+    const target = document.getElementById('report-marketing')
+    target?.focus({ preventScroll: true })
+    target?.scrollIntoView({ behavior: 'instant', block: 'center' })
+  } else {
+    await accordionRef.value?.revealIssue(issue)
   }
-  if (sync.status === 'syncing' || sync.status === 'restoring') return 'Saving a recovery copy…'
-  if (sync.status === 'offline') return 'Offline: this report is kept on this device and will back up when you reconnect.'
-  if (sync.status === 'error') return `Backup needs attention: ${sync.lastError || sync.restoreError || 'please check your connection before submitting.'}`
-  return 'Preparing the first recovery backup…'
-})
-
-const draftBackupClass = computed(() => {
-  const status = reportState.draftSync.status
-  if (status === 'saved') return 'border-emerald-400/25 bg-emerald-500/10 text-emerald-100'
-  if (status === 'error') return 'border-rose-400/25 bg-rose-500/10 text-rose-100'
-  if (status === 'offline') return 'border-amber-400/25 bg-amber-500/10 text-amber-100'
-  return 'border-sky-400/25 bg-sky-500/10 text-sky-100'
-})
-
-async function copyResumeLink() {
-  resumeCopied.value = await reportState.copyResumeLink()
-  if (resumeCopied.value) setTimeout(() => { resumeCopied.value = false }, 2_500)
 }
 
 // ─── Marketing panel visibility ───────────────────────────────────────────────
@@ -272,6 +267,7 @@ function onSubmitted() {
 }
 
 async function doClear() {
+  if (clearConfirm.loading) return
   clearConfirm.loading = true
   try {
     await reportState.clearReport()

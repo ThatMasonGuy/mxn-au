@@ -19,6 +19,7 @@
 
 <template>
   <div>
+    <ReportValidationSummary v-if="reportState.validationVisible" :readiness="reportState.submissionReadiness" @go-to="revealIssue" class="mb-4" />
     <!-- ── Compression notice ──────────────────────────────────────────── -->
     <div class="mb-4 flex items-start gap-3 px-4 py-3 bg-amber-500/10 border border-amber-500/25 rounded-2xl">
       <AlertTriangle class="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
@@ -112,13 +113,18 @@
       <div
         v-for="(section, idx) in reportState.checklistSections"
         :key="section.id"
+        :id="`report-section-${section.id}`"
         class="rounded-2xl overflow-hidden border-2 transition-colors duration-300"
         :style="reportState.accordionBorderStyle(section.id)"
+        :class="reportState.validationVisible && reportState.missingRequiredAnswers.some(answer => answer.sectionId === section.id) ? 'ring-2 ring-rose-400/70' : ''"
       >
         <!-- Accordion header button -->
         <button
           @click="toggleSection(idx)"
-          class="w-full flex items-center gap-3 px-4 py-3.5 text-left focus:outline-none transition-colors"
+          :id="`report-section-toggle-${section.id}`"
+          :aria-expanded="openSections.has(idx)"
+          :aria-controls="openSections.has(idx) ? `report-section-body-${section.id}` : undefined"
+          class="w-full flex items-center gap-3 px-4 py-3.5 text-left focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-teal-300 transition-colors"
         >
           <!-- Section icon -->
           <div
@@ -136,6 +142,7 @@
             <span class="text-white font-bold text-sm leading-tight block truncate">
               {{ section.label }}
             </span>
+            <span v-if="reportState.validationVisible && reportState.missingRequiredAnswers.some(answer => answer.sectionId === section.id)" class="mt-1 block text-xs font-bold text-rose-200">Required answers missing</span>
             <p class="text-xs mt-0.5">
               <span class="text-slate-500">
                 {{ reportState.checklistData[section.id]?.photos?.length ?? 0 }}
@@ -159,15 +166,16 @@
 
         <!-- Accordion body -->
         <Transition
-          enter-active-class="transition-all duration-300 ease-out"
-          leave-active-class="transition-all duration-200 ease-in"
-          enter-from-class="opacity-0 max-h-0"
-          enter-to-class="opacity-100 max-h-[2400px]"
-          leave-from-class="opacity-100 max-h-[2400px]"
-          leave-to-class="opacity-0 max-h-0"
+          enter-active-class="transition-opacity duration-150 motion-reduce:transition-none"
+          leave-active-class="transition-opacity duration-150 motion-reduce:transition-none"
+          enter-from-class="opacity-0"
+          enter-to-class="opacity-100"
+          leave-from-class="opacity-100"
+          leave-to-class="opacity-0"
         >
           <ChecklistSection
             v-if="openSections.has(idx) && reportState.checklistData[section.id]"
+            :id="`report-section-body-${section.id}`"
             :section="section"
             :sectionData="reportState.checklistData[section.id]"
             :groups="reportState.getFilteredGroups(section.id, section.key)"
@@ -187,7 +195,8 @@
       >
         <Send class="w-4 h-4" />{{ schema.submitLabel ?? `Submit ${schema.title}` }}
       </button>
-      <p class="text-center text-xs text-slate-600 font-medium mt-2">
+      <p v-if="reportState.submissionReadiness.blocked" class="mt-2 text-center text-xs font-semibold leading-5 text-rose-200">Review what needs fixing before you can submit.</p>
+      <p v-else class="text-center text-xs text-slate-400 font-medium mt-2">
         {{
           reportState.completedCount < reportState.checklistSections.length
             ? `${reportState.checklistSections.length - reportState.completedCount} section${reportState.checklistSections.length - reportState.completedCount !== 1 ? 's' : ''} still unchecked`
@@ -208,7 +217,7 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, nextTick } from 'vue'
 import {
   AlertTriangle, Trash2, Send, Save, ChevronDown,
   WifiOff, ClipboardCheck,
@@ -216,6 +225,8 @@ import {
 import ChecklistSection from './ChecklistSection.vue'
 import PhotoPanel       from './PhotoPanel.vue'
 import StatusPill       from './StatusPill.vue'
+import ReportValidationSummary from './ReportValidationSummary.vue'
+import { reportItemElementId } from '../utils/reportReadiness.js'
 
 // ─── Props & emits ────────────────────────────────────────────────────────────
 const props = defineProps({
@@ -229,11 +240,30 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['open-submit', 'clear'])
+const emit = defineEmits(['open-submit', 'clear', 'go-to'])
 
 // ─── Accordion open/close state ───────────────────────────────────────────────
 // Set is keyed by section index. First section starts open.
 const openSections = ref(new Set([0]))
+
+async function revealIssue(issue) {
+  if (issue.kind === 'marketing') {
+    emit('go-to', issue)
+    return
+  }
+  props.reportState.validationVisible = true
+  const index = props.reportState.checklistSections.findIndex(section => section.id === issue.sectionId)
+  if (index < 0) return
+  openSections.value = new Set([...openSections.value, index])
+  await nextTick()
+  const target = issue.itemId
+    ? document.getElementById(reportItemElementId(issue.sectionId, issue.itemId))
+    : document.getElementById(`report-section-toggle-${issue.sectionId}`)
+  target?.focus({ preventScroll: true })
+  target?.scrollIntoView({ behavior: 'instant', block: 'center' })
+}
+
+defineExpose({ revealIssue })
 
 function toggleSection(idx) {
   const next = new Set(openSections.value)

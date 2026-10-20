@@ -25,75 +25,94 @@
 
 <template>
   <div
-    v-if="item.type === 'text' || item.type === 'number' || item.type === 'date'"
-    class="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-slate-800/40"
-  >
-    <div class="flex-1 flex flex-wrap items-center gap-1.5 min-w-0">
-      <SdaChip v-for="badge in (item.badges ?? [])" :key="badge" :chip="badge" />
-      <span class="text-xs font-medium leading-tight" :class="item.sda ? 'text-slate-300' : 'text-slate-400'">{{ item.label }}</span>
-    </div>
-    <input
-      :type="item.type"
-      :placeholder="item.placeholder ?? ''"
-      :value="inputValue"
-      @input="emit('set-input', item.id, $event.target.value)"
-      class="shrink-0 bg-slate-900/80 border border-slate-600 text-white placeholder-slate-600 text-xs font-medium rounded-lg px-2.5 py-1.5 text-right focus:outline-none focus:ring-2 focus:ring-teal-500 transition"
-      :class="item.type === 'number' ? 'w-20' : item.type === 'date' ? 'w-32' : 'w-36'"
-    />
-  </div><div
-    v-else-if="item.type === 'multiline'"
-    class="px-2.5 py-2 rounded-lg bg-slate-800/40 space-y-1.5"
-  >
-    <div class="flex flex-wrap items-center gap-1.5">
-      <SdaChip v-for="badge in (item.badges ?? [])" :key="badge" :chip="badge" />
-      <span class="text-xs font-medium leading-tight" :class="item.sda ? 'text-slate-300' : 'text-slate-400'">{{ item.label }}</span>
-    </div>
-    <textarea
-      :placeholder="item.placeholder ?? ''"
-      :value="inputValue"
-      @input="emit('set-input', item.id, $event.target.value)"
-      rows="3"
-      class="w-full bg-slate-900/80 border border-slate-600 text-white placeholder-slate-600 text-xs font-medium rounded-lg px-2.5 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-teal-500 transition"
-    ></textarea>
-  </div><div
-    v-else-if="item.type === 'yesno'"
-    class="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-slate-800/40"
-  >
-    <div class="flex-1 flex flex-wrap items-center gap-1.5 min-w-0">
-      <SdaChip v-for="badge in (item.badges ?? [])" :key="badge" :chip="badge" />
-      <span class="text-xs font-medium leading-tight" :class="item.sda ? 'text-slate-300' : 'text-slate-400'">{{ item.label }}</span>
-    </div>
-    <YesNoToggle
-      :modelValue="inputValue"
-      @update:modelValue="emit('set-input', item.id, $event)"
-    />
-  </div><div
-    v-else
-    class="flex items-center gap-2 px-2.5 py-2 rounded-lg transition-colors duration-150"
-    :class="rowClass"
+    :id="elementId"
+    tabindex="-1"
+    role="group"
+    :aria-labelledby="`${elementId}-label`"
+    :aria-describedby="invalid ? `${elementId}-error` : undefined"
+    :aria-invalid="invalid || undefined"
+    class="scroll-mt-24 rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-300"
+    :class="invalid ? 'border border-rose-400 bg-rose-500/10 p-2 ring-1 ring-rose-400/40' : ''"
   >
     <div
-      class="flex-1 flex flex-wrap items-center gap-1.5 min-w-0"
-      :class="itemValue === 'na' ? 'opacity-40' : ''"
+      v-if="item.type === 'text' || item.type === 'number' || item.type === 'date'"
+      class="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-slate-800/40"
     >
-      <SdaChip v-for="badge in (item.badges ?? [])" :key="badge" :chip="badge" />
-      <span
-        class="text-xs font-medium leading-tight"
-        :class="[item.sda ? 'text-slate-300' : 'text-slate-400', itemValue === 'issue' ? '!text-rose-300' : '']"
-      >{{ item.label }}</span>
-    </div>
-    <div class="flex items-center gap-0.5 shrink-0">
-      <button
-        v-for="opt in STATUS_OPTIONS"
-        :key="opt.value"
-        @click="emit('set-status', item.id, opt.value)"
-        :title="opt.label"
-        class="w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-100 border"
-        :class="itemValue === opt.value ? opt.activeClass : 'border-slate-700/60 text-slate-600 hover:border-slate-600 hover:text-slate-400 bg-transparent'"
+      <div class="flex-1 flex flex-wrap items-center gap-1.5 min-w-0">
+        <SdaChip v-for="badge in (item.badges ?? [])" :key="badge" :chip="badge" />
+        <span :id="`${elementId}-label`" class="text-xs font-medium leading-tight" :class="item.sda ? 'text-slate-300' : 'text-slate-400'">{{ item.label }}<span v-if="required" class="ml-1 text-rose-200">(required)</span></span>
+      </div>
+      <input
+        :aria-labelledby="`${elementId}-label`"
+        :aria-invalid="invalid || undefined"
+        :aria-describedby="invalid ? `${elementId}-error` : undefined"
+        :type="item.type"
+        :placeholder="item.placeholder ?? ''"
+        :value="inputValue"
+        @input="emit('set-input', item.id, $event.target.value)"
+        class="shrink-0 bg-slate-900/80 border border-slate-600 text-white placeholder-slate-600 text-xs font-medium rounded-lg px-2.5 py-1.5 text-right focus:outline-none focus:ring-2 focus:ring-teal-500 transition"
+        :class="item.type === 'number' ? 'w-20' : item.type === 'date' ? 'w-32' : 'w-36'"
+      />
+    </div><div
+      v-else-if="item.type === 'multiline'"
+      class="px-2.5 py-2 rounded-lg bg-slate-800/40 space-y-1.5"
+    >
+      <div class="flex flex-wrap items-center gap-1.5">
+        <SdaChip v-for="badge in (item.badges ?? [])" :key="badge" :chip="badge" />
+        <span :id="`${elementId}-label`" class="text-xs font-medium leading-tight" :class="item.sda ? 'text-slate-300' : 'text-slate-400'">{{ item.label }}<span v-if="required" class="ml-1 text-rose-200">(required)</span></span>
+      </div>
+      <textarea
+        :aria-labelledby="`${elementId}-label`"
+        :aria-invalid="invalid || undefined"
+        :aria-describedby="invalid ? `${elementId}-error` : undefined"
+        :placeholder="item.placeholder ?? ''"
+        :value="inputValue"
+        @input="emit('set-input', item.id, $event.target.value)"
+        rows="3"
+        class="w-full bg-slate-900/80 border border-slate-600 text-white placeholder-slate-600 text-xs font-medium rounded-lg px-2.5 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-teal-500 transition"
+      ></textarea>
+    </div><div
+      v-else-if="item.type === 'yesno'"
+      class="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-slate-800/40"
+    >
+      <div class="flex-1 flex flex-wrap items-center gap-1.5 min-w-0">
+        <SdaChip v-for="badge in (item.badges ?? [])" :key="badge" :chip="badge" />
+        <span :id="`${elementId}-label`" class="text-xs font-medium leading-tight" :class="item.sda ? 'text-slate-300' : 'text-slate-400'">{{ item.label }} <span class="ml-1 text-slate-300">(required)</span></span>
+      </div>
+      <YesNoToggle
+        :modelValue="inputValue"
+        @update:modelValue="emit('set-input', item.id, $event)"
+      />
+    </div><div
+      v-else
+      class="flex items-center gap-2 px-2.5 py-2 rounded-lg transition-colors duration-150"
+      :class="rowClass"
+    >
+      <div
+        class="flex-1 flex flex-wrap items-center gap-1.5 min-w-0"
+        :class="itemValue === 'na' ? 'opacity-40' : ''"
       >
-        <component :is="opt.icon" class="w-3.5 h-3.5" />
-      </button>
+        <SdaChip v-for="badge in (item.badges ?? [])" :key="badge" :chip="badge" />
+        <span
+          :id="`${elementId}-label`"
+          class="text-xs font-medium leading-tight"
+          :class="[item.sda ? 'text-slate-300' : 'text-slate-400', itemValue === 'issue' ? '!text-rose-300' : '']"
+        >{{ item.label }}</span>
+      </div>
+      <div class="flex items-center gap-0.5 shrink-0">
+        <button
+          v-for="opt in STATUS_OPTIONS"
+          :key="opt.value"
+          @click="emit('set-status', item.id, opt.value)"
+          :title="opt.label"
+          class="w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-100 border"
+          :class="itemValue === opt.value ? opt.activeClass : 'border-slate-700/60 text-slate-600 hover:border-slate-600 hover:text-slate-400 bg-transparent'"
+        >
+          <component :is="opt.icon" class="w-3.5 h-3.5" />
+        </button>
+      </div>
     </div>
+    <p v-if="invalid" :id="`${elementId}-error`" class="mt-2 px-2.5 text-xs font-bold leading-5 text-rose-200">{{ item.type === 'yesno' ? 'Choose Yes or No before submitting.' : 'Complete this required answer before submitting.' }}</p>
   </div>
 </template>
 
@@ -102,9 +121,11 @@ import { computed } from 'vue'
 import { CheckCircle, AlertTriangle, XCircle, MinusCircle } from '@lucide/vue'
 import SdaChip     from './SdaChip.vue'
 import YesNoToggle from './YesNoToggle.vue'
+import { reportItemElementId } from '../utils/reportReadiness.js'
 
 // ─── Props & emits ────────────────────────────────────────────────────────────
 const props = defineProps({
+  invalid: { type: Boolean, default: false },
   item: {
     type: Object,
     required: true,
@@ -126,6 +147,8 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['set-status', 'set-input'])
+const elementId = computed(() => reportItemElementId(props.sectionId, props.item.id))
+const required = computed(() => props.item.type === 'yesno' || props.item.required === true)
 
 // ─── Status options ───────────────────────────────────────────────────────────
 const STATUS_OPTIONS = [

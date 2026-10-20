@@ -2,14 +2,14 @@
 
 <!--
   Full submit flow modal. Handles:
-    - Pre-submit summary (stats, flagged sections, uploading gate, sig pad)
-    - Loading state (spinner + Firestore listener status)
+    - Pre-submit summary, actionable validation, signature and confirmation
+    - Loading state with capability-scoped draft status checks
     - Done state (PDF link)
     - Error state (message + retry)
 
   Bug 3 fix: the signature pad is NEVER destroyed when entering error state.
   The pre-submit form stays mounted at all times — loading/done/error states
-  are layered on top of it via v-if inside the same container. When the user
+  use separate views while the form is hidden with v-show. When the user
   dismisses an error and clicks "Try Again", canSubmit is still true because
   the sig pad ref was never torn down.
 
@@ -26,8 +26,8 @@
 <template>
   <Teleport to="body">
     <Transition
-      enter-active-class="transition duration-200 ease-out"
-      leave-active-class="transition duration-150 ease-in"
+      enter-active-class="transition duration-200 ease-out motion-reduce:transition-none"
+      leave-active-class="transition duration-150 ease-in motion-reduce:transition-none"
       enter-from-class="opacity-0"
       enter-to-class="opacity-100"
       leave-from-class="opacity-100"
@@ -43,33 +43,44 @@
         />
 
         <Transition
-          enter-active-class="transition duration-300 ease-out"
+          enter-active-class="transition duration-300 ease-out motion-reduce:transition-none"
           enter-from-class="opacity-0 translate-y-4 sm:scale-95"
           enter-to-class="opacity-100 translate-y-0 sm:scale-100"
         >
           <div
             v-if="open"
+            ref="dialogRef"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="report-submit-title"
+            :aria-busy="state.loading"
+            tabindex="-1"
+            @keydown="handleDialogKeydown"
             class="relative z-10 w-full sm:w-[500px] bg-slate-900 border border-slate-700 sm:rounded-2xl rounded-t-2xl shadow-2xl max-h-[90dvh] overflow-y-auto"
           >
+            <h2 id="report-submit-title" class="sr-only">Submit {{ schema.title }}</h2>
 
             <!-- ══ Loading overlay ══════════════════════════════════════════ -->
             <div
               v-if="state.loading"
+              role="status"
+              aria-live="polite"
               class="flex flex-col items-center gap-5 px-6 py-12 text-center"
             >
               <div class="w-16 h-16 rounded-2xl bg-teal-500/15 border border-teal-500/30 flex items-center justify-center">
-                <div class="w-8 h-8 rounded-full border-4 border-teal-500/30 border-t-teal-500 animate-spin" />
+                <div class="w-8 h-8 rounded-full border-4 border-teal-500/30 border-t-teal-500 animate-spin motion-reduce:animate-none" />
               </div>
               <div>
                 <h3 class="text-white font-black text-lg">{{ state.statusMessage }}</h3>
-                <p class="text-slate-400 text-sm mt-1">This takes around 30–60 seconds. Don't close this page.</p>
+                <p class="text-slate-300 text-sm mt-1">Please keep this page open while we save and generate your report.</p>
               </div>
               <button
                 v-if="state.canFlush"
                 @click="flushAndCheck"
+                :disabled="state.checkingStatus"
                 class="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white font-bold text-sm transition-colors"
               >
-                <RefreshCw class="w-4 h-4" />Check Status
+                <RefreshCw class="w-4 h-4" :class="state.checkingStatus ? 'animate-spin motion-reduce:animate-none' : ''" />{{ state.checkingStatus ? 'Checking status…' : 'Check status' }}
               </button>
             </div>
 
@@ -106,46 +117,24 @@
             <!-- ══ Error banner + form (bug 3 fix: form stays mounted) ═════ -->
             <!-- Error is shown as a banner above the form, not a replacement. -->
             <!-- The sig pad ref persists so canSubmit stays true on retry.   -->
-            <template v-else>
+            <div v-show="!state.loading && !state.done">
 
               <!-- Error banner -->
-              <div v-if="state.error" class="px-6 pt-6">
+              <div v-if="state.error" role="alert" class="px-6 pt-6">
                 <div class="flex items-start gap-3 p-4 bg-rose-500/10 border border-rose-500/25 rounded-xl mb-4">
                   <XCircle class="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
                   <div class="flex-1 min-w-0">
-                    <p class="text-white font-bold text-sm">Submission Failed</p>
+                    <p class="text-white font-bold text-sm">{{ state.generationUnconfirmed ? 'Submission status not confirmed' : 'Submission Failed' }}</p>
                     <p class="text-rose-300 text-xs mt-0.5 leading-relaxed">{{ state.error }}</p>
                   </div>
                   <button
                     @click="state.error = null"
+                    aria-label="Dismiss submission error"
                     class="w-6 h-6 flex items-center justify-center rounded-lg hover:bg-rose-500/20 transition-colors shrink-0"
                   >
                     <X class="w-3.5 h-3.5 text-rose-400" />
                   </button>
                 </div>
-              </div>
-
-              <div
-                v-if="reportState.hasFailedUploads"
-                class="mx-5 mt-4 flex items-start gap-2.5 px-3.5 py-3 bg-rose-500/10 border border-rose-500/25 rounded-xl"
-              >
-                <XCircle class="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-                <p class="text-xs text-rose-300 font-semibold">
-                  {{ reportState.failedUploadCount }} photo{{ reportState.failedUploadCount !== 1 ? 's' : '' }}
-                  failed to upload. Retry or remove {{ reportState.failedUploadCount === 1 ? 'it' : 'them' }} before submitting.
-                </p>
-              </div>
-
-              <div
-                v-if="reportState.missingRequiredAnswers.length"
-                class="mx-5 mt-4 flex items-start gap-2.5 px-3.5 py-3 bg-rose-500/10 border border-rose-500/25 rounded-xl"
-              >
-                <AlertTriangle class="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-                <p class="text-xs text-rose-300 font-semibold">
-                  {{ reportState.missingRequiredAnswers.length }} required yes/no
-                  answer{{ reportState.missingRequiredAnswers.length !== 1 ? 's are' : ' is' }} missing.
-                  Complete {{ reportState.missingRequiredAnswers[0]?.sectionLabel || 'the highlighted section' }} before submitting.
-                </p>
               </div>
 
               <!-- Pre-submit form header -->
@@ -158,10 +147,18 @@
                 </div>
                 <button
                   @click="close"
+                  aria-label="Close submission review"
                   class="w-8 h-8 flex items-center justify-center rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 transition-colors shrink-0"
                 >
                   <X class="w-4 h-4" />
                 </button>
+              </div>
+
+              <ReportValidationSummary :readiness="reportState.submissionReadiness" @go-to="emit('go-to', $event)" class="mx-5 mt-4" />
+              <div v-if="state.generationUnconfirmed" class="mx-5 mt-4 rounded-xl border border-amber-400/40 bg-amber-500/10 p-4 text-xs leading-5 text-amber-100">
+                <p>Submission is awaiting confirmation. Check its status before trying to submit again.</p>
+                <p v-if="state.statusCheckError" role="alert" class="mt-2">{{ state.statusCheckError }}</p>
+                <button type="button" @click="flushAndCheck" :disabled="state.checkingStatus" class="mt-2 rounded-lg border border-amber-300/50 px-3 py-2.5 font-bold disabled:opacity-50">{{ state.checkingStatus ? 'Checking status…' : 'Check report status' }}</button>
               </div>
 
               <!-- Stats grid -->
@@ -208,29 +205,20 @@
                 </div>
               </div>
 
-              <!-- Uploading gate warning -->
-              <div
-                v-if="reportState.hasAnyUploading"
-                class="mx-5 mt-4 flex items-center gap-2.5 px-3.5 py-3 bg-teal-500/10 border border-teal-500/25 rounded-xl"
-              >
-                <div class="w-3.5 h-3.5 rounded-full border-2 border-teal-400/30 border-t-teal-400 animate-spin shrink-0" />
-                <p class="text-xs text-teal-300 font-semibold">
-                  Some photos are still uploading — please wait before submitting.
-                </p>
-              </div>
-
               <!-- Unchecked sections warning -->
               <div
-                v-if="reportState.completedCount < reportState.checklistSections.length"
+                v-if="!reportState.submissionReadiness.blocked && !state.generationUnconfirmed && reportState.completedCount < reportState.checklistSections.length"
                 class="mx-5 mt-4 flex items-center gap-2.5 px-3.5 py-3 bg-amber-500/10 border border-amber-500/25 rounded-xl"
               >
                 <AlertTriangle class="w-4 h-4 text-amber-400 shrink-0" />
                 <p class="text-xs text-amber-300 font-semibold">
                   {{ reportState.checklistSections.length - reportState.completedCount }}
                   section{{ reportState.checklistSections.length - reportState.completedCount !== 1 ? 's' : '' }}
-                  still unchecked — you can still submit.
+                  {{ reportState.checklistSections.length - reportState.completedCount === 1 ? 'has' : 'have' }} optional review items left unchecked. These do not block submission. Sign and confirm below to submit.
                 </p>
               </div>
+
+              <p v-if="!canSubmit" class="mx-5 mt-4 text-xs leading-5 text-slate-300">{{ !signatureState.staffSigned ? 'Add your staff signature' : 'Tick the accuracy confirmation' }}{{ !signatureState.staffSigned && !signatureState.agreementChecked ? ' and tick the accuracy confirmation' : '' }} before submitting.</p>
 
               <!-- ── Signature ──────────────────────────────────────────── -->
               <div class="mx-5 mt-5 border border-slate-700 rounded-xl overflow-hidden">
@@ -277,14 +265,14 @@
                 >Back</button>
                 <button
                   @click="confirmSubmit"
-                  :disabled="reportState.hasAnyUploading || reportState.hasFailedUploads || reportState.missingRequiredAnswers.length > 0 || !canSubmit"
+                  :disabled="state.loading || state.generationUnconfirmed || reportState.submissionReadiness.blocked || !canSubmit"
                   class="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-black transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2"
                 >
                   <Send class="w-4 h-4" />{{ state.error ? 'Try Again' : 'Confirm & Submit' }}
                 </button>
               </div>
 
-            </template>
+            </div>
           </div>
         </Transition>
       </div>
@@ -300,6 +288,8 @@ import {
 } from '@lucide/vue'
 import SignaturePad from 'signature_pad'
 import { getReportDraft } from '@/features/everhomes/utils/reportDraftApi'
+import ReportValidationSummary from './ReportValidationSummary.vue'
+import { isolateModalBackground } from '@/features/daily/utils/modalIsolation'
 
 const FUNCTIONS_URL    = import.meta.env.VITE_FUNCTIONS_URL ?? ''
 const SUBMIT_TIMEOUT_MS = 120_000
@@ -310,7 +300,32 @@ const props = defineProps({
   reportState: { type: Object,  required: true },
 })
 
-const emit = defineEmits(['close', 'submitted'])
+const emit = defineEmits(['close', 'submitted', 'go-to'])
+const dialogRef = ref(null)
+let previousFocus = null
+let previousOverflow = ''
+let restoreBackground = null
+
+function releaseDialog() {
+  if (!restoreBackground) return
+  restoreBackground()
+  restoreBackground = null
+  document.body.style.overflow = previousOverflow
+  if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true })
+  previousFocus = null
+}
+
+function handleDialogKeydown(event) {
+  if (event.key === 'Escape') { event.preventDefault(); close(); return }
+  if (event.key !== 'Tab') return
+  const controls = [...dialogRef.value.querySelectorAll('a[href], button:not(:disabled), input:not(:disabled), textarea:not(:disabled), summary, [tabindex="0"]')]
+    .filter(element => element.getClientRects().length > 0)
+  const first = controls[0]
+  const last = controls.at(-1)
+  if (!first) { event.preventDefault(); dialogRef.value.focus(); return }
+  if (event.shiftKey && (document.activeElement === first || document.activeElement === dialogRef.value)) { event.preventDefault(); last.focus() }
+  else if (!event.shiftKey && (document.activeElement === last || document.activeElement === dialogRef.value)) { event.preventDefault(); first.focus() }
+}
 
 // ─── Submit state ─────────────────────────────────────────────────────────────
 const state = reactive({
@@ -321,6 +336,9 @@ const state = reactive({
   pdfUrl:        null,
   canFlush:      false,
   deliveryMessage: 'Report generated successfully.',
+  checkingStatus: false,
+  generationUnconfirmed: false,
+  statusCheckError: '',
 })
 
 // ─── Signature pad ────────────────────────────────────────────────────────────
@@ -337,21 +355,30 @@ const signatureState = reactive({
 // error — the form stays mounted so the pad ref is preserved across retries.
 watch(() => props.open, async (isOpen) => {
   if (isOpen && !state.loading && !state.done) {
+    previousFocus = document.activeElement
+    previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
     await nextTick()
-    setTimeout(initSigPad, 100)
+    if (!props.open) return
+    restoreBackground = isolateModalBackground(document.body, dialogRef.value)
+    dialogRef.value?.focus({ preventScroll: true })
+    initSigPad()
   }
   if (!isOpen) {
+    releaseDialog()
     destroySigPad()
-    resetState()
+    if (state.generationUnconfirmed) {
+      pollGeneration += 1
+      clearTimeouts()
+    } else {
+      resetState()
+    }
   }
 })
 
-// Also init after error is dismissed (user clicks X on error banner) —
-// the pad is already mounted so this is a no-op if already inited.
-watch(() => state.error, (err) => {
-  if (!err && props.open && !state.loading && !state.done) {
-    nextTick(() => setTimeout(initSigPad, 50))
-  }
+watch(() => [state.loading, state.done], async () => {
+  await nextTick()
+  if (props.open) dialogRef.value?.focus({ preventScroll: true })
 })
 
 function initSigPad() {
@@ -451,7 +478,9 @@ function draftSession() {
 }
 
 function applyDraftStatus(result) {
+  if (state.done) return 'complete'
   if (result.status === 'complete') {
+    state.generationUnconfirmed = false
     clearTimeouts()
     state.loading = false
     state.done = true
@@ -465,12 +494,14 @@ function applyDraftStatus(result) {
     return 'complete'
   }
   if (result.status === 'failed') {
+    state.generationUnconfirmed = false
     clearTimeouts()
     state.loading = false
     state.error = result.error ?? 'Report generation failed. Your saved draft remains available to repair and resubmit.'
     return 'failed'
   }
   if (result.status === 'processing') {
+    state.generationUnconfirmed = true
     state.loading = true
     state.statusMessage = 'Report is still being generated. Please wait…'
     startTimeout()
@@ -480,22 +511,30 @@ function applyDraftStatus(result) {
 }
 
 async function checkDraftStatus() {
+  if (statusRequest) return statusRequest
+  state.checkingStatus = true
+  state.statusCheckError = ''
   state.statusMessage = 'Checking report status…'
   state.canFlush = false
-  try {
+  statusRequest = (async () => { try {
     const result = await getReportDraft({ ...draftSession(), includeDraft: false })
     const status = applyDraftStatus(result)
     if (status === 'draft') {
+      state.generationUnconfirmed = false
       state.loading = false
       state.error = 'The report has not started generating. Your draft is saved; please submit it again.'
     }
     return status
   } catch (error) {
     state.statusMessage = 'Unable to check report status. Please check your internet connection.'
+    state.statusCheckError = state.statusMessage
     state.canFlush = true
     return null
-  }
+  } finally { state.checkingStatus = false; statusRequest = null } })()
+  return statusRequest
 }
+
+let statusRequest = null
 
 async function uploadStaffSignature(payload) {
   const signatureData = payload.signatures?.staff?.signature
@@ -533,9 +572,9 @@ async function uploadStaffSignature(payload) {
 
 async function submitViaDraftService() {
   if (
-    props.reportState.hasAnyUploading
-    || props.reportState.hasFailedUploads
-    || props.reportState.missingRequiredAnswers.length
+    state.loading
+    || state.generationUnconfirmed
+    || props.reportState.submissionReadiness.blocked
     || !canSubmit.value
   ) return
   if (!navigator.onLine) {
@@ -567,6 +606,7 @@ async function submitViaDraftService() {
   }
 
   state.statusMessage = 'Generating report…'
+  state.generationUnconfirmed = true
   startTimeout()
   try {
     const controller = new AbortController()
@@ -628,7 +668,7 @@ async function flushAndCheck() {
 
 // ─── Close ────────────────────────────────────────────────────────────────────
 function close() {
-  if (state.loading || state.done) return
+  if (state.loading) return
   emit('close')
 }
 
@@ -641,6 +681,8 @@ function resetState() {
   state.pdfUrl        = null
   state.canFlush      = false
   state.deliveryMessage = 'Report generated successfully.'
+  state.generationUnconfirmed = false
+  state.statusCheckError = ''
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -662,5 +704,6 @@ onUnmounted(() => {
   pollGeneration += 1
   clearTimeouts()
   destroySigPad()
+  releaseDialog()
 })
 </script>

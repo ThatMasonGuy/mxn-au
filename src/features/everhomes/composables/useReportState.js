@@ -45,7 +45,6 @@ import {
 import {
     CHECKED_REPORT_STATUSES,
     deriveSectionStatus,
-    isRequiredAnswerComplete,
     isStatusSectionComplete,
 } from '../utils/reportStatus'
 import {
@@ -57,6 +56,8 @@ import {
     prepareRestoredPhoto,
 } from '../utils/photoRecovery'
 import { evaluateReportPhotoSize } from '../utils/reportPhotoPolicy'
+import { createDraftSaveQueue } from '../utils/draftSaveQueue.js'
+import { collectMissingReportAnswers, getReportReadiness } from '../utils/reportReadiness.js'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -133,6 +134,8 @@ export function useReportState(schema) {
     // Tracked continuously — components can read isOnline and show a banner
     // rather than only discovering offline state at submit time.
     const isOnline = ref(navigator.onLine)
+    const resumeRequested = ref(window.location.hash.startsWith('#everhomes-draft='))
+    const backedUpDraftId = ref(null)
     const fatalError = reactive({
         open: false,
         title: 'Upload Error',
@@ -140,7 +143,8 @@ export function useReportState(schema) {
         logs: '',
     })
     const draftSync = reactive({
-        status: 'idle', // idle | syncing | saved | offline | error | restoring
+        status: resumeRequested.value ? 'restoring' : 'idle',
+        hasBackup: computed(() => Boolean(store.setup.reportId && backedUpDraftId.value === store.setup.reportId)),
         lastSyncedAt: null,
         lastError: '',
         revision: 0,
@@ -150,9 +154,9 @@ export function useReportState(schema) {
     const DRAFT_SYNC_DEBOUNCE_MS = 1_500
     const retryFiles = new Map()
     let draftSyncTimer = null
-    let draftSyncPromise = null
-    let draftSyncQueued = false
     let restoringDraft = false
+    let disposed = false
+    let restoreController = null
 
     function handleOnline()  {
         isOnline.value = true
@@ -160,10 +164,10 @@ export function useReportState(schema) {
     }
     function handleOffline() {
         isOnline.value = false
-        if (store.hasChecklistStarted) draftSync.status = 'offline'
+        if (store.hasChecklistStarted && !resumeRequested.value) draftSync.status = 'offline'
     }
     function handleVisibilityChange() {
-        if (document.visibilityState === 'hidden' && store.hasChecklistStarted && navigator.onLine) {
+        if (document.visibilityState === 'hidden' && store.hasChecklistStarted && navigator.onLine && !resumeRequested.value) {
             clearTimeout(draftSyncTimer)
             synchroniseDraft().catch(() => {})
         }
@@ -261,17 +265,11 @@ export function useReportState(schema) {
         }
     }
 
-    async function synchroniseDraft() {
-        if (!store.hasChecklistStarted) return null
-        if (!isOnline.value) {
-            draftSync.status = 'offline'
-            return null
-        }
-        if (draftSyncPromise) {
-            draftSyncQueued = true
-            return draftSyncPromise
-        }
-
+    const draftSaveQueue = createDraftSaveQueue(async () => {
+        // Reset/restore can happen while a previous backup is finishing.
+        // Never create a new identity for a checklist that has been cleared.
+        if (!store.hasChecklistStarted || resumeRequested.value || restoringDraft) return null
+        if (!isOnline.value) throw new Error('Reconnect to the internet to back up this report.')
         draftSync.status = 'syncing'
         draftSync.lastError = ''
         const payload = {
@@ -279,9 +277,10 @@ export function useReportState(schema) {
             draft: buildDraftSnapshot(),
         }
 
-        draftSyncPromise = syncReportDraft(payload)
+        return syncReportDraft(payload)
             .then((result) => {
                 draftSync.status = 'saved'
+                backedUpDraftId.value = payload.draftId
                 draftSync.lastSyncedAt = new Date().toISOString()
                 draftSync.revision = result.draftRevision ?? draftSync.revision
                 return result
@@ -291,19 +290,25 @@ export function useReportState(schema) {
                 draftSync.lastError = error.message ?? 'Unable to back up this draft.'
                 throw error
             })
-            .finally(() => {
-                draftSyncPromise = null
-                if (draftSyncQueued) {
-                    draftSyncQueued = false
-                    scheduleDraftSync({ immediate: true })
-                }
-            })
+    })
 
-        return draftSyncPromise
+    async function synchroniseDraft() {
+        if (resumeRequested.value || restoringDraft || !store.hasChecklistStarted) return null
+        if (!isOnline.value) {
+            draftSync.status = 'offline'
+            throw new Error('Reconnect to the internet to back up this report.')
+        }
+        return draftSaveQueue.flush()
     }
 
     function scheduleDraftSync({ immediate = false } = {}) {
-        if (restoringDraft || !store.hasChecklistStarted) return
+        if (resumeRequested.value || restoringDraft || !store.hasChecklistStarted || disposed) return
+        draftSaveQueue.markChanged()
+        if (!isOnline.value) {
+            draftSync.status = 'offline'
+            return
+        }
+        if (draftSync.status !== 'syncing') draftSync.status = 'pending'
         clearTimeout(draftSyncTimer)
         if (immediate) {
             synchroniseDraft().catch(() => {})
@@ -314,23 +319,21 @@ export function useReportState(schema) {
 
     async function flushDraftSync() {
         clearTimeout(draftSyncTimer)
+        if (resumeRequested.value) throw new Error('Finish restoring your report before saving a backup.')
         return synchroniseDraft()
     }
 
     const resumeLink = computed(() => {
-        if (!store.setup.reportId || !store.setup.draftAccessKey || typeof window === 'undefined') return ''
+        if (!draftSync.hasBackup || !store.setup.reportId || !store.setup.draftAccessKey || resumeRequested.value) return ''
         const root = `${window.location.origin}${window.location.pathname}${window.location.search}`
         return `${root}#everhomes-draft=${reportType}.${store.setup.reportId}.${store.setup.draftAccessKey}`
     })
 
     async function copyResumeLink() {
-        if (!resumeLink.value) return false
-        try {
-            await navigator.clipboard.writeText(resumeLink.value)
-            return true
-        } catch {
-            return false
-        }
+        await flushDraftSync()
+        if (!resumeLink.value) throw new Error('The resume link is not ready yet. Try backing up the report again.')
+        await navigator.clipboard.writeText(resumeLink.value)
+        return true
     }
 
     function restoreObject(target, value = {}) {
@@ -360,17 +363,21 @@ export function useReportState(schema) {
     }
 
     async function restoreDraftFromLocation() {
+        if (restoringDraft || disposed) return false
         const hash = window.location.hash
         const prefix = '#everhomes-draft='
         if (!hash.startsWith(prefix)) return false
 
         const [hashType, draftId, draftAccessKey] = hash.slice(prefix.length).split('.')
         if (hashType !== reportType || !draftId || !draftAccessKey) {
+            draftSync.status = 'error'
             draftSync.restoreError = 'This resume link is invalid for this report type.'
             return false
         }
 
         restoringDraft = true
+        clearTimeout(draftSyncTimer)
+        restoreController = new AbortController()
         draftSync.status = 'restoring'
         draftSync.restoreError = ''
         try {
@@ -379,20 +386,31 @@ export function useReportState(schema) {
                 draftId,
                 draftAccessKey,
                 includeDraft: true,
-            })
-            if (!result.draft) throw new Error('The saved draft did not contain recoverable report data.')
+            }, { signal: restoreController.signal })
+            if (disposed) return false
+            if (!result.draft?.setup || !Array.isArray(result.draft.checklistSections) || !result.draft.checklistData) {
+                throw new Error('The saved draft did not contain recoverable report data.')
+            }
+            const restoredChecklist = prepareRestoredChecklistData(result.draft.checklistData)
+            const restoredMarketing = prepareRestoredMarketingPhotos(result.draft.marketingPhotos)
 
             store.resetAll()
             Object.assign(store.setup, result.draft.setup ?? {}, { reportId: draftId, draftAccessKey })
             store.checklistSections = result.draft.checklistSections ?? []
-            restoreObject(store.checklistData, prepareRestoredChecklistData(result.draft.checklistData))
-            restoreObject(store.marketingPhotos, prepareRestoredMarketingPhotos(result.draft.marketingPhotos))
+            restoreObject(store.checklistData, restoredChecklist)
+            restoreObject(store.marketingPhotos, restoredMarketing)
+            await normaliseFailedPhotoRecovery()
+            if (disposed) return false
             draftSync.status = 'saved'
+            backedUpDraftId.value = draftId
             draftSync.revision = result.draftRevision ?? 0
             draftSync.lastSyncedAt = result.draftUpdatedAt ?? null
             window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`)
+            resumeRequested.value = false
+            draftSaveQueue.markChanged()
             return true
         } catch (error) {
+            if (disposed) return false
             draftSync.status = 'error'
             draftSync.restoreError = error.message ?? 'Could not restore that draft.'
             return false
@@ -401,11 +419,21 @@ export function useReportState(schema) {
         }
     }
 
+    function useLocalDraft() {
+        if (restoringDraft) return
+        window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`)
+        resumeRequested.value = false
+        draftSync.restoreError = ''
+        draftSync.status = 'idle'
+        scheduleDraftSync({ immediate: true })
+    }
+
     onMounted(() => {
         window.addEventListener('online',  handleOnline)
         window.addEventListener('offline', handleOffline)
         document.addEventListener('visibilitychange', handleVisibilityChange)
         restoreDraftFromLocation().then(async (restored) => {
+            if (disposed || resumeRequested.value) return
             const normalisedPhotoCount = await normaliseFailedPhotoRecovery()
             if (store.hasChecklistStarted && (!restored || normalisedPhotoCount > 0)) {
                 scheduleDraftSync({ immediate: true })
@@ -413,11 +441,13 @@ export function useReportState(schema) {
         })
     })
     onUnmounted(() => {
+        disposed = true
+        restoreController?.abort()
         window.removeEventListener('online',  handleOnline)
         window.removeEventListener('offline', handleOffline)
         document.removeEventListener('visibilitychange', handleVisibilityChange)
         clearTimeout(draftSyncTimer)
-        if (store.hasChecklistStarted && navigator.onLine) synchroniseDraft().catch(() => {})
+        if (store.hasChecklistStarted && navigator.onLine && !resumeRequested.value) synchroniseDraft().catch(() => {})
     })
 
     watch(
@@ -428,7 +458,7 @@ export function useReportState(schema) {
             () => store.marketingPhotos,
         ],
         () => scheduleDraftSync(),
-        { deep: true }
+        { deep: true, flush: 'sync' }
     )
 
     // ── Setup validation ──────────────────────────────────────────────────────
@@ -958,27 +988,18 @@ export function useReportState(schema) {
     )
     const hasFailedUploads = computed(() => failedUploadCount.value > 0)
 
-    const missingRequiredAnswers = computed(() => {
-        const missing = []
-        for (const section of store.checklistSections) {
-            const entry = store.checklistData[section.id]
-            if (!entry) continue
-            for (const item of getInputItems(section.key)) {
-                if (!isItemVisible(item, section.id)) continue
-                if (item.type !== 'yesno' && item.required !== true) continue
-                const value = entry.inputs?.[item.id]
-                if (!isRequiredAnswerComplete(item, value)) {
-                    missing.push({
-                        sectionId: section.id,
-                        sectionLabel: section.label,
-                        itemId: item.id,
-                        itemLabel: item.label,
-                    })
-                }
-            }
-        }
-        return missing
-    })
+    const missingRequiredAnswers = computed(() => collectMissingReportAnswers(
+        store.checklistSections, store.checklistData, getInputItems, isItemVisible,
+    ))
+    const submissionReadiness = computed(() => getReportReadiness({
+        missingAnswers: missingRequiredAnswers.value,
+        sections: store.checklistSections,
+        data: store.checklistData,
+        marketingPhotos: store.marketingPhotos,
+        isOnline: isOnline.value,
+        hasAnyUploading: hasAnyUploading.value,
+    }))
+    const validationVisible = ref(false)
 
     // ── Photo upload ──────────────────────────────────────────────────────────
     const MAX_UPLOAD_ATTEMPTS = 3
@@ -1602,6 +1623,8 @@ export function useReportState(schema) {
         copyResumeLink,
         flushDraftSync,
         restoreDraftFromLocation,
+        resumeRequested,
+        useLocalDraft,
 
         // Setup
         setupErrors,
@@ -1650,6 +1673,8 @@ export function useReportState(schema) {
         hasFailedUploads,
         failedUploadCount,
         missingRequiredAnswers,
+        submissionReadiness,
+        validationVisible,
         buildSubmitPayload,
 
         // Photos

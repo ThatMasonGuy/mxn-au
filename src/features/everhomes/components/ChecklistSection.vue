@@ -109,6 +109,7 @@
               :sectionId="section.id"
               :itemValue="sectionData.items?.[item.id] ?? 'unchecked'"
               :inputValue="sectionData.inputs?.[item.id] ?? ''"
+              :invalid="reportState.validationVisible && reportState.missingRequiredAnswers.some(answer => answer.sectionId === section.id && answer.itemId === item.id)"
               @set-status="(itemId, status) => reportState.setItemStatus(section.id, itemId, status)"
               @set-input="(itemId, value) => reportState.setItemInput(section.id, itemId, value)"
             />

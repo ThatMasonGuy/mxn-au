@@ -13,18 +13,22 @@
 <template>
   <div class="flex items-center gap-1 shrink-0">
     <button
+      type="button"
+      :aria-pressed="modelValue === 'yes'"
       @click="toggle('yes')"
-      class="px-2.5 py-1 rounded-lg text-xs font-bold border transition-all duration-100"
+      class="min-h-11 min-w-11 px-2.5 py-1 rounded-lg text-xs font-bold border transition-all duration-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-300"
       :class="modelValue === 'yes'
         ? 'bg-emerald-500/25 border-emerald-500/80 text-emerald-400'
-        : 'border-slate-700/60 text-slate-600 hover:border-slate-600 hover:text-slate-400 bg-transparent'"
+        : 'border-slate-500 text-slate-300 hover:border-slate-400 hover:text-white bg-transparent'"
     >Yes</button>
     <button
+      type="button"
+      :aria-pressed="modelValue === 'no'"
       @click="toggle('no')"
-      class="px-2.5 py-1 rounded-lg text-xs font-bold border transition-all duration-100"
+      class="min-h-11 min-w-11 px-2.5 py-1 rounded-lg text-xs font-bold border transition-all duration-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-300"
       :class="modelValue === 'no'
         ? 'bg-rose-500/25 border-rose-500/80 text-rose-400'
-        : 'border-slate-700/60 text-slate-600 hover:border-slate-600 hover:text-slate-400 bg-transparent'"
+        : 'border-slate-500 text-slate-300 hover:border-slate-400 hover:text-white bg-transparent'"
     >No</button>
   </div>
 </template>
