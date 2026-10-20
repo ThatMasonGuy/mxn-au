@@ -58,7 +58,7 @@
     "html2canvas": "^1.4.1",
     "i18n-iso-countries": "^7.14.0",
     "luxon": "^3.6.1",
-    "markdown-it": "^15.0.0",
+    "markdown-it": "^15.0.2",
     "marked": "^18.0.7",
     "papaparse": "^5.5.4",
     "pinia": "^4.0.2",
