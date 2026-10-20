@@ -58,6 +58,7 @@ import {
 import { evaluateReportPhotoSize } from '../utils/reportPhotoPolicy'
 import { createDraftSaveQueue } from '../utils/draftSaveQueue.js'
 import { collectMissingReportAnswers, getReportReadiness } from '../utils/reportReadiness.js'
+import { describeReportUploadFailure, photoBackupFailure } from '../utils/reportUploadErrors.js'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -67,14 +68,6 @@ const CHECKED_STATUSES = CHECKED_REPORT_STATUSES
 // Item types that are inputs — they go into section.inputs, not section.items
 const INPUT_TYPES = new Set(['text', 'number', 'date', 'multiline', 'yesno'])
 
-// Firebase Storage error codes that are generally worth retrying automatically
-const RETRYABLE_STORAGE_CODES = new Set([
-    'storage/retry-limit-exceeded',
-    'storage/unknown',
-    'storage/quota-exceeded',
-    'storage/canceled',
-    'storage/timeout',
-])
 const ALLOWED_REPORT_IMAGE_TYPES = new Set([
     'image/jpeg',
     'image/jpg',
@@ -1007,9 +1000,7 @@ export function useReportState(schema) {
     const MANUAL_RETRY_TIMEOUT_MS = 120_000
 
     function classifyUploadError(err, context = {}) {
-        const code = err?.code ?? 'unknown'
-        const message = err?.message ?? 'Unknown upload error'
-        const retryable = RETRYABLE_STORAGE_CODES.has(code) || /timeout/i.test(message)
+        const { code, message, retryable } = describeReportUploadFailure(err)
 
         const info = {
             timestamp: new Date().toISOString(),
@@ -1202,7 +1193,11 @@ export function useReportState(schema) {
         try {
             // Create/refresh the server draft before attempting the capability-
             // scoped upload. The report survives even if the browser then drops.
-            await flushDraftSync()
+            try {
+                await flushDraftSync()
+            } catch (error) {
+                throw photoBackupFailure(error, { online: isOnline.value })
+            }
             const uploaded = await uploadPhotoToStorage(
                 file,
                 photo,

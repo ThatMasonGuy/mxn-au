@@ -83,7 +83,7 @@
       >
         <WifiOff class="w-4 h-4 text-rose-400 shrink-0" />
         <p class="text-xs text-rose-300 font-medium">
-          You're offline. Photos will resume uploading when your connection returns.
+          You’re offline. Reconnect to continue uploading, then retry any failed photos.
         </p>
       </div>
     </Transition>

@@ -193,8 +193,9 @@
                   v-if="photo.retryable !== false"
                   type="button"
                   aria-label="Retry failed photo"
+                  :disabled="!reportState.isOnline"
                   @click.stop="reportState.retryPhoto(section.id, pIdx)"
-                  class="text-[10px] font-black text-white bg-rose-500 rounded-lg px-2 py-1 hover:bg-rose-400 transition-colors"
+                  class="text-[10px] font-black text-white bg-rose-500 rounded-lg px-2 py-1 hover:bg-rose-400 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Retry
                 </button>
