@@ -29,6 +29,33 @@
 
     <div v-if="reportState.resumeRequested" class="mx-auto max-w-4xl px-4 py-10 sm:px-6 lg:px-8">
       <div class="rounded-2xl border border-slate-600 bg-slate-900 px-5 py-8" :aria-busy="reportState.draftSync.status === 'restoring'">
+        <template v-if="reportState.draftSync.status === 'submitted'">
+          <div role="status" aria-live="polite" aria-atomic="true">
+            <h1 class="flex items-center gap-3 text-xl font-bold text-white">
+              <CheckCircle aria-hidden="true" class="h-6 w-6 shrink-0 text-emerald-400" />
+              Report already submitted
+            </h1>
+            <p v-if="reportState.submittedReport.status === 'processing'" class="mt-3 text-sm leading-6 text-slate-300">Your report has been submitted and is still being generated. Check again shortly for the completed report.</p>
+            <p v-else-if="reportState.submittedReport.status === 'regenerating'" class="mt-3 text-sm leading-6 text-slate-300">An updated version is being generated. You can open the current report below if it is available.</p>
+            <p v-else-if="reportState.submittedReport.pdfUrl" class="mt-3 text-sm leading-6 text-slate-300">You can open the completed report below or start a new report.</p>
+            <p v-else class="mt-3 text-sm leading-6 text-slate-300">The completed report's PDF link is unavailable. Contact an Everhomes administrator for a copy.</p>
+          </div>
+          <div v-if="!newReport.confirm" class="mt-5 flex flex-wrap gap-3">
+            <a v-if="reportState.submittedReport.pdfUrl" :href="reportState.submittedReport.pdfUrl" target="_blank" rel="noopener noreferrer" class="rounded-xl bg-teal-600 px-4 py-3 text-sm font-bold text-white hover:bg-teal-500">Open completed report (PDF)</a>
+            <button v-if="reportState.submittedReport.status !== 'complete' || !reportState.submittedReport.pdfUrl" type="button" @click="reportState.restoreDraftFromLocation()" class="rounded-xl border border-slate-500 px-4 py-3 text-sm font-bold text-slate-200 hover:bg-slate-800">Check report status</button>
+            <button type="button" :disabled="newReport.loading" @click="startNewReport" class="rounded-xl border border-slate-500 px-4 py-3 text-sm font-bold text-slate-200 hover:bg-slate-800 disabled:opacity-50">{{ newReport.loading ? 'Starting new report…' : 'Start a new report' }}</button>
+            <button v-if="reportState.hasOtherLocalDraft" type="button" @click="returnToLocalDraft" class="rounded-xl border border-slate-500 px-4 py-3 text-sm font-bold text-slate-200 hover:bg-slate-800">Return to saved draft</button>
+          </div>
+          <div v-else class="mt-5 rounded-xl border border-amber-400/40 bg-amber-500/10 p-4">
+            <p class="text-sm leading-6 text-amber-100">Another report is saved on this device. Starting a new report will replace that local draft, including photos saved only on this device. Return to your saved draft if you need to keep working on it.</p>
+            <div class="mt-4 flex flex-wrap gap-3">
+              <button type="button" :disabled="newReport.loading" @click="returnToLocalDraft" class="rounded-xl border border-slate-500 px-4 py-3 text-sm font-bold text-slate-200 hover:bg-slate-800">Return to saved draft</button>
+              <button type="button" :disabled="newReport.loading" @click="startNewReport" class="rounded-xl bg-rose-600 px-4 py-3 text-sm font-bold text-white hover:bg-rose-500 disabled:opacity-50">{{ newReport.loading ? 'Starting new report…' : 'Replace draft and start new' }}</button>
+            </div>
+          </div>
+          <p v-if="newReport.error" role="alert" class="mt-3 text-sm text-rose-300">{{ newReport.error }}</p>
+        </template>
+        <template v-else>
         <div role="status" aria-live="polite" aria-atomic="true">
           <h1 class="flex items-center gap-3 text-xl font-bold text-white">
             <LoaderCircle v-if="reportState.draftSync.status === 'restoring'" aria-hidden="true" class="h-6 w-6 shrink-0 animate-spin motion-reduce:animate-none" />
@@ -41,6 +68,7 @@
           <button type="button" @click="reportState.useLocalDraft()" class="rounded-xl border border-slate-500 px-4 py-3 text-sm font-bold text-slate-200 hover:bg-slate-800">{{ reportState.hasChecklistStarted ? 'Use draft on this device' : 'Start a new report' }}</button>
         </div>
         <p v-if="reportState.draftSync.status !== 'restoring'" class="mt-3 text-xs leading-5 text-slate-400">Your existing draft on this device has been kept.</p>
+        </template>
       </div>
     </div>
 
@@ -52,7 +80,7 @@
           :class="heroBgClass"
         >
           <div class="max-w-4xl mx-auto">
-            <h1 class="text-2xl sm:text-3xl font-black text-white tracking-tight uppercase">
+            <h1 ref="reportHeadingRef" tabindex="-1" class="text-2xl sm:text-3xl font-black text-white tracking-tight uppercase">
               {{ schema.title }}
             </h1>
             <p class="text-sm mt-1 font-medium" :class="heroSubtitleClass">
@@ -120,6 +148,7 @@
 
     <ErrorLogModal
       :open="reportState.fatalError.open"
+      :title="reportState.fatalError.title"
       :message="reportState.fatalError.message"
       :logs="reportState.fatalError.logs"
       @close="reportState.closeFatalError()"
@@ -143,7 +172,7 @@
           <div :aria-busy="clearConfirm.loading" class="relative z-10 w-full max-w-sm bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-6">
             <h3 class="text-white font-black text-base mb-1">Clear Checklist?</h3>
             <p class="text-slate-400 text-sm mb-5">
-              This removes the local report, recovery backup, and uploaded draft photos. This cannot be undone.
+              This clears the form on this device and deletes any unfinished recovery backup and draft photos. Submitted reports are kept. This cannot be undone.
             </p>
             <div class="flex gap-3">
               <button
@@ -168,7 +197,7 @@
 <script setup>
 import { computed, reactive, ref, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
-import { ClipboardCheck, LoaderCircle } from '@lucide/vue'
+import { CheckCircle, ClipboardCheck, LoaderCircle } from '@lucide/vue'
 
 import LayoutComponent     from '@/features/everhomes/components/layouts/LayoutComponent.vue'
 import ReportSetup         from '@/features/everhomes/components/ReportSetup.vue'
@@ -180,6 +209,7 @@ import DraftRecoveryPanel from '@/features/everhomes/components/DraftRecoveryPan
 
 import { useReportState }  from '@/features/everhomes/composables/useReportState'
 import { trackEverhomesToolUsage } from '@/features/everhomes/utils/toolUsage'
+import { reportErrorDetails } from '@/features/everhomes/utils/reportErrorDetails.js'
 
 // ─── Schema registry ──────────────────────────────────────────────────────────
 // Each report type maps to a schema file. Adding a new type = add an entry here
@@ -211,6 +241,35 @@ const reportState = useReportState(schema.value)
 const submitModal = reactive({ open: false })
 const clearConfirm = reactive({ open: false, loading: false })
 const accordionRef = ref(null)
+const reportHeadingRef = ref(null)
+const newReport = reactive({ confirm: false, loading: false, error: '' })
+
+function returnToLocalDraft() {
+  newReport.confirm = false
+  newReport.error = ''
+  reportState.useLocalDraft()
+}
+
+async function startNewReport() {
+  if (newReport.loading) return
+  if (reportState.hasOtherLocalDraft && !newReport.confirm) {
+    newReport.confirm = true
+    return
+  }
+  newReport.loading = true
+  newReport.error = ''
+  try {
+    if (await reportState.startNewReportFromResume({ replaceLocalDraft: newReport.confirm })) {
+      newReport.confirm = false
+      await nextTick()
+      reportHeadingRef.value?.focus()
+    }
+  } catch (error) {
+    newReport.error = error.message ?? 'The new report could not be started. Please try again.'
+  } finally {
+    newReport.loading = false
+  }
+}
 
 function openSubmit() {
   reportState.validationVisible = true
@@ -273,9 +332,16 @@ async function doClear() {
     await reportState.clearReport()
     clearConfirm.open = false
   } catch (error) {
+    clearConfirm.open = false
     reportState.openFatalError({
       title: 'Could not clear report',
       message: error.message ?? 'The report could not be cleared safely.',
+      logs: reportErrorDetails(error, {
+        operation: 'clear report',
+        reportType: schema.value.reportType,
+        reportId: reportState.setup.reportId,
+        online: reportState.isOnline,
+      }),
     })
   } finally {
     clearConfirm.loading = false

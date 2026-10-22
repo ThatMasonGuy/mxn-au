@@ -18,7 +18,7 @@
         <div class="relative z-10 w-full max-w-xl bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden">
           <div class="px-5 py-4 border-b border-slate-700 bg-gradient-to-r from-rose-900/60 to-orange-900/40">
             <h3 class="text-white font-black text-base tracking-tight">
-              Oops, something went wrong
+              {{ title }}
             </h3>
             <p class="text-rose-200/90 text-xs mt-1 font-medium leading-relaxed">
               Please screenshot this page (and all text below) and send it to Mason.
@@ -63,6 +63,7 @@
 <script setup>
 const props = defineProps({
   open: { type: Boolean, default: false },
+  title: { type: String, default: 'Could not complete this action' },
   message: { type: String, default: '' },
   logs: { type: String, default: '' },
 })

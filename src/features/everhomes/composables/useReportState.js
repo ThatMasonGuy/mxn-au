@@ -41,6 +41,7 @@ import {
     deleteReportDraft,
     recordReportUploadFailure,
     syncReportDraft,
+    uploadReportPhoto,
 } from '../utils/reportDraftApi'
 import {
     CHECKED_REPORT_STATUSES,
@@ -59,6 +60,9 @@ import { evaluateReportPhotoSize } from '../utils/reportPhotoPolicy'
 import { createDraftSaveQueue } from '../utils/draftSaveQueue.js'
 import { collectMissingReportAnswers, getReportReadiness } from '../utils/reportReadiness.js'
 import { describeReportUploadFailure, photoBackupFailure } from '../utils/reportUploadErrors.js'
+import { clearReportSession } from '../utils/reportClear.js'
+import { waitForReportUpload } from '../utils/reportUploadTask.js'
+import { hasOtherLocalReport, resolveReportResume } from '../utils/reportResume.js'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -129,6 +133,8 @@ export function useReportState(schema) {
     const isOnline = ref(navigator.onLine)
     const resumeRequested = ref(window.location.hash.startsWith('#everhomes-draft='))
     const backedUpDraftId = ref(null)
+    const submittedReport = reactive({ reportId: null, status: '', pdfUrl: null })
+    const hasOtherLocalDraft = computed(() => hasOtherLocalReport(store, submittedReport.reportId))
     const fatalError = reactive({
         open: false,
         title: 'Upload Error',
@@ -148,6 +154,7 @@ export function useReportState(schema) {
     const retryFiles = new Map()
     let draftSyncTimer = null
     let restoringDraft = false
+    let clearingDraft = false
     let disposed = false
     let restoreController = null
 
@@ -261,7 +268,7 @@ export function useReportState(schema) {
     const draftSaveQueue = createDraftSaveQueue(async () => {
         // Reset/restore can happen while a previous backup is finishing.
         // Never create a new identity for a checklist that has been cleared.
-        if (!store.hasChecklistStarted || resumeRequested.value || restoringDraft) return null
+        if (!store.hasChecklistStarted || resumeRequested.value || restoringDraft || clearingDraft) return null
         if (!isOnline.value) throw new Error('Reconnect to the internet to back up this report.')
         draftSync.status = 'syncing'
         draftSync.lastError = ''
@@ -295,7 +302,7 @@ export function useReportState(schema) {
     }
 
     function scheduleDraftSync({ immediate = false } = {}) {
-        if (resumeRequested.value || restoringDraft || !store.hasChecklistStarted || disposed) return
+        if (resumeRequested.value || restoringDraft || clearingDraft || !store.hasChecklistStarted || disposed) return
         draftSaveQueue.markChanged()
         if (!isOnline.value) {
             draftSync.status = 'offline'
@@ -381,8 +388,11 @@ export function useReportState(schema) {
                 includeDraft: true,
             }, { signal: restoreController.signal })
             if (disposed) return false
-            if (!result.draft?.setup || !Array.isArray(result.draft.checklistSections) || !result.draft.checklistData) {
-                throw new Error('The saved draft did not contain recoverable report data.')
+            const resume = resolveReportResume(result)
+            if (resume.kind === 'submitted') {
+                Object.assign(submittedReport, { reportId: draftId, status: resume.status, pdfUrl: resume.pdfUrl })
+                draftSync.status = 'submitted'
+                return false
             }
             const restoredChecklist = prepareRestoredChecklistData(result.draft.checklistData)
             const restoredMarketing = prepareRestoredMarketingPhotos(result.draft.marketingPhotos)
@@ -421,9 +431,31 @@ export function useReportState(schema) {
         scheduleDraftSync({ immediate: true })
     }
 
+    function handleResumeHashChange() {
+        if (disposed || restoringDraft || !window.location.hash.startsWith('#everhomes-draft=')) return
+        // Removing a consumed fragment does not remount the page. Reopening
+        // that same link must still enter the resume screen on this instance.
+        resumeRequested.value = true
+        restoreDraftFromLocation()
+    }
+
+    async function startNewReportFromResume({ replaceLocalDraft = false } = {}) {
+        if (restoringDraft || draftSync.status !== 'submitted') return false
+        if (hasOtherLocalDraft.value && !replaceLocalDraft) return false
+        if (hasAnyUploading.value) throw new Error('Wait for active photo uploads to finish before starting a new report.')
+        // The resume screen keeps autosaves suspended until the fresh form is
+        // ready. Discard only the device copy; server reports/backups stay intact.
+        const discarded = discardLocalReport()
+        resumeRequested.value = false
+        await discarded
+        Object.assign(submittedReport, { reportId: null, status: '', pdfUrl: null })
+        return true
+    }
+
     onMounted(() => {
         window.addEventListener('online',  handleOnline)
         window.addEventListener('offline', handleOffline)
+        window.addEventListener('hashchange', handleResumeHashChange)
         document.addEventListener('visibilitychange', handleVisibilityChange)
         restoreDraftFromLocation().then(async (restored) => {
             if (disposed || resumeRequested.value) return
@@ -438,6 +470,7 @@ export function useReportState(schema) {
         restoreController?.abort()
         window.removeEventListener('online',  handleOnline)
         window.removeEventListener('offline', handleOffline)
+        window.removeEventListener('hashchange', handleResumeHashChange)
         document.removeEventListener('visibilitychange', handleVisibilityChange)
         clearTimeout(draftSyncTimer)
         if (store.hasChecklistStarted && navigator.onLine && !resumeRequested.value) synchroniseDraft().catch(() => {})
@@ -1016,6 +1049,8 @@ export function useReportState(schema) {
             fileSize: context.fileSize ?? 0,
             attempts: context.attempts ?? 0,
             timeoutMs: context.timeoutMs ?? 0,
+            bytesTransferred: err?.bytesTransferred ?? 0,
+            totalBytes: err?.totalBytes ?? context.fileSize ?? 0,
             online: navigator.onLine,
         }
 
@@ -1033,6 +1068,8 @@ export function useReportState(schema) {
             `fileSize: ${info.fileSize}`,
             `attempts: ${info.attempts}`,
             `timeoutMs: ${info.timeoutMs}`,
+            `bytesTransferred: ${info.bytesTransferred}`,
+            `totalBytes: ${info.totalBytes}`,
             `online: ${String(info.online)}`,
         ].join('\n')
 
@@ -1083,36 +1120,7 @@ export function useReportState(schema) {
     }
 
     function uploadWithDeadline(ref, file, metadata, timeoutMs) {
-        return new Promise((resolve, reject) => {
-            const task = uploadBytesResumable(ref, file, metadata)
-            let settled = false
-            let unsubscribe = null
-            let timeout = null
-            const finish = (callback, value) => {
-                if (settled) return
-                settled = true
-                clearTimeout(timeout)
-                unsubscribe?.()
-                callback(value)
-            }
-            const armInactivityTimeout = () => {
-                clearTimeout(timeout)
-                timeout = setTimeout(() => {
-                    const timeoutError = Object.assign(new Error(`Upload made no progress for ${Math.round(timeoutMs / 1000)} seconds.`), {
-                        code: 'storage/timeout',
-                    })
-                    finish(reject, timeoutError)
-                    task.cancel()
-                }, timeoutMs)
-            }
-            unsubscribe = task.on(
-                'state_changed',
-                armInactivityTimeout,
-                (error) => finish(reject, error),
-                () => finish(resolve)
-            )
-            armInactivityTimeout()
-        })
+        return waitForReportUpload(uploadBytesResumable(ref, file, metadata), { timeoutMs })
     }
 
     function getDownloadUrlWithDeadline(ref, timeoutMs = 20_000) {
@@ -1132,7 +1140,7 @@ export function useReportState(schema) {
         })
     }
 
-    async function uploadPhotoToStorage(file, photo, pathPrefix, context = {}, { timeoutMs = INITIAL_UPLOAD_TIMEOUT_MS } = {}) {
+    async function uploadPhotoToStorage(file, photo, pathPrefix, context = {}, { timeoutMs = INITIAL_UPLOAD_TIMEOUT_MS, preferFallback = false } = {}) {
         preflightImage(file)
         ensureDraftIdentity()
         const path = photo.intendedStoragePath || createStoragePath(pathPrefix, photo.id, file)
@@ -1142,6 +1150,15 @@ export function useReportState(schema) {
             contentType: reportImageContentType(file),
             customMetadata: { everhomesDraftKey: store.setup.draftAccessKey },
         }
+        const uploadThroughDraftService = () => uploadReportPhoto({
+            session: draftRequestPayload(),
+            storagePath: path,
+            file,
+            contentType: metadata.contentType,
+        })
+        // Retry uses the alternate route immediately instead of making staff
+        // wait through the same stalled Storage transfer a second time.
+        if (preferFallback) return uploadThroughDraftService()
 
         let lastError
         for (let attempt = 1; attempt <= MAX_UPLOAD_ATTEMPTS; attempt++) {
@@ -1161,6 +1178,21 @@ export function useReportState(schema) {
                     attempts: attempt,
                     timeoutMs,
                 })
+                // Some mobile networks stall requests to the Storage host while
+                // the draft service remains reachable. Preserve the original
+                // image and destination, and try the capability-checked service.
+                if (lastError.code === 'storage/timeout' && isOnline.value) {
+                    try {
+                        return await uploadThroughDraftService()
+                    } catch (fallbackError) {
+                        throw classifyUploadError(fallbackError, {
+                            ...context, path, pathPrefix,
+                            fileName: file.name, fileType: file.type, fileSize: file.size,
+                            attempts: attempt, timeoutMs: 120_000,
+                        })
+                    }
+                }
+                if (!lastError.retryable) break
                 if (attempt < MAX_UPLOAD_ATTEMPTS) {
                     await new Promise((resolve) => setTimeout(resolve, 1_000 * attempt))
                 }
@@ -1177,6 +1209,7 @@ export function useReportState(schema) {
             ...draftRequestPayload(),
             failure: {
                 ...error,
+                storagePath: error.path ?? '',
                 sectionId: context.sectionId ?? '',
                 slotKey: context.slotKey ?? '',
                 occurredAtClient: error.timestamp ?? new Date().toISOString(),
@@ -1203,7 +1236,7 @@ export function useReportState(schema) {
                 photo,
                 pathPrefix,
                 context,
-                { timeoutMs: manualRetry ? MANUAL_RETRY_TIMEOUT_MS : INITIAL_UPLOAD_TIMEOUT_MS }
+                { timeoutMs: manualRetry ? MANUAL_RETRY_TIMEOUT_MS : INITIAL_UPLOAD_TIMEOUT_MS, preferFallback: manualRetry }
             )
             photo.url = uploaded.url
             photo.thumbUrl = uploaded.url
@@ -1457,6 +1490,7 @@ export function useReportState(schema) {
     }
 
     async function discardLocalReport() {
+        clearTimeout(draftSyncTimer)
         const photos = allReportPhotos()
         const photoIds = photos.map((photo) => photo.id).filter(Boolean)
         photos.forEach((photo) => {
@@ -1464,6 +1498,11 @@ export function useReportState(schema) {
         })
         retryFiles.clear()
         store.resetAll()
+        backedUpDraftId.value = null
+        Object.assign(draftSync, { status: 'idle', lastSyncedAt: null, lastError: '', revision: 0, restoreError: '' })
+        if (window.location.hash.startsWith('#everhomes-draft=')) {
+            window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`)
+        }
         await forgetReportUploadFiles(photoIds).catch(() => {})
     }
 
@@ -1472,17 +1511,26 @@ export function useReportState(schema) {
             throw new Error('Wait for active photo uploads to finish before clearing this report.')
         }
 
-        if (store.setup.reportId && store.setup.draftAccessKey) {
-            if (!navigator.onLine) {
-                throw new Error('Connect to the internet before permanently clearing this backed-up report.')
+        clearingDraft = true
+        clearTimeout(draftSyncTimer)
+        try {
+            // Drain an in-flight backup before deletion so it cannot recreate the
+            // report after Clear succeeds. Further autosaves are suspended above.
+            await draftSaveQueue.flush().catch(() => {})
+            if (store.setup.reportId && store.setup.draftAccessKey) {
+                if (!navigator.onLine) {
+                    throw new Error('Connect to the internet before clearing this saved report.')
+                }
+                await clearReportSession({
+                    reportType,
+                    draftId: store.setup.reportId,
+                    draftAccessKey: store.setup.draftAccessKey,
+                }, { getDraft: getReportDraft, deleteDraft: deleteReportDraft })
             }
-            await deleteReportDraft({
-                reportType,
-                draftId: store.setup.reportId,
-                draftAccessKey: store.setup.draftAccessKey,
-            }, { timeoutMs: 60_000 })
+            await discardLocalReport()
+        } finally {
+            clearingDraft = false
         }
-        await discardLocalReport()
     }
 
     // ── Submit payload builder ────────────────────────────────────────────────
@@ -1620,6 +1668,9 @@ export function useReportState(schema) {
         restoreDraftFromLocation,
         resumeRequested,
         useLocalDraft,
+        submittedReport,
+        hasOtherLocalDraft,
+        startNewReportFromResume,
 
         // Setup
         setupErrors,

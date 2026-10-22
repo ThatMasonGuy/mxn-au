@@ -1,6 +1,8 @@
 import { onRequest } from 'firebase-functions/v2/https'
 import { firebaseAdmin, db } from '../config/firebase.mjs'
 import { sanitiseActivityActor } from './reportActivity.mjs'
+import { randomUUID } from 'node:crypto'
+import { PhotoUploadRequestError, storeDraftPhoto } from './draftPhotoUpload.mjs'
 
 const REGION = 'australia-southeast1'
 // Keep browser recovery snapshots well below Firestore's document limit. Final
@@ -121,6 +123,8 @@ function sanitiseFailure(input = {}) {
     fileName: string('fileName', 512),
     fileType: string('fileType', 128),
     fileSize: Math.max(0, number('fileSize')),
+    bytesTransferred: Math.max(0, number('bytesTransferred')),
+    totalBytes: Math.max(0, number('totalBytes')),
     storagePath: string('storagePath', 2048),
     sectionId: string('sectionId', 256),
     slotKey: string('slotKey', 256),
@@ -129,8 +133,8 @@ function sanitiseFailure(input = {}) {
   }
 }
 
-function endpoint(name, handler) {
-  return onRequest({ region: REGION, cors: true }, async (req, res) => {
+function endpoint(name, handler, options = {}) {
+  return onRequest({ region: REGION, cors: true, ...options }, async (req, res) => {
     const startedAt = Date.now()
     try {
       if (!requirePost(req, res)) return
@@ -142,7 +146,7 @@ function endpoint(name, handler) {
         durationMs: Date.now() - startedAt,
       }))
     } catch (error) {
-      const status = error instanceof DraftRequestError ? error.status : 500
+      const status = error instanceof DraftRequestError || error instanceof PhotoUploadRequestError ? error.status : 500
       console.error(JSON.stringify({
         scope: 'everhomes-draft',
         endpoint: name,
@@ -155,6 +159,27 @@ function endpoint(name, handler) {
     }
   })
 }
+
+export const uploadEverhomesDraftPhoto = endpoint('upload-photo', async (req, res) => {
+  const session = parseSession({
+    reportType: req.get('X-Everhomes-Report-Type'),
+    draftId: req.get('X-Everhomes-Draft-Id'),
+    draftAccessKey: req.get('X-Everhomes-Draft-Key'),
+  })
+  const bucket = firebaseAdmin.storage().bucket()
+  const result = await storeDraftPhoto({
+    session,
+    storagePath: req.get('X-Everhomes-Storage-Path'),
+    contentType: req.get('Content-Type'),
+    bytes: req.rawBody,
+  }, {
+    getDraft: async () => (await findDraft(session)).data,
+    saveFile: (path, bytes, metadata) => bucket.file(path).save(bytes, { resumable: false, metadata }),
+    newToken: randomUUID,
+  })
+  const url = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(result.storagePath)}?alt=media&token=${result.token}`
+  res.status(200).json({ url, storagePath: result.storagePath })
+}, { memory: '512MiB', concurrency: 4, maxInstances: 3, timeoutSeconds: 120 })
 
 export const syncEverhomesDraft = endpoint('sync', async (req, res) => {
   const session = parseSession(req.body)

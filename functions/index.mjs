@@ -52,6 +52,7 @@ export { everhomesIdSighting } from './everhomes/idSighting.mjs';
 export { generateInspectionReport } from './everhomes/generateInspectionReport.mjs';
 export {
     syncEverhomesDraft,
+    uploadEverhomesDraftPhoto,
     getEverhomesDraft,
     recordEverhomesUploadFailure,
     deleteEverhomesDraft,
