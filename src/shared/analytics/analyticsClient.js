@@ -1,3 +1,4 @@
+// Avoid the bare analytics.js filename: tracker blockers can replace that dev module with a no-op.
 import { firebaseApp } from '@/firebase'
 import {
   buildSafePageLocation,

@@ -7,7 +7,7 @@ import piniaPluginPersistedstate from 'pinia-plugin-persistedstate';
 
 import "./style.css";
 import echartsPlugin from '@/shared/plugins/echarts';
-import { initializeOptionalAnalytics } from '@/shared/analytics/analytics';
+import { initializeOptionalAnalytics } from '@/shared/analytics/analyticsClient';
 
 void initializeOptionalAnalytics();
 

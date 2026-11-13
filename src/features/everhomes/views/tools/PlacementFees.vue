@@ -12,20 +12,11 @@
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     <SmartInput v-model="moveInDate" label="Move-in Date" type="date" />
-                    <SmartInput
-                        v-model="durationType"
-                        label="Duration"
-                        type="select"
-                        :options="durationOptions"
-                    />
+                    <SmartInput v-model="durationType" label="Duration" type="select" :options="durationOptions" />
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Expiration Date</label>
-                        <input
-                            type="date"
-                            :value="calculatedEndDate"
-                            disabled
-                            class="w-full px-3 py-2 text-sm bg-gray-50 text-gray-600 border border-gray-200 rounded-md disabled:cursor-not-allowed"
-                        />
+                        <input type="date" :value="calculatedEndDate" disabled
+                            class="w-full px-3 py-2 text-sm bg-gray-50 text-gray-600 border border-gray-200 rounded-md disabled:cursor-not-allowed" />
                         <p class="mt-1 text-xs text-gray-500">
                             {{ calculatedEndDate ? `Ends ${formatDate(calculatedEndDate)}` : 'Only applies to 3 week placements' }}
                         </p>
@@ -43,35 +34,27 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Annual SDA</label>
                         <label class="group relative w-full flex items-center cursor-text">
-                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-teal-600 group-hover:text-teal-500 transition">
+                            <span
+                                class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-teal-600 group-hover:text-teal-500 transition">
                                 $
                             </span>
-                            <input
-                                :value="annualSdaDisplay"
-                                type="text"
-                                inputmode="decimal"
-                                placeholder="0.00"
+                            <input :value="annualSdaDisplay" type="text" inputmode="decimal" placeholder="0.00"
                                 class="w-full min-w-0 max-w-full pl-7 pr-3 py-2 text-sm text-gray-700 border border-gray-300 rounded-md group-focus-within:ring-2 group-focus-within:ring-teal-500 focus:outline-none placeholder-gray-400 transition"
                                 @input="annualSda = parseCurrencyInput($event.target.value)"
-                                @blur="annualSdaTouched = true"
-                            />
+                                @blur="annualSdaTouched = true" />
                         </label>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Fortnightly RRC</label>
                         <label class="group relative w-full flex items-center cursor-text">
-                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-teal-600 group-hover:text-teal-500 transition">
+                            <span
+                                class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-teal-600 group-hover:text-teal-500 transition">
                                 $
                             </span>
-                            <input
-                                :value="fortnightlyRrcDisplay"
-                                type="text"
-                                inputmode="decimal"
-                                placeholder="0.00"
+                            <input :value="fortnightlyRrcDisplay" type="text" inputmode="decimal" placeholder="0.00"
                                 class="w-full min-w-0 max-w-full pl-7 pr-3 py-2 text-sm text-gray-700 border border-gray-300 rounded-md group-focus-within:ring-2 group-focus-within:ring-teal-500 focus:outline-none placeholder-gray-400 transition"
                                 @input="fortnightlyRrc = parseCurrencyInput($event.target.value)"
-                                @blur="fortnightlyRrcTouched = true"
-                            />
+                                @blur="fortnightlyRrcTouched = true" />
                         </label>
                     </div>
                 </div>
@@ -94,15 +77,20 @@
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-gray-100">
-                    <div
-                        v-for="result in resultCards"
-                        :key="result.label"
-                        class="p-4 sm:p-5 bg-gray-50/60"
-                    >
+                    <div v-for="result in resultCards" :key="result.label" class="p-4 sm:p-5 bg-gray-50/60">
                         <p class="text-sm text-gray-500 mb-1">{{ result.label }}</p>
                         <p class="text-xl sm:text-2xl font-bold text-gray-900 break-words">{{ result.value }}</p>
-                        <p class="mt-1 text-xs text-gray-500">{{ result.hint }}</p>
-                        <p class="mt-1 text-xs text-gray-500">{{ result.hint2 }}</p>
+                        <div class="mt-2 space-y-1">
+                            <p class="text-xs text-gray-500">
+                                {{ result.hint }}
+                            </p>
+
+                            <p v-if="result.hint2"
+                                class="flex items-center gap-1.5 text-xs font-medium text-emerald-700">
+                                <span class="size-1.5 shrink-0 rounded-full bg-emerald-500"></span>
+                                {{ result.hint2 }}
+                            </p>
+                        </div>
                     </div>
                 </div>
 
@@ -232,13 +220,13 @@ const resultCards = computed(() => [
         label: 'Daily Rate (SDA)',
         value: formatCurrency(dailyRateSda.value),
         hint: `${formatCurrency(asNumber(annualSda.value))} annual / ${formatNumber(365)} days`,
-        hint2: `${formatCurrency(asNumber(annualSda.value)) * 21} / 21 days`
+        hint2: `${formatCurrency((asNumber(annualSda.value) || 0) * 21)} / 21 days`
     },
     {
         label: 'Daily Rate (RRC)',
         value: formatCurrency(dailyRateRrc.value),
         hint: `${formatCurrency(asNumber(fortnightlyRrc.value))} fortnightly / ${formatNumber(14)} days`,
-        hint2: `${formatCurrency(asNumber(annualSda.value)) * 21} / 21 days`
+        hint2: `${formatCurrency((asNumber(annualSda.value) || 0) * 21)} / 21 days`
     },
     {
         label: 'Duration',

@@ -6,7 +6,7 @@ import { useMainStore } from '@/shared/stores/useMainStore'
 import { updateMetaTagsEnhanced } from '@/shared/utils/useDynamicMetaTags'
 import { useLoadingScreen } from '@/shared/composables/useLoadingScreen'
 import { stableRoutePath } from '@/shared/analytics/analyticsPolicy'
-import { trackPageView } from '@/shared/analytics/analytics'
+import { trackPageView } from '@/shared/analytics/analyticsClient'
 
 const routeModules = import.meta.glob(['./features/*/routes.js', './router/mainRoutes.js'], { eager: true })
 const routes = Object.values(routeModules).flatMap(module => module.default || [])

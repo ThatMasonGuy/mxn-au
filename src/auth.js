@@ -69,7 +69,7 @@ export const signUp = async (userData) => {
         const { user } = await createUserWithEmailAndPassword(auth, email, password)
         await useCreateNewUser(user, profileData)
 
-        void import('@/shared/analytics/analytics')
+        void import('@/shared/analytics/analyticsClient')
             .then(({ trackAnalyticsEvent }) => trackAnalyticsEvent('sign_up', { method: 'password' }))
             .catch(error => console.warn('[Analytics] Sign-up event was not recorded:', error))
 
@@ -87,7 +87,7 @@ export const signIn = async (email, password, rememberMe = false) => {
         sessionStorage.setItem('auth_remember_me', rememberMe.toString())
         await trackLogin(user.uid, 'login')
 
-        void import('@/shared/analytics/analytics')
+        void import('@/shared/analytics/analyticsClient')
             .then(({ trackAnalyticsEvent }) => trackAnalyticsEvent('login', { method: 'password' }))
             .catch(error => console.warn('[Analytics] Login event was not recorded:', error))
 

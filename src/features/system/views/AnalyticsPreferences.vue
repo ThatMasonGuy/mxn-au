@@ -99,7 +99,7 @@ import {
   getOptionalAnalyticsPreference,
   setOptionalAnalyticsEnabled,
   trackPageView,
-} from '@/shared/analytics/analytics'
+} from '@/shared/analytics/analyticsClient'
 
 const route = useRoute()
 const initialPreference = getOptionalAnalyticsPreference()

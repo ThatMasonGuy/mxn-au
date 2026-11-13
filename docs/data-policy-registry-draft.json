@@ -35,7 +35,7 @@
       "sanitisation": "Branch allowlist strips query, fragment, and dynamic route values; current deployed state must be reverified",
       "retention": {"class": "provider_managed", "mechanism": "GA4 property setting", "observed_enforcement": "14 months for event and user data", "owner": "GA4 property administrator"},
       "centrally_controllable": {"level": "partial", "reason": "Browser collection can obey the registry; property and enhanced-measurement settings remain provider controlled"},
-      "evidence": ["src/shared/analytics/analyticsPolicy.js", "src/shared/analytics/analytics.js", "docs/analytics-audit-checkpoint-2026-07-31.md"]
+      "evidence": ["src/shared/analytics/analyticsPolicy.js", "src/shared/analytics/analyticsClient.js", "docs/analytics-audit-checkpoint-2026-07-31.md"]
     },
     {
       "id": "AN-002",
