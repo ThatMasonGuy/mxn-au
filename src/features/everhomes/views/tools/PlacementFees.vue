@@ -102,6 +102,7 @@
                         <p class="text-sm text-gray-500 mb-1">{{ result.label }}</p>
                         <p class="text-xl sm:text-2xl font-bold text-gray-900 break-words">{{ result.value }}</p>
                         <p class="mt-1 text-xs text-gray-500">{{ result.hint }}</p>
+                        <p class="mt-1 text-xs text-gray-500">{{ result.hint2 }}</p>
                     </div>
                 </div>
 
@@ -230,12 +231,14 @@ const resultCards = computed(() => [
     {
         label: 'Daily Rate (SDA)',
         value: formatCurrency(dailyRateSda.value),
-        hint: `${formatCurrency(asNumber(annualSda.value))} annual / ${formatNumber(365)} days`
+        hint: `${formatCurrency(asNumber(annualSda.value))} annual / ${formatNumber(365)} days`,
+        hint2: `${formatCurrency(asNumber(annualSda.value)) * 21} / 21 days`
     },
     {
         label: 'Daily Rate (RRC)',
         value: formatCurrency(dailyRateRrc.value),
-        hint: `${formatCurrency(asNumber(fortnightlyRrc.value))} fortnightly / ${formatNumber(14)} days`
+        hint: `${formatCurrency(asNumber(fortnightlyRrc.value))} fortnightly / ${formatNumber(14)} days`,
+        hint2: `${formatCurrency(asNumber(annualSda.value)) * 21} / 21 days`
     },
     {
         label: 'Duration',
