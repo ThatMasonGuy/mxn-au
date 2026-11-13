@@ -220,13 +220,13 @@ const resultCards = computed(() => [
         label: 'Daily Rate (SDA)',
         value: formatCurrency(dailyRateSda.value),
         hint: `${formatCurrency(asNumber(annualSda.value))} annual / ${formatNumber(365)} days`,
-        hint2: `${formatCurrency((asNumber(annualSda.value) || 0) * 21)} / 21 days`
+        hint2: `${formatCurrency((asNumber(dailyRateSda.value) || 0) * 21)} / 21 days`
     },
     {
         label: 'Daily Rate (RRC)',
         value: formatCurrency(dailyRateRrc.value),
         hint: `${formatCurrency(asNumber(fortnightlyRrc.value))} fortnightly / ${formatNumber(14)} days`,
-        hint2: `${formatCurrency((asNumber(annualSda.value) || 0) * 21)} / 21 days`
+        hint2: `${formatCurrency((asNumber(dailyRateRrc.value) || 0) * 21)} / 21 days`
     },
     {
         label: 'Duration',
